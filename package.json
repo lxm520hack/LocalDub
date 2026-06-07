@@ -7,11 +7,13 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "onnxruntime-node": "1.26.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.4.16"
   },
   "dependencies": {
-    "agnostic-query": "^1.10.5",
-    "onnxruntime-node-gpu": "1.14.0"
+    "agnostic-query": "^1.10.5"
   }
 }

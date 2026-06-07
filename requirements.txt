@@ -11,6 +11,8 @@ soundfile
 pydub
 librosa
 numpy
+torchaudio           # Demucs 保存音频需要
+torchcodec           # Demucs 保存音频需要（torchcodec >= 0.0.2）
 
 # ── 视频下载 ──
 yt-dlp[default]

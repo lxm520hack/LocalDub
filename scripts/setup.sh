@@ -73,11 +73,16 @@ else
 fi
 
 # ── DB ────────────────────────────────────────────
-mkdir -p data
+mkdir -p data/logs
 cd packages/cli
 echo "[DB] 初始化 SQLite..."
 bun run db:push 2>/dev/null || echo "[WARN] db:push 失败（可能是 drizzle-kit 未安装）"
 cd "$REPO_ROOT"
+
+# ── 工作目录 ────────────────────────────────────────
+WORKFOLDER_DIR="${WORKFOLDER:-./workfolder}"
+mkdir -p "$WORKFOLDER_DIR"
+echo "[OK] 工作目录: $WORKFOLDER_DIR"
 
 echo ""
 echo "=== 安装完成 ==="

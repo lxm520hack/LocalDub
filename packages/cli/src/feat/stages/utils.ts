@@ -1,5 +1,5 @@
 import type { TargetLang } from '../config/types.ts';
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { db } from './../../db/index.ts';
@@ -89,6 +89,7 @@ export function emitLog(taskId: string, line: string) {
   daemonEmit({ type: 'log', task_id: taskId, line });
   const ts = nowISO();
   const logPath = join(LOG_DIR, `${taskId}.log`);
+  mkdirSync(LOG_DIR, { recursive: true });
   appendFileSync(logPath, `[${ts}] ${line}\n`);
 }
 

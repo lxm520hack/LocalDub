@@ -1,6 +1,5 @@
 {
   "$schema": "./config.schema.json",
-  "mode": "dub",
   "command": "createTask",
   "createTask": {
     "sourceFile": "https://github.com/user-attachments/assets/bd02936f-cf3c-4e4b-85b5-0410d38f69f5"
@@ -8,7 +7,7 @@
   "engines": {
     "separate": {
       "runtime": "pytorch",
-      "device": "cuda"
+      "device": "cpu"
     },
     "asr": {
       "runtime": "faster-whisper",
