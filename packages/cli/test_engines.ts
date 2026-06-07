@@ -1,2 +1,3 @@
-import { readEnginesConfig } from './src/feat/config/engines.ts';
-console.log(JSON.stringify(readEnginesConfig(), null, 2));
+import { readConfig } from './src/feat/config/config.ts';
+
+console.log(JSON.stringify(readConfig(), null, 2));

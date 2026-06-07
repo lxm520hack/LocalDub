@@ -1,8 +1,9 @@
 {
   "$schema": "./config.schema.json",
   "command": "createTask",
+  "mode": "subtitle",
   "createTask": {
-    "sourceFile": "https://github.com/user-attachments/assets/bd02936f-cf3c-4e4b-85b5-0410d38f69f5"
+    "sourceFile": "/home/aa/repos/learn_ls/YouDub-webui/workfolder/local/VLmkCww00z/media/video_source.mp4"
   },
   "engines": {
     "separate": {
@@ -24,7 +25,7 @@
   },
   "stages": {
     "translate": {
-      "targetLang": "zh"
+      "targetLang": "vi"
     },
     "merge_video": {
       "fontSize": 19,
