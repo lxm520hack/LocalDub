@@ -1,0 +1,32 @@
+{
+  "name": "@repo/cli",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "db:pull": "drizzle-kit pull",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "run": "bun run-task.ts"
+  },
+  "dependencies": {
+    "@repo/config": "workspace:*",
+    "@repo/device": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/voxlab": "workspace:*",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "drizzle-zod": "^0.8.3",
+    "find-up": "^8.0.0",
+    "onnxruntime-node": "^1.26.0",
+    "openai": "^6.42.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "better-sqlite3": "^12.10.0",
+    "drizzle-kit": "^0.31.10"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "@repo/benchmark",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@repo/voxlab": "workspace:*"
+  }
+}

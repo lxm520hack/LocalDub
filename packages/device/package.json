@@ -1,0 +1,13 @@
+{
+  "name": "@repo/device",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "onnxruntime-node": "^1.26.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14"
+  }
+}

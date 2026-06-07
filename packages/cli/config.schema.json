@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "YouDub CLI Config",
+  "type": "object",
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": ["startTask", "resumeTask", "rerunStage", "checkVideo", "taskStatus", "createTask", "deviceInfo", "daemon", "daemonStatus", "daemonStop", "listModels"],
+      "description": "要执行的命令"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["dub", "subtitle"],
+      "default": "dub",
+      "description": "全局工作模式: dub=完整配音(默认), subtitle=仅字幕(保留原声)"
+    },
+    "startTask": {
+      "type": "object",
+      "description": "startTask 参数",
+      "properties": {
+        "taskId": { "type": "string", "description": "任务 ID（videoId）" }
+      },
+      "required": ["taskId"],
+      "additionalProperties": false
+    },
+    "createTask": {
+      "type": "object",
+      "description": "createTask 参数",
+      "properties": {
+        "youtubeUrl": { "type": "string", "format": "uri", "description": "YouTube URL" },
+        "bilibiliUrl": { "type": "string", "format": "uri", "description": "Bilibili URL" },
+        "sourceFile": { "type": "string", "description": "本地视频文件路径" },
+        "sourceLang": { "type": "string", "description": "源语言，如 zh, en; auto 则自动检测", "default": "auto" },
+        "targetLang": { "type": "string", "enum": ["en","zh","vi","ja","ko","fr","de","es","pt","ru","ar","hi","th","id","ms","tl","my","km","lo","mn","ne","ur","bn"], "description": "目标语言" }
+      },
+      "additionalProperties": false
+    },
+    "resumeTask": {
+      "type": "object",
+      "description": "resumeTask 参数",
+      "properties": {
+        "taskId": { "type": "string", "description": "任务 ID（videoId）" },
+        "resumeFrom": { "type": "string", "enum": ["download", "separate", "asr", "asr_fix", "translate", "split_audio", "tts", "merge_audio", "merge_video"], "description": "从此 stage 开始重跑（含该 stage），之前的 stages 保留不变" }
+      },
+      "required": ["taskId"],
+      "additionalProperties": false
+    },
+    "rerunStage": {
+      "type": "object",
+      "description": "rerunStage 参数",
+      "properties": {
+        "taskId": { "type": "string", "description": "任务 ID（videoId）" },
+        "stageName": { "type": "string", "enum": ["download", "separate", "asr", "asr_fix", "translate", "split_audio", "tts", "merge_audio", "merge_video"], "description": "要重跑的 stage 名称" }
+      },
+      "required": ["taskId", "stageName"],
+      "additionalProperties": false
+    },
+    "checkVideo": {
+      "type": "object",
+      "description": "checkVideo 参数",
+      "properties": {
+        "taskId": { "type": "string", "description": "任务 ID（videoId）" }
+      },
+      "required": ["taskId"],
+      "additionalProperties": false
+    },
+    "taskStatus": {
+      "type": "object",
+      "description": "taskStatus 参数",
+      "properties": {
+        "taskId": { "type": "string", "description": "任务 ID（videoId）" }
+      },
+      "required": ["taskId"],
+      "additionalProperties": false
+    },
+    "deviceInfo": {
+      "type": "object",
+      "description": "deviceInfo 无需额外参数",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "stages": {
+      "type": "object",
+      "description": "各 stage 的参数覆盖",
+      "properties": {
+        "translate": {
+          "type": "object",
+          "description": "翻译参数",
+          "properties": {
+            "targetLang": { "type": "string", "enum": ["en","zh","vi","ja","ko","fr","de","es","pt","ru","ar","hi","th","id","ms","tl","my","km","lo","mn","ne","ur","bn"], "description": "目标语言" }
+          },
+          "additionalProperties": false
+        },
+        "merge_video": {
+          "type": "object",
+          "description": "字幕样式参数（仅 subtitle 模式生效）",
+          "properties": {
+            "fontSize": { "type": "number", "minimum": 1, "maximum": 200, "description": "字幕字号，不填则自动: 竖屏: 12(zh) / 9(其他) ← 横屏: 24(zh) / 18(其他)" },
+            "marginV": { "type": "integer", "minimum": 0, "description": "垂直边距(像素)，不填则自动: 竖屏 70 / 横屏 5" },
+            "alignment": { "type": "integer", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9], "default": 2, "description": "字幕对齐: 1=左下 2=中下 3=右下 4=左中 5=居中 6=右中 7=左上 8=中上 9=右上" },
+            "outline": { "type": "number", "minimum": 0, "default": 0, "description": "描边宽度(像素)，0=无描边" },
+            "shadow": { "type": "number", "minimum": 0, "default": 1, "description": "阴影深度(像素)，0=无阴影" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "engines": {
+      "type": "object",
+      "description": "各 stage 的引擎配置",
+      "properties": {
+        "separate": {
+          "type": "object",
+          "description": "人声分离引擎 (Demucs)",
+          "properties": {
+            "runtime": {
+              "type": "string",
+              "enum": ["ort", "pytorch"],
+              "description": "运行时: ort (onnxruntime-node, RTF ~1.0), pytorch (Python子进程, RTF ~2.0)"
+            },
+            "device": {
+              "type": "string",
+              "enum": ["cpu", "cuda", "mps", "webgpu"],
+              "description": "运行时设备: cpu, cuda (NVIDIA/ROCm), mps (Apple Silicon), webgpu (仅 ort)"
+            }
+          },
+          "required": ["runtime"]
+        },
+        "asr": {
+          "type": "object",
+          "description": "语音识别引擎",
+          "properties": {
+            "runtime": {
+              "type": "string",
+              "enum": ["faster-whisper", "pytorch"],
+              "default": "pytorch",
+              "description": "运行时: faster-whisper (CTranslate2), pytorch (openai-whisper)"
+            },
+        "device": {
+          "type": "string",
+          "enum": ["cpu", "cuda", "mps"],
+          "default": "cuda",
+          "description": "ASR 运行设备: cpu, cuda (NVIDIA/ROCm), mps (Apple Silicon)"
+        }
+          },
+          "required": ["runtime"]
+        },
+        "translate": {
+          "type": "object",
+          "properties": {
+            "apiBase": {
+              "type": "string",
+              "format": "uri",
+              "description": "API端点 base URL, 如 https://api.openai.com/v1"
+            },
+            "model": {
+              "type": "string",
+              "description": "模型名，如 gpt-4o-mini, deepseek-chat"
+            }
+          },
+          "description": "翻译引擎(OpenAI兼容API);默认从 OPENAI_BASE_URL / OPENAI_MODEL 环境变量读取"
+        },
+        "tts": {
+          "type": "object",
+          "description": "语音合成引擎",
+          "properties": {
+            "runtime": {
+              "type": "string",
+              "enum": ["ort", "pytorch", "cloud"],
+              "default": "pytorch",
+              "description": "运行时: ort (onnxruntime-node), pytorch (Python子进程), cloud (远程API)"
+            },
+            "device": {
+              "type": "string",
+              "enum": ["cpu", "cuda", "mps", "webgpu"],
+              "default": "cuda",
+              "description": "运行时设备: cpu, cuda (NVIDIA/ROCm), mps (Apple Silicon), webgpu (仅 ort)"
+            }
+          },
+          "required": ["runtime"]
+        }
+      }
+    }
+  },
+  "required": ["command"]
+}

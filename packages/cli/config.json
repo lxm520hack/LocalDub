@@ -1,0 +1,35 @@
+{
+  "$schema": "./config.schema.json",
+  "mode": "dub",
+  "command": "createTask",
+  "createTask": {
+    "sourceFile": "https://github.com/user-attachments/assets/bd02936f-cf3c-4e4b-85b5-0410d38f69f5"
+  },
+  "engines": {
+    "separate": {
+      "runtime": "pytorch",
+      "device": "cuda"
+    },
+    "asr": {
+      "runtime": "faster-whisper",
+      "device": "cuda"
+    },
+    "translate": {
+      "apiBase": "http://localhost:11434/v1",
+      "model": "gemma4:31b-cloud"
+    },
+    "tts": {
+      "runtime": "cloud",
+      "device": "cpu"
+    }
+  },
+  "stages": {
+    "translate": {
+      "targetLang": "zh"
+    },
+    "merge_video": {
+      "fontSize": 19,
+      "marginV": 34
+    }
+  }
+}

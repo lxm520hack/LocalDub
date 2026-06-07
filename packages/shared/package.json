@@ -1,0 +1,15 @@
+{
+  "name": "@repo/shared",
+  "type": "module",
+  "devDependencies": {
+    "vite": "^8.0.13"
+  },
+  "dependencies": {
+    "@tanstack/query-core": "^5.100.11",
+    "clsx": "^2.1.1",
+    "tailwind": "^4.0.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

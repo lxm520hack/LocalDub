@@ -1,0 +1,12 @@
+{
+  "ep": "webgpu+cpu",
+  "ep_available": true,
+  "load_time_s": 3.559391986,
+  "encode_time_ms": 7777.847948999999,
+  "decode_time_ms": 2129.829685999999,
+  "total_s": 14.048308884999999,
+  "audio_s": 3,
+  "rtf": 4.682769628333333,
+  "tokens": 12,
+  "text": "I'm going�^ to�� goߝ to�� the next one."
+}

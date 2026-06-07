@@ -1,0 +1,12 @@
+{
+  "ep": "cpu",
+  "ep_available": true,
+  "load_time_s": 1.8393969819999985,
+  "encode_time_ms": 7326.776149000001,
+  "decode_time_ms": 825.4489759999997,
+  "total_s": 10.764698427999999,
+  "audio_s": 3,
+  "rtf": 3.588232809333333,
+  "tokens": 12,
+  "text": "I'm going�^ to�� goߝ on�m a little bit."
+}

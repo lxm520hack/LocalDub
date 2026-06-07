@@ -1,0 +1,12 @@
+{
+  "ep": "rocm+cpu",
+  "ep_available": true,
+  "load_time_s": 3.538154799,
+  "encode_time_ms": 7474.802599999999,
+  "decode_time_ms": 899.3108199999988,
+  "total_s": 12.713758733999999,
+  "audio_s": 3,
+  "rtf": 4.237919578,
+  "tokens": 12,
+  "text": "I'm going�^ to�� goߝ on�m a little bit."
+}

@@ -1,0 +1,39 @@
+[
+  {
+    "ep": "cuda+cpu",
+    "ep_available": false,
+    "load_time_s": 0.015660456000000003,
+    "encode_time_ms": 0,
+    "decode_time_ms": 0,
+    "total_s": 0,
+    "audio_s": 0,
+    "rtf": null,
+    "tokens": 0,
+    "text": "",
+    "error": "enc: OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library"
+  },
+  {
+    "ep": "rocm+cpu",
+    "ep_available": true,
+    "load_time_s": 2.037530872,
+    "encode_time_ms": 5844.218309000001,
+    "decode_time_ms": 728.8326300000008,
+    "total_s": 9.096630014,
+    "audio_s": 3,
+    "rtf": 3.0322100046666667,
+    "tokens": 12,
+    "text": "I'm going�^ to�� goߝ on�m a little bit."
+  },
+  {
+    "ep": "cpu",
+    "ep_available": true,
+    "load_time_s": 1.5251725999999999,
+    "encode_time_ms": 6396.602419999999,
+    "decode_time_ms": 741.8400809999985,
+    "total_s": 9.141969147,
+    "audio_s": 3,
+    "rtf": 3.0473230489999996,
+    "tokens": 12,
+    "text": "I'm going�^ to�� goߝ on�m a little bit."
+  }
+]

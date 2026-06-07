@@ -1,0 +1,10 @@
+{
+  "engine": "pytorch",
+  "device": "cpu",
+  "model": "large-v3-turbo",
+  "load_time_s": 5.719,
+  "transcribe_time_s": 98.076,
+  "audio_duration_s": 2.0,
+  "rtf": 49.038,
+  "text": "to be told Minister"
+}
