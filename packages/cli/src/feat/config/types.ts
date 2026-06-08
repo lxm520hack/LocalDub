@@ -85,7 +85,7 @@ const SeparateConfigSchema = z
 		device: 'cuda',
 	})
 	.optional()
-	.describe(`Separate: 分离人声与背景声, 提示 tts-vc 的质量 
+	.describe(`separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 
 		input: media/video_source.mp4
 		output: media/audio_vocals.wav 用于 ASR + TTS reference
 						media/audio_bgm.wav  用于 MergeVideo 背景
@@ -95,7 +95,11 @@ const ASRConfigSchema = z
 	.looseObject({
 		runtime: z.enum(['faster-whisper', 'pytorch']).default('pytorch'),
 		device: z.enum(['cuda', 'cpu', 'mps']).default('cuda'),
-		useSeparated: z.boolean().default(false).describe('使用分离后的人声 (audio_vocals.wav) 而非原始视频音频'),
+		useSeparated: z
+			.boolean()
+			.default(false)
+			.describe('使用分离后的人声 (audio_vocals.wav) 而非原始视频音频')
+			.optional(),
 	})
 	.default({
 		runtime: 'pytorch',

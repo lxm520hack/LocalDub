@@ -3,6 +3,7 @@ CLI wrapper for Demucs PyTorch separation, callable from TypeScript via spawnSyn
 
 Usage:
     .venv/bin/python packages/cli/scripts/separate/run.py <video_path> <session_path> [--device cpu|cuda]
+    .venv/bin/python packages/cli/scripts/separate/run.py --benchmark-load [--device cpu|cuda]
 
 Sets DEMUCS_DEVICE env var before loading the backend, so resolve_device() picks it up.
 
@@ -21,10 +22,16 @@ if "--device" in sys.argv:
     if idx + 1 < len(sys.argv):
         os.environ["DEMUCS_DEVICE"] = sys.argv[idx + 1]
 
-from _engine import separate_audio
+from _engine import load_separator, separate_audio
 
 
 def main() -> None:
+    if "--benchmark-load" in sys.argv:
+        # Only measure model load time — no audio processing
+        load_separator()
+        print("[BENCHMARK_LOAD_DONE]")
+        return
+
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
 
     if len(args) < 2:

@@ -3,6 +3,7 @@ PyTorch ASR using openai-whisper, standalone (no backend/ dependency).
 
 Usage:
     .venv/bin/python packages/cli/scripts/asr/pytorch.py <vocals_wav> <session_path> [language] [--device cpu|cuda]
+    .venv/bin/python packages/cli/scripts/asr/pytorch.py --benchmark-load [--device cpu|cuda]
 
 Reads WHISPER_MODEL / WHISPER_DEVICE / DEVICE env vars.
 Writes asr.json to <session_path>/metadata/.
@@ -247,6 +248,16 @@ def main() -> None:
 
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force_cpu = "--cpu" in sys.argv
+
+    if "--benchmark-load" in sys.argv:
+        device = "cpu" if force_cpu else _device()
+        if device != "cpu":
+            _apply_conv_patch()
+        import whisper
+        model_name = os.getenv("WHISPER_MODEL", "large-v3-turbo")
+        _ = whisper.load_model(model_name, device=device)
+        print("[BENCHMARK_LOAD_DONE]")
+        return
 
     if len(args) < 2:
         print(f"Usage: {sys.argv[0]} <vocals_wav> <session_path> [language] [--device cpu|cuda]", file=sys.stderr)

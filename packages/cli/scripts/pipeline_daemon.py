@@ -55,6 +55,11 @@ def _load_whisper(device: str) -> None:
     global _WHISPER
     if _WHISPER is not None:
         return
+    if device == "cuda":
+        import torch
+        if not torch.cuda.is_available():
+            sys.stderr.write("[WARN] torch.cuda.is_available()=False, ASR falling back to CPU\n")
+            device = "cpu"
     import whisper
 
     _WHISPER = whisper.load_model(
@@ -155,8 +160,18 @@ def handle_asr(params: dict) -> dict:
     language = None if raw_language == "auto" else raw_language
     device = params.get("device", "cpu")
 
+    global _WHISPER
+    try:
+        _load_whisper(device)
+    except Exception as exc:
+        if device == "cpu":
+            raise
+        sys.stderr.write(f"[WARN] GPU whisper load failed ({exc}), falling back to CPU\n")
+        _WHISPER = None
+        device = "cpu"
+        _load_whisper(device)
+
     t0 = time.perf_counter()
-    _load_whisper(device)
     load_time = time.perf_counter() - t0
 
     t1 = time.perf_counter()
@@ -169,12 +184,11 @@ def handle_asr(params: dict) -> dict:
 
     duration_ms = len(AudioSegment.from_file(vocals_path))
     audio_duration_s = duration_ms / 1000.0
+    full_text = " ".join(u["text"] for u in utterances).strip()
     payload = {
         "audio_info": {"duration": duration_ms},
-        "result": {
-            "text": (result.get("text") or "").strip(),
-            "utterances": utterances,
-        },
+        "result": {"text": full_text, "utterances": utterances},
+        "_device": device,
     }
 
     metadata_dir = Path(session_path) / "metadata"
@@ -190,6 +204,7 @@ def handle_asr(params: dict) -> dict:
         "process_time_s": round(process_time, 3),
         "audio_duration_s": round(audio_duration_s, 3),
         "rtf": round(process_time / audio_duration_s, 3) if audio_duration_s > 0 else 0,
+        "actual_device": device,
     }
 
 

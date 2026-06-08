@@ -11,7 +11,7 @@
       "device": "cuda"
     },
     "asr": {
-      "runtime": "faster-whisper",
+      "runtime": "pytorch",
       "device": "cuda"
     },
     "translate": {

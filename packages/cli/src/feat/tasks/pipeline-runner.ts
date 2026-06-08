@@ -110,7 +110,7 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 				completed_at: nowISO(),
 			});
 			await updateTaskDB(taskId, { status: 'failed', error_message: msg });
-			return;
+			throw err;
 		}
 
 		const next = await currentTask(taskId).catch(() => null);
@@ -271,7 +271,7 @@ export async function resumePipeline(
 				completed_at: nowISO(),
 			});
 			await updateTaskDB(taskId, { status: 'failed', error_message: msg });
-			return;
+			throw err;
 		}
 
 		const next = await currentTask(taskId).catch(() => null);
@@ -338,7 +338,7 @@ export async function rerunSingleStage(
 			completed_at: nowISO(),
 		});
 		await updateTaskDB(taskId, { status: 'failed', error_message: msg });
-		return;
+		throw err;
 	}
 
 	await updateStageDB(taskId, stageName, {

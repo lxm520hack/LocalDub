@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { nowISO, updateStageDB } from './utils.ts';
 
-function fixAsrUtterances(utterances: any[], duration: number, startPad = 100, endPad = 300): any[] {
+function fixAsrUtterances(utterances: any[], startPad = 100, endPad = 300): any[] {
   if (!utterances.length) return utterances;
   const minGap = 50;
 
@@ -23,7 +23,7 @@ function fixAsrUtterances(utterances: any[], duration: number, startPad = 100, e
   const endPadAt = (idx: number): number => {
     const origEnd = utterances[idx].end_time;
     if (idx === utterances.length - 1) {
-      return duration ? Math.min(duration, origEnd + endPad) : origEnd + endPad;
+      return origEnd + endPad;
     }
     const nextStart = utterances[idx + 1].start_time;
     const gap = nextStart - origEnd;
@@ -38,7 +38,7 @@ function fixAsrUtterances(utterances: any[], duration: number, startPad = 100, e
 
   return utterances.map((u, idx) => {
     const newStart = startPadAt(idx);
-    const newEnd = Math.min(duration, endPadAt(idx));
+    const newEnd = endPadAt(idx);
     return { ...u, start_time: Math.max(0, newStart), end_time: newEnd };
   });
 }
@@ -59,11 +59,11 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
 
   const cleaned = utterances
     .map((u: any) => ({ text: (u.text || '').trim(), start_time: u.start_time, end_time: u.end_time }))
-    .filter((u: any) => u.text);
+    .filter((u: any) => u.text && u.start_time < duration);
 
   if (!cleaned.length) throw new Error('ASR result has no utterances.');
 
-  const padded = fixAsrUtterances(cleaned, duration);
+  const padded = fixAsrUtterances(cleaned);
   writeFileSync(fixedFile, JSON.stringify({
     audio_info: data.audio_info || {},
     result: { text: data.result.text || '', utterances: padded },

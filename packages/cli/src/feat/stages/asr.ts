@@ -8,7 +8,7 @@ import {
 	readConfig,
 	setLocalInfo,
 } from '../config/config.ts';
-import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
+import { emitLog, ffmpeg, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
 
 export type AsrResult = {
 	audio_info: {
@@ -40,13 +40,24 @@ export async function stageAsr(
 	const audioVocal = resolve(sessionAbsPath, 'media', 'audio_vocals.wav');
 	const videoSource = resolve(sessionAbsPath, 'media', 'video_source.mp4');
 
-	const audioPath = readConfig().stages?.asr?.useSeparated
+	let audioPath = readConfig().stages?.asr?.useSeparated
 		? audioVocal
 		: videoSource;
 	if (!existsSync(audioPath))
 		throw new Error(
 			`ASR input not found: ${audioPath}; 如果 asr.useSeparated=true, 请确保 audio_vocals.wav 存在；如果 asr.useSeparated=false, 请确保 video_source.mp4 存在`,
 		);
+
+	if (readConfig().stages?.asr?.useSeparated) {
+		const gatedVocal = resolve(sessionAbsPath, 'media', 'audio_vocals_gated.wav');
+		emitLog(taskId, '[ASR] Applying silence gate to Demucs vocals...');
+		ffmpeg([
+			'-i', audioVocal,
+			'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
+			'-y', gatedVocal,
+		]);
+		audioPath = gatedVocal;
+	}
 
 	const asrCfg = readConfig().stages?.asr;
 	const runtime = asrCfg?.runtime ?? 'pytorch';
@@ -65,11 +76,23 @@ export async function stageAsr(
 			device,
 		});
 		const r = result as Record<string, any>;
+		const actualDevice: string = r.actual_device ?? device;
+		const fallbackToCpu = device !== 'cpu' && actualDevice === 'cpu';
+		if (fallbackToCpu) {
+			console.warn(
+				`[WARN] [ASR] GPU failed, fell back to CPU (actual device: ${actualDevice})`,
+			);
+		}
 		if (r.detected_language) {
 			setLocalInfo(sessionAbsPath, {
 				asr_language: r.detected_language,
 				runInfo: {
-					asr: { engine: 'whisper-pytorch', device },
+					asr: {
+						engine: 'whisper-pytorch',
+						device: actualDevice,
+						gpuAttempted: device !== 'cpu',
+						fallbackToCpu,
+					},
 				},
 			});
 		}
@@ -103,6 +126,25 @@ export async function stageAsr(
 		);
 	}
 
+	// 统一过滤超出音频时长的幻觉段（所有路径 shared）
+	const metadataDir = resolve(sessionAbsPath, 'metadata');
+	const asrFile = resolve(metadataDir, 'asr.json');
+	if (existsSync(asrFile)) {
+		const data = JSON.parse(readFileSync(asrFile, 'utf-8'));
+		const duration = data.audio_info?.duration ?? 0;
+		if (duration > 0 && data.result?.utterances?.length) {
+			const before = data.result.utterances.length;
+			data.result.utterances = data.result.utterances.filter(
+				(u: Record<string, any>) => u.start_time < duration && u.end_time > 0,
+			);
+			if (data.result.utterances.length < before) {
+				const removed = before - data.result.utterances.length;
+				emitLog(taskId, `[ASR] Removed ${removed} hallucinated segment(s) (start >= ${duration}ms or end <= 0ms)`);
+				writeFileSync(asrFile, JSON.stringify(data, null, 2));
+			}
+		}
+	}
+
 	await updateStageDB(taskId, 'asr', {
 		status: 'succeeded',
 		completed_at: nowISO(),
@@ -127,47 +169,88 @@ async function asrPytorch(
 		'asr',
 		'pytorch.py',
 	);
-	const args = [
-		script,
-		audioPath,
-		sessionAbsPath,
-		language || 'auto',
-		'--device',
-		device,
-	];
-	const t0 = Date.now();
-	const result = spawnSync(pyBin, args, {
-		maxBuffer: 256 * 1024 * 1024,
-		timeout: 600_000,
-	});
-	const elapsedSec = (Date.now() - t0) / 1000;
 
-	if (result.error)
-		throw new Error(`Python ASR subprocess failed: ${result.error.message}`);
-	if (result.signal)
-		throw new Error(
-			`ASR killed by signal ${result.signal}: ${(result.stderr?.toString() || '').trim().slice(-200)}`,
-		);
-	if (result.status !== 0)
-		throw new Error(
-			`Python ASR exited with status ${result.status}: ${result.stderr?.toString() || ''}`,
-		);
-
-	const asrOutputPath = parseAsrOutput(result.stdout?.toString() || '');
-	if (!asrOutputPath || !existsSync(asrOutputPath)) {
-		throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
+	if (device === 'cuda') {
+		const cudaResult = spawnSync(pyBin, [
+			'-c',
+			'import torch; print(torch.cuda.is_available())',
+		]);
+		const cudaOk =
+			cudaResult.status === 0 &&
+			(cudaResult.stdout?.toString().trim() ?? '') === 'True';
+		if (!cudaOk) {
+			console.warn(
+				`[WARN] [ASR] torch.cuda.is_available()=${cudaOk}, falling back to CPU`,
+			);
+			device = 'cpu';
+		}
 	}
 
-	const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
-	if (asr.detected_language) {
-		setLocalInfo(sessionAbsPath, {
-			asr_language: asr.detected_language,
-			runInfo: {
-				asr: { engine: 'whisper-pytorch', device },
-			},
+	const attempts = device !== 'cpu' ? 2 : 1;
+	let fallbackToCpu = false;
+
+	for (let attempt = 0; attempt < attempts; attempt++) {
+		const actualDevice = attempt === 0 ? device : 'cpu';
+		const args = [
+			script,
+			audioPath,
+			sessionAbsPath,
+			language || 'auto',
+			'--device',
+			actualDevice,
+		];
+		const t0 = Date.now();
+		const result = spawnSync(pyBin, args, {
+			maxBuffer: 256 * 1024 * 1024,
+			timeout: 600_000,
 		});
+		const elapsedSec = (Date.now() - t0) / 1000;
+
+		if (result.error || result.signal || result.status !== 0) {
+			if (attempt === 0 && device !== 'cpu') {
+				const stderr = (result.stderr?.toString() || '').trim().slice(-200);
+				console.warn(
+					`[WARN] [ASR] GPU failed (${result.error?.message || `signal ${result.signal}` || `exit ${result.status}`}), retrying CPU: ${stderr}`,
+				);
+				await updateStageDB(taskId, 'asr', {
+					last_message: 'GPU failed, retrying CPU...',
+				});
+				fallbackToCpu = true;
+				continue;
+			}
+			if (result.error)
+				throw new Error(`Python ASR subprocess failed: ${result.error.message}`);
+			if (result.signal)
+				throw new Error(
+					`ASR killed by signal ${result.signal}: ${(result.stderr?.toString() || '').trim().slice(-200)}`,
+				);
+			throw new Error(
+				`Python ASR exited with status ${result.status}: ${result.stderr?.toString() || ''}`,
+			);
+		}
+
+		const asrOutputPath = parseAsrOutput(result.stdout?.toString() || '');
+		if (!asrOutputPath || !existsSync(asrOutputPath)) {
+			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
+		}
+
+		const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
+		if (asr.detected_language) {
+			setLocalInfo(sessionAbsPath, {
+				asr_language: asr.detected_language,
+				runInfo: {
+					asr: {
+						engine: 'whisper-pytorch',
+						device: actualDevice,
+						gpuAttempted: device !== 'cpu',
+						fallbackToCpu,
+					},
+				},
+			});
+		}
+		emitAsrTiming(taskId, asr, elapsedSec);
+		return;
 	}
-	emitAsrTiming(taskId, asr, elapsedSec);
 }
 
 function parseAsrOutput(stdout: string): string | null {

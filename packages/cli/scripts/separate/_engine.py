@@ -47,6 +47,21 @@ def _demucs_source_path() -> Path:
     )
 
 
+def load_separator() -> Path:
+    """Import demucs, construct Separator with full progress, return demucs_path.
+    Used by --benchmark-load to measure model load time independently."""
+    demucs_path = _demucs_source_path()
+    sys.path.insert(0, str(demucs_path))
+    from demucs.api import Separator  # noqa: PLC0415
+    Separator(
+        model="htdemucs_ft",
+        device=_device(),
+        progress=True,
+        shifts=3,
+    )
+    return demucs_path
+
+
 def separate_audio(
     video_file: Path | str,
     session: Path | str,

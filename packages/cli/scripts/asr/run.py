@@ -3,6 +3,7 @@ CLI ASR using faster-whisper (CTranslate2) with GPU (float16) → CPU (int8) fal
 
 Usage:
     .venv/bin/python packages/cli/scripts/asr/run.py <vocals_wav> <session_path> [language] [--cpu]
+    .venv/bin/python packages/cli/scripts/asr/run.py --benchmark-load [--cpu]
 
 Output:
     Writes asr.json to <session_path>/metadata/asr.json
@@ -80,6 +81,17 @@ def _convert(segments: list, info) -> dict:
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force_cpu = "--cpu" in sys.argv[1:]
+
+    if "--benchmark-load" in sys.argv[1:]:
+        model_name = os.environ.get("WHISPER_MODEL", "large-v3-turbo")
+        if force_cpu:
+            from faster_whisper import WhisperModel
+            _ = WhisperModel(model_name, device="cpu", compute_type="int8")
+        else:
+            from faster_whisper import WhisperModel
+            _ = WhisperModel(model_name, device="cuda", compute_type="float16")
+        print("[BENCHMARK_LOAD_DONE]")
+        return
 
     if len(args) < 2:
         print(f"Usage: {sys.argv[0]} <vocals_wav> <session_path> [language] [--cpu]", file=sys.stderr)
