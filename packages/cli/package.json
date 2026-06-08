@@ -9,6 +9,7 @@
     "db:pull": "drizzle-kit pull",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "gen-config-schema": "bun run scripts/gen-config-schema.ts",
     "run": "bun run-task.ts"
   },
   "dependencies": {

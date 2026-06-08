@@ -15,17 +15,14 @@ export async function stageAsr(
 		progress: 0,
 	});
 
-	const vocalsPath = resolve(
-		REPO_ROOT,
-		sessionPath,
-		'media',
-		'audio_vocals.wav',
-	);
+	const audioSource = resolve(REPO_ROOT, sessionPath, 'media', 'audio_vocals.wav');
+	const audioFallback = resolve(REPO_ROOT, sessionPath, 'media', 'video_source.mp4');
+	const audioPath = existsSync(audioSource) ? audioSource : audioFallback;
 	const sessionAbsPath = resolve(REPO_ROOT, sessionPath);
-	if (!existsSync(vocalsPath)) throw new Error('audio_vocals.wav not found');
 
-	const engines = readConfig();
-	const { runtime, device } = engines.asr;
+	const asrCfg = readConfig().stages?.asr;
+	const runtime = asrCfg?.runtime ?? 'pytorch';
+	const device = asrCfg?.device ?? 'cuda';
 	emitLog(taskId, `[ASR] runtime=${runtime} device=${device}`);
 
 	const pyBin = pythonBin();
@@ -34,7 +31,7 @@ export async function stageAsr(
 	if (runtime === 'pytorch' && daemon?.ready) {
 		emitLog(taskId, `[ASR] Using Python daemon (device=${device})`);
 		const result = await daemon.runStage('asr', taskId, {
-			vocals_path: vocalsPath,
+			vocals_path: audioPath,
 			session_path: sessionAbsPath,
 			language: asrLanguage || 'auto',
 			device,
@@ -62,7 +59,7 @@ export async function stageAsr(
 	} else if (runtime === 'pytorch') {
 		await asrPytorch(
 			taskId,
-			vocalsPath,
+			audioPath,
 			sessionAbsPath,
 			asrLanguage,
 			device,
@@ -71,7 +68,7 @@ export async function stageAsr(
 	} else {
 		await asrFasterWhisper(
 			taskId,
-			vocalsPath,
+			audioPath,
 			sessionAbsPath,
 			asrLanguage,
 			device,
@@ -89,7 +86,7 @@ export async function stageAsr(
 
 async function asrPytorch(
 	taskId: string,
-	vocalsPath: string,
+	audioPath: string,
 	sessionAbsPath: string,
 	language: string | undefined,
 	device: string,
@@ -105,7 +102,7 @@ async function asrPytorch(
 	);
 	const args = [
 		script,
-		vocalsPath,
+		audioPath,
 		sessionAbsPath,
 		language || 'auto',
 		'--device',
@@ -157,7 +154,7 @@ function parseAsrOutput(stdout: string): string | null {
 
 async function asrFasterWhisper(
 	taskId: string,
-	vocalsPath: string,
+	audioPath: string,
 	sessionAbsPath: string,
 	language: string | undefined,
 	device: string,
@@ -171,7 +168,7 @@ async function asrFasterWhisper(
 		'asr',
 		'run.py',
 	);
-	const baseArgs = [asrScript, vocalsPath, sessionAbsPath, language || 'auto'];
+	const baseArgs = [asrScript, audioPath, sessionAbsPath, language || 'auto'];
 
 	const useGpu = device !== 'cpu';
 	const attempts = useGpu ? 2 : 1;

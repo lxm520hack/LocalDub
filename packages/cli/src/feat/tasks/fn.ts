@@ -4,7 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from './../../db/index.ts';
 import { getStages, DUB_STAGES } from './../../feat/tasks/stages.ts';
 import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import type { TargetLang } from '../config/types.ts';
+import type { LocalInfo, TargetLang } from '../config/types.ts';
 import { WORKFOLDER } from '@repo/config';
 
 export function sanitizeText(value: string, fallback = 'untitled'): string {
@@ -34,15 +34,14 @@ export async function createTask(params: {
   sourceFile?: string;
   sourceLang?: string;
   targetLang?: TargetLang;
-  mode?: string;
+  mode?: 'dub' | 'subtitle';
   stages?: Record<string, Record<string, unknown>>;
 }) {
   const createdAt = nowISO();
-  const mode = params.mode || 'dub';
+  const mode: 'dub' | 'subtitle' = params.mode || 'dub';
   let taskUrl = params.url!;
 
   if (params.sourceFile) {
-    const direction = `${params.sourceLang || 'auto'}-${params.targetLang || 'en'}`;
     const uploadDir = join(WORKFOLDER, '_uploads', params.taskId);
     mkdirSync(uploadDir, { recursive: true });
 
@@ -58,11 +57,11 @@ export async function createTask(params: {
       filename = basename(params.sourceFile);
       copyFileSync(params.sourceFile, join(uploadDir, filename));
     }
-    taskUrl = `local://upload/${params.taskId}?direction=${direction}&filename=${encodeURIComponent(filename)}`;
+    taskUrl = `local://upload/${params.taskId}`;
 
     const sessionPath = join(WORKFOLDER, 'local', params.taskId);
     mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
-    const localInfo: Record<string, any> = {
+    const localInfo: LocalInfo = {
       id: params.taskId,
       title: filename.replace(/\.\w+$/, ''),
       source: 'local',
@@ -72,12 +71,6 @@ export async function createTask(params: {
       mode,
       lastRunMode: mode,
     };
-    if (params.targetLang) {
-      localInfo.target_language = params.targetLang;
-    }
-    if (params.stages) {
-      localInfo.stages = params.stages;
-    }
     writeFileSync(join(sessionPath, 'metadata', 'local_info.json'), JSON.stringify(localInfo, null, 2));
   }
 

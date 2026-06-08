@@ -9,7 +9,7 @@ import { eq } from 'drizzle-orm';
 import { timeId } from '../shared/db/timeId.ts';
 import { db } from './src/db/index.ts';
 import { readConfig } from './src/feat/config/config.ts';
-import type { TargetLang } from './src/feat/config/types.ts';
+import type { RawConfig } from './src/feat/config/types.ts';
 import { createTask, findTaskByVideoId } from './src/feat/tasks/fn.ts';
 import {
 	getStageStatuses,
@@ -50,43 +50,15 @@ async function runViaTCPSocket(taskId: string, conn: Socket): Promise<void> {
 	}
 }
 
-type Command =
-	| 'startTask'
-	| 'resumeTask'
-	| 'rerunStage'
-	| 'checkVideo'
-	| 'taskStatus'
-	| 'createTask'
-	| 'deviceInfo'
-	| 'daemon'
-	| 'daemonStatus'
-	| 'daemonStop'
-	| 'listModels';
+function needsMLDaemon(cfg: RawConfig): boolean {
+	const tts = cfg.stages?.tts;
+	const separate = cfg.stages?.separate;
+	return tts?.runtime === 'pytorch' || separate?.runtime === 'pytorch';
+}
 
-const config = JSON.parse(readFileSync('./config.json', 'utf-8')) as {
-	command?: Command;
-	mode?: string;
-	startTask?: { taskId?: string };
-	createTask?: {
-		youtubeUrl?: string;
-		bilibiliUrl?: string;
-		sourceFile?: string;
-		sourceLang?: string;
-		targetLang?: TargetLang;
-		stages?: Record<string, any>;
-	};
-	resumeTask?: { taskId?: string; resumeFrom?: string };
-	rerunStage?: { taskId?: string; stageName?: string };
-	checkVideo?: { taskId?: string };
-	taskStatus?: { taskId?: string };
-	deviceInfo?: Record<string, never>;
-	stages?: Record<string, any>;
-	daemonPort?: number;
-	daemonIdleTimeout?: number;
-};
-
-const cmd: Command = config.command ?? 'startTask';
-const DAEMON_PORT = config.daemonPort ?? 19109;
+const config = readConfig();
+const cmd = config.command;
+const DAEMON_PORT = config.daemonPort;
 
 switch (cmd) {
 	case 'checkVideo': {
@@ -196,9 +168,8 @@ switch (cmd) {
 	}
 
 	case 'listModels': {
-		const engines = readConfig();
 		const apiBase =
-			engines.translate?.apiBase ||
+			config.stages?.translate?.apiBase ||
 			env.OPENAI_BASE_URL ||
 			'https://api.openai.com/v1';
 		const apiKey = env.OPENAI_API_KEY;
@@ -252,7 +223,7 @@ switch (cmd) {
 				}
 			}
 
-			const taskMode = config.mode ?? 'dub';
+			const taskMode = config.mode;
 			const [task] = await createTask({
 				url,
 				taskId: videoId,
@@ -309,10 +280,7 @@ switch (cmd) {
 				await runViaTCPSocket(videoId, conn);
 				conn.end();
 			} else {
-				const engines = readConfig();
-				const needsDaemon =
-					engines.tts.runtime === 'pytorch' ||
-					engines.separate.runtime === 'pytorch';
+				const needsDaemon = needsMLDaemon(config);
 
 				let mlDaemon: MLDaemon | undefined;
 				if (needsDaemon) {
@@ -372,10 +340,7 @@ switch (cmd) {
 				await runViaTCPSocket(taskId, conn);
 				conn.end();
 			} else {
-				const engines = readConfig();
-				const needsDaemon =
-					engines.tts.runtime === 'pytorch' ||
-					engines.separate.runtime === 'pytorch';
+				const needsDaemon = needsMLDaemon(config);
 
 				let mlDaemon: MLDaemon | undefined;
 				if (needsDaemon) {
@@ -409,10 +374,7 @@ switch (cmd) {
 		}
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
-			const engines = readConfig();
-			const needsDaemon =
-				engines.tts.runtime === 'pytorch' ||
-				engines.separate.runtime === 'pytorch';
+			const needsDaemon = needsMLDaemon(config);
 
 			let mlDaemon: MLDaemon | undefined;
 			if (needsDaemon) {
@@ -437,10 +399,7 @@ switch (cmd) {
 	case 'daemon': {
 		process.env.YOUDEUB_DAEMON = '1';
 
-		const engines = readConfig();
-		const needsDaemon =
-			engines.tts.runtime === 'pytorch' ||
-			engines.separate.runtime === 'pytorch';
+		const needsDaemon = needsMLDaemon(config);
 
 		let mlDaemon: MLDaemon | undefined;
 		if (needsDaemon) {
@@ -448,8 +407,8 @@ switch (cmd) {
 			await mlDaemon.start();
 		}
 
-		const daemonPort = config.daemonPort ?? 19109;
-		const idleTimeout = config.daemonIdleTimeout ?? 300;
+		const daemonPort = config.daemonPort;
+		const idleTimeout = config.daemonIdleTimeout;
 		const server = new DaemonServer(daemonPort, mlDaemon!, idleTimeout);
 		await server.start();
 
@@ -472,10 +431,7 @@ switch (cmd) {
 			await runViaTCPSocket(taskId, conn);
 			conn.end();
 		} else {
-			const engines = readConfig();
-			const needsDaemon =
-				engines.tts.runtime === 'pytorch' ||
-				engines.separate.runtime === 'pytorch';
+			const needsDaemon = needsMLDaemon(config);
 
 			let mlDaemon: MLDaemon | undefined;
 			if (needsDaemon) {

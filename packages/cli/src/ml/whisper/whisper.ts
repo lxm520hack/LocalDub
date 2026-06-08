@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { SHERPA_WHISPER_DIR } from '@repo/config';
+import { SHERPA_WHISPER_DIR, env } from '@repo/config';
 
 const VOCAB_SIZE = 51866;
 const DECODER_START_TOKEN = 50258;
@@ -105,11 +105,11 @@ function computeLogMel(pcm: Float32Array, sr: number, nFft: number, hop: number,
 }
 
 function loadAudio(filePath: string): Float32Array {
-	const r = spawnSync('ffmpeg', [
+	const r = spawnSync(env.FFMPEG_PATH, [
 		'-i', filePath, '-f', 'f32le', '-acodec', 'pcm_f32le',
 		'-ar', '16000', '-ac', '1', '-',
 	], { stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
-	if (r.error) throw new Error(`ffmpeg: ${r.error.message}`);
+	if (r.error) throw new Error(`ffmpeg not found. Check FFMPEG_PATH="${env.FFMPEG_PATH}" or install ffmpeg (winget/brew/apt/pacman).\n${r.error.message}`);
 	if (r.status !== 0) throw new Error(`ffmpeg exit ${r.status}`);
 	return new Float32Array(r.stdout.buffer);
 }

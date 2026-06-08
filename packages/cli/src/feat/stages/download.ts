@@ -1,4 +1,4 @@
-import { mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, existsSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { extractVideoId, isYouTubeUrl } from './../../feat/tasks/validate.ts';
@@ -15,7 +15,7 @@ export async function stageDownload(taskId: string, sessionPath: string, url: st
     return;
   }
 
-  // Local upload URL (local://upload/<uploadTaskId>?direction=...&filename=...)
+  // Local upload URL (local://upload/<uploadTaskId>)
   if (url.startsWith('local://')) {
     await updateStageDB(taskId, 'download', { last_message: 'Importing local video...', progress: 0 });
     mkdirSync(mediaDir, { recursive: true });
@@ -23,12 +23,11 @@ export async function stageDownload(taskId: string, sessionPath: string, url: st
 
     const parsed = new URL(url);
     const uploadTaskId = parsed.pathname.replace(/^\/+/, '').split('/')[0];
-    const direction = parsed.searchParams.get('direction') || 'en-zh';
-    const filename = parsed.searchParams.get('filename') || 'video.mp4';
 
     const uploadDir = join(WORKFOLDER, '_uploads', uploadTaskId);
-    const sourceFile = join(uploadDir, filename);
-    if (!existsSync(sourceFile)) throw new Error(`Local upload file not found: ${sourceFile}`);
+    const files = readdirSync(uploadDir).filter(f => f !== '.' && f !== '..');
+    if (files.length === 0) throw new Error(`Upload directory empty: ${uploadDir}`);
+    const sourceFile = join(uploadDir, files[0]);
 
     ffmpeg(['-i', sourceFile, '-map', '0:v:0', '-map', '0:a:0?',
       '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
@@ -36,20 +35,17 @@ export async function stageDownload(taskId: string, sessionPath: string, url: st
 
     if (!existsSync(videoPath)) throw new Error('ffmpeg did not produce video_source.mp4');
 
-    const [srcLang, tgtLang] = direction.split('-');
-
     // Preserve existing fields (e.g. mode) from fn.ts
     let existing: Record<string, any> = {};
     try { existing = JSON.parse(readFileSync(join(sessionPath, 'metadata', 'local_info.json'), 'utf-8')); } catch { /* new file */ }
 
     writeFileSync(join(sessionPath, 'metadata', 'local_info.json'), JSON.stringify({
       id: uploadTaskId,
-      title: filename.replace(/\.\w+$/, ''),
+      title: files[0].replace(/\.\w+$/, ''),
       source: 'local',
       webpage_url: url,
       original_path: sourceFile,
-      asr_language: srcLang,
-      target_language: tgtLang,
+      asr_language: 'auto',
       mode: existing.mode || 'dub',
     }, null, 2));
 

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { Demucs } from './../../ml/demucs/demucs.ts';
@@ -11,6 +11,32 @@ export async function stageSeparate(
 	sessionPath: string,
 	daemon?: MLDaemon,
 ) {
+	// subtitle 模式且未配置 always 时，跳过分离
+	let mode = 'dub';
+	try {
+		const info = JSON.parse(
+			readFileSync(
+				join(sessionPath, 'metadata', 'local_info.json'),
+				'utf-8',
+			),
+		);
+		mode = info.mode || 'dub';
+	} catch { /* use default */ }
+	const sepCfg = readConfig().stages?.separate;
+	if (mode === 'subtitle' && !sepCfg?.always) {
+		emitLog(
+			taskId,
+			'[Separate] Skipped (subtitle mode, set separate.always=true to force)',
+		);
+		await updateStageDB(taskId, 'separate', {
+			status: 'succeeded',
+			completed_at: nowISO(),
+			progress: 100,
+			last_message: 'Skipped (subtitle mode)',
+		});
+		return;
+	}
+
 	await updateStageDB(taskId, 'separate', {
 		last_message: 'Separating audio...',
 		progress: 0,
@@ -19,8 +45,8 @@ export async function stageSeparate(
 	const videoPath = join(sessionPath, 'media', 'video_source.mp4');
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
-	const engines = readConfig();
-	const { runtime, device } = engines.separate;
+	const runtime = sepCfg?.runtime ?? 'pytorch';
+	const device = sepCfg?.device ?? 'cuda';
 
 	if (runtime === 'pytorch' && daemon?.ready) {
 		emitLog(taskId, `[Separate] Using Python daemon (device=${device})`);

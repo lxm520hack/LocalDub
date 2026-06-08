@@ -1,8 +1,11 @@
-export { REPO_ROOT, readConfig } from './feat/config/config.ts';
+export { readConfig, readTasksConfig, REPO_ROOT } from './feat/config/config.ts';
 export type {
 	ASREngineConfig,
-	EnginesConfig,
 	SeparateEngineConfig,
+	TasksConfig,
 	TranslateEngineConfig,
 	TTSEngineConfig,
+	RawConfig,
+	RawConfigInput,
+	ConfigSchema,
 } from './feat/config/types.ts';

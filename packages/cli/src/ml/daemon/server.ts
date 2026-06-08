@@ -1,5 +1,4 @@
 import type { Socket, TCPSocketListener } from 'bun';
-import { readConfig } from '../../feat/config/config.ts';
 import { runPipeline } from '../../feat/tasks/pipeline-runner.ts';
 import { setActiveConn } from './active.ts';
 import type { MLDaemon } from './client.ts';

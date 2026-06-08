@@ -81,10 +81,6 @@ export async function resumePipeline(taskId: string, resumeFrom?: string, stageO
       .where(sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = 'merge_video'`);
   }
 
-  if (stageOverrides) {
-    info.stages = stageOverrides;
-  }
-
   writeFileSync(infoPath, JSON.stringify(info, null, 2));
 
   const mode = info.mode || 'dub';
@@ -153,14 +149,6 @@ export async function rerunSingleStage(taskId: string, stageName: string, stageO
   if (!task) throw new Error(`Task ${taskId} not found`);
 
   const sessionPath = task.session_path ? resolve(REPO_ROOT, task.session_path) : join(WORKFOLDER, taskId);
-
-  if (stageOverrides) {
-    const infoPath = join(sessionPath, 'metadata', 'local_info.json');
-    let info: any = {};
-    try { info = JSON.parse(readFileSync(infoPath, 'utf-8')); } catch {}
-    info.stages = stageOverrides;
-    writeFileSync(infoPath, JSON.stringify(info, null, 2));
-  }
 
   const mode = readMode(sessionPath);
   const stages = getStages(mode);

@@ -6,10 +6,24 @@ import { db } from './../../db/index.ts';
 import { eq, sql } from 'drizzle-orm';
 import { tasks, taskStages } from './../../feat/tasks/table.ts';
 import { getStages } from './../../feat/tasks/stages.ts';
-import { LOG_DIR, WORKFOLDER, REPO_ROOT } from '@repo/config';
+import { LOG_DIR, WORKFOLDER, REPO_ROOT, env } from '@repo/config';
 
 export function nowISO(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, '');
+}
+
+function ffmpegInstallHint(): string {
+  switch (process.platform) {
+    case 'win32': return 'winget install Gyan.FFmpeg';
+    case 'darwin': return 'brew install ffmpeg';
+    case 'linux': {
+      if (existsSync('/usr/bin/apt-get')) return 'sudo apt install -y ffmpeg';
+      if (existsSync('/usr/bin/pacman')) return 'sudo pacman -S ffmpeg';
+      if (existsSync('/sbin/apk')) return 'apk add ffmpeg';
+      return 'sudo apt install -y ffmpeg';
+    }
+    default: return 'sudo apt install -y ffmpeg';
+  }
 }
 
 import { getActiveConn } from '../../ml/daemon/active.ts';
@@ -94,8 +108,10 @@ export function emitLog(taskId: string, line: string) {
 }
 
 export function ffmpeg(args: string[], timeout = 120_000) {
-  const r = spawnSync('ffmpeg', ['-y', ...args], { stdio: ['pipe', 'pipe', 'pipe'], timeout });
-  if (r.error) throw new Error(`ffmpeg: ${r.error.message}`);
+  const r = spawnSync(env.FFMPEG_PATH, ['-y', ...args], { stdio: ['pipe', 'pipe', 'pipe'], timeout });
+  if (r.error) {
+    throw new Error(`ffmpeg not found. Try: ${ffmpegInstallHint()}\nOr set FFMPEG_PATH in .env (currently "${env.FFMPEG_PATH}").\nDetails: ${r.error.message}`);
+  }
   if (r.status !== 0) throw new Error(`ffmpeg exit ${r.status}: ${r.stderr.toString().slice(0, 300)}`);
 }
 

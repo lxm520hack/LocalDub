@@ -14,22 +14,26 @@ import {
 export async function stageTranslate(taskId: string, sessionPath: string) {
 	const metadataDir = join(sessionPath, 'metadata');
 
-	// 从 stages.translate.targetLang 覆盖目标语言
-	const localInfoPath = join(metadataDir, 'local_info.json');
-	try {
-		const info = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
-		const stageLang = info.stages?.translate?.targetLang;
-		if (stageLang) {
-			info.target_language = stageLang;
+	// 解析目标语言: config > auto 推断
+	const configTargetLang = readConfig().stages?.translate?.targetLang;
+	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =
+		readTaskLanguages(sessionPath);
+	const resolvedDstLang =
+		configTargetLang ?? (srcLangCode === 'zh' ? 'en' : 'zh');
+
+	if (resolvedDstLang !== existingDstLang) {
+		const localInfoPath = join(metadataDir, 'local_info.json');
+		try {
+			const info = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
+			info.target_language = resolvedDstLang;
 			writeFileSync(localInfoPath, JSON.stringify(info, null, 2));
+		} catch {
+			/* ignore */
 		}
-	} catch {
-		/* ignore */
 	}
 
 	const fixedFile = join(metadataDir, 'asr_fixed.json');
-	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } =
-		readTaskLanguages(sessionPath);
+	const dstLangCode = resolvedDstLang;
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
 	const dstLangName = LANG_NAMES[dstLangCode] || dstLangCode;
@@ -62,13 +66,13 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		/* ignore */
 	}
 
-	const enginesCfg = readConfig();
+	const transCfg = readConfig().stages?.translate;
 	const apiKey = env.OPENAI_API_KEY;
 	if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
 	const api = {
-		baseUrl: enginesCfg.translate.apiBase,
+		baseUrl: transCfg?.apiBase ?? env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
 		apiKey,
-		model: enginesCfg.translate.model,
+		model: transCfg?.model ?? env.OPENAI_MODEL ?? 'gpt-4o-mini',
 	};
 
 	const metaView = {

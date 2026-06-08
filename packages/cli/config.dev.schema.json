@@ -1,0 +1,644 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "createTask",
+              "description": "创建任务(完成后会自动开始任务)"
+            },
+            "createTask": {
+              "type": "object",
+              "properties": {
+                "youtubeUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "bilibiliUrl": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "sourceFile": {
+                  "description": "本地文件路径或云端文件 url",
+                  "type": "string"
+                },
+                "sourceLang": {
+                  "type": "string"
+                },
+                "targetLang": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "zh",
+                    "vi",
+                    "ja",
+                    "ko",
+                    "fr",
+                    "de",
+                    "es",
+                    "pt",
+                    "ru",
+                    "ar",
+                    "hi",
+                    "th",
+                    "id",
+                    "ms",
+                    "tl",
+                    "my",
+                    "km",
+                    "lo",
+                    "mn",
+                    "ne",
+                    "ur",
+                    "bn"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "createTask"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "startTask"
+            },
+            "startTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
+                }
+              },
+              "required": [
+                "taskId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "startTask"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "resumeTask",
+              "description": "继续任务"
+            },
+            "resumeTask": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
+                },
+                "resumeFrom": {
+                  "type": "string",
+                  "enum": [
+                    "download",
+                    "separate",
+                    "asr",
+                    "asr_fix",
+                    "translate",
+                    "split_audio",
+                    "tts",
+                    "merge_audio",
+                    "merge_video"
+                  ]
+                }
+              },
+              "required": [
+                "taskId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "resumeTask"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "rerunStage",
+              "description": "重新运行某个步骤"
+            },
+            "rerunStage": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
+                },
+                "stageName": {
+                  "type": "string",
+                  "enum": [
+                    "download",
+                    "separate",
+                    "asr",
+                    "asr_fix",
+                    "translate",
+                    "split_audio",
+                    "tts",
+                    "merge_audio",
+                    "merge_video"
+                  ]
+                }
+              },
+              "required": [
+                "taskId",
+                "stageName"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "rerunStage"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "taskStatus",
+              "description": "显示某任务状态"
+            },
+            "taskStatus": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
+                }
+              },
+              "required": [
+                "taskId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "taskStatus"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "checkVideo"
+            },
+            "checkVideo": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
+                }
+              },
+              "required": [
+                "taskId"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "command",
+            "checkVideo"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "deviceInfo"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "daemon"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "daemonStatus"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "daemonStop"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "const": "listModels",
+              "description": "列出 openai 兼容端点的 可用模型"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "additionalProperties": {}
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "任务模式, dub 配音,subtitle 仅字幕",
+          "default": "dub",
+          "type": "string",
+          "enum": [
+            "dub",
+            "subtitle"
+          ]
+        },
+        "daemonPort": {
+          "default": 19109,
+          "type": "number"
+        },
+        "daemonIdleTimeout": {
+          "default": 300,
+          "type": "number"
+        },
+        "stages": {
+          "type": "object",
+          "properties": {
+            "download": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            },
+            "separate": {
+              "description": "Separate: 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/audio_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/audio_bgm.wav  用于 MergeVideo 背景\n\t",
+              "default": {
+                "runtime": "pytorch",
+                "device": "cuda",
+                "always": false
+              },
+              "allOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "always": {
+                      "default": false,
+                      "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "runtime": {
+                          "type": "string",
+                          "const": "pytorch"
+                        },
+                        "device": {
+                          "default": "cuda",
+                          "description": "cuda (NVIDIA/ROCm), mps (Apple Silicon)",
+                          "type": "string",
+                          "enum": [
+                            "cuda",
+                            "cpu",
+                            "mps"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "runtime",
+                        "device"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "runtime": {
+                          "type": "string",
+                          "const": "ort"
+                        },
+                        "device": {
+                          "default": "webgpu",
+                          "type": "string",
+                          "enum": [
+                            "cuda",
+                            "rocm",
+                            "cpu",
+                            "webgpu"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "runtime",
+                        "device"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              ]
+            },
+            "asr": {
+              "default": {
+                "runtime": "pytorch",
+                "device": "cuda"
+              },
+              "type": "object",
+              "properties": {
+                "runtime": {
+                  "default": "pytorch",
+                  "type": "string",
+                  "enum": [
+                    "faster-whisper",
+                    "pytorch"
+                  ]
+                },
+                "device": {
+                  "default": "cuda",
+                  "type": "string",
+                  "enum": [
+                    "cuda",
+                    "cpu",
+                    "mps"
+                  ]
+                }
+              },
+              "required": [
+                "runtime",
+                "device"
+              ],
+              "additionalProperties": {}
+            },
+            "asr_fix": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            },
+            "translate": {
+              "type": "object",
+              "properties": {
+                "apiBase": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "targetLang": {
+                  "description": "如果不填则 按照这个逻辑: 源语言: zh -> en, 否则 any -> zh",
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "zh",
+                    "vi",
+                    "ja",
+                    "ko",
+                    "fr",
+                    "de",
+                    "es",
+                    "pt",
+                    "ru",
+                    "ar",
+                    "hi",
+                    "th",
+                    "id",
+                    "ms",
+                    "tl",
+                    "my",
+                    "km",
+                    "lo",
+                    "mn",
+                    "ne",
+                    "ur",
+                    "bn"
+                  ]
+                }
+              },
+              "additionalProperties": {}
+            },
+            "split_audio": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            },
+            "tts": {
+              "default": {
+                "runtime": "pytorch",
+                "device": "cuda"
+              },
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "runtime": {
+                      "type": "string",
+                      "const": "pytorch"
+                    },
+                    "device": {
+                      "default": "cuda",
+                      "type": "string",
+                      "enum": [
+                        "cuda",
+                        "cpu",
+                        "mps"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "runtime",
+                    "device"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "runtime": {
+                      "type": "string",
+                      "const": "ort",
+                      "description": "预留, 暂时没有正确的 onnx 模型文件支持"
+                    },
+                    "device": {
+                      "default": "webgpu",
+                      "type": "string",
+                      "enum": [
+                        "cuda",
+                        "rocm",
+                        "cpu",
+                        "webgpu"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "runtime",
+                    "device"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "runtime": {
+                      "type": "string",
+                      "const": "ggml"
+                    }
+                  },
+                  "required": [
+                    "runtime"
+                  ],
+                  "additionalProperties": false,
+                  "description": "预留 ggml 选项，虽然目前没有实现"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "runtime": {
+                      "type": "string",
+                      "const": "cloud"
+                    }
+                  },
+                  "required": [
+                    "runtime"
+                  ],
+                  "additionalProperties": {}
+                }
+              ]
+            },
+            "merge_audio": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            },
+            "merge_video": {
+              "default": {
+                "alignment": "bottom-center",
+                "outline": 0,
+                "shadow": 1
+              },
+              "type": "object",
+              "properties": {
+                "fontSize": {
+                  "description": "字幕字号，不填则自动: 竖屏: 12(zh) / 9(其他) ← 横屏: 24(zh) / 18(其他)",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "marginV": {
+                  "description": "垂直边距(像素)，不填则自动: 竖屏 70 / 横屏 5",
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alignment": {
+                  "default": "bottom-center",
+                  "type": "string",
+                  "enum": [
+                    "bottom-left",
+                    "bottom-center",
+                    "bottom-right",
+                    "middle-left",
+                    "center",
+                    "middle-right",
+                    "top-left",
+                    "top-center",
+                    "top-right"
+                  ]
+                },
+                "outline": {
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                "shadow": {
+                  "default": 1,
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": {}
+    }
+  ]
+}

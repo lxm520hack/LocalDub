@@ -7,8 +7,20 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const vocalsFile = join(sessionPath, 'media', 'audio_vocals.wav');
   const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
   const translationFile = translationFilePath(sessionPath, dstLangCode);
+  const metadataDir = join(sessionPath, 'metadata');
+  const fixedFile = join(metadataDir, 'asr_fixed.json');
 
   if (!existsSync(translationFile)) throw new Error(`${translationFile} not found`);
+
+  let totalMs = 0;
+  try {
+    const fix = JSON.parse(readFileSync(fixedFile, 'utf-8'));
+    totalMs = fix.audio_info?.duration ?? 0;
+  } catch { /* fallback below */ }
+  if (!totalMs) {
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', vocalsFile], { stdio: ['pipe', 'pipe', 'pipe'] });
+    totalMs = Math.floor(parseFloat(probe.stdout.toString().trim()) * 1000) || 0;
+  }
 
   const data = JSON.parse(readFileSync(translationFile, 'utf-8'));
   const segmentsDir = join(sessionPath, 'segments', 'vocals');
@@ -18,9 +30,6 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   if (anySeg && statSync(translationFile).mtimeMs > statSync(join(segmentsDir, anySeg)).mtimeMs) {
     for (const f of readdirSync(segmentsDir)) rmSync(join(segmentsDir, f));
   }
-
-  const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', vocalsFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-  const totalMs = Math.floor(parseFloat(probe.stdout.toString().trim()) * 1000) || 0;
 
   for (let i = 0; i < data.translation.length; i++) {
     const item = data.translation[i];

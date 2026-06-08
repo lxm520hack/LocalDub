@@ -1,3 +1,5 @@
+import { alignmentToFfmpeg } from '../config/types.ts';
+import { readConfig } from '../config/config.ts';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -127,12 +129,19 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
   if (!existsSync(videoFile)) throw new Error('video_source.mp4 not found');
 
   let mode = 'dub';
-  let stageOverrides: { fontSize?: number; marginV?: number; alignment?: number; outline?: number; shadow?: number } | undefined;
   try {
     const info = JSON.parse(readFileSync(join(sessionPath, 'metadata', 'local_info.json'), 'utf-8'));
     mode = info.mode || 'dub';
-    stageOverrides = info.stages?.merge_video;
   } catch { /* use default */ }
+
+  const mergeCfg = readConfig().stages?.merge_video;
+  const probeOverrides = {
+    fontSize: mergeCfg?.fontSize ?? undefined,
+    marginV: mergeCfg?.marginV ?? undefined,
+    alignment: alignmentToFfmpeg(mergeCfg?.alignment ?? 'bottom-center'),
+    outline: mergeCfg?.outline ?? undefined,
+    shadow: mergeCfg?.shadow ?? undefined,
+  };
 
   const finalVideo = join(mediaDir, mode === 'subtitle' ? 'video_final_subtitle.mp4' : 'video_final.mp4');
 
@@ -144,7 +153,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
     const dstLang = dstLangFromTranslation(data.translation);
     const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
     writeSrt(data.translation, dstLang, subPath);
-    const style = probeStyle(videoFile, dstLang, stageOverrides);
+    const style = probeStyle(videoFile, dstLang, probeOverrides);
     const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
     ffmpeg(['-i', videoFile,
@@ -165,7 +174,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
     const dstLang = dstLangFromTranslation(data.translation);
     const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
     writeSrt(data.translation, dstLang, subPath);
-    const style = probeStyle(videoFile, dstLang, stageOverrides);
+    const style = probeStyle(videoFile, dstLang, probeOverrides);
     const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
     const mixedAudio = join(tmpDir, 'audio_mixed.m4a');

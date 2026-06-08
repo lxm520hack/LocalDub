@@ -102,10 +102,12 @@ function computeLogMel(pcm: Float32Array): Float32Array {
 }
 
 function loadAudio(filePath: string): Float32Array {
-  const r = spawnSync('ffmpeg', [
+  const ffmpegBin = process.env.FFMPEG_PATH || 'ffmpeg';
+  const r = spawnSync(ffmpegBin, [
     '-i', filePath, '-f', 'f32le',
     '-acodec', 'pcm_f32le', '-ar', '16000', '-ac', '1', '-',
   ], { stdio: ['pipe', 'pipe', 'pipe'] });
+  if (r.error) throw new Error(`ffmpeg not found (FFMPEG_PATH="${ffmpegBin}"). Install ffmpeg or set FFMPEG_PATH.\n${r.error.message}`);
   if (r.status !== 0) throw new Error(`ffmpeg exit ${r.status}`);
   return new Float32Array(r.stdout.buffer);
 }

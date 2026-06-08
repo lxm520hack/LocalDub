@@ -206,3 +206,5 @@ pretrained_models/
 /VP_*.json
 
 **/results/*.wav
+
+packages/cli/config.json 

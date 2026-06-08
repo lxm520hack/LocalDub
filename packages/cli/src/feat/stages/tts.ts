@@ -17,24 +17,29 @@ import {
 } from '@repo/voxlab';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
-import type { TTSEngineConfig } from '../config/types.ts';
+import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
 
-function createTTSBackend(cfg: TTSEngineConfig) {
+function createTTSBackend(cfg: TTSConfig) {
+	if (!cfg) throw new Error('TTS config not found');
 	if (cfg.runtime === 'cloud') return new VoxCPMCloud();
 	if (cfg.runtime === 'pytorch') return new VoxCPMPython();
-	const device = cfg.device === 'webgpu' ? 'webgpu' : 'cpu';
+	const device =
+		'device' in cfg ? (cfg.device === 'webgpu' ? 'webgpu' : 'cpu') : 'cpu';
 	return new VoxCPMNodeONNX({ executionProvider: device });
 }
 
 async function runPytorchBatch(
 	taskId: string,
-	ttsCfg: TTSEngineConfig,
+	ttsCfg: NonNullable<TTSConfig>,
 	translationFile: string,
 	vocalsDir: string,
 	ttsDir: string,
 	total: number,
 ) {
+	if (!ttsCfg) throw new Error('TTS config not found');
+
+	const device = 'device' in ttsCfg ? (ttsCfg.device as Device) : 'cuda';
 	const scriptPath = join(
 		REPO_ROOT,
 		'packages',
@@ -60,7 +65,7 @@ async function runPytorchBatch(
 				'--tts-dir',
 				ttsDir,
 				'--device',
-				ttsCfg.device,
+				device,
 			],
 			{
 				env: { ...process.env, PYTHONPATH: voxcpmSrc },
@@ -121,7 +126,10 @@ export async function stageTts(
 	sessionPath: string,
 	daemon?: MLDaemon,
 ) {
-	const engines = readConfig();
+	const ttsCfg = readConfig().stages?.tts ?? {
+		runtime: 'pytorch' as const,
+		device: 'cuda' as const,
+	};
 	const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 	const translationFile = resolve(
 		REPO_ROOT,
@@ -153,8 +161,6 @@ export async function stageTts(
 			if (existsSync(f)) rmSync(f);
 		}
 	}
-
-	const ttsCfg = engines.tts;
 
 	if (ttsCfg.runtime === 'pytorch' && daemon?.ready) {
 		emitLog(taskId, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
