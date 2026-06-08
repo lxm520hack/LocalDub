@@ -3,7 +3,12 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { Demucs } from './../../ml/demucs/demucs.ts';
-import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
+import {
+	pythonBin,
+	REPO_ROOT,
+	readConfig,
+	readLocalInfo,
+} from '../config/config.ts';
 import { emitLog, ffmpeg, nowISO, updateStageDB } from './utils.ts';
 
 export async function stageSeparate(
@@ -12,27 +17,19 @@ export async function stageSeparate(
 	daemon?: MLDaemon,
 ) {
 	// subtitle 模式且未配置 always 时，跳过分离
-	let mode = 'dub';
-	try {
-		const info = JSON.parse(
-			readFileSync(
-				join(sessionPath, 'metadata', 'local_info.json'),
-				'utf-8',
-			),
-		);
-		mode = info.mode || 'dub';
-	} catch { /* use default */ }
+	const pipeline = readLocalInfo(sessionPath)?.pipeline || 'dub';
 	const sepCfg = readConfig().stages?.separate;
-	if (mode === 'subtitle' && !sepCfg?.always) {
+	console.log({ pipeline, sepCfg, always: sepCfg?.always });
+	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(
 			taskId,
-			'[Separate] Skipped (subtitle mode, set separate.always=true to force)',
+			'[Separate] Skipped (subtitle pipeline, set separate.always=true to force)',
 		);
 		await updateStageDB(taskId, 'separate', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
-			last_message: 'Skipped (subtitle mode)',
+			last_message: 'Skipped (subtitle pipeline)',
 		});
 		return;
 	}

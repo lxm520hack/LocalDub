@@ -2,7 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
-import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
+import {
+	pythonBin,
+	REPO_ROOT,
+	readConfig,
+	setLocalInfo,
+} from '../config/config.ts';
 import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
 
 export async function stageAsr(
@@ -14,11 +19,17 @@ export async function stageAsr(
 		last_message: 'Transcribing...',
 		progress: 0,
 	});
-
-	const audioSource = resolve(REPO_ROOT, sessionPath, 'media', 'audio_vocals.wav');
-	const audioFallback = resolve(REPO_ROOT, sessionPath, 'media', 'video_source.mp4');
-	const audioPath = existsSync(audioSource) ? audioSource : audioFallback;
 	const sessionAbsPath = resolve(REPO_ROOT, sessionPath);
+	const audioVocal = resolve(sessionAbsPath, 'media', 'audio_vocals.wav');
+	const videoSource = resolve(sessionAbsPath, 'media', 'video_source.mp4');
+
+	const audioPath = readConfig().stages?.separate?.always
+		? audioVocal
+		: videoSource;
+	if (!existsSync(audioPath))
+		throw new Error(
+			`ASR input not found: ${audioPath}; 如果 separate.always=false, 请确保 video_source.mp4 存在；如果 separate.always=true, 请确保 audio_vocals.wav 存在`,
+		);
 
 	const asrCfg = readConfig().stages?.asr;
 	const runtime = asrCfg?.runtime ?? 'pytorch';
@@ -38,13 +49,7 @@ export async function stageAsr(
 		});
 		const r = result as Record<string, any>;
 		if (r.detected_language) {
-			const localInfoPath = join(sessionAbsPath, 'metadata', 'local_info.json');
-			let local: any = {};
-			try {
-				local = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
-			} catch {}
-			local.asr_language = r.detected_language;
-			writeFileSync(localInfoPath, JSON.stringify(local, null, 2));
+			setLocalInfo(sessionAbsPath, { asr_language: r.detected_language });
 		}
 		if (r.load_time_s)
 			emitLog(taskId, `[ASR] Model loaded in ${r.load_time_s}s`);
@@ -131,15 +136,7 @@ async function asrPytorch(
 
 	const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
 	if (asr.detected_language) {
-		const localInfoPath = join(sessionAbsPath, 'metadata', 'local_info.json');
-		let local: any = {};
-		try {
-			local = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
-		} catch {
-			/* new file */
-		}
-		local.asr_language = asr.detected_language;
-		writeFileSync(localInfoPath, JSON.stringify(local, null, 2));
+		setLocalInfo(sessionAbsPath, { asr_language: asr.detected_language });
 	}
 }
 
@@ -207,15 +204,7 @@ async function asrFasterWhisper(
 
 		const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
 		if (asr.detected_language) {
-			const localInfoPath = join(sessionAbsPath, 'metadata', 'local_info.json');
-			let local: any = {};
-			try {
-				local = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
-			} catch {
-				/* new file */
-			}
-			local.asr_language = asr.detected_language;
-			writeFileSync(localInfoPath, JSON.stringify(local, null, 2));
+			setLocalInfo(sessionAbsPath, { asr_language: asr.detected_language });
 		}
 
 		return;

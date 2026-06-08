@@ -30,6 +30,7 @@ export class MLDaemon {
 	}
 
 	async start(timeoutMs = 30000): Promise<void> {
+		console.log('[Daemon] Starting ML pipeline daemon...');
 		const pyBin = pythonBin();
 		const scriptPath = join(
 			REPO_ROOT,
@@ -78,6 +79,8 @@ export class MLDaemon {
 					reject(err);
 				},
 			});
+		}).then(() => {
+			console.log('[Daemon] ML daemon started');
 		});
 	}
 

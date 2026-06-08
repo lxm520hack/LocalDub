@@ -4,7 +4,7 @@
   "createTask": {
     "sourceFile": "/home/aa/repos/learn_ls/YouDub-webui/workfolder/local/VLmkCww00z/media/video_source.mp4"
   },
-  "mode": "subtitle",
+  "pipeline": "subtitle",
   "stages": {
     "separate": {
       "runtime": "pytorch",

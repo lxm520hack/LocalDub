@@ -8,7 +8,7 @@ import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { eq } from 'drizzle-orm';
 import { timeId } from '../shared/db/timeId.ts';
 import { db } from './src/db/index.ts';
-import { readConfig } from './src/feat/config/config.ts';
+import { readConfig, setLocalInfo } from './src/feat/config/config.ts';
 import type { RawConfig } from './src/feat/config/types.ts';
 import { createTask, findTaskByVideoId } from './src/feat/tasks/fn.ts';
 import {
@@ -58,7 +58,7 @@ function needsMLDaemon(cfg: RawConfig): boolean {
 
 const config = readConfig();
 const cmd = config.command;
-const DAEMON_PORT = config.daemonPort;
+const DAEMON_PORT = config.daemonPort || 19109;
 
 switch (cmd) {
 	case 'checkVideo': {
@@ -223,14 +223,14 @@ switch (cmd) {
 				}
 			}
 
-			const taskMode = config.mode;
+			const taskPipeline = config.pipeline;
 			const [task] = await createTask({
 				url,
 				taskId: videoId,
 				sourceFile: p.sourceFile,
 				sourceLang: p.sourceLang,
 				targetLang: p.targetLang,
-				mode: taskMode,
+				pipeline: taskPipeline,
 				stages: config.stages,
 			});
 
@@ -286,7 +286,6 @@ switch (cmd) {
 				if (needsDaemon) {
 					mlDaemon = new MLDaemon();
 					await mlDaemon.start();
-					console.log('[Daemon] ML pipeline daemon ready');
 				}
 
 				try {
@@ -312,8 +311,8 @@ switch (cmd) {
 		const resumeFrom = config.resumeTask?.resumeFrom;
 		const label = resumeFrom ? ` from "${resumeFrom}"` : '';
 
-		// Allow mode switch on resume (e.g. subtitle → dub)
-		if (config.mode) {
+		// Allow pipeline switch on resume (e.g. subtitle → dub)
+		if (config.pipeline) {
 			const taskRows = await db
 				.select({ session_path: tasks.session_path })
 				.from(tasks)
@@ -323,13 +322,9 @@ switch (cmd) {
 				const sessionPath = taskRows[0].session_path
 					? resolve(REPO_ROOT, taskRows[0].session_path)
 					: join(WORKFOLDER, taskId);
-				const infoPath = join(sessionPath, 'metadata', 'local_info.json');
-				if (existsSync(infoPath)) {
-					const localInfo = JSON.parse(readFileSync(infoPath, 'utf-8'));
-					localInfo.mode = config.mode;
-					writeFileSync(infoPath, JSON.stringify(localInfo, null, 2));
-					console.log(`[CLI] Switched mode to "${config.mode}"`);
-				}
+
+				setLocalInfo(sessionPath, { pipeline: config.pipeline });
+				console.log(`[CLI] Switched pipeline to "${config.pipeline}"`);
 			}
 		}
 
@@ -407,7 +402,7 @@ switch (cmd) {
 			await mlDaemon.start();
 		}
 
-		const daemonPort = config.daemonPort;
+		const daemonPort = config.daemonPort || 19109;
 		const idleTimeout = config.daemonIdleTimeout;
 		const server = new DaemonServer(daemonPort, mlDaemon!, idleTimeout);
 		await server.start();

@@ -27,25 +27,6 @@ const targetLangList = [
 ] as const;
 export type TargetLang = (typeof targetLangList)[number];
 
-export interface TTSEngineConfig {
-	runtime: 'ort' | 'pytorch' | 'cloud';
-	device: 'cpu' | 'cuda' | 'mps' | 'webgpu';
-}
-
-export interface ASREngineConfig {
-	runtime: 'faster-whisper' | 'pytorch';
-	device: 'cpu' | 'cuda' | 'mps';
-}
-
-export interface TranslateEngineConfig {
-	apiBase: string;
-	model: string;
-}
-
-export interface SeparateEngineConfig {
-	runtime: 'ort' | 'pytorch';
-	device: 'cpu' | 'cuda' | 'mps' | 'webgpu';
-}
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];
 const commandList = [
@@ -96,6 +77,7 @@ const SeparateConfigSchema = z
 		z.object({
 			runtime: z.literal('ort'),
 			device: z.enum(['cuda', 'rocm', 'cpu', 'webgpu']).default('webgpu'),
+			always: SeparateConfigAlways,
 		}),
 	])
 	.default({
@@ -227,7 +209,7 @@ const StagesSchema = z.object({
 type StagesConfigInput = z.input<typeof StagesSchema>;
 export type StagesConfig = z.output<typeof StagesSchema>;
 const BaseConfigSchema = z.looseObject({
-	mode: z
+	pipeline: z
 		.enum(['dub', 'subtitle'])
 		.default('dub')
 		.optional()
@@ -317,29 +299,22 @@ export const ConfigSchema = z
 export type RawConfigInput = z.input<typeof ConfigSchema>;
 export type RawConfig = z.output<typeof ConfigSchema>;
 
-export interface TasksConfig {
-	tts: TTSEngineConfig;
-	asr: ASREngineConfig;
-	translate: TranslateEngineConfig;
-	separate: SeparateEngineConfig;
-}
-
 /** local_info.json — 运行时状态/自动探测层 */
 export interface LocalInfo {
 	// ——— 创建时写入，只读 ———
-	id: string; // 任务 ID(视频id) timeId(10) 时间序列 + 程序随机数
+	id: string; // 任务 ID (本地或url) | 视频id (视频平台)
 	title?: string;
 	source: 'youtube' | 'bilibili' | 'local';
 	webpage_url?: string;
 	original_path?: string;
 
 	// ——— 运行时读写 ———
-	mode: 'dub' | 'subtitle';
-	lastRunMode?: 'dub' | 'subtitle'; // 用于 detect mode 切换
+	pipeline: 'dub' | 'subtitle';
+	lastRunPipeline?: 'dub' | 'subtitle'; // 用于 detect pipeline 切换
 
 	// ——— auto 探测结果 ———
 	asr_language?: string; // ASR 自动检测的语言
-	target_language?: string; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
+	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
 
 	// ❌ 不含 stages — 不再存 config 层数据
 }

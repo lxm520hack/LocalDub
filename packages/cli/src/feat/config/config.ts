@@ -1,24 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import {
-	type ASREngineConfig,
-	type BaseConfigInput,
-	ConfigSchema,
-	type SeparateEngineConfig,
-	type TasksConfig,
-	type TranslateEngineConfig,
-	type TTSEngineConfig,
-} from './types.ts';
+import { type BaseConfigInput, ConfigSchema, type LocalInfo } from './types.ts';
 
-export type {
-	ASREngineConfig,
-	SeparateEngineConfig,
-	TasksConfig,
-	TranslateEngineConfig,
-	TTSEngineConfig,
-};
 export { delimiter, REPO_ROOT };
 
 export function pythonBin(): string {
@@ -34,7 +19,7 @@ export function pythonBin(): string {
 const CONFIG_PATH = join(REPO_ROOT, 'packages', 'cli', 'config.json');
 
 /**
- * 优先级 config.json > env > defaults
+ * 优先级 config.json > env > auto > defaults
  * 不处理错误, 如果错误, 使用者应该立即知道 并做出调整
  */
 export const readConfig = (path?: string) => {
@@ -54,31 +39,30 @@ export const readConfig = (path?: string) => {
 	};
 };
 
-export function readTasksConfig(path?: string): TasksConfig {
-	const configPath = path ?? CONFIG_PATH;
-	let file: any = {};
-	try {
-		file = JSON.parse(readFileSync(configPath, 'utf-8'));
-	} catch {
-		/* use defaults */
-	}
-	const e = file.engines ?? {};
-	return {
-		tts: {
-			runtime: e.tts?.runtime ?? 'pytorch',
-			device: e.tts?.device ?? 'cuda',
-		},
-		asr: {
-			runtime: e.asr?.runtime ?? 'pytorch',
-			device: e.asr?.device ?? 'cuda',
-		},
-		translate: {
-			apiBase: e.translate?.apiBase ?? env.OPENAI_BASE_URL,
-			model: e.translate?.model ?? env.OPENAI_MODEL,
-		},
-		separate: {
-			runtime: e.separate?.runtime ?? 'ort',
-			device: e.separate?.device ?? 'cpu',
-		},
-	};
-}
+export const localInfoPath = (sessionPath: string) =>
+	join(sessionPath, 'metadata', 'local_info.json');
+
+/**
+ * readFileSync, JSON.parse 都可以抛错, 如何处理交给使用者
+ */
+export const readLocalInfo = (sessionPath: string) => {
+	const path = localInfoPath(sessionPath);
+	const raw = JSON.parse(readFileSync(path, 'utf-8'));
+	return raw as LocalInfo;
+};
+export const writeLocalInfo = (sessionPath: string, info: LocalInfo) => {
+	writeFileSync(
+		join(sessionPath, 'metadata', 'local_info.json'),
+		JSON.stringify(info, null, 2),
+	);
+	return info;
+};
+export const setLocalInfo = (
+	sessionPath: string,
+	patch: Partial<LocalInfo>,
+): void => {
+	const existing = readLocalInfo(sessionPath) ?? ({} as LocalInfo);
+	writeLocalInfo(sessionPath, { ...existing, ...patch });
+};
+export const readPipeline = (sessionPath: string) =>
+	readLocalInfo(sessionPath)?.pipeline || 'dub';

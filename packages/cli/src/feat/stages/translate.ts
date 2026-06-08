@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
-import { readConfig } from '../config/config.ts';
+import { readConfig, setLocalInfo } from '../config/config.ts';
 import {
 	emitLog,
 	LANG_NAMES,
@@ -22,14 +22,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		configTargetLang ?? (srcLangCode === 'zh' ? 'en' : 'zh');
 
 	if (resolvedDstLang !== existingDstLang) {
-		const localInfoPath = join(metadataDir, 'local_info.json');
-		try {
-			const info = JSON.parse(readFileSync(localInfoPath, 'utf-8'));
-			info.target_language = resolvedDstLang;
-			writeFileSync(localInfoPath, JSON.stringify(info, null, 2));
-		} catch {
-			/* ignore */
-		}
+		setLocalInfo(sessionPath, { target_language: resolvedDstLang });
 	}
 
 	const fixedFile = join(metadataDir, 'asr_fixed.json');
@@ -70,7 +63,8 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 	const apiKey = env.OPENAI_API_KEY;
 	if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
 	const api = {
-		baseUrl: transCfg?.apiBase ?? env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+		baseUrl:
+			transCfg?.apiBase ?? env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
 		apiKey,
 		model: transCfg?.model ?? env.OPENAI_MODEL ?? 'gpt-4o-mini',
 	};

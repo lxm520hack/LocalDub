@@ -205,6 +205,6 @@ pretrained_models/
 /turbo-*
 /VP_*.json
 
-**/results/*.wav
+**/results/*
 
 packages/cli/config.json 
