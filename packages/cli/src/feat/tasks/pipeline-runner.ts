@@ -8,10 +8,13 @@ import { getStages } from './../../feat/tasks/stages.ts';
 import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
+	readConfig,
 	readLocalInfo,
 	readPipeline,
+	setLocalInfo,
 	writeLocalInfo,
 } from '../config/config.ts';
+import type { LocalInfo } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
 import {
 	currentTask,
@@ -24,12 +27,54 @@ import {
 
 export { getStageStatuses };
 
+function snapshotConfig(sessionPath: string) {
+	const cfg = readConfig();
+	const snap: NonNullable<LocalInfo['lastRunConfig']> = {
+		timestamp: new Date().toISOString(),
+		pipeline: cfg.pipeline ?? 'dub',
+		stages: {},
+		daemonPort: cfg.daemonPort,
+	};
+	const asr = cfg.stages?.asr;
+	if (asr) snap.stages.asr = { runtime: asr.runtime, device: asr.device, useSeparated: asr.useSeparated };
+	const sep = cfg.stages?.separate;
+	if (sep) {
+		snap.stages.separate = {
+			runtime: sep.runtime,
+			device: sep.device,
+			always: sep.always,
+		};
+	}
+	const tr = cfg.stages?.translate;
+	if (tr) {
+		snap.stages.translate = {
+			apiBase: tr.apiBase,
+			model: tr.model,
+			targetLang: tr.targetLang,
+		};
+	}
+	const tts = cfg.stages?.tts;
+	if (tts) {
+		snap.stages.tts = {
+			runtime: tts.runtime,
+			device: 'device' in tts ? (tts as Record<string, string>).device : undefined,
+		};
+	}
+	setLocalInfo(sessionPath, { lastRunConfig: snap });
+}
+
 export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 	let { task, sessionPath } = await currentTask(taskId);
 	mkdirSync(sessionPath, { recursive: true });
 
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);
+	const targetStage = readConfig().targetStage;
+	if (targetStage && !stages.find((s) => s.name === targetStage)) {
+		emitLog(taskId, `[WARN] targetStage "${targetStage}" 不在 ${pipeline} pipeline 中，忽略`);
+	}
+
+	snapshotConfig(sessionPath);
 
 	await updateTaskDB(taskId, { status: 'running', started_at: nowISO() });
 
@@ -52,6 +97,10 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
+			if (targetStage && stage.name === targetStage) {
+				emitLog(taskId, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
+				break;
+			}
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
 			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
@@ -135,6 +184,8 @@ export async function resumePipeline(
 
 	writeLocalInfo(sessionPath, info);
 
+	snapshotConfig(sessionPath);
+
 	const pipeline = info.pipeline || 'dub';
 	const stages = getStages(pipeline);
 
@@ -180,6 +231,11 @@ export async function resumePipeline(
 		}
 	}
 
+	const resumeTargetStage = readConfig().targetStage;
+	if (resumeTargetStage && !stages.find((s) => s.name === resumeTargetStage)) {
+		emitLog(taskId, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
+	}
+
 	await updateTaskDB(taskId, { status: 'running', started_at: nowISO() });
 
 	for (let i = startIdx; i < stages.length; i++) {
@@ -202,6 +258,10 @@ export async function resumePipeline(
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
+			if (resumeTargetStage && stage.name === resumeTargetStage) {
+				emitLog(taskId, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
+				break;
+			}
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
 			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
@@ -250,6 +310,8 @@ export async function rerunSingleStage(
 
 	const handler = STAGE_HANDLERS[stageName];
 	if (!handler) throw new Error(`No handler for stage "${stageName}"`);
+
+	snapshotConfig(sessionPath);
 
 	await updateStageDB(taskId, stageName, {
 		status: 'pending',

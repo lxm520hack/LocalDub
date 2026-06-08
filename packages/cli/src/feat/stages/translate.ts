@@ -243,6 +243,18 @@ ${correctionsStr}
 	}));
 
 	writeFileSync(translationFile, JSON.stringify({ translation }, null, 2));
+
+	setLocalInfo(sessionPath, {
+		runInfo: {
+			translate: {
+				resolvedDstLang,
+				actualModel: api.model,
+				apiBase: api.baseUrl,
+				batchSize: BATCH_SIZE,
+			},
+		},
+	});
+
 	await updateStageDB(taskId, 'translate', {
 		status: 'succeeded',
 		completed_at: nowISO(),

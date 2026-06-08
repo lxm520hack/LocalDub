@@ -23,7 +23,7 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 	{ name: 'translate', label: 'Translate' },
 	{ name: 'merge_video', label: 'Merge video' },
 ];
-
+// Transcribed
 export function getStages(pipeline?: string): StageSpec[] {
 	if (pipeline === 'subtitle') return SUBTITLE_STAGES;
 	return DUB_STAGES;

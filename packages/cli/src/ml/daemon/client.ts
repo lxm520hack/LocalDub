@@ -1,7 +1,10 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import { type Socket, connect } from 'node:net';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { delimiter, pythonBin, REPO_ROOT } from '../../feat/config/config.ts';
+
+const DAEMON_PORT_DEFAULT = 19109;
 
 type ProgressCallback = (current: number, total: number) => void;
 
@@ -11,26 +14,47 @@ interface PendingRequest {
 	onProgress?: ProgressCallback;
 }
 
+export function connectToDaemon(port: number): Promise<Socket | null> {
+	return new Promise((resolve) => {
+		try {
+			const conn = connect({ host: '127.0.0.1', port }, () => resolve(conn));
+			conn.on('error', () => resolve(null));
+		} catch {
+			resolve(null);
+		}
+	});
+}
+
 export class MLDaemon {
+	private conn: Socket | null = null;
 	private proc: ChildProcess | null = null;
 	private reader: ReturnType<typeof createInterface> | null = null;
 	private pending = new Map<string, PendingRequest>();
 	private _ready = false;
+
+	constructor(private port: number = DAEMON_PORT_DEFAULT) {}
 
 	get ready() {
 		return this._ready;
 	}
 
 	get pid(): number | null {
-		return this.proc?.pid ?? null;
+		return this.proc?.pid ?? this.conn?.remoteAddress ? -1 : null;
 	}
 
-	get exited(): boolean {
-		return this.proc?.exitCode != null;
-	}
+	async start(timeoutMs = 60000): Promise<void> {
+		// 1) Try existing daemon via TCP
+		const sock = await connectToDaemon(this.port);
+		if (sock) {
+			this.conn = sock;
+			this._setupTCP(sock);
+			this._ready = true;
+			console.log(`[Daemon] Connected to existing daemon on 127.0.0.1:${this.port}`);
+			return;
+		}
 
-	async start(timeoutMs = 30000): Promise<void> {
-		console.log('[Daemon] Starting ML pipeline daemon...');
+		// 2) Spawn detached Python daemon
+		console.log('[Daemon] Spawning ML pipeline daemon...');
 		const pyBin = pythonBin();
 		const scriptPath = join(
 			REPO_ROOT,
@@ -49,51 +73,37 @@ export class MLDaemon {
 			? `${voxcpmSrc}${delimiter}${existing}`
 			: voxcpmSrc;
 
-		this.proc = spawn(pyBin, [scriptPath], {
+		this.proc = spawn(pyBin, [scriptPath, '--port', String(this.port)], {
 			env,
-			stdio: ['pipe', 'pipe', 'pipe'],
+			detached: true,
+			stdio: ['ignore', 'pipe', 'pipe'],
 		});
+		this.proc.unref();
 
-		this.proc.on('exit', (code) => {
-			this._ready = false;
-			for (const [, p] of this.pending)
-				p.reject(new Error(`Daemon exited with code ${code}`));
-			this.pending.clear();
-		});
+		// 3) Wait for TCP ready
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			await new Promise((r) => setTimeout(r, 200));
+			const s = await connectToDaemon(this.port);
+			if (s) {
+				this.conn = s;
+				this._setupTCP(s);
+				this._ready = true;
+				console.log(`[Daemon] Daemon ready on 127.0.0.1:${this.port} (pid ${this.proc.pid})`);
+				return;
+			}
+		}
 
-		this.reader = createInterface({ input: this.proc.stdout! });
-		this.reader.on('line', (line: string) => this._handleMessage(line));
-
-		return new Promise<void>((resolve, reject) => {
-			const timer = setTimeout(
-				() => reject(new Error('Daemon startup timeout')),
-				timeoutMs,
-			);
-			this.pending.set('__startup__', {
-				resolve: () => {
-					clearTimeout(timer);
-					resolve();
-				},
-				reject: (err) => {
-					clearTimeout(timer);
-					reject(err);
-				},
-			});
-		}).then(() => {
-			console.log('[Daemon] ML daemon started');
-		});
+		throw new Error(`Daemon startup timeout after ${timeoutMs}ms`);
 	}
 
 	async stop(): Promise<void> {
-		if (!this.proc) return;
-		this.proc.stdin!.write(JSON.stringify({ action: 'shutdown' }) + '\n');
-		return new Promise((resolve) => {
-			this.proc!.on('exit', () => resolve());
-			setTimeout(() => {
-				this.proc!.kill();
-				resolve();
-			}, 2000);
-		});
+		if (this.conn) {
+			this.conn.write(JSON.stringify({ action: 'shutdown' }) + '\n');
+			this.conn.end();
+			this.conn = null;
+		}
+		this._ready = false;
 	}
 
 	runStage(
@@ -105,7 +115,7 @@ export class MLDaemon {
 		return new Promise((resolve, reject) => {
 			const key = `${taskId}_${stage}`;
 			this.pending.set(key, { resolve, reject, onProgress });
-			this.proc!.stdin!.write(
+			this.conn!.write(
 				JSON.stringify({
 					action: 'run_stage',
 					stage,
@@ -116,21 +126,22 @@ export class MLDaemon {
 		});
 	}
 
+	private _setupTCP(sock: Socket) {
+		this.reader = createInterface({ input: sock });
+		this.reader.on('line', (line: string) => this._handleMessage(line));
+		sock.on('close', () => {
+			this._ready = false;
+			for (const [, p] of this.pending)
+				p.reject(new Error('Daemon connection closed'));
+			this.pending.clear();
+		});
+	}
+
 	private _handleMessage(line: string) {
 		let msg: any;
 		try {
 			msg = JSON.parse(line);
 		} catch {
-			return;
-		}
-
-		if (msg.type === 'ready') {
-			const p = this.pending.get('__startup__');
-			if (p) {
-				p.resolve({});
-				this.pending.delete('__startup__');
-			}
-			this._ready = true;
 			return;
 		}
 

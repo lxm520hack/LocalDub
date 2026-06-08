@@ -10,6 +10,23 @@ import {
 } from '../config/config.ts';
 import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
 
+export type AsrResult = {
+	audio_info: {
+		duration: number; // 视频总时长，单位 ms
+	};
+	result: {
+		text: string; // 完整转录文本
+		utterances: {
+			text: string; // 该段文本
+			start_time: number; // 该段开始时间，单位 ms
+			end_time: number; // 该段结束时间，单位 ms
+			words: [];
+		}[];
+	};
+	_device: string; // 运行设备，如 "cuda"、"cpu" 等
+	detected_language?: string; // 可选的检测到的语言代码，如 "en"、"zh" 等
+};
+
 export async function stageAsr(
 	taskId: string,
 	sessionPath: string,
@@ -23,12 +40,12 @@ export async function stageAsr(
 	const audioVocal = resolve(sessionAbsPath, 'media', 'audio_vocals.wav');
 	const videoSource = resolve(sessionAbsPath, 'media', 'video_source.mp4');
 
-	const audioPath = readConfig().stages?.separate?.always
+	const audioPath = readConfig().stages?.asr?.useSeparated
 		? audioVocal
 		: videoSource;
 	if (!existsSync(audioPath))
 		throw new Error(
-			`ASR input not found: ${audioPath}; 如果 separate.always=false, 请确保 video_source.mp4 存在；如果 separate.always=true, 请确保 audio_vocals.wav 存在`,
+			`ASR input not found: ${audioPath}; 如果 asr.useSeparated=true, 请确保 audio_vocals.wav 存在；如果 asr.useSeparated=false, 请确保 video_source.mp4 存在`,
 		);
 
 	const asrCfg = readConfig().stages?.asr;
@@ -49,7 +66,12 @@ export async function stageAsr(
 		});
 		const r = result as Record<string, any>;
 		if (r.detected_language) {
-			setLocalInfo(sessionAbsPath, { asr_language: r.detected_language });
+			setLocalInfo(sessionAbsPath, {
+				asr_language: r.detected_language,
+				runInfo: {
+					asr: { engine: 'whisper-pytorch', device },
+				},
+			});
 		}
 		if (r.load_time_s)
 			emitLog(taskId, `[ASR] Model loaded in ${r.load_time_s}s`);
@@ -113,10 +135,12 @@ async function asrPytorch(
 		'--device',
 		device,
 	];
+	const t0 = Date.now();
 	const result = spawnSync(pyBin, args, {
 		maxBuffer: 256 * 1024 * 1024,
 		timeout: 600_000,
 	});
+	const elapsedSec = (Date.now() - t0) / 1000;
 
 	if (result.error)
 		throw new Error(`Python ASR subprocess failed: ${result.error.message}`);
@@ -136,8 +160,14 @@ async function asrPytorch(
 
 	const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
 	if (asr.detected_language) {
-		setLocalInfo(sessionAbsPath, { asr_language: asr.detected_language });
+		setLocalInfo(sessionAbsPath, {
+			asr_language: asr.detected_language,
+			runInfo: {
+				asr: { engine: 'whisper-pytorch', device },
+			},
+		});
 	}
+	emitAsrTiming(taskId, asr, elapsedSec);
 }
 
 function parseAsrOutput(stdout: string): string | null {
@@ -147,6 +177,16 @@ function parseAsrOutput(stdout: string): string | null {
 			return trimmed.slice('ASR_OUTPUT:'.length).trim();
 	}
 	return stdout.trim() || null;
+}
+
+function emitAsrTiming(taskId: string, asr: Record<string, any>, elapsedSec: number) {
+	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
+	const durationMs = asr.audio_info?.duration ?? 0;
+	if (durationMs > 0) {
+		const audioDurationS = durationMs / 1000;
+		emitLog(taskId, `[ASR] Audio duration ${audioDurationS.toFixed(1)}s`);
+		emitLog(taskId, `[ASR] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
+	}
 }
 
 async function asrFasterWhisper(
@@ -169,13 +209,16 @@ async function asrFasterWhisper(
 
 	const useGpu = device !== 'cpu';
 	const attempts = useGpu ? 2 : 1;
+	let fallbackToCpu = false;
 
 	for (let attempt = 0; attempt < attempts; attempt++) {
 		const args = attempt === 0 && useGpu ? baseArgs : [...baseArgs, '--cpu'];
+		const t0 = Date.now();
 		const result = spawnSync(pyBin, args, {
 			maxBuffer: 256 * 1024 * 1024,
 			timeout: 600_000,
 		});
+		const elapsedSec = (Date.now() - t0) / 1000;
 
 		if (result.signal) {
 			const stderr = (result.stderr?.toString() || '').trim().slice(-200);
@@ -183,6 +226,7 @@ async function asrFasterWhisper(
 				await updateStageDB(taskId, 'asr', {
 					last_message: 'GPU hang, retrying CPU...',
 				});
+				fallbackToCpu = true;
 				continue;
 			}
 			throw new Error(`ASR killed by signal ${result.signal}: ${stderr}`);
@@ -203,9 +247,22 @@ async function asrFasterWhisper(
 		}
 
 		const asr = JSON.parse(readFileSync(asrOutputPath, 'utf-8'));
+		const actualDevice = fallbackToCpu ? 'cpu' : useGpu ? 'cuda' : 'cpu';
 		if (asr.detected_language) {
-			setLocalInfo(sessionAbsPath, { asr_language: asr.detected_language });
+			setLocalInfo(sessionAbsPath, {
+				asr_language: asr.detected_language,
+				runInfo: {
+					asr: {
+						engine: 'faster-whisper',
+						device: actualDevice,
+						computeType: actualDevice === 'cpu' ? 'int8' : 'float16',
+						gpuAttempted: useGpu,
+						fallbackToCpu,
+					},
+				},
+			});
 		}
+		emitAsrTiming(taskId, asr, elapsedSec);
 
 		return;
 	}

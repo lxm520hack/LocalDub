@@ -4,6 +4,7 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	statSync,
 	writeFileSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -28,6 +29,7 @@ export async function stageDownload(
 	let videoPath = join(mediaDir, 'video_source.mp4');
 
 	if (existsSync(videoPath)) {
+		emitLog(taskId, '[Download] Already on disk');
 		await updateStageDB(taskId, 'download', {
 			status: 'succeeded',
 			completed_at: nowISO(),
@@ -39,6 +41,7 @@ export async function stageDownload(
 
 	// Local upload URL (local://upload/<uploadTaskId>)
 	if (url.startsWith('local://')) {
+		emitLog(taskId, '[Download] Importing local video...');
 		await updateStageDB(taskId, 'download', {
 			last_message: 'Importing local video...',
 			progress: 0,
@@ -56,6 +59,7 @@ export async function stageDownload(
 			throw new Error(`Upload directory empty: ${uploadDir}`);
 		const sourceFile = join(uploadDir, files[0]);
 
+		const t0 = Date.now();
 		ffmpeg([
 			'-i',
 			sourceFile,
@@ -75,9 +79,13 @@ export async function stageDownload(
 			'+faststart',
 			videoPath,
 		]);
+		const elapsedSec = (Date.now() - t0) / 1000;
 
 		if (!existsSync(videoPath))
 			throw new Error('ffmpeg did not produce video_source.mp4');
+
+		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
+		emitLog(taskId, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
 
 		// Preserve existing fields  from fn.ts
 		const existing = readLocalInfo(sessionPath);
@@ -152,6 +160,7 @@ export async function stageDownload(
 	mediaDir = join(resolvedSession, 'media');
 	videoPath = join(mediaDir, 'video_source.mp4');
 
+	emitLog(taskId, '[Download] Downloading video...');
 	await updateStageDB(taskId, 'download', {
 		last_message: 'Downloading video...',
 		progress: 0,
@@ -170,10 +179,12 @@ export async function stageDownload(
 		url,
 	];
 
+	const t0 = Date.now();
 	const r = spawnSync('yt-dlp', ytArgs, {
 		stdio: ['pipe', 'pipe', 'pipe'],
 		timeout: 300_000,
 	});
+	const elapsedSec = (Date.now() - t0) / 1000;
 
 	const dlErr = r.error;
 	if (dlErr) throw new Error(`yt-dlp: ${dlErr.message}`);
@@ -184,6 +195,10 @@ export async function stageDownload(
 
 	if (!existsSync(videoPath))
 		throw new Error('yt-dlp did not produce video_source.mp4');
+
+	const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
+	emitLog(taskId, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+	emitLog(taskId, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
 
 	await updateStageDB(taskId, 'download', {
 		status: 'succeeded',

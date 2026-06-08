@@ -1,5 +1,5 @@
 {
-  "$schema": "./config.dev.schema.json",
+  "$schema": "./config.schema.json",
   "command": "createTask",
   "createTask": {
     "sourceFile": "/home/aa/repos/learn_ls/YouDub-webui/workfolder/local/VLmkCww00z/media/video_source.mp4"

@@ -1,30 +1,36 @@
 """
 Pipeline daemon — keeps ML models (Whisper, VoxCPM, Demucs) loaded across video tasks.
 
-Protocol (JSON lines on stdin/stdout):
+Protocol (JSON lines on stdin/stdout or TCP):
 
-  TS ──stdin──→ daemon:  {"action":"run_stage","stage":"asr","task_id":"...","params":{...}}
-  daemon ──stdout──→ TS: {"type":"progress","stage":"asr","current":1,"total":10}
-                          {"type":"complete","stage":"asr","output":{...}}
-                          {"type":"error","stage":"asr","message":"..."}
+  TS ──→ daemon:  {"action":"run_stage","stage":"asr","task_id":"...","params":{...}}
+  daemon ──→ TS: {"type":"progress","stage":"asr","current":1,"total":10}
+                  {"type":"complete","stage":"asr","output":{...}}
+                  {"type":"error","stage":"asr","message":"..."}
 
 Commands:
   run_stage  — execute a pipeline stage (asr | tts | separate)
   shutdown   — graceful exit
 
 On startup, daemon sends {"type":"ready"} then enters stdin read loop.
+With --port, also listens on TCP for outliving the spawning process.
 Models are lazy-loaded on first use and cached as module-level singletons.
 
-Usage (spawned by TS):
+Usage (stdin, spawned by TS):
   PYTHONPATH=submodule/VoxCPM/src:$PYTHONPATH \\
     .venv/bin/python packages/cli/scripts/pipeline_daemon.py
+
+Usage (TCP, detached):
+  .venv/bin/python packages/cli/scripts/pipeline_daemon.py --port 19109
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
+import threading
 import time
 import traceback
 import wave
@@ -191,7 +197,7 @@ def handle_asr(params: dict) -> dict:
 # TTS (VoxCPM)
 # ---------------------------------------------------------------------------
 
-def handle_tts(params: dict, task_id: str) -> dict:
+def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
     translation_file = Path(params["translation_file"])
     vocals_dir = Path(params["vocals_dir"])
     tts_dir = Path(params["tts_dir"])
@@ -228,14 +234,14 @@ def handle_tts(params: dict, task_id: str) -> dict:
 
         if out_path.exists():
             skipped += 1
-            _emit_progress("tts", task_id, index, total)
+            _emit_progress("tts", task_id, index, total, emit=emit)
             continue
 
         text = item.get("dst") or item.get("zh", "")
         if not text.strip():
             _write_empty_wav(str(out_path))
             skipped += 1
-            _emit_progress("tts", task_id, index, total)
+            _emit_progress("tts", task_id, index, total, emit=emit)
             continue
 
         ref_path = vocals_dir / f"{idx}.wav"
@@ -244,7 +250,7 @@ def handle_tts(params: dict, task_id: str) -> dict:
         if ref_path is None or not ref_path.exists():
             _write_empty_wav(str(out_path))
             skipped += 1
-            _emit_progress("tts", task_id, index, total)
+            _emit_progress("tts", task_id, index, total, emit=emit)
             continue
 
         t1 = time.perf_counter()
@@ -264,7 +270,7 @@ def handle_tts(params: dict, task_id: str) -> dict:
             sys.stderr.flush()
             _write_empty_wav(str(out_path))
 
-        _emit_progress("tts", task_id, index, total)
+        _emit_progress("tts", task_id, index, total, emit=emit)
 
     total_time = time.perf_counter() - t0
     return {
@@ -281,7 +287,7 @@ def handle_tts(params: dict, task_id: str) -> dict:
 # Separate (Demucs)
 # ---------------------------------------------------------------------------
 
-def handle_separate(params: dict, task_id: str) -> dict:
+def handle_separate(params: dict, task_id: str, *, emit=None) -> dict:
     from pydub import AudioSegment
 
     video_path = params["video_path"]
@@ -300,7 +306,7 @@ def handle_separate(params: dict, task_id: str) -> dict:
 
     def report_progress(info: dict) -> None:
         progress = _demucs_progress(info, shifts)
-        _emit_progress("separate", task_id, progress, 100)
+        _emit_progress("separate", task_id, progress, 100, emit=emit)
 
     separator = Separator(
         model="htdemucs_ft",
@@ -340,7 +346,7 @@ def handle_separate(params: dict, task_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# IO helpers
+# IO helpers — all accept optional emit override for TCP output
 # ---------------------------------------------------------------------------
 
 def _emit(obj: dict) -> None:
@@ -348,66 +354,151 @@ def _emit(obj: dict) -> None:
     sys.stdout.flush()
 
 
-def _emit_progress(stage: str, task_id: str, current: int, total: int) -> None:
-    _emit({"type": "progress", "stage": stage, "task_id": task_id, "current": current, "total": total})
+def _emit_progress(stage: str, task_id: str, current: int, total: int, *, emit=None) -> None:
+    emitter = emit or _emit
+    emitter({"type": "progress", "stage": stage, "task_id": task_id, "current": current, "total": total})
 
 
-def _emit_complete(stage: str, task_id: str, output: dict) -> None:
-    _emit({"type": "complete", "stage": stage, "task_id": task_id, "output": output})
+def _emit_complete(stage: str, task_id: str, output: dict, *, emit=None) -> None:
+    emitter = emit or _emit
+    emitter({"type": "complete", "stage": stage, "task_id": task_id, "output": output})
 
 
-def _emit_error(stage: str, task_id: str, message: str) -> None:
-    _emit({"type": "error", "stage": stage, "task_id": task_id, "message": message})
+def _emit_error(stage: str, task_id: str, message: str, *, emit=None) -> None:
+    emitter = emit or _emit
+    emitter({"type": "error", "stage": stage, "task_id": task_id, "message": message})
 
 
 # ---------------------------------------------------------------------------
-# Main loop
+# Command dispatch
+# ---------------------------------------------------------------------------
+
+def process_command(cmd: dict, *, emit=None) -> bool:
+    """Process one command. Returns False if shutdown was requested."""
+    action = cmd.get("action", "")
+    if action == "shutdown":
+        return False
+
+    if action == "run_stage":
+        stage = cmd.get("stage", "")
+        task_id = cmd.get("task_id", "")
+        params = cmd.get("params", {})
+        try:
+            if stage == "asr":
+                output = handle_asr(params)
+            elif stage == "tts":
+                output = handle_tts(params, task_id, emit=emit)
+            elif stage == "separate":
+                output = handle_separate(params, task_id, emit=emit)
+            else:
+                _emit_error(stage, task_id, f"Unknown stage: {stage}", emit=emit)
+                return True
+            _emit_complete(stage, task_id, output, emit=emit)
+        except Exception as e:
+            tb = traceback.format_exc()
+            sys.stderr.write(f"[{stage}] {tb}\n")
+            sys.stderr.flush()
+            _emit_error(stage, task_id, str(e), emit=emit)
+    else:
+        sys.stderr.write(f"Unknown action: {action}\n")
+        sys.stderr.flush()
+
+    return True
+
+
+# ---------------------------------------------------------------------------
+# TCP server (optional, for persistent mode)
+# ---------------------------------------------------------------------------
+
+_IDLE_TIMEOUT = 1800  # seconds — exit if no connection for this long
+
+_shutdown = False
+
+
+def tcp_server(port: int) -> None:
+    import socket as _socket
+
+    global _shutdown
+
+    sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    sock.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", port))
+    sock.listen(5)
+    sock.settimeout(_IDLE_TIMEOUT)
+    sys.stderr.write(f"[Daemon] TCP listening on 127.0.0.1:{port} (idle timeout={_IDLE_TIMEOUT}s)\n")
+    sys.stderr.flush()
+
+    while not _shutdown:
+        try:
+            conn, addr = sock.accept()
+        except _socket.timeout:
+            sys.stderr.write("[Daemon] Idle timeout, shutting down\n")
+            sys.stderr.flush()
+            _shutdown = True
+            break
+        except Exception as e:
+            if not _shutdown:
+                sys.stderr.write(f"[Daemon] Accept error: {e}\n")
+                sys.stderr.flush()
+            break
+
+        with conn:
+            f = conn.makefile("rw")
+            def _tcp_emit(obj: dict) -> None:
+                f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+                f.flush()
+
+            for raw in f:
+                line = raw.strip()
+                if not line:
+                    continue
+                try:
+                    cmd = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not process_command(cmd, emit=_tcp_emit):
+                    _tcp_emit({"type": "shutdown"})
+                    _shutdown = True
+                    break
+
+
+# ---------------------------------------------------------------------------
+# Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="ML Pipeline Daemon")
+    parser.add_argument("--port", type=int, default=0, help="TCP port (0 = stdin-only)")
+    args = parser.parse_args()
+
+    tcp_thread: threading.Thread | None = None
+    if args.port:
+        tcp_thread = threading.Thread(target=tcp_server, args=(args.port,), daemon=True)
+        tcp_thread.start()
+
     _emit({"type": "ready"})
 
     for line in sys.stdin:
         line = line.strip()
         if not line:
             continue
-
+        if _shutdown:
+            break
         try:
             cmd = json.loads(line)
         except json.JSONDecodeError:
             sys.stderr.write(f"Invalid JSON from stdin: {line}\n")
             sys.stderr.flush()
             continue
-
-        action = cmd.get("action", "")
-        if action == "shutdown":
+        if not process_command(cmd):
             break
 
-        if action == "run_stage":
-            stage = cmd.get("stage", "")
-            task_id = cmd.get("task_id", "")
-            params = cmd.get("params", {})
-            try:
-                if stage == "asr":
-                    output = handle_asr(params)
-                elif stage == "tts":
-                    output = handle_tts(params, task_id)
-                elif stage == "separate":
-                    output = handle_separate(params, task_id)
-                else:
-                    _emit_error(stage, task_id, f"Unknown stage: {stage}")
-                    continue
-                _emit_complete(stage, task_id, output)
-            except Exception as e:
-                tb = traceback.format_exc()
-                sys.stderr.write(f"[{stage}] {tb}\n")
-                sys.stderr.flush()
-                _emit_error(stage, task_id, str(e))
-        else:
-            sys.stderr.write(f"Unknown action: {action}\n")
-            sys.stderr.flush()
-
     _emit({"type": "shutdown"})
+
+    if tcp_thread:
+        # In TCP-only mode (detached, stdin EOF), main thread must stay alive
+        # to keep the daemon thread running. Wait for shutdown signal.
+        tcp_thread.join()
 
 
 if __name__ == "__main__":

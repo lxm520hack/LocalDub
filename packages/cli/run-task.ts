@@ -1,14 +1,16 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import type { Socket } from 'node:net';
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { connect } from 'node:net';
 import { join, resolve } from 'node:path';
-import { createInterface } from 'node:readline';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { eq } from 'drizzle-orm';
 import { timeId } from '../shared/db/timeId.ts';
 import { db } from './src/db/index.ts';
-import { readConfig, setLocalInfo } from './src/feat/config/config.ts';
+import {
+	pythonBin,
+	readConfig,
+	setLocalInfo,
+} from './src/feat/config/config.ts';
 import type { RawConfig } from './src/feat/config/types.ts';
 import { createTask, findTaskByVideoId } from './src/feat/tasks/fn.ts';
 import {
@@ -19,36 +21,8 @@ import {
 } from './src/feat/tasks/pipeline-runner.ts';
 import { tasks } from './src/feat/tasks/table.ts';
 import { extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { MLDaemon } from './src/ml/daemon/client.ts';
-import { DaemonServer } from './src/ml/daemon/server.ts';
-
-function connectToDaemon(port: number): Promise<Socket | null> {
-	return new Promise((resolve) => {
-		try {
-			const conn = connect({ host: '127.0.0.1', port }, () => resolve(conn));
-			conn.on('error', () => resolve(null));
-		} catch {
-			resolve(null);
-		}
-	});
-}
-
-async function runViaTCPSocket(taskId: string, conn: Socket): Promise<void> {
-	conn.write(JSON.stringify({ action: 'run_task', task_id: taskId }) + '\n');
-
-	const reader = createInterface({ input: conn });
-	for await (const line of reader) {
-		let msg: any;
-		try {
-			msg = JSON.parse(line.trim());
-		} catch {
-			continue;
-		}
-		if (msg.type === 'complete' && msg.task_id === taskId) return;
-		if (msg.type === 'error' && msg.task_id === taskId)
-			throw new Error(msg.message);
-	}
-}
+import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
+import { cmdCheck } from './src/feat/command/check.ts';
 
 function needsMLDaemon(cfg: RawConfig): boolean {
 	const tts = cfg.stages?.tts;
@@ -56,39 +30,50 @@ function needsMLDaemon(cfg: RawConfig): boolean {
 	return tts?.runtime === 'pytorch' || separate?.runtime === 'pytorch';
 }
 
+async function withDaemon<T>(
+	taskId: string,
+	fn: (daemon?: MLDaemon) => Promise<T>,
+): Promise<T> {
+	const config = readConfig();
+	const DAEMON_PORT = config.daemonPort || 19109;
+
+	const conn = await connectToDaemon(DAEMON_PORT);
+	if (conn) {
+		conn.end();
+		const daemon = new MLDaemon(DAEMON_PORT);
+		await daemon.start();
+		console.log(`[Daemon] Using existing daemon on :${DAEMON_PORT}`);
+		return fn(daemon);
+	}
+	if (needsMLDaemon(config)) {
+		const daemon = new MLDaemon(DAEMON_PORT);
+		await daemon.start();
+		return fn(daemon);
+	}
+	return fn(undefined);
+}
+
 const config = readConfig();
 const cmd = config.command;
-const DAEMON_PORT = config.daemonPort || 19109;
+
+if (
+	config.pipeline === 'subtitle' &&
+	config.stages?.separate?.always &&
+	!config.stages?.asr?.useSeparated
+) {
+	console.warn(
+		'[WARN] subtitle 模式下 separate.always=true 但 ASR 未使用分离人声 (asr.useSeparated=false)，separate 跑完不会被 ASR 使用',
+	);
+}
 
 switch (cmd) {
-	case 'checkVideo': {
-		const taskId = config.checkVideo?.taskId;
-		if (!taskId) {
-			console.error('checkVideo.taskId required in config.json');
+	case 'check': {
+		const p = config.check;
+		if (!p?.taskId) {
+			console.error('check.taskId required in config.json');
 			process.exit(1);
 		}
-		const rows = await db
-			.select({ session_path: tasks.session_path })
-			.from(tasks)
-			.where(eq(tasks.id, taskId))
-			.limit(1);
-		const sp = rows[0]?.session_path;
-		const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
-		const videoPath = join(basePath, 'media', 'video_source.mp4');
-		if (!existsSync(videoPath)) {
-			console.log(
-				JSON.stringify({ ok: false, error: 'video_source.mp4 not found' }),
-			);
-			process.exit(1);
-		}
-		const stat = statSync(videoPath);
-		console.log(
-			JSON.stringify({
-				ok: true,
-				path: videoPath,
-				size: stat.size,
-			}),
-		);
+		await cmdCheck(p.type, p.taskId);
 		break;
 	}
 
@@ -116,6 +101,7 @@ switch (cmd) {
 	}
 
 	case 'daemonStatus': {
+		const DAEMON_PORT = config.daemonPort || 19109;
 		try {
 			await new Promise<void>((resolve, reject) => {
 				const sock = connect(DAEMON_PORT, '127.0.0.1', () => {
@@ -142,6 +128,7 @@ switch (cmd) {
 	}
 
 	case 'daemonStop': {
+		const DAEMON_PORT = config.daemonPort || 19109;
 		try {
 			await new Promise<void>((resolve, reject) => {
 				const sock = connect(DAEMON_PORT, '127.0.0.1', () => {
@@ -246,6 +233,7 @@ switch (cmd) {
 							`http://127.0.0.1:${env.YTDLP_PROXY_PORT}`,
 						);
 					infoArgs.push(url);
+					const { spawnSync } = await import('node:child_process');
 					const infoR = spawnSync('yt-dlp', infoArgs, {
 						stdio: ['pipe', 'pipe', 'pipe'],
 						timeout: 30_000,
@@ -275,25 +263,7 @@ switch (cmd) {
 			);
 
 			console.log(`\n[CLI] Running pipeline for task ${videoId}...`);
-			const conn = await connectToDaemon(DAEMON_PORT);
-			if (conn) {
-				await runViaTCPSocket(videoId, conn);
-				conn.end();
-			} else {
-				const needsDaemon = needsMLDaemon(config);
-
-				let mlDaemon: MLDaemon | undefined;
-				if (needsDaemon) {
-					mlDaemon = new MLDaemon();
-					await mlDaemon.start();
-				}
-
-				try {
-					await runPipeline(videoId, mlDaemon);
-				} finally {
-					if (mlDaemon) await mlDaemon.stop();
-				}
-			}
+			await withDaemon(videoId, (d) => runPipeline(videoId, d));
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
 			console.error('createTask failed:', err);
@@ -330,26 +300,9 @@ switch (cmd) {
 
 		console.log(`[CLI] Resuming pipeline for task ${taskId}${label}...`);
 		try {
-			const conn = await connectToDaemon(DAEMON_PORT);
-			if (conn) {
-				await runViaTCPSocket(taskId, conn);
-				conn.end();
-			} else {
-				const needsDaemon = needsMLDaemon(config);
-
-				let mlDaemon: MLDaemon | undefined;
-				if (needsDaemon) {
-					mlDaemon = new MLDaemon();
-					await mlDaemon.start();
-					console.log('[Daemon] ML pipeline daemon ready');
-				}
-
-				try {
-					await resumePipeline(taskId, resumeFrom, config.stages, mlDaemon);
-				} finally {
-					if (mlDaemon) await mlDaemon.stop();
-				}
-			}
+			await withDaemon(taskId, (d) =>
+				resumePipeline(taskId, resumeFrom, config.stages, d),
+			);
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
 			console.error('[CLI] Pipeline failed:', err);
@@ -369,20 +322,9 @@ switch (cmd) {
 		}
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
-			const needsDaemon = needsMLDaemon(config);
-
-			let mlDaemon: MLDaemon | undefined;
-			if (needsDaemon) {
-				mlDaemon = new MLDaemon();
-				await mlDaemon.start();
-				console.log('[Daemon] ML pipeline daemon ready');
-			}
-
-			try {
-				await rerunSingleStage(taskId, stageName, config.stages, mlDaemon);
-			} finally {
-				if (mlDaemon) await mlDaemon.stop();
-			}
+			await withDaemon(taskId, (d) =>
+				rerunSingleStage(taskId, stageName, config.stages, d),
+			);
 			console.log('[CLI] Stage completed');
 		} catch (err) {
 			console.error('[CLI] Stage failed:', err);
@@ -392,21 +334,35 @@ switch (cmd) {
 	}
 
 	case 'daemon': {
-		process.env.YOUDEUB_DAEMON = '1';
+		const DAEMON_PORT = config.daemonPort || 19109;
+		const scriptPath = join(
+			REPO_ROOT,
+			'packages',
+			'cli',
+			'scripts',
+			'pipeline_daemon.py',
+		);
+		const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
-		const needsDaemon = needsMLDaemon(config);
+		const pyEnv: Record<string, string> = {
+			...(process.env as Record<string, string>),
+		};
+		const existing = pyEnv.PYTHONPATH || '';
+		pyEnv.PYTHONPATH = existing ? `${voxcpmSrc}:${existing}` : voxcpmSrc;
 
-		let mlDaemon: MLDaemon | undefined;
-		if (needsDaemon) {
-			mlDaemon = new MLDaemon();
-			await mlDaemon.start();
-		}
-
-		const daemonPort = config.daemonPort || 19109;
-		const idleTimeout = config.daemonIdleTimeout;
-		const server = new DaemonServer(daemonPort, mlDaemon!, idleTimeout);
-		await server.start();
-
+		const proc = spawn(
+			pythonBin(),
+			[scriptPath, '--port', String(DAEMON_PORT)],
+			{
+				env: pyEnv,
+				detached: true,
+				stdio: 'inherit',
+			},
+		);
+		proc.unref();
+		console.log(
+			`[Daemon] Spawned pipeline daemon (pid ${proc.pid}) on port ${DAEMON_PORT}`,
+		);
 		process.stdin.resume();
 		await new Promise(() => {});
 		break;
@@ -420,31 +376,12 @@ switch (cmd) {
 			process.exit(1);
 		}
 		console.log(`[CLI] Starting pipeline for task ${taskId}...`);
-
-		const conn = await connectToDaemon(DAEMON_PORT);
-		if (conn) {
-			await runViaTCPSocket(taskId, conn);
-			conn.end();
-		} else {
-			const needsDaemon = needsMLDaemon(config);
-
-			let mlDaemon: MLDaemon | undefined;
-			if (needsDaemon) {
-				mlDaemon = new MLDaemon();
-				await mlDaemon.start();
-				console.log('[Daemon] ML pipeline daemon ready');
-			}
-
-			try {
-				await runPipeline(taskId, mlDaemon);
-			} catch (err) {
-				console.error('[CLI] Pipeline failed:', err);
-				process.exit(1);
-			} finally {
-				if (mlDaemon) await mlDaemon.stop();
-			}
+		try {
+			await withDaemon(taskId, (d) => runPipeline(taskId, d));
+			console.log('[CLI] Pipeline completed');
+		} catch (err) {
+			console.error('[CLI] Pipeline failed:', err);
+			process.exit(1);
 		}
-
-		console.log('[CLI] Pipeline completed');
 	}
 }

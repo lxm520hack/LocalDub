@@ -19,7 +19,6 @@ export async function stageSeparate(
 	// subtitle 模式且未配置 always 时，跳过分离
 	const pipeline = readLocalInfo(sessionPath)?.pipeline || 'dub';
 	const sepCfg = readConfig().stages?.separate;
-	console.log({ pipeline, sepCfg, always: sepCfg?.always });
 	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(
 			taskId,

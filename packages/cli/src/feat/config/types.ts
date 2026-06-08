@@ -33,7 +33,7 @@ const commandList = [
 	'startTask', // 开始任务
 	'resumeTask', // 继续任务
 	'rerunStage', // 重新运行某个步骤
-	'checkVideo',
+	'check',
 	'taskStatus', // 显示某任务状态
 	'createTask', // 创建任务(完成后会自动开始任务)
 	'deviceInfo', // 显示设备信息
@@ -83,7 +83,6 @@ const SeparateConfigSchema = z
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
-		always: false,
 	})
 	.optional()
 	.describe(`Separate: 分离人声与背景声, 提示 tts-vc 的质量 
@@ -96,10 +95,12 @@ const ASRConfigSchema = z
 	.looseObject({
 		runtime: z.enum(['faster-whisper', 'pytorch']).default('pytorch'),
 		device: z.enum(['cuda', 'cpu', 'mps']).default('cuda'),
+		useSeparated: z.boolean().default(false).describe('使用分离后的人声 (audio_vocals.wav) 而非原始视频音频'),
 	})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
+		useSeparated: false,
 	})
 	.optional();
 
@@ -214,6 +215,10 @@ const BaseConfigSchema = z.looseObject({
 		.default('dub')
 		.optional()
 		.describe('任务模式, dub 配音,subtitle 仅字幕'),
+	targetStage: z
+		.enum(stagesList)
+		.optional()
+		.describe('目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤'),
 	daemonPort: z.number().default(19109).optional(),
 	daemonIdleTimeout: z.number().default(300).optional(),
 	stages: StagesSchema.optional(),
@@ -260,10 +265,11 @@ const TaskStatusSchema = z.looseObject({
 		taskId: TaskIdSchema,
 	}),
 });
-const CheckVideoSchema = z.looseObject({
-	command: z.literal('checkVideo'),
-	checkVideo: z.object({
+const CheckSchema = z.looseObject({
+	command: z.literal('check'),
+	check: z.object({
 		taskId: TaskIdSchema,
+		type: z.enum(['video', 'asr']).optional().default('video'),
 	}),
 });
 const DeviceInfoSchema = z.looseObject({
@@ -288,7 +294,7 @@ export const ConfigSchema = z
 		ResumeTaskSchema,
 		RerunStageSchema,
 		TaskStatusSchema,
-		CheckVideoSchema,
+		CheckSchema,
 		DeviceInfoSchema,
 		DaemonSchema,
 		DaemonStatusSchema,
@@ -316,5 +322,33 @@ export interface LocalInfo {
 	asr_language?: string; // ASR 自动检测的语言
 	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
 
-	// ❌ 不含 stages — 不再存 config 层数据
+	// ——— pipeline 启动时快照（readConfig 的有效值） ———
+	lastRunConfig?: {
+		timestamp: string;
+		pipeline: 'dub' | 'subtitle';
+		stages: {
+			asr?: { runtime: string; device?: string; useSeparated?: boolean };
+			separate?: { runtime: string; device?: string; always?: boolean };
+			translate?: { apiBase?: string; model?: string; targetLang?: string };
+			tts?: { runtime: string; device?: string };
+		};
+		daemonPort?: number;
+	};
+
+	// ——— 各 stage 运行后的详细运行时信息 ———
+	runInfo?: {
+		asr?: {
+			engine: string; // 'whisper-pytorch' | 'faster-whisper'
+			device: string;
+			computeType?: string;
+			gpuAttempted?: boolean;
+			fallbackToCpu?: boolean;
+		};
+		translate?: {
+			resolvedDstLang: string;
+			actualModel: string;
+			apiBase: string;
+			batchSize?: number;
+		};
+	};
 }
