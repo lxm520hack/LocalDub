@@ -11,3 +11,6 @@
 [submodule "submodule/whisper.cpp"]
 	path = submodule/whisper.cpp
 	url = https://github.com/ggerganov/whisper.cpp
+[submodule "demucs.cpp"]
+	path = submodule/demucs.cpp
+	url = git@github.com:sevagh/demucs.cpp
