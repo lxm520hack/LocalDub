@@ -11,50 +11,42 @@ const WER_PY = join(__dirname, 'wer.py');
 const API_BASE = 'http://localhost:11434/v1';
 const MODEL = 'gemma4:31b-cloud';
 
-function srtTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds - Math.floor(seconds)) * 1000);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+function segmentsToPrompt(segments: any[]): string {
+  const fullText = segments.map(s => s.text).join(' ');
+  const lines = segments.map((s, i) => `${i + 1}: ${s.text}`).join('\n');
+  return `全文上下文（参考用，每句以空格分隔）：\n${fullText}\n\n请修正以下条目（保持行号不变）：\n${lines}`;
 }
 
-function segmentsToSRT(segments: any[]): string {
-  return segments.map((s, i) =>
-    `${i + 1}\n${srtTime(s.start)} --> ${srtTime(s.end)}\n${s.text}\n`
-  ).join('');
-}
-
-function parseSRT(srt: string, expectedCount: number): string[] | null {
+function parseLines(input: string, expectedCount: number): string[] | null {
   const texts: string[] = [];
-  // Strip markdown code fences
-  let cleaned = srt.replace(/```srt\n?/gi, '').replace(/```\n?/g, '');
-  const blocks = cleaned.trim().split(/\n\n+/);
-  for (const block of blocks) {
-    const lines = block.trim().split('\n');
-    if (lines.length < 3) continue;
-    if (!/^\d+$/.test(lines[0].trim())) continue;
-    if (!/-->/.test(lines[1])) continue;
-    texts.push(lines.slice(2).join('\n').trim());
+  const lines = input.trim().split('\n');
+  for (const line of lines) {
+    const m = line.match(/^\s*\d+\s*[):.]\s*(.+)/);
+    if (m) texts.push(m[1].trim());
   }
   if (texts.length !== expectedCount) return null;
   return texts;
 }
 
-const SYSTEM_PROMPT = `你是一个 ASR 纠错助手。修正中文 SRT 字幕中的错别字，严格遵循以下规则：
+const SYSTEM_PROMPT = `你是一个 ASR 纠错助手。修正中文转录文本中的错别字。
 
 这是一部中国仙侠/修仙题材动画的对话转录：
 - 角色名：叶白、慧天（王慧天）、夜白
 - 修仙术语：灵石、灵根、剑仙、心性定力、剑道天赋、剑法、神识、灵气
 - 常见错例："零食"→"灵石"，"修为尚寝"→"修为尚浅"，"拜剑师祖"→"拜见师祖"，"王会天"→"王慧天"，"资质尚承"→"资质上乘"
 
-你必须严格遵守：
-1. 保持序号和时间轴完全不变
-2. 只修改文字行的错别字，不改标点、不改空格
-3. 不要合并或拆分条目，保持行数一致
-4. 不要添加任何解释、前言、后记
-5. 不要使用 markdown 代码块
-6. 输出纯文本 SRT，不要任何其他内容`;
+输入包含两部分：
+1. "全文上下文" — 完整对话，帮助理解语境
+2. "请修正以下条目" — 按行号列出的待修正文本
+
+规则：
+1. 先参考全文上下文理解语境，再逐条修正
+2. 保持行号不变
+3. 只修改文字错误，不改标点
+4. 保持行数完全一致
+5. 不要添加解释或额外内容
+6. 没有错误的行保持原样`;
+
 
 async function fixWithLLM(srt: string): Promise<string> {
   const resp = await fetch(`${API_BASE}/chat/completions`, {
@@ -122,14 +114,14 @@ async function main() {
     const data = JSON.parse(readFileSync(filePath, 'utf-8'));
     const segments: any[] = data.result?.segments || [];
     const text = data.result?.text || '';
-    const srt = segmentsToSRT(segments);
+    const promptInput = segmentsToPrompt(segments);
 
-    console.log(`[${label}] ${segments.length} segs, sending SRT (${srt.length} chars)...`);
+    console.log(`[${label}] ${segments.length} segs, sending context+lines (${promptInput.length} chars)...`);
     const t0 = performance.now();
-    const fixed = await fixWithLLM(srt);
+    const fixed = await fixWithLLM(promptInput);
     const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
 
-    const fixedTexts = parseSRT(fixed, segments.length);
+    const fixedTexts = parseLines(fixed, segments.length);
     let resultSegments: any[];
     let resultText: string;
     let fallback = false;
