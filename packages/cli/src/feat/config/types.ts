@@ -29,7 +29,7 @@ export type TargetLang = (typeof targetLangList)[number];
 
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];
-const commandList = [
+export const commandList = [
 	'startTask', // 开始任务
 	'resumeTask', // 继续任务
 	'rerunStage', // 重新运行某个步骤
@@ -229,83 +229,64 @@ const BaseConfigSchema = z.looseObject({
 });
 export type BaseConfigInput = z.input<typeof BaseConfigSchema>;
 export type BaseConfig = z.output<typeof BaseConfigSchema>;
-
-const CreateTaskSchema = z.looseObject({
-	command: z.literal('createTask').describe('创建任务(完成后会自动开始任务)'),
-	createTask: z.object({
-		youtubeUrl: z.url().optional(),
-		bilibiliUrl: z.url().optional(),
-		sourceFile: z.string().optional().describe('本地文件路径或云端文件 url'),
-		sourceLang: z.string().optional(),
-		targetLang: z.enum(targetLangList).optional(),
-	}),
-});
 const TaskIdSchema = z
 	.string()
-	.describe('任务 ID(视频id) timeId(10) 时间序列 + 程序随机数');
-const StartTaskSchema = z.looseObject({
-	command: z.literal('startTask'),
-	startTask: z.object({
-		taskId: TaskIdSchema,
-	}),
+	.describe(
+		'任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) ',
+	);
+const TaskSchema = z.looseObject({
+	command: z.enum(commandList).describe(`1. createTask: 完成后会自动开始任务
+		2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)
+		3. resumeTask: 继续任务
+		4. rerunStage: 重新运行某个步骤
+		5. taskStatus: 显示某任务状态
+		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
+		7. deviceInfo: 显示设备信息
+		8. daemon: 启动守护进程
+		9. daemonStatus: 显示守护进程状态
+		10. daemonStop: 停止守护进程
+		11. listModels: 列出 openai 兼容端点的 可用模型
+		`),
+	createTask: z
+		.object({
+			youtubeUrl: z.url().optional(),
+			bilibiliUrl: z.url().optional(),
+			sourceFile: z.string().optional().describe('本地文件路径或云端文件 url'),
+			sourceLang: z.string().optional(),
+			targetLang: z.enum(targetLangList).optional(),
+		})
+		.optional(),
+	startTask: z
+		.object({
+			taskId: TaskIdSchema,
+		})
+		.optional(),
+	resumeTask: z
+		.object({
+			taskId: TaskIdSchema,
+			resumeFrom: z.enum(stagesList).optional(),
+		})
+		.optional(),
+	rerunStage: z
+		.object({
+			taskId: TaskIdSchema,
+			stageName: z.enum(stagesList),
+		})
+		.optional(),
+	taskStatus: z
+		.object({
+			taskId: TaskIdSchema,
+		})
+		.optional(),
+	check: z
+		.object({
+			taskId: TaskIdSchema,
+			type: z.enum(['video', 'asr']).optional().default('video'),
+		})
+		.optional(),
 });
-const ResumeTaskSchema = z.looseObject({
-	command: z.literal('resumeTask').describe('继续任务'),
-	resumeTask: z.object({
-		taskId: TaskIdSchema,
-		resumeFrom: z.enum(stagesList).optional(),
-	}),
-});
-const RerunStageSchema = z.looseObject({
-	command: z.literal('rerunStage').describe('重新运行某个步骤'),
-	rerunStage: z.object({
-		taskId: TaskIdSchema,
-		stageName: z.enum(stagesList),
-	}),
-});
-const TaskStatusSchema = z.looseObject({
-	command: z.literal('taskStatus').describe('显示某任务状态'),
-	taskStatus: z.object({
-		taskId: TaskIdSchema,
-	}),
-});
-const CheckSchema = z.looseObject({
-	command: z.literal('check'),
-	check: z.object({
-		taskId: TaskIdSchema,
-		type: z.enum(['video', 'asr']).optional().default('video'),
-	}),
-});
-const DeviceInfoSchema = z.looseObject({
-	command: z.literal('deviceInfo'),
-});
-const DaemonSchema = z.looseObject({
-	command: z.literal('daemon'),
-});
-const DaemonStatusSchema = z.looseObject({
-	command: z.literal('daemonStatus'),
-});
-const DaemonStopSchema = z.looseObject({
-	command: z.literal('daemonStop'),
-});
-const ListModelsSchema = z.looseObject({
-	command: z.literal('listModels').describe('列出 openai 兼容端点的 可用模型'),
-});
-export const ConfigSchema = z
-	.discriminatedUnion('command', [
-		CreateTaskSchema,
-		StartTaskSchema,
-		ResumeTaskSchema,
-		RerunStageSchema,
-		TaskStatusSchema,
-		CheckSchema,
-		DeviceInfoSchema,
-		DaemonSchema,
-		DaemonStatusSchema,
-		DaemonStopSchema,
-		ListModelsSchema,
-	])
-	.and(BaseConfigSchema);
+
+export const ConfigSchema = TaskSchema.and(BaseConfigSchema);
 export type RawConfigInput = z.input<typeof ConfigSchema>;
 export type RawConfig = z.output<typeof ConfigSchema>;
 

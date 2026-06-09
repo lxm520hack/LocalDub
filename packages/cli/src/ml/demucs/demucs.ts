@@ -114,6 +114,26 @@ export class Demucs {
 
     const totalSamples = audio.length / NUM_CHANNELS;
 
+    // Normalize via mono mix → scalar mean/std (match PyTorch api.py)
+    const mono = new Float32Array(totalSamples);
+    for (let i = 0; i < totalSamples; i++) {
+      let chSum = 0;
+      for (let c = 0; c < NUM_CHANNELS; c++) {
+        chSum += audio[i * NUM_CHANNELS + c];
+      }
+      mono[i] = chSum / NUM_CHANNELS;
+    }
+    let monoSum = 0;
+    for (let i = 0; i < totalSamples; i++) monoSum += mono[i];
+    const normMean = monoSum / totalSamples;
+    let sqSum = 0;
+    for (let i = 0; i < totalSamples; i++) sqSum += (mono[i] - normMean) ** 2;
+    const normStd = Math.sqrt(sqSum / totalSamples);
+    const normEps = 1e-8;
+    for (let i = 0; i < audio.length; i++) {
+      audio[i] = (audio[i] - normMean) / (normStd + normEps);
+    }
+
     const outStems: Float32Array[] = [];
     for (let s = 0; s < NUM_STEMS; s++) {
       outStems.push(new Float32Array(totalSamples * NUM_CHANNELS));
@@ -152,9 +172,7 @@ export class Demucs {
             const srcIdx = s * NUM_CHANNELS * SEGMENT_LEN + c * SEGMENT_LEN + i;
             const dstIdx = idx * NUM_CHANNELS + c;
             outStems[s][dstIdx] += stemOut[srcIdx] * win;
-            if (seg === 0) {
-              outWeight[dstIdx] += win;
-            }
+            outWeight[dstIdx] += win;
           }
         }
       }
@@ -171,6 +189,13 @@ export class Demucs {
         if (outWeight[i] > 1e-6) {
           outStems[s][i] /= outWeight[i];
         }
+      }
+    }
+
+    // Un-normalize back to original scale
+    for (let s = 0; s < NUM_STEMS; s++) {
+      for (let i = 0; i < outStems[s].length; i++) {
+        outStems[s][i] = outStems[s][i] * (normStd + normEps) + normMean;
       }
     }
 

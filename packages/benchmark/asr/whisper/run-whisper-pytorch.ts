@@ -10,7 +10,7 @@ import {
   type BenchmarkResult,
 } from './bench-shared';
 
-const SCRIPT = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'asr', 'run.py');
+const SCRIPT = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'asr', 'pytorch.py');
 
 interface LoadConfig {
   label: string;
@@ -19,9 +19,8 @@ interface LoadConfig {
 }
 
 const CONFIGS: LoadConfig[] = [
-  { label: 'GPU (float16)', device: 'cuda', args: [] },
-  { label: 'CPU (float32)', device: 'cpu',  args: ['--cpu', '--compute-type', 'float32'] },
-  { label: 'CPU (int8)',    device: 'cpu',  args: ['--cpu'] },
+  { label: 'GPU', device: 'cuda', args: ['--device', 'cuda'] },
+  { label: 'CPU', device: 'cpu',  args: ['--device', 'cpu'] },
 ];
 
 function measureLoadTime(extraArgs: string[]): number {
@@ -35,11 +34,11 @@ function measureLoadTime(extraArgs: string[]): number {
   return (performance.now() - t0) / 1000;
 }
 
-export async function benchmarkFasterWhisper(): Promise<BenchmarkResult[]> {
+export async function benchmarkWhisperPytorch(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
 
   for (const cfg of CONFIGS) {
-    console.log(`[faster-whisper] ${cfg.label} — measuring load time...`);
+    console.log(`[whisper-pytorch] ${cfg.label} — measuring load time...`);
 
     let loadTimeS: number;
     try {
@@ -50,13 +49,13 @@ export async function benchmarkFasterWhisper(): Promise<BenchmarkResult[]> {
       continue;
     }
 
-    console.log(`[faster-whisper] ${cfg.label} — transcribing...`);
-    const outDir = join(RESULTS_DIR, `fw-${cfg.device}-${Date.now()}`);
+    console.log(`[whisper-pytorch] ${cfg.label} — transcribing...`);
+    const outDir = join(RESULTS_DIR, `wp-${cfg.device}-${Date.now()}`);
     mkdirSync(outDir, { recursive: true });
 
     const t1 = performance.now();
     const procArgs = [SCRIPT, VIDEO_PATH, outDir, 'en', ...cfg.args];
-    const result = spawnSync(PYTHON_BIN, procArgs, { timeout: 600_000 });
+    const result = spawnSync(PYTHON_BIN, procArgs, { timeout: 1_800_000 });
 
     if (result.status !== 0) {
       console.error(`  Transcribe failed: ${result.stderr?.toString().slice(-300)}`);
@@ -65,12 +64,10 @@ export async function benchmarkFasterWhisper(): Promise<BenchmarkResult[]> {
     }
 
     const processTimeS = round((performance.now() - t1) / 1000, 3);
-    const computeType = cfg.label.match(/\((\w+)\)/)?.[1] ?? 'int8';
 
     results.push({
-      engine: 'faster-whisper',
+      engine: 'whisper-pytorch',
       device: cfg.device,
-      computeType,
       audioDurationS: 170,
       loadTimeS,
       processTimeS,

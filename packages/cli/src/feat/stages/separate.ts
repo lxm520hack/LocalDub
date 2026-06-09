@@ -123,7 +123,13 @@ async function separateOrt(
 		audioPath,
 	]);
 
+	const t0 = performance.now();
 	const stems = await demucs.separate(audioPath);
+	const elapsedSec = (performance.now() - t0) / 1000;
+
+	emitLog(taskId, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	const audioDurationS = stems.vocals.length / 88200;
+	emitLog(taskId, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
 	const mediaDir = join(sessionPath, 'media');
 	demucs.writeWav(

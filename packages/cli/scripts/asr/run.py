@@ -1,10 +1,11 @@
 """
-CLI ASR using faster-whisper (CTranslate2) with GPU (float16) → CPU (int8) fallback.
+CLI ASR using faster-whisper (CTranslate2) with GPU (float16) → CPU (float32) fallback.
 
 Usage:
-    .venv/bin/python packages/cli/scripts/asr/run.py <vocals_wav> <session_path> [language] [--cpu]
-    .venv/bin/python packages/cli/scripts/asr/run.py --benchmark-load [--cpu]
+    .venv/bin/python packages/cli/scripts/asr/run.py <vocals_wav> <session_path> [language] [--cpu] [--compute-type float16|float32|int8]
+    .venv/bin/python packages/cli/scripts/asr/run.py --benchmark-load [--cpu] [--compute-type float16|float32|int8]
 
+Defaults: GPU → float16, CPU → float32 (aligned with PyTorch).
 Output:
     Writes asr.json to <session_path>/metadata/asr.json
     Prints the output path on success, exits 0.
@@ -19,6 +20,14 @@ from pathlib import Path
 
 HSA_OVERRIDE = "HSA_OVERRIDE_GFX_VERSION"
 EXPECTED_HSA = "11.0.0"
+
+
+def _parse_compute_type() -> str | None:
+    if "--compute-type" in sys.argv[1:]:
+        idx = sys.argv[1:].index("--compute-type") + 1
+        if idx < len(sys.argv):
+            return sys.argv[idx + 1]
+    return None
 
 
 def _set_hsa_override() -> None:
@@ -39,20 +48,20 @@ def _wake_gpu() -> None:
     _ = torch.cuda.mem_get_info()
 
 
-def _transcribe_gpu(model_path: str, audio_path: str, language: str) -> tuple:
+def _transcribe_gpu(model_path: str, audio_path: str, language: str, compute_type: str = "float16") -> tuple:
     _set_hsa_override()
     _wake_gpu()
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(model_path, device="cuda", compute_type="float16")
+    model = WhisperModel(model_path, device="cuda", compute_type=compute_type)
     segments, info = model.transcribe(audio_path, language=language)
     return list(segments), info
 
 
-def _transcribe_cpu(model_path: str, audio_path: str, language: str) -> tuple:
+def _transcribe_cpu(model_path: str, audio_path: str, language: str, compute_type: str = "float32") -> tuple:
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(model_path, device="cpu", compute_type="int8")
+    model = WhisperModel(model_path, device="cpu", compute_type=compute_type)
     segments, info = model.transcribe(audio_path, language=language)
     return list(segments), info
 
@@ -81,15 +90,17 @@ def _convert(segments: list, info) -> dict:
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force_cpu = "--cpu" in sys.argv[1:]
+    compute_type = _parse_compute_type()
 
     if "--benchmark-load" in sys.argv[1:]:
         model_name = os.environ.get("WHISPER_MODEL", "large-v3-turbo")
+        from faster_whisper import WhisperModel
         if force_cpu:
-            from faster_whisper import WhisperModel
-            _ = WhisperModel(model_name, device="cpu", compute_type="int8")
+            ct = compute_type or "float32"
+            _ = WhisperModel(model_name, device="cpu", compute_type=ct)
         else:
-            from faster_whisper import WhisperModel
-            _ = WhisperModel(model_name, device="cuda", compute_type="float16")
+            ct = compute_type or "float16"
+            _ = WhisperModel(model_name, device="cuda", compute_type=ct)
         print("[BENCHMARK_LOAD_DONE]")
         return
 
@@ -113,15 +124,17 @@ def main() -> None:
     device_used = "cpu" if force_cpu else "gpu"
 
     if force_cpu:
-        segments, info = _transcribe_cpu(model_name, str(vocals_file), language)
+        ct = compute_type or "float32"
+        segments, info = _transcribe_cpu(model_name, str(vocals_file), language, ct)
     else:
+        ct = compute_type or "float16"
         try:
-            segments, info = _transcribe_gpu(model_name, str(vocals_file), language)
+            segments, info = _transcribe_gpu(model_name, str(vocals_file), language, ct)
         except Exception as exc:
             sys.stderr.write(f"GPU transcribe failed: {exc}\n")
-            sys.stderr.write("Falling back to CPU (int8)...\n")
+            sys.stderr.write("Falling back to CPU (float32)...\n")
             try:
-                segments, info = _transcribe_cpu(model_name, str(vocals_file), language)
+                segments, info = _transcribe_cpu(model_name, str(vocals_file), language, "float32")
                 device_used = "cpu"
             except Exception as exc2:
                 print(f"CPU transcribe also failed: {exc2}", file=sys.stderr)
@@ -129,6 +142,7 @@ def main() -> None:
 
     data = _convert(segments, info)
     data["_device"] = device_used
+    data["_compute_type"] = ct
     data["detected_language"] = info.language
 
     output_file.write_text(

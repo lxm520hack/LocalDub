@@ -2,314 +2,182 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
     {
-      "oneOf": [
-        {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "startTask",
+            "resumeTask",
+            "rerunStage",
+            "check",
+            "taskStatus",
+            "createTask",
+            "deviceInfo",
+            "daemon",
+            "daemonStatus",
+            "daemonStop",
+            "listModels"
+          ],
+          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. daemon: 启动守护进程\n\t\t9. daemonStatus: 显示守护进程状态\n\t\t10. daemonStop: 停止守护进程\n\t\t11. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
+        },
+        "createTask": {
           "type": "object",
           "properties": {
-            "command": {
+            "youtubeUrl": {
               "type": "string",
-              "const": "createTask",
-              "description": "创建任务(完成后会自动开始任务)"
+              "format": "uri"
             },
-            "createTask": {
-              "type": "object",
-              "properties": {
-                "youtubeUrl": {
-                  "type": "string",
-                  "format": "uri"
-                },
-                "bilibiliUrl": {
-                  "type": "string",
-                  "format": "uri"
-                },
-                "sourceFile": {
-                  "description": "本地文件路径或云端文件 url",
-                  "type": "string"
-                },
-                "sourceLang": {
-                  "type": "string"
-                },
-                "targetLang": {
-                  "type": "string",
-                  "enum": [
-                    "en",
-                    "zh",
-                    "vi",
-                    "ja",
-                    "ko",
-                    "fr",
-                    "de",
-                    "es",
-                    "pt",
-                    "ru",
-                    "ar",
-                    "hi",
-                    "th",
-                    "id",
-                    "ms",
-                    "tl",
-                    "my",
-                    "km",
-                    "lo",
-                    "mn",
-                    "ne",
-                    "ur",
-                    "bn"
-                  ]
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "required": [
-            "command",
-            "createTask"
-          ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
+            "bilibiliUrl": {
               "type": "string",
-              "const": "startTask"
+              "format": "uri"
             },
-            "startTask": {
-              "type": "object",
-              "properties": {
-                "taskId": {
-                  "type": "string",
-                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
-                }
-              },
-              "required": [
-                "taskId"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "required": [
-            "command",
-            "startTask"
-          ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "const": "resumeTask",
-              "description": "继续任务"
+            "sourceFile": {
+              "description": "本地文件路径或云端文件 url",
+              "type": "string"
             },
-            "resumeTask": {
-              "type": "object",
-              "properties": {
-                "taskId": {
-                  "type": "string",
-                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
-                },
-                "resumeFrom": {
-                  "type": "string",
-                  "enum": [
-                    "download",
-                    "separate",
-                    "asr",
-                    "asr_fix",
-                    "translate",
-                    "split_audio",
-                    "tts",
-                    "merge_audio",
-                    "merge_video"
-                  ]
-                }
-              },
-              "required": [
-                "taskId"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "required": [
-            "command",
-            "resumeTask"
-          ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "const": "rerunStage",
-              "description": "重新运行某个步骤"
+            "sourceLang": {
+              "type": "string"
             },
-            "rerunStage": {
-              "type": "object",
-              "properties": {
-                "taskId": {
-                  "type": "string",
-                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
-                },
-                "stageName": {
-                  "type": "string",
-                  "enum": [
-                    "download",
-                    "separate",
-                    "asr",
-                    "asr_fix",
-                    "translate",
-                    "split_audio",
-                    "tts",
-                    "merge_audio",
-                    "merge_video"
-                  ]
-                }
-              },
-              "required": [
-                "taskId",
-                "stageName"
-              ],
-              "additionalProperties": false
+            "targetLang": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh",
+                "vi",
+                "ja",
+                "ko",
+                "fr",
+                "de",
+                "es",
+                "pt",
+                "ru",
+                "ar",
+                "hi",
+                "th",
+                "id",
+                "ms",
+                "tl",
+                "my",
+                "km",
+                "lo",
+                "mn",
+                "ne",
+                "ur",
+                "bn"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "startTask": {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string",
+              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
             }
           },
           "required": [
-            "command",
-            "rerunStage"
+            "taskId"
           ],
-          "additionalProperties": {}
+          "additionalProperties": false
         },
-        {
+        "resumeTask": {
           "type": "object",
           "properties": {
-            "command": {
+            "taskId": {
               "type": "string",
-              "const": "taskStatus",
-              "description": "显示某任务状态"
+              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
             },
-            "taskStatus": {
-              "type": "object",
-              "properties": {
-                "taskId": {
-                  "type": "string",
-                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
-                }
-              },
-              "required": [
-                "taskId"
-              ],
-              "additionalProperties": false
+            "resumeFrom": {
+              "type": "string",
+              "enum": [
+                "download",
+                "separate",
+                "asr",
+                "asr_fix",
+                "translate",
+                "split_audio",
+                "tts",
+                "merge_audio",
+                "merge_video"
+              ]
             }
           },
           "required": [
-            "command",
-            "taskStatus"
+            "taskId"
           ],
-          "additionalProperties": {}
+          "additionalProperties": false
         },
-        {
+        "rerunStage": {
           "type": "object",
           "properties": {
-            "command": {
+            "taskId": {
               "type": "string",
-              "const": "check"
+              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
             },
-            "check": {
-              "type": "object",
-              "properties": {
-                "taskId": {
-                  "type": "string",
-                  "description": "任务 ID(视频id) timeId(10) 时间序列 + 程序随机数"
-                },
-                "type": {
-                  "default": "video",
-                  "type": "string",
-                  "enum": [
-                    "video",
-                    "asr"
-                  ]
-                }
-              },
-              "required": [
-                "taskId",
-                "type"
-              ],
-              "additionalProperties": false
+            "stageName": {
+              "type": "string",
+              "enum": [
+                "download",
+                "separate",
+                "asr",
+                "asr_fix",
+                "translate",
+                "split_audio",
+                "tts",
+                "merge_audio",
+                "merge_video"
+              ]
             }
           },
           "required": [
-            "command",
-            "check"
+            "taskId",
+            "stageName"
           ],
-          "additionalProperties": {}
+          "additionalProperties": false
         },
-        {
+        "taskStatus": {
           "type": "object",
           "properties": {
-            "command": {
+            "taskId": {
               "type": "string",
-              "const": "deviceInfo"
+              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
             }
           },
           "required": [
-            "command"
+            "taskId"
           ],
-          "additionalProperties": {}
+          "additionalProperties": false
         },
-        {
+        "check": {
           "type": "object",
           "properties": {
-            "command": {
+            "taskId": {
               "type": "string",
-              "const": "daemon"
+              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            },
+            "type": {
+              "default": "video",
+              "type": "string",
+              "enum": [
+                "video",
+                "asr"
+              ]
             }
           },
           "required": [
-            "command"
+            "taskId",
+            "type"
           ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "const": "daemonStatus"
-            }
-          },
-          "required": [
-            "command"
-          ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "const": "daemonStop"
-            }
-          },
-          "required": [
-            "command"
-          ],
-          "additionalProperties": {}
-        },
-        {
-          "type": "object",
-          "properties": {
-            "command": {
-              "type": "string",
-              "const": "listModels",
-              "description": "列出 openai 兼容端点的 可用模型"
-            }
-          },
-          "required": [
-            "command"
-          ],
-          "additionalProperties": {}
+          "additionalProperties": false
         }
-      ]
+      },
+      "required": [
+        "command"
+      ],
+      "additionalProperties": {}
     },
     {
       "type": "object",
@@ -355,7 +223,7 @@
               "additionalProperties": false
             },
             "separate": {
-              "description": "Separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/audio_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/audio_bgm.wav  用于 MergeVideo 背景\n\t",
+              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/audio_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/audio_bgm.wav  用于 MergeVideo 背景\n\t",
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda"

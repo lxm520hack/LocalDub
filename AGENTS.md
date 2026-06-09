@@ -16,6 +16,7 @@ AMD Radeon 780M (RDNA 3), ROCm 7.2.3 → `.agents/hardware.md`
 | CosyVoice3 | CPU | 无 CUDA EP, 编译 ORT + MIGraphX 中（但 gfx1103 MIOpen conv solver hang 可能会堵） |
 | Whisper (PyTorch) | ❌ GPU segfault — 即使 word_timestamps=False 也不行；永不用于 GPU |
 | faster-whisper | GPU (cuda) | 正常 |
+| whisper.cpp (whisper-cli, HIPBLAS) | GPU (ROCm) | ✅ GPU 可用，RTF ~0.36 (ggml-large-v3-turbo, 170s 音频) |
 | 翻译 | GPU (cuda) | 正常 |
 
 详情 → `.agents/model-strategy.md`
@@ -27,6 +28,7 @@ AMD Radeon 780M (RDNA 3), ROCm 7.2.3 → `.agents/hardware.md`
 - `data/modelscope/CosyVoice3-0.5B/onnx/scripts/` — CosyVoice3 ONNX 推理脚本（零 PyTorch 依赖）
 - `submodule/CosyVoice/` — FunAudioLLM CosyVoice 官方源码
 - `submodule/VoxCPM/` — OpenBMB VoxCPM 官方源码
+- `submodule/whisper.cpp/` — whisper.cpp 官方仓库（GPU build via HIPBLAS → `build/bin/whisper-cli`）
 
 ## Temp directory
 - `packages/tmp/` — 项目级临时文件/构建产物（已 gitignored via `*/tmp/*` in `.gitignore`）
@@ -61,4 +63,5 @@ rs-onnx-cpu            RTF ~10.2 (Rust ORT 1.24, short only)         ⏳ timeout
 - **Dawn WebGPU 多 session 资源泄漏**：≥3 个 WebGPU InferenceSession 共存会导致 `VK_ERROR_DEVICE_LOST`。Workaround: VAE Encoder/Decoder 用 CPU EP，限制 WebGPU sessions ≤ 2 个。用完调用 `session.release()` 释放资源。
   - 详情 → `docs/webgpu-oom.md`
 - MIGraphX 路径废弃（10x slower than CPU, MIOpen conv solver hang）
+- **whisper.cpp GPU 构建需要同时设置 `-DGGML_HIPBLAS=ON -DGGML_HIP=ON`**，仅设 `GGML_HIPBLAS` 时 `use_gpu=0`（CPU fallback）
 - Rust `ort` crate v2.0.0-rc.12 bundles ORT 1.24（落后 2 个大版本），暂不适用于生产

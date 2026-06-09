@@ -69,6 +69,32 @@ export const tryRocmSmi = () => {
 
 	const driverVer = getRocmVersionFromPackageManager() || 'unknown';
 
+	/*
+	 * rocm-smi --showmeminfo all 输出示例 (APU):
+	 *   GPU[0] : VRAM    Total Memory (B): 4294967296   → 4 GB  BIOS carveout
+	 *   GPU[0] : VIS_VRAM Total Memory (B): 4294967296  → carveout 中 GPU 可见的部分
+	 *   GPU[0] : GTT     Total Memory (B): 14591053824  → ~13.6 GB GTT 可映射系统内存
+	 *                                                  → 合计 ~17.6 GB
+	 *
+	 * 独显 dGPU 则只有 VRAM（GDDR），没有 VIS_VRAM / GTT 字段。
+	 * VRAM + GTT = GPU 可访问内存总量上限。
+	 */
+	const meminfo = run('rocm-smi --showmeminfo all 2>/dev/null');
+	let vramTotalGB: number | undefined;
+	let gttTotalGB: number | undefined;
+	let isAPU = false;
+	for (const line of (meminfo || '').split('\n')) {
+		const vramM = line.match(/VRAM\s+Total Memory \(B\):\s*(\d+)/);
+		if (vramM) vramTotalGB = parseInt(vramM[1]) / 1024 ** 3;
+		const visM = line.match(/VIS_VRAM\s+Total Memory \(B\):\s*(\d+)/);
+		// VIS_VRAM < VRAM 说明部分 carveout 不可见，仅 dGPU 有此情况
+		const gttM = line.match(/GTT\s+Total Memory \(B\):\s*(\d+)/);
+		if (gttM) {
+			gttTotalGB = parseInt(gttM[1]) / 1024 ** 3;
+			isAPU = true;
+		}
+	}
+
 	for (const line of smi.split('\n')) {
 		if (!/^\d+\s+/.test(line)) continue;
 
@@ -104,6 +130,9 @@ export const tryRocmSmi = () => {
 			temperature: temp,
 			vram: {
 				percent: vramPct,
+				total: vramTotalGB,
+				type: isAPU ? 'shared' : 'dedicated',
+				gtt: gttTotalGB,
 			},
 			gpuPercent: gpuPct,
 			gfxVersion: gfxVer,

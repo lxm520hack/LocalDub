@@ -26,13 +26,13 @@ bun run packages/benchmark/separate/run-onnx.ts
 | ort | cpu | short | 10.0 | 16.9 | 21.6 | 2.161 |
 | ort | cpu | medium | 60.0 | 16.9 | 142.7 | 2.379 |
 | ort | cpu | long | 120.0 | 16.9 | 258.8 | 2.157 |
+| pytorch | cpu | short | 10.0 | 2.3 | 107.1 | 10.712 |
+| pytorch | cpu | long | 120.0 | 2.3 | 1422.3 | 11.853 |
 
 ### 备注
-- **PyTorch CPU 待测**（此前时序出错，已修 —— 缓存 bug + 加载时间分离）
-- **ORT 加载时间 16.9s** 含 `checkDemucsStatus` 文件扫描 + InferenceSession 创建
-- **RTF** = process_time / audio_duration，越小越好
-- **`htdemucs_ft` 模型**，`shifts=3`（Demucs 默认 shifts=2，本仓库改为了 3）
-- 参考音频用 ffmpeg `anoisesrc` 生成，存放在 `ref/` 目录
+- **PyTorch medium 失败**（91% 时出错），short & long 有效
+- **加载时间**：ONNX 16.9s vs PyTorch 2.3s（PyTorch 是 Python import + demucs 模型构造；ONNX 含验证 ONNX 文件存在 + 创建 InferenceSession）
+- **RTF**：ORT ~2.2 远快于 PyTorch ~11（CPU 下 ORT 优势明显）
 
 ## 环境
 - CPU: AMD Radeon 780M (Demucs 全程 CPU)
