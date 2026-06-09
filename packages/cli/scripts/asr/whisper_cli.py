@@ -5,8 +5,8 @@ Usage:
     .venv/bin/python packages/cli/scripts/asr/whisper_cli.py <audio> <session_path> [language] [--gpu] [--n-threads 4]
     .venv/bin/python packages/cli/scripts/asr/whisper_cli.py --benchmark-load [--gpu]
 
-Subprocess wrapper around submodule/whisper.cpp/build/bin/whisper-cli.
-GPU is used by default (HIPBLAS). Pass --no-gpu for CPU.
+Subprocess wrapper around submodule/whisper.cpp/build/bin/whisper-vulkan.
+GPU is used by default (Vulkan/RADV). Pass --no-gpu for CPU.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-WHISPER_CLI = REPO_ROOT / "submodule" / "whisper.cpp" / "build" / "bin" / "whisper-cli"
+WHISPER_CLI = REPO_ROOT / "submodule" / "whisper.cpp" / "build" / "bin" / "whisper-vulkan"
 
 
 def _parse_timing(output: str, key: str) -> float:

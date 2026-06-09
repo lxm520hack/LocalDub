@@ -1,5 +1,5 @@
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { Demucs } from './../../ml/demucs/demucs.ts';
@@ -83,6 +83,8 @@ export async function stageSeparate(
 		if (sr.rtf) emitLog(taskId, `[Separate] RTF ${sr.rtf}`);
 	} else if (runtime === 'pytorch') {
 		await separatePytorch(taskId, sessionPath, videoPath, device);
+	} else if (runtime === 'ggml') {
+		await separateGgml(taskId, sessionPath, videoPath, device);
 	} else {
 		await separateOrt(taskId, sessionPath, videoPath, device);
 	}
@@ -210,4 +212,87 @@ async function separatePytorch(
 
 		proc.on('error', reject);
 	});
+}
+
+async function separateGgml(
+	taskId: string,
+	sessionPath: string,
+	videoPath: string,
+	device: string,
+) {
+	const ggmlBin = join(
+		REPO_ROOT, 'submodule', 'demucs.cpp', 'build', 'demucs_mt.cpp.main',
+	);
+	const ggmlModel = join(
+		REPO_ROOT, 'packages', 'tmp', 'demucs-ggml', 'ggml-model-htdemucs-4s-f16.bin',
+	);
+	const outDir = resolve(REPO_ROOT, sessionPath, 'tmp', 'ggml-separate');
+	mkdirSync(outDir, { recursive: true });
+
+	emitLog(taskId, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
+
+	// Extract audio to WAV
+	const audioPath = resolve(REPO_ROOT, sessionPath, 'tmp', 'audio_source.wav');
+	mkdirSync(dirname(audioPath), { recursive: true });
+	const ffmpegResult = spawnSync('ffmpeg', [
+		'-y', '-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath,
+	]);
+	if (ffmpegResult.status !== 0) {
+		throw new Error(`ffmpeg extract failed: ${ffmpegResult.stderr?.toString().slice(-200)}`);
+	}
+
+	const t0 = performance.now();
+	const result = spawnSync(ggmlBin, [ggmlModel, audioPath, outDir, '4'], {
+		timeout: 600_000,
+		env: { ...process.env, OMP_NUM_THREADS: '2' },
+	});
+	const elapsedSec = (performance.now() - t0) / 1000;
+
+	if (result.status !== 0) {
+		throw new Error(`GGML separate failed (${result.status}): ${result.stderr?.toString().slice(-300)}`);
+	}
+
+	emitLog(taskId, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+
+	// Copy output WAVs to media/
+	const mediaDir = resolve(REPO_ROOT, sessionPath, 'media');
+	mkdirSync(mediaDir, { recursive: true });
+	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
+	for (let i = 0; i < stemNames.length; i++) {
+		const src = join(outDir, `target_${i}_${stemNames[i]}.wav`);
+		const dst = join(mediaDir, `target_${i}_${stemNames[i]}.wav`);
+		if (existsSync(src)) {
+			copyFileSync(src, dst);
+		} else {
+			emitLog(taskId, `[Separate] WARN: ${src} not found`);
+		}
+	}
+
+	// BGM = sum of drums+bass+other
+	const bgmSrc = join(outDir, 'target_bgm.wav');
+	const bgmDst = join(mediaDir, 'target_bgm.wav');
+	if (existsSync(bgmSrc)) {
+		copyFileSync(bgmSrc, bgmDst);
+	} else {
+		// Generate bgm via ffmpeg mix if not produced by GGML
+		const bgmInputs = stemNames.slice(0, 3).map(s => join(mediaDir, `target_${stemNames.indexOf(s)}_${s}.wav`));
+		const filter = `[0:a][1:a][2:a]amix=inputs=3:duration=first[out]`;
+		spawnSync('ffmpeg', [
+			'-i', bgmInputs[0], '-i', bgmInputs[1], '-i', bgmInputs[2],
+			'-filter_complex', filter, '-map', '[out]', '-y', bgmDst,
+		]);
+	}
+
+	// Cleanup tmp
+	rmSync(outDir, { recursive: true, force: true });
+
+	const durationS = (() => {
+		try {
+			const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', audioPath], { timeout: 10_000 });
+			return r.status === 0 ? parseFloat(r.stdout.toString().trim()) : 0;
+		} catch { return 0; }
+	})();
+	if (durationS > 0) {
+		emitLog(taskId, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
+	}
 }

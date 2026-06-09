@@ -61,7 +61,7 @@ bun run packages/benchmark/asr/whisper/run-whisper-cli.ts
 - **whisper-cli 加载最快**（0.6s）：mmap 加载 GGUF 模型
 - **模型**：`large-v3-turbo`
 - **参考音频**：`packages/benchmark/video_source.mp4`（170s, AAC 44.1kHz stereo）
-- **whisper-cli 调用方式**：`submodule/whisper.cpp/build/bin/whisper-cli`，通过 `scripts/asr/whisper_cli.py` 包装（ffmpeg 提取 WAV → whisper-cli）
+- **whisper-cli 调用方式**：`submodule/whisper.cpp/build/bin/whisper-vulkan`，通过 `scripts/asr/whisper_cli.py` 包装（ffmpeg 提取 WAV → whisper-vulkan）
 
 ## 说明
 - **模型**：`large-v3-turbo`

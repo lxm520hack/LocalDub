@@ -2,6 +2,20 @@ import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB } from './utils.ts';
+import { readConfig } from '../config/config.ts';
+import { env } from '@repo/config';
+
+function detectLeadingSilence(wavPath: string): number {
+  const r = spawnSync(env.FFMPEG_PATH, [
+    '-i', wavPath,
+    '-af', 'silencedetect=noise=-25dB:d=0.3',
+    '-f', 'null', '-',
+  ], { stdio: ['pipe', 'pipe', 'pipe'], timeout: 30_000 });
+  if (r.status !== 0) return 0;
+  const stderr = r.stderr.toString();
+  const m = stderr.match(/silence_end:\s+([\d.]+)/);
+  return m ? parseFloat(m[1]) : 0;
+}
 
 export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const vocalsFile = join(sessionPath, 'media', 'target_3_vocals.wav');
@@ -46,6 +60,31 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
     }
 
     ffmpeg(['-i', vocalsFile, '-ss', String(start / 1000), '-to', String(end / 1000), '-c', 'copy', outPath]);
+  }
+
+  const splitCfg = readConfig().stages?.split_audio;
+  if (splitCfg?.vadAlign) {
+    let corrected = false;
+    for (let i = 0; i < data.translation.length; i++) {
+      const idx = String(i + 1).padStart(4, '0');
+      const wavPath = join(segmentsDir, `${idx}.wav`);
+      if (!existsSync(wavPath)) continue;
+
+      const offset = detectLeadingSilence(wavPath);
+      if (offset > 0.5) {
+        const offsetMs = Math.round(offset * 1000);
+        const newStart = Math.max(0, Math.floor(data.translation[i].start_time) + offsetMs - 80);
+        const newEnd = Math.min(totalMs, Math.ceil(data.translation[i].end_time) + 160);
+        if (newEnd > newStart) {
+          ffmpeg(['-i', vocalsFile, '-ss', String(newStart / 1000), '-to', String(newEnd / 1000), '-c', 'copy', wavPath]);
+          data.translation[i].start_time = newStart;
+          corrected = true;
+        }
+      }
+    }
+    if (corrected) {
+      writeFileSync(translationFile, JSON.stringify(data, null, 2));
+    }
   }
 
   await updateStageDB(taskId, 'split_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Split' });

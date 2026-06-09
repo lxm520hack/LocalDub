@@ -31,7 +31,7 @@ AMD Radeon 780M (RDNA 3), ROCm 7.2.4 → `.agents/hardware.md`
 - `data/modelscope/CosyVoice3-0.5B/onnx/scripts/` — CosyVoice3 ONNX 推理脚本（零 PyTorch 依赖）
 - `submodule/CosyVoice/` — FunAudioLLM CosyVoice 官方源码
 - `submodule/VoxCPM/` — OpenBMB VoxCPM 官方源码
-- `submodule/whisper.cpp/` — whisper.cpp 官方仓库（GPU build via Vulkan → `build/bin/whisper-cli`）
+- `submodule/whisper.cpp/` — whisper.cpp 官方仓库（GPU build via Vulkan → `build/bin/whisper-vulkan`）
 
 ## Temp directory
 - `packages/tmp/` — 项目级临时文件/构建产物（已 gitignored via `*/tmp/*` in `.gitignore`）

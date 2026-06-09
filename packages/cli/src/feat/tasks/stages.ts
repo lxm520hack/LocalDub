@@ -21,6 +21,7 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 	{ name: 'asr', label: 'Whisper' },
 	{ name: 'asr_fix', label: 'Split sentences' },
 	{ name: 'translate', label: 'Translate' },
+	{ name: 'split_audio', label: 'Split audio' },
 	{ name: 'merge_video', label: 'Merge video' },
 ];
 // Transcribed

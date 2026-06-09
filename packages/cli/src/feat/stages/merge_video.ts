@@ -235,7 +235,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 
 	const finalVideo = join(
 		mediaDir,
-		pipeline === 'subtitle' ? 'video_final_subtitle.mp4' : 'video_final.mp4',
+		pipeline === 'subtitle' ? `${taskId}_subtitle.mp4` : `${taskId}_dub.mp4`,
 	);
 
 	if (pipeline === 'subtitle') {

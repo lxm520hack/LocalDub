@@ -1,5 +1,5 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
@@ -140,10 +140,15 @@ export async function stageAsr(
 		if (r.rtf) emitLog(taskId, `[ASR] RTF ${r.rtf}`);
 	} else if (runtime === 'pytorch') {
 		await asrPytorch({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
+	} else if (runtime === 'ggml') {
+		await asrWhisperCpp(taskId, audioPath, sessionAbsPath, asrLanguage || 'auto');
 	} else {
 		await asrFasterWhisper({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
 	}
 
+	/**
+	 * asr 后处理, 避免 asr_fix 拿到多余数据
+	 */
 	// 统一过滤超出音频时长的幻觉段（所有路径 shared）
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
 	const asrFile = resolve(metadataDir, 'asr.json');
@@ -158,6 +163,18 @@ export async function stageAsr(
 			if (data.result.segments.length < before) {
 				const removed = before - data.result.segments.length;
 				emitLog(taskId, `[ASR] Removed ${removed} hallucinated segment(s) (start >= ${durationMs}ms or end <= 0ms)`);
+				writeFileSync(asrFile, JSON.stringify(data, null, 2));
+			}
+		}
+
+		// 能量检测：最后一个 segment 如果 RMS 过低则判为幻觉
+		const last = data.result?.segments?.[data.result.segments.length - 1];
+		if (last && existsSync(audioPath)) {
+			const rms = await segmentRms(audioPath, last.start, last.end);
+			console.log(`[ASR] Last segment RMS: ${rms}`);
+			if (rms > 0 && rms < 0.005) {
+				const removed = data.result.segments.pop();
+				emitLog(taskId, `[ASR] Removed low-energy hallucinated segment "${removed.text.slice(0, 30)}" (RMS=${rms.toFixed(5)})`);
 				writeFileSync(asrFile, JSON.stringify(data, null, 2));
 			}
 		}
@@ -273,6 +290,122 @@ function emitAsrTiming(taskId: string, asr: Record<string, any>, elapsedSec: num
 		const audioDurationS = durationMs / 1000;
 		emitLog(taskId, `[ASR] Audio duration ${audioDurationS.toFixed(1)}s`);
 		emitLog(taskId, `[ASR] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
+	}
+}
+
+function segmentRms(audioPath: string, startS: number, endS: number): Promise<number> {
+	return new Promise((resolve, reject) => {
+		const args = [
+			'-y', '-i', audioPath,
+			'-ss', String(startS),
+			'-to', String(endS),
+			'-af', 'astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-',
+			'-f', 'null', '-',
+		];
+		const proc = spawn('ffmpeg', args, { timeout: 30_000 });
+		let stderr = '';
+		proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+		proc.on('close', (code) => {
+			if (code !== 0) return resolve(0);
+			const m = stderr.match(/lavfi\.astats\.Overall\.RMS_level=([-\d.]+)/);
+			if (!m) return resolve(0);
+			const db = parseFloat(m[1]);
+			// dB → linear: linear = 10^(dB/20)
+			resolve(Math.pow(10, db / 20));
+		});
+		proc.on('error', () => resolve(0));
+	});
+}
+
+async function asrWhisperCpp(
+	taskId: string,
+	audioPath: string,
+	sessionAbsPath: string,
+	language: string,
+) {
+	const whisperCli = join(
+		REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan',
+	);
+	const model = process.env.WHISPER_MODEL || join(
+		process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin',
+	);
+
+	emitLog(taskId, `[ASR] runtime=ggml binary=${whisperCli}`);
+
+	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
+	const audioDir = resolve(REPO_ROOT, sessionAbsPath, 'tmp');
+	mkdirSync(audioDir, { recursive: true });
+	const tmpAudio = join(audioDir, 'whisper-input.wav');
+
+	// Copy/convert input to WAV
+	spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ar', '16000', '-ac', '1', tmpAudio], {
+		timeout: 30_000,
+	});
+	if (!existsSync(tmpAudio)) {
+		throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
+	}
+
+	const t0 = performance.now();
+	const result = spawnSync(whisperCli, [
+		'-m', model, tmpAudio, '-l', language, '-t', '4', '--output-json',
+	], {
+		timeout: 600_000,
+		env: {
+			...process.env,
+			LD_LIBRARY_PATH: [
+				join(whisperCli, '..', '..', 'src'),
+				join(whisperCli, '..', '..', 'ggml', 'src'),
+				join(whisperCli, '..', '..', 'ggml', 'src', 'ggml-hip'),
+				process.env.LD_LIBRARY_PATH || '',
+			].filter(Boolean).join(':'),
+		},
+	});
+	const elapsedSec = (performance.now() - t0) / 1000;
+
+	if (result.status !== 0 && result.status !== null) {
+		throw new Error(`whisper-cli failed (${result.status}): ${result.stderr?.toString().slice(-300)}`);
+	}
+
+	// Read the generated JSON
+	const whisperJson = `${tmpAudio}.json`;
+	if (!existsSync(whisperJson)) {
+		throw new Error(`whisper-cli did not produce ${whisperJson}`);
+	}
+
+	const raw = JSON.parse(readFileSync(whisperJson, 'utf-8'));
+	const transcription: any[] = raw.transcription || [];
+
+	// Convert to pipeline format
+	const segments = transcription.map((s: any) => ({
+		text: (s.text || '').trim(),
+		start: (s.offsets?.from ?? 0) / 1000,
+		end: (s.offsets?.to ?? 0) / 1000,
+	}));
+	const text = segments.map(s => s.text).join(' ');
+
+	const metadataDir = resolve(sessionAbsPath, 'metadata');
+	mkdirSync(metadataDir, { recursive: true });
+
+	const asrOutput = {
+		audio_info: { duration: segments.length ? segments[segments.length - 1].end * 1000 : 0 },
+		result: { text, segments },
+		_engine: 'whisper.cpp',
+		_device: 'vulkan',
+		_rtf: elapsedSec > 0 && segments.length > 0
+			? (elapsedSec / (segments[segments.length - 1].end)).toFixed(3)
+			: '0',
+	};
+	writeFileSync(join(metadataDir, 'asr.json'), JSON.stringify(asrOutput, null, 2));
+
+	// Cleanup tmp audio and json
+	try { rmSync(tmpAudio); } catch {}
+	try { rmSync(whisperJson); } catch {}
+
+	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
+	if (segments.length > 0) {
+		const audioDurationS = segments[segments.length - 1].end;
+		emitLog(taskId, `[ASR] Audio duration ${audioDurationS.toFixed(1)}s`);
+		emitLog(taskId, `[ASR] RTF ${(elapsedSec / audioDurationS).toFixed(3)}`);
 	}
 }
 

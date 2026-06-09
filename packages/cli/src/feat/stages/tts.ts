@@ -156,7 +156,7 @@ export async function stageTts(
 		const sessionAbs = resolve(REPO_ROOT, sessionPath);
 		const dubbingFile = join(sessionAbs, 'tmp', 'audio_dubbing.wav');
 		const timingsFile = join(sessionAbs, 'metadata', 'timings.json');
-		const finalVideo = join(sessionAbs, 'media', 'video_final.mp4');
+		const finalVideo = join(sessionAbs, 'media', `${taskId}_dub.mp4`);
 		for (const f of [dubbingFile, timingsFile, finalVideo]) {
 			if (existsSync(f)) rmSync(f);
 		}

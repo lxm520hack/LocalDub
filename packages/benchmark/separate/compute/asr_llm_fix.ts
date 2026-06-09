@@ -1,179 +1,154 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { join, resolve, basename } from 'node:path';
+import { segmentsToPrompt, parseLines, fixWithLLM, DEFAULT_API_BASE, DEFAULT_MODEL } from '../../../cli/src/feat/stages/asr/llm.ts';
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..');
-const RESULTS_DIR = join(__dirname, 'results');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'asr_manual.json');
+const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
-const WER_PY = join(__dirname, 'wer.py');
+const WER_PY = resolve(__dirname, 'wer.py');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'ref', 'metadata', 'asr_manual.json');
 
-const API_BASE = 'http://localhost:11434/v1';
-const MODEL = 'gemma4:31b-cloud';
+function usage(): never {
+  console.error(`
+Usage: bun run compute/asr_llm_fix.ts <path> [options]
 
-function segmentsToPrompt(segments: any[]): string {
-  const fullText = segments.map(s => s.text).join(' ');
-  const lines = segments.map((s, i) => `${i + 1}: ${s.text}`).join('\n');
-  return `全文上下文（参考用，每句以空格分隔）：\n${fullText}\n\n请修正以下条目（保持行号不变）：\n${lines}`;
+<path>  can be a results directory or direct path to asr.json
+
+Options:
+  --label name         Label for output
+  --model name         LLM model (default: ${DEFAULT_MODEL})
+  --api-base url       LLM API base URL (default: ${DEFAULT_API_BASE})
+  --domain-hint text   Domain hint for LLM context (e.g. "仙侠题材, 角色:叶白,慧天")
+`);
+  process.exit(1);
 }
 
-function parseLines(input: string, expectedCount: number): string[] | null {
-  const texts: string[] = [];
-  const lines = input.trim().split('\n');
-  for (const line of lines) {
-    const m = line.match(/^\s*\d+\s*[):.]\s*(.+)/);
-    if (m) texts.push(m[1].trim());
+function parseArgs(): { inputPath: string; label: string; model: string; apiBase: string; domainHint: string } {
+  const args = process.argv.slice(2);
+  if (args.length === 0) usage();
+  let inputPath = '', label = '', model = DEFAULT_MODEL, apiBase = DEFAULT_API_BASE, domainHint = '';
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--label') { label = args[++i] || ''; }
+    else if (args[i] === '--model') { model = args[++i] || DEFAULT_MODEL; }
+    else if (args[i] === '--api-base') { apiBase = args[++i] || DEFAULT_API_BASE; }
+    else if (args[i] === '--domain-hint') { domainHint = args[++i] || ''; }
+    else { inputPath = args[i]; }
   }
-  if (texts.length !== expectedCount) return null;
-  return texts;
+  if (!inputPath) usage();
+  return { inputPath: resolve(inputPath), label, model, apiBase, domainHint };
 }
 
-const SYSTEM_PROMPT = `你是一个 ASR 纠错助手。修正中文转录文本中的错别字。
+function resolveAsrPath(inputPath: string): string {
+  if (existsSync(inputPath) && !inputPath.endsWith('.json')) {
+    const c = join(inputPath, 'metadata', 'asr.json');
+    if (existsSync(c)) return c;
+    const c2 = join(inputPath, 'asr.json');
+    if (existsSync(c2)) return c2;
+    throw new Error(`Directory ${inputPath} contains neither metadata/asr.json nor asr.json`);
+  }
+  if (!existsSync(inputPath)) throw new Error(`File not found: ${inputPath}`);
+  return inputPath;
+}
 
-这是一部中国仙侠/修仙题材动画的对话转录：
-- 角色名：叶白、慧天（王慧天）、夜白
-- 修仙术语：灵石、灵根、剑仙、心性定力、剑道天赋、剑法、神识、灵气
-- 常见错例："零食"→"灵石"，"修为尚寝"→"修为尚浅"，"拜剑师祖"→"拜见师祖"，"王会天"→"王慧天"，"资质尚承"→"资质上乘"
+interface Segment { text: string; start: number; end: number }
+interface Normalized { text: string; segments: Segment[] }
 
-输入包含两部分：
-1. "全文上下文" — 完整对话，帮助理解语境
-2. "请修正以下条目" — 按行号列出的待修正文本
+function normalizeTranscription(data: any): Normalized {
+  if (data?.result?.text != null && data?.result?.segments) {
+    return { text: data.result.text, segments: data.result.segments };
+  }
+  if (Array.isArray(data?.transcription)) {
+    const segments: Segment[] = data.transcription.map((s: any) => ({
+      text: (s.text || '').trim(),
+      start: (s.offsets?.from ?? 0) / 1000,
+      end: (s.offsets?.to ?? 0) / 1000,
+    }));
+    return { text: segments.map(s => s.text).join(' '), segments };
+  }
+  throw new Error('Unrecognized ASR JSON format');
+}
 
-规则：
-1. 先参考全文上下文理解语境，再逐条修正
-2. 保持行号不变
-3. 只修改文字错误，不改标点
-4. 保持行数完全一致
-5. 不要添加解释或额外内容
-6. 没有错误的行保持原样`;
-
-
-async function fixWithLLM(srt: string): Promise<string> {
-  const resp = await fetch(`${API_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4096,
-      temperature: 0.1,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: srt },
-      ],
-    }),
+function computeWER(refFile: string, hypFile: string): any {
+  const r = spawnSync(PYTHON_BIN, [WER_PY, refFile, hypFile], {
+    timeout: 30_000,
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
   });
-
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`LLM API ${resp.status}: ${err.slice(0, 200)}`);
-  }
-
-  const json = await resp.json();
-  return (json.choices?.[0]?.message?.content || '').trim();
-}
-
-function computeWER(refFile: string, hypFile: string): { wer: number; cer: number } {
-  const r = spawnSync(PYTHON_BIN, [WER_PY, refFile, hypFile], { timeout: 30_000 });
-  if (r.status !== 0) throw new Error(`wer.py failed: ${r.stderr?.toString().slice(-200)}`);
+  if (r.status !== 0) throw new Error(`wer.py failed: ${r.stderr?.toString().slice(-300)}`);
   return JSON.parse(r.stdout.toString());
 }
 
-interface FileEntry { label: string; file: string }
-
-const FILES: FileEntry[] = [
-  { label: 'raw', file: 'wer-raw-video.json' },
-  { label: 'ggml', file: 'wer-ggml-shifts1-16bit.json' },
-  { label: 'ort', file: 'wer-ort-video.json' },
-  { label: 'pytorch-s1', file: 'wer-pytorch-shifts1.json' },
-  { label: 'pytorch-s3', file: 'wer-pytorch-shifts3.json' },
-];
-
-interface Result {
-  label: string;
-  cerBefore: number; cerAfter: number; werBefore: number; werAfter: number;
-  segmentsBefore: number; segmentsAfter: number; fallback: boolean;
-}
-
 async function main() {
-  mkdirSync(RESULTS_DIR, { recursive: true });
+  const { inputPath, label: labelArg, model, apiBase, domainHint } = parseArgs();
+  const asrPath = resolveAsrPath(inputPath);
+  const metadataDir = resolve(asrPath, '..');
+  const resultsDir = resolve(metadataDir, '..');
+  const label = labelArg || basename(resultsDir).replace(/^results-/, '').replace(/^ggml-/, '');
 
   if (!existsSync(GROUND_TRUTH)) {
-    console.error('Ground truth not found');
+    console.error(`Ground truth not found: ${GROUND_TRUTH}`);
     process.exit(1);
   }
 
-  const results: Result[] = [];
+  console.log(`[llm-fix] Reading: ${asrPath}`);
+  const raw = JSON.parse(readFileSync(asrPath, 'utf-8'));
+  const { segments } = normalizeTranscription(raw);
+  const promptInput = segmentsToPrompt(segments);
 
-  for (const { label, file } of FILES) {
-    const filePath = join(RESULTS_DIR, file);
-    if (!existsSync(filePath)) {
-      console.warn(`  SKIP: ${file} not found`);
-      continue;
-    }
+  console.log(`[llm-fix] ${segments.length} segs, sending ${promptInput.length} chars to ${model}...`);
+  const t0 = performance.now();
+  const fixed = await fixWithLLM(promptInput, { model, apiBase, domainHint });
+  const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
 
-    const data = JSON.parse(readFileSync(filePath, 'utf-8'));
-    const segments: any[] = data.result?.segments || [];
-    const text = data.result?.text || '';
-    const promptInput = segmentsToPrompt(segments);
+  const fixedTexts = parseLines(fixed, segments.length);
+  let resultSegments: any[];
+  let resultText: string;
+  let fallback = false;
 
-    console.log(`[${label}] ${segments.length} segs, sending context+lines (${promptInput.length} chars)...`);
-    const t0 = performance.now();
-    const fixed = await fixWithLLM(promptInput);
-    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-
-    const fixedTexts = parseLines(fixed, segments.length);
-    let resultSegments: any[];
-    let resultText: string;
-    let fallback = false;
-
-    if (fixedTexts) {
-      resultSegments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
-      resultText = fixedTexts.join(' ');
-      console.log(`  Done in ${elapsed}s, parsed ${fixedTexts.length} segs OK`);
-    } else {
-      resultSegments = segments;
-      resultText = text;
-      fallback = true;
-      console.log(`  Done in ${elapsed}s, PARSE FAILED (${
-        (fixed.match(/\n/g) || []).length + 1
-      } lines), using original`);
-    }
-
-    const fixedFile = join(RESULTS_DIR, `wer-${label}-llm-fixed.json`);
-    writeFileSync(fixedFile, JSON.stringify({
-      audio_info: data.audio_info || {},
-      result: { text: resultText, segments: resultSegments },
-      _device: data._device || 'cpu',
-      _llm_fixed: true,
-    }, null, 2));
-
-    const origResult = computeWER(GROUND_TRUTH, filePath);
-    const fixedResult = computeWER(GROUND_TRUTH, fixedFile);
-    results.push({
-      label, fallback,
-      cerBefore: origResult.cer, cerAfter: fixedResult.cer,
-      werBefore: origResult.wer, werAfter: fixedResult.wer,
-      segmentsBefore: segments.length, segmentsAfter: resultSegments.length,
-    });
+  if (fixedTexts) {
+    resultSegments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
+    resultText = fixedTexts.join(' ');
+    console.log(`  Done in ${elapsed}s, parsed ${fixedTexts.length} segs OK`);
+  } else {
+    resultSegments = segments;
+    resultText = segments.map((s: any) => s.text).join(' ');
+    fallback = true;
+    console.log(`  Done in ${elapsed}s, PARSE FAILED, using original`);
   }
 
-  console.log('\n=== LLM ASR 纠错对比 (SRT 模式) ===');
-  console.log('版本\t\tCER 前\tCER 后\t改善\tWER 前\tWER 后\t分段\tFallback');
-  for (const r of results) {
-    const cerImpr = ((r.cerBefore - r.cerAfter) / Math.max(r.cerBefore, 0.0001) * 100).toFixed(1);
-    const werImpr = ((r.werBefore - r.werAfter) / Math.max(r.werBefore, 0.0001) * 100).toFixed(1);
-    console.log(
-      `${r.label.padEnd(16)}\t${(r.cerBefore * 100).toFixed(2)}%\t${(r.cerAfter * 100).toFixed(2)}%\t${cerImpr}%\t${(r.werBefore * 100).toFixed(2)}%\t${(r.werAfter * 100).toFixed(2)}%\t${r.segmentsAfter}\t${r.fallback ? '⚠' : '✓'}`,
-    );
-  }
+  const fixedFile = join(metadataDir, `wer-${label}-llm-fixed.json`);
+  writeFileSync(fixedFile, JSON.stringify({
+    audio_info: { duration: segments.length ? segments[segments.length - 1].end * 1000 : 0 },
+    result: { text: resultText, segments: resultSegments },
+    _llm_fixed: true, _source: asrPath, _label: label,
+  }, null, 2));
 
-  const summary = results.map(r => ({
-    label: r.label, fallback: r.fallback,
-    cerBefore: r.cerBefore, cerAfter: r.cerAfter,
-    werBefore: r.werBefore, werAfter: r.werAfter,
-  }));
-  writeFileSync(join(RESULTS_DIR, 'llm-fix-summary.json'), JSON.stringify(summary, null, 2));
-  console.log('\nSummary saved to results/llm-fix-summary.json');
+  const origFile = join(metadataDir, `wer-${label}.json`);
+  const origResult = computeWER(GROUND_TRUTH, origFile);
+  const fixedResult = computeWER(GROUND_TRUTH, fixedFile);
+
+  const cerImpr = ((origResult.cer - fixedResult.cer) / Math.max(origResult.cer, 0.0001) * 100).toFixed(1);
+  const werImpr = ((origResult.wer - fixedResult.wer) / Math.max(origResult.wer, 0.0001) * 100).toFixed(1);
+
+  console.log(`\n=== LLM ASR 纠错: ${label} ===`);
+  console.log(`             CER       WER`);
+  console.log(`  原始:      ${(origResult.cer * 100).toFixed(2)}%    ${(origResult.wer * 100).toFixed(2)}%`);
+  console.log(`  LLM 修正:  ${(fixedResult.cer * 100).toFixed(2)}%    ${(fixedResult.wer * 100).toFixed(2)}%`);
+  console.log(`  改善:      ${cerImpr}%          ${werImpr}%`);
+  console.log(`  Fallback:  ${fallback}`);
+  console.log(`\nSaved: ${fixedFile}`);
+
+  const summaryFile = join(metadataDir, `wer-${label}-llm-summary.json`);
+  writeFileSync(summaryFile, JSON.stringify({
+    label, fallback,
+    cerBefore: origResult.cer, cerAfter: fixedResult.cer,
+    werBefore: origResult.wer, werAfter: fixedResult.wer,
+    cerImprovement: +(cerImpr),
+    werImprovement: +(werImpr),
+    segmentsBefore: segments.length,
+    segmentsAfter: resultSegments.length,
+    _source: asrPath,
+  }, null, 2));
+  console.log(`Saved: ${summaryFile}`);
 }
 
 main().catch(err => {

@@ -223,77 +223,69 @@
               "additionalProperties": false
             },
             "separate": {
-              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/target_3_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/target_bgm.wav  用于 MergeVideo 背景\n\t",
+              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\t\toutput: media/target_3_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/target_bgm.wav  用于 MergeVideo 背景\n\t",
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda"
               },
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "pytorch"
-                    },
-                    "device": {
-                      "default": "cuda",
-                      "description": "cuda (NVIDIA/ROCm), mps (Apple Silicon)",
-                      "type": "string",
-                      "enum": [
-                        "cuda",
-                        "cpu",
-                        "mps"
-                      ]
-                    },
-                    "always": {
-                      "default": false,
-                      "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "runtime",
-                    "device"
-                  ],
-                  "additionalProperties": false
+              "type": "object",
+              "properties": {
+                "runtime": {
+                  "type": "string",
+                  "enum": [
+                    "ggml",
+                    "ort",
+                    "pytorch"
+                  ]
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "ort"
-                    },
-                    "device": {
-                      "default": "webgpu",
-                      "type": "string",
-                      "enum": [
-                        "cuda",
-                        "rocm",
-                        "cpu",
-                        "webgpu"
-                      ]
-                    },
-                    "always": {
-                      "default": false,
-                      "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "runtime",
-                    "device"
+                "device": {
+                  "default": "cuda",
+                  "description": "cuda (NVIDIA/ROCm), mps (Apple Silicon)",
+                  "type": "string",
+                  "enum": [
+                    "vulkan",
+                    "webgpu",
+                    "cuda",
+                    "cpu",
+                    "mps"
+                  ]
+                },
+                "always": {
+                  "default": false,
+                  "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
+                  "type": "boolean"
+                },
+                "stems": {
+                  "default": [
+                    "vocals"
                   ],
-                  "additionalProperties": false
+                  "description": "需分离的 stems; 默认只分离 vocals, 目前仅支持 ort",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "drums",
+                      "bass",
+                      "other",
+                      "vocals"
+                    ]
+                  }
                 }
-              ]
+              },
+              "required": [
+                "runtime",
+                "device"
+              ],
+              "additionalProperties": false
             },
             "asr": {
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda",
-                "useSeparated": false
+                "useSeparated": false,
+                "mixMode": "sidechain",
+                "reduceBgm": -12,
+                "useGate": false
               },
               "type": "object",
               "properties": {
@@ -301,6 +293,7 @@
                   "default": "pytorch",
                   "type": "string",
                   "enum": [
+                    "ggml",
                     "faster-whisper",
                     "pytorch"
                   ]
@@ -309,6 +302,7 @@
                   "default": "cuda",
                   "type": "string",
                   "enum": [
+                    "vulkan",
                     "cuda",
                     "cpu",
                     "mps"
@@ -317,6 +311,26 @@
                 "useSeparated": {
                   "default": false,
                   "description": "使用分离后的人声 (target_3_vocals.wav) 而非原始视频音频",
+                  "type": "boolean"
+                },
+                "mixMode": {
+                  "default": "sidechain",
+                  "description": "ASR 音频源: vocals=纯分离人声, \n\t\t\t\traw-sum=人声+降低背景音直接叠加, \n\t\t\t\tsidechain=人声+侧链压缩背景音",
+                  "type": "string",
+                  "enum": [
+                    "vocals",
+                    "raw-sum",
+                    "sidechain"
+                  ]
+                },
+                "reduceBgm": {
+                  "default": -12,
+                  "description": "mixMode=raw-sum 时背景音降低量(dB)",
+                  "type": "number"
+                },
+                "useGate": {
+                  "default": false,
+                  "description": "对分离后的人声应用 silence gate 过滤静音段噪声",
                   "type": "boolean"
                 }
               },
@@ -327,9 +341,38 @@
               "additionalProperties": {}
             },
             "asr_fix": {
+              "default": {
+                "llmFix": false,
+                "segmentPad": true
+              },
               "type": "object",
-              "properties": {},
-              "additionalProperties": false
+              "properties": {
+                "llmFix": {
+                  "default": false,
+                  "description": "是否启用 LLM ASR 纠错（通过本地 LLM API 修正错别字）",
+                  "type": "boolean"
+                },
+                "segmentPad": {
+                  "default": true,
+                  "description": "是否对 ASR 段落添加时间轴 padding",
+                  "type": "boolean"
+                },
+                "llmModel": {
+                  "description": "LLM 模型名，默认 gemma4:31b-cloud",
+                  "default": "gemma4:31b-cloud",
+                  "type": "string"
+                },
+                "llmApiBase": {
+                  "description": "LLM API 地址，默认 ollama",
+                  "default": "http://localhost:11434/v1",
+                  "type": "string"
+                },
+                "domainHint": {
+                  "description": "领域提示，帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": {}
             },
             "translate": {
               "type": "object",
@@ -373,9 +416,18 @@
               "additionalProperties": {}
             },
             "split_audio": {
+              "default": {
+                "vadAlign": false
+              },
               "type": "object",
-              "properties": {},
-              "additionalProperties": false
+              "properties": {
+                "vadAlign": {
+                  "default": false,
+                  "description": "是否启用静音检测对齐: 修正 segments 前后静音导致的偏移",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": {}
             },
             "tts": {
               "default": {

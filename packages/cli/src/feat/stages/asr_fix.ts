@@ -1,8 +1,10 @@
-import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowISO, updateStageDB } from './utils.ts';
+import { readConfig } from '../config/config.ts';
+import { emitLog, nowISO, updateStageDB } from './utils.ts';
+import { segmentsToPrompt, parseLines, fixWithLLM } from './asr/llm.ts';
 
-function fixAsrSegments(segments: any[], startPad = 0.1, endPad = 0.3): any[] {
+function padSegments(segments: any[], startPad = 0.1, endPad = 0.3): any[] {
   if (!segments.length) return segments;
   const minGap = 0.05;
 
@@ -48,26 +50,70 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
   const asrFile = join(metadataDir, 'asr.json');
   const fixedFile = join(metadataDir, 'asr_fixed.json');
 
-  if (existsSync(fixedFile) && existsSync(asrFile) && statSync(asrFile).mtimeMs <= statSync(fixedFile).mtimeMs) {
-    await updateStageDB(taskId, 'asr_fix', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Already fixed' });
-    return;
+  if (!existsSync(asrFile)) {
+    throw new Error(`ASR file not found: ${asrFile}; run ASR stage first`);
   }
 
   const data = JSON.parse(readFileSync(asrFile, 'utf-8'));
-  const segments = data.result.segments;
-  const durationS = (data.audio_info?.duration ?? 0) / 1000;
-
-  const cleaned = segments
+  let segments: any[] = (data.result?.segments || [])
     .map((s: any) => ({ text: (s.text || '').trim(), start: s.start, end: s.end }))
-    .filter((s: any) => s.text && s.start < durationS);
+    .filter((s: any) => s.text && (data.audio_info?.duration ? s.start < (data.audio_info.duration / 1000) : true));
 
-  if (!cleaned.length) throw new Error('ASR result has no segments.');
+  if (!segments.length) throw new Error('ASR result has no segments.');
 
-  const padded = fixAsrSegments(cleaned);
+  const cfg = readConfig().stages?.asr_fix;
+  const llmFix = cfg?.llmFix ?? false;
+  const segmentPad = cfg?.segmentPad ?? true;
+
+  emitLog(taskId, `[ASR Fix] ${segments.length} segs, llmFix=${llmFix}, segmentPad=${segmentPad}`);
+
+  // Step 1: LLM correction (before padding, to fix text)
+  if (llmFix) {
+    const llmModel = cfg?.llmModel || 'gemma4:31b-cloud';
+    const llmApiBase = cfg?.llmApiBase || 'http://localhost:11434/v1';
+    const domainHint = cfg?.domainHint;
+
+    if (domainHint) emitLog(taskId, `[ASR Fix] domainHint: ${domainHint}`);
+
+    await updateStageDB(taskId, 'asr_fix', {
+      last_message: `LLM fixing ${segments.length} segments...`,
+    });
+
+    const prompt = segmentsToPrompt(segments);
+    emitLog(taskId, `[ASR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+
+    const t0 = performance.now();
+    const fixed = await fixWithLLM(prompt, { model: llmModel, apiBase: llmApiBase, domainHint });
+    const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
+
+    const fixedTexts = parseLines(fixed, segments.length);
+    if (fixedTexts) {
+      segments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
+      emitLog(taskId, `[ASR Fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+    } else {
+      emitLog(taskId, `[ASR Fix] LLM response parse failed, keeping original text`);
+    }
+  }
+
+  // Step 2: segment padding
+  if (segmentPad) {
+    emitLog(taskId, `[ASR Fix] Applying segment padding...`);
+    segments = padSegments(segments);
+  } else {
+    emitLog(taskId, `[ASR Fix] Segment padding disabled`);
+  }
+
+  const resultText = segments.map((s: any) => s.text).join(' ');
   writeFileSync(fixedFile, JSON.stringify({
     audio_info: data.audio_info || {},
-    result: { text: data.result.text || '', segments: padded },
+    result: { text: resultText, segments },
+    _llm_fixed: llmFix,
   }, null, 2));
 
-  await updateStageDB(taskId, 'asr_fix', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Fixed' });
+  emitLog(taskId, `[ASR Fix] Written ${segments.length} segs to asr_fixed.json`);
+
+  await updateStageDB(taskId, 'asr_fix', {
+    status: 'succeeded', completed_at: nowISO(), progress: 100,
+    last_message: llmFix ? `LLM fixed ${segments.length} segs` : 'Fixed',
+  });
 }

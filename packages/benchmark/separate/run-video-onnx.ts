@@ -10,7 +10,7 @@ const TMP_WAV = join(REPO_ROOT, 'packages', 'tmp', 'demucs-ort-video.wav');
 const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'asr_manual.json');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const WER_PY = join(__dirname, 'wer.py');
-const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-cli');
+const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan');
 const MODEL = process.env.WHISPER_MODEL || join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
 
 function extractAudio(): number {

@@ -64,26 +64,18 @@ const SeparateConfigAlways = z
 		'效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量',
 	)
 	.optional();
-const SeparateConfigSchema = z
-	.discriminatedUnion('runtime', [
-		z.object({
-			runtime: z.literal('pytorch'),
+const SeparateConfigSchema = z.object({
+			runtime: z.enum(['ggml', 'ort', 'pytorch']),
 			device: z
-				.enum(['cuda', 'cpu', 'mps'])
+				.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
 				.default('cuda')
 				.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
-			always: SeparateConfigAlways,
-		}),
-		z.object({
-			runtime: z.literal('ort'),
-			device: z.enum(['cuda', 'rocm', 'cpu', 'webgpu']).default('webgpu'),
 			always: SeparateConfigAlways,
 			stems: z
 				.array(z.enum(['drums', 'bass', 'other', 'vocals']))
 				.default(['vocals'])
-				.describe('需分离的 stems; 默认只分离 vocals'),
-		}),
-	])
+				.describe('需分离的 stems; 默认只分离 vocals, 目前仅支持 ort').optional(),
+		})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
@@ -97,8 +89,8 @@ const SeparateConfigSchema = z
 export type SeparateConfig = z.infer<typeof SeparateConfigSchema>;
 const ASRConfigSchema = z
 	.looseObject({
-		runtime: z.enum(['faster-whisper', 'pytorch']).default('pytorch'),
-		device: z.enum(['cuda', 'cpu', 'mps']).default('cuda'),
+		runtime: z.enum(['ggml','faster-whisper', 'pytorch', ]).default('pytorch'),
+		device: z.enum(['vulkan', 'cuda', 'cpu', 'mps']).default('cuda'),
 		useSeparated: z
 			.boolean()
 			.default(false)
@@ -168,6 +160,18 @@ const TTSConfigSchema = z
 	.optional();
 export type TTSConfig = z.output<typeof TTSConfigSchema>;
 
+const SplitAudioConfigSchema = z
+	.looseObject({
+		vadAlign: z
+			.boolean()
+			.default(false)
+			.describe('是否启用静音检测对齐: 修正 segments 前后静音导致的偏移').optional(),
+	})
+	.default({
+		vadAlign: false,
+	})
+	.optional();
+
 const alignmentList = [
 	'bottom-left',
 	'bottom-center',
@@ -228,9 +232,38 @@ const StagesSchema = z.object({
 	download: z.object({}).optional(),
 	separate: SeparateConfigSchema,
 	asr: ASRConfigSchema,
-	asr_fix: z.object({}).optional(),
+	asr_fix: z
+		.looseObject({
+			llmFix: z
+				.boolean()
+				.default(false)
+				.describe('是否启用 LLM ASR 纠错（通过本地 LLM API 修正错别字）').optional(),
+			segmentPad: z
+				.boolean()
+				.default(true)
+				.describe('是否对 ASR 段落添加时间轴 padding').optional(),
+			llmModel: z
+				.string()
+				.default('gemma4:31b-cloud')
+				.optional()
+				.describe('LLM 模型名，默认 gemma4:31b-cloud'),
+			llmApiBase: z
+				.string()
+				.default('http://localhost:11434/v1')
+				.optional()
+				.describe('LLM API 地址，默认 ollama'),
+			domainHint: z
+				.string()
+				.optional()
+				.describe('领域提示，帮助 LLM 理解上下文，例如"仙侠题材，角色：叶白、慧天、夜白"'),
+		})
+		.default({
+			llmFix: false,
+			segmentPad: true,
+		})
+		.optional(),
 	translate: TranslateConfigSchema,
-	split_audio: z.object({}).optional(),
+	split_audio: SplitAudioConfigSchema,
 	tts: TTSConfigSchema,
 	merge_audio: z.object({}).optional(),
 	merge_video: MergeVideoSchema,
