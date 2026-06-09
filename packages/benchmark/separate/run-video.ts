@@ -40,7 +40,7 @@ function runPyTorch(durS: number, shifts: number, label: string) {
   }
 
   const wallS = (performance.now() - t0) / 1000;
-  const src = join(outDir, 'media', 'audio_vocals.wav');
+  const src = join(outDir, 'media', 'target_3_vocals.wav');
   if (existsSync(src)) {
     const dst = join(RESULTS_DIR, `video-pytorch-shifts${shifts}-vocals.wav`);
     copyFileSync(src, dst);

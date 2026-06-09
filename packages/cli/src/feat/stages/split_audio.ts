@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB } from './utils.ts';
 
 export async function stageSplitAudio(taskId: string, sessionPath: string) {
-  const vocalsFile = join(sessionPath, 'media', 'audio_vocals.wav');
+  const vocalsFile = join(sessionPath, 'media', 'target_3_vocals.wav');
   const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
   const translationFile = translationFilePath(sessionPath, dstLangCode);
   const metadataDir = join(sessionPath, 'metadata');

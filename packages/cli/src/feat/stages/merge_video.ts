@@ -276,7 +276,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 		);
 	} else {
 		const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
-		const bgmFile = join(mediaDir, 'audio_bgm.wav');
+		const bgmFile = join(mediaDir, 'target_bgm.wav');
 		const timingsFile = join(metadataDir, 'timings.json');
 
 		if (!existsSync(dubbingFile))

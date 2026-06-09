@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, copyFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs';
+import { existsSync, copyFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Demucs } from '../../cli/src/ml/demucs/demucs';
 import { RESULTS_DIR, audioDuration, round } from './bench-shared';
@@ -83,7 +83,7 @@ async function main() {
   // Load model
   console.log('[ORT] Loading model...');
   const t0 = performance.now();
-  const demucs = new Demucs();
+  const demucs = new Demucs(undefined, { stems: ['drums', 'bass', 'other', 'vocals'] });
   await demucs.load();
   const loadTimeS = (performance.now() - t0) / 1000;
   console.log(`  Load: ${loadTimeS.toFixed(1)}s`);
@@ -97,10 +97,20 @@ async function main() {
   const rtf = round(processTimeS / durS, 3);
   console.log(`  Process: ${processTimeS.toFixed(1)}s, RTF: ${rtf}`);
 
-  // Save vocals
+  // Save all 4 stems to ort-cpu/media/ subdirectory
+  const outDir = join(RESULTS_DIR, 'ort-cpu', 'media');
+  mkdirSync(outDir, { recursive: true });
+  const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
+  for (let i = 0; i < stemNames.length; i++) {
+    const stemPath = join(outDir, `target_${i}_${stemNames[i]}.wav`);
+    demucs.writeWav(stems[stemNames[i]], stems.sampleRate, stemPath);
+    console.log(`  Stem saved: ${stemPath}`);
+  }
+
+  // Save vocals to root for ASR pipeline
   const vocalsPath = join(RESULTS_DIR, 'video-ort-vocals.wav');
   demucs.writeWav(stems.vocals, stems.sampleRate, vocalsPath);
-  console.log(`  Vocals saved: ${vocalsPath}`);
+  console.log(`  Vocals (root): ${vocalsPath}`);
 
   // Transcribe with whisper
   console.log('[ORT] Transcribing with whisper...');

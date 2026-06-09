@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { Demucs } from './../../ml/demucs/demucs.ts';
+import type { Stem } from '../../ml/demucs/load.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
@@ -101,12 +102,14 @@ async function separateOrt(
 	device: string,
 ) {
 	const ep = device === 'webgpu' ? 'webgpu' : 'cpu';
+	const sepCfg = readConfig().stages?.separate;
+	const targetStems: Stem[] = sepCfg && 'stems' in sepCfg ? (sepCfg as { stems?: Stem[] }).stems ?? ['vocals'] : ['vocals'];
 	emitLog(
 		taskId,
-		`[Separate] runtime=ort device=${device} → ONNX session(${ep})`,
+		`[Separate] runtime=ort device=${device} stems=${targetStems.join(',')} → ONNX session(${ep})`,
 	);
 
-	const demucs = new Demucs(undefined, { executionProvider: ep });
+	const demucs = new Demucs(undefined, { executionProvider: ep, stems: targetStems });
 	await demucs.load();
 
 	const audioPath = join(sessionPath, 'tmp', 'audio_source.wav');
@@ -132,17 +135,20 @@ async function separateOrt(
 	emitLog(taskId, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
 	const mediaDir = join(sessionPath, 'media');
-	demucs.writeWav(
-		stems.vocals,
-		stems.sampleRate,
-		join(mediaDir, 'audio_vocals.wav'),
-	);
+	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
+	for (let i = 0; i < stemNames.length; i++) {
+		demucs.writeWav(
+			stems[stemNames[i]],
+			stems.sampleRate,
+			join(mediaDir, `target_${i}_${stemNames[i]}.wav`),
+		);
+	}
 
 	const bgm = new Float32Array(stems.drums.length);
 	for (let i = 0; i < bgm.length; i++) {
 		bgm[i] = stems.drums[i] + stems.bass[i] + stems.other[i];
 	}
-	demucs.writeWav(bgm, stems.sampleRate, join(mediaDir, 'audio_bgm.wav'));
+	demucs.writeWav(bgm, stems.sampleRate, join(mediaDir, 'target_bgm.wav'));
 }
 
 async function separatePytorch(

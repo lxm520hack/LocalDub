@@ -1,22 +1,23 @@
 import { join } from 'node:path';
 import { mkdirSync, existsSync } from 'node:fs';
-import { DEMUCS_MODEL_PATH } from './load';
+import { DEMUCS_MODEL_PATH, STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
 
 const HF_BASE_URL = 'https://huggingface.co/StemSplitio/htdemucs-ft-onnx/resolve/main';
 
-const FILES_TO_DOWNLOAD = [
-  'htdemucs_ft_vocals.onnx',
-];
-
-export async function downloadDemucs(onProgress: (percent: number, message: string) => void) {
+export async function downloadDemucs(
+  onProgress: (percent: number, message: string) => void,
+  stems?: Stem[]
+) {
+  const targetStems = stems ?? [...STEM_NAMES];
   if (!existsSync(DEMUCS_MODEL_PATH)) {
     mkdirSync(DEMUCS_MODEL_PATH, { recursive: true });
   }
 
-  const totalFiles = FILES_TO_DOWNLOAD.length;
+  const totalFiles = targetStems.length;
   let downloadedFiles = 0;
 
-  for (const fileName of FILES_TO_DOWNLOAD) {
+  for (const stem of targetStems) {
+    const fileName = STEM_FILE_NAMES[stem];
     const filePath = join(DEMUCS_MODEL_PATH, fileName);
     const url = `${HF_BASE_URL}/${fileName}?download=true`;
 

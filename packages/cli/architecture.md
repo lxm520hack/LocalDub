@@ -28,7 +28,7 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 ```mermaid
 flowchart TD
 
-  sep["video_source.mp4 -> separate(Demucs)<br>→ audio_vocals.wav<br>→ audio_bgm.wav"]
+  sep["video_source.mp4 -> separate(Demucs)<br>→ target_3_vocals.wav<br>→ target_bgm.wav"]
   asr["asr(Whisper\ f-whisper)<br>→ asr.json <br> asr_fix(split sentences)<br>→ asr_fixed.json"]
   tl["translate(LLM)<br>→ translation.json"]
 
@@ -54,8 +54,8 @@ flowchart TD
 <sessionPath>/                    # workfolder/<taskId> or workfolder/local/<taskId>
   ├── media/
   │   ├── video_source.mp4        # [download] original video
-  │   ├── audio_vocals.wav        # [separate] vocals stem (clean, Demucs output)
-  │   ├── audio_bgm.wav           # [separate] bgm stem (drums+bass+other)
+  │   ├── target_3_vocals.wav        # [separate] vocals stem (clean, Demucs output)
+  │   ├── target_bgm.wav           # [separate] bgm stem (drums+bass+other)
   │   ├── video_final.mp4         # [merge_video] dub output
   │   └── video_final_subtitle.mp4# [merge_video] subtitle output
   ├── metadata/
@@ -110,8 +110,8 @@ Demucs vocal/instrumental separation. Same handler for both dub and subtitle mod
 
 | Output | Destination | Description |
 |---|---|---|
-| `media/audio_vocals.wav` | Demucs, `save_audio` | Clean vocals (44.1kHz mono WAV) |
-| `media/audio_bgm.wav` | Demucs, `save_audio` | BGM mix (drums+bass+other) |
+| `media/target_3_vocals.wav` | Demucs, `save_audio` | Clean vocals (44.1kHz mono WAV) |
+| `media/target_bgm.wav` | Demucs, `save_audio` | BGM mix (drums+bass+other) |
 | `tmp/audio_source.wav` | ffmpeg (ORT path) | Intermediate full-audio WAV |
 
 ---
@@ -122,7 +122,7 @@ Speech-to-text via Whisper (PyTorch) or faster-whisper (CTranslate2).
 
 | Input | Source | Description |
 |---|---|---|
-| `media/audio_vocals.wav` | separate | Clean vocals audio |
+| `media/target_3_vocals.wav` | separate | Clean vocals audio |
 | `metadata/local_info.json` | download | `asr_language` (or "auto") |
 | config `asr.runtime` | `config.json` | `pytorch` or (faster-whisper via `run.py`) |
 | config `asr.device` | `config.json` | `cuda` or `cpu` |
@@ -198,7 +198,7 @@ Slice vocals WAV into per-segment reference clips using translation timings.
 
 | Input | Source | Description |
 |---|---|---|
-| `media/audio_vocals.wav` | separate | Full vocals audio |
+| `media/target_3_vocals.wav` | separate | Full vocals audio |
 | `metadata/translation.<lang>.json` | translate | Segment boundaries |
 | `metadata/local_info.json` | download | Target language code |
 
@@ -261,7 +261,7 @@ Combine audio + video + optional subtitles. Different output per mode:
 
 | Mode | Inputs | Output |
 |---|---|---|
-| **dub** | `video_source.mp4` + `audio_dubbing.wav` + `audio_bgm.wav` + `timings.json` | `media/video_final.mp4` (dubbed audio + subtitles + BGM) |
+| **dub** | `video_source.mp4` + `audio_dubbing.wav` + `target_bgm.wav` + `timings.json` | `media/video_final.mp4` (dubbed audio + subtitles + BGM) |
 | **subtitle** | `video_source.mp4` + `translation.<lang>.json` | `media/video_final_subtitle.mp4` (burned-in subtitles) |
 
 Both modes produce an SRT subtitle file at `metadata/subtitles.<lang>.srt`.

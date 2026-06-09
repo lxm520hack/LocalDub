@@ -310,8 +310,13 @@ def handle_separate(params: dict, task_id: str, *, emit=None) -> dict:
 
     media_dir = Path(session_path) / "media"
     media_dir.mkdir(parents=True, exist_ok=True)
-    vocals_file = media_dir / "audio_vocals.wav"
-    bgm_file = media_dir / "audio_bgm.wav"
+    stem_paths = {
+        "drums": media_dir / "target_0_drums.wav",
+        "bass": media_dir / "target_1_bass.wav",
+        "other": media_dir / "target_2_other.wav",
+        "vocals": media_dir / "target_3_vocals.wav",
+    }
+    bgm_file = media_dir / "target_bgm.wav"
 
     shifts = 3
 
@@ -334,7 +339,6 @@ def handle_separate(params: dict, task_id: str, *, emit=None) -> dict:
 
     audio_duration_s = len(AudioSegment.from_file(video_path)) / 1000.0
 
-    vocals = separated["vocals"]
     bgm = None
     for stem, source in separated.items():
         if stem == "vocals":
@@ -343,11 +347,12 @@ def handle_separate(params: dict, task_id: str, *, emit=None) -> dict:
 
     from demucs.api import save_audio
 
-    save_audio(vocals, str(vocals_file), samplerate=separator.samplerate)
+    for stem, path in stem_paths.items():
+        save_audio(separated[stem], str(path), samplerate=separator.samplerate)
     save_audio(bgm, str(bgm_file), samplerate=separator.samplerate)
 
     return {
-        "vocals_file": str(vocals_file),
+        "vocals_file": str(stem_paths["vocals"]),
         "bgm_file": str(bgm_file),
         "load_time_s": round(load_time, 3),
         "process_time_s": round(process_time, 3),

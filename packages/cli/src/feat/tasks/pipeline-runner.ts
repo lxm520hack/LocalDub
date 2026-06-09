@@ -36,7 +36,7 @@ function snapshotConfig(sessionPath: string) {
 		daemonPort: cfg.daemonPort,
 	};
 	const asr = cfg.stages?.asr;
-	if (asr) snap.stages.asr = { runtime: asr.runtime, device: asr.device, useSeparated: asr.useSeparated };
+	if (asr) snap.stages.asr = { runtime: asr.runtime, device: asr.device, useSeparated: asr.useSeparated, mixMode: asr.mixMode, reduceBgm: asr.reduceBgm, useGate: asr.useGate };
 	const sep = cfg.stages?.separate;
 	if (sep) {
 		snap.stages.separate = {

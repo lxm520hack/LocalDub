@@ -78,6 +78,10 @@ const SeparateConfigSchema = z
 			runtime: z.literal('ort'),
 			device: z.enum(['cuda', 'rocm', 'cpu', 'webgpu']).default('webgpu'),
 			always: SeparateConfigAlways,
+			stems: z
+				.array(z.enum(['drums', 'bass', 'other', 'vocals']))
+				.default(['vocals'])
+				.describe('需分离的 stems; 默认只分离 vocals'),
 		}),
 	])
 	.default({
@@ -87,8 +91,8 @@ const SeparateConfigSchema = z
 	.optional()
 	.describe(`separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 
 		input: media/video_source.mp4
-		output: media/audio_vocals.wav 用于 ASR + TTS reference
-						media/audio_bgm.wav  用于 MergeVideo 背景
+			output: media/target_3_vocals.wav 用于 ASR + TTS reference
+						media/target_bgm.wav  用于 MergeVideo 背景
 	`);
 export type SeparateConfig = z.infer<typeof SeparateConfigSchema>;
 const ASRConfigSchema = z
@@ -98,13 +102,33 @@ const ASRConfigSchema = z
 		useSeparated: z
 			.boolean()
 			.default(false)
-			.describe('使用分离后的人声 (audio_vocals.wav) 而非原始视频音频')
+			.describe('使用分离后的人声 (target_3_vocals.wav) 而非原始视频音频')
+			.optional(),
+		mixMode: z
+			.enum(['vocals', 'raw-sum', 'sidechain'])
+			.default('sidechain')
+			.describe(`ASR 音频源: vocals=纯分离人声, 
+				raw-sum=人声+降低背景音直接叠加, 
+				sidechain=人声+侧链压缩背景音`)
+			.optional(),
+		reduceBgm: z
+			.number()
+			.default(-12)
+			.describe('mixMode=raw-sum 时背景音降低量(dB)')
+			.optional(),
+		useGate: z
+			.boolean()
+			.default(false)
+			.describe('对分离后的人声应用 silence gate 过滤静音段噪声')
 			.optional(),
 	})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
 		useSeparated: false,
+		mixMode: 'sidechain',
+		reduceBgm: -12,
+		useGate: false,
 	})
 	.optional();
 
@@ -312,8 +336,8 @@ export interface LocalInfo {
 		timestamp: string;
 		pipeline: 'dub' | 'subtitle';
 		stages: {
-			asr?: { runtime: string; device?: string; useSeparated?: boolean };
-			separate?: { runtime: string; device?: string; always?: boolean };
+			asr?: { runtime: string; device?: string; useSeparated?: boolean; mixMode?: string; reduceBgm?: number; useGate?: boolean };
+			separate?: { runtime: string; device?: string; always?: boolean; stems?: string[] };
 			translate?: { apiBase?: string; model?: string; targetLang?: string };
 			tts?: { runtime: string; device?: string };
 		};

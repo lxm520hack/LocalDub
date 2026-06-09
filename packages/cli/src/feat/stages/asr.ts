@@ -9,23 +9,10 @@ import {
 	setLocalInfo,
 } from '../config/config.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
+import { AsrOptions } from './asr/types.ts';
+import { parseAsrOutput } from './asr/utils.ts';
 
-export type AsrResult = {
-	audio_info: {
-		duration: number; // 视频总时长，单位 ms
-	};
-	result: {
-		text: string; // 完整转录文本
-		segments: {
-			text: string; // 该段文本
-			start: number; // 该段开始时间，单位 s
-			end: number; // 该段结束时间，单位 s
-			words?: [];
-		}[];
-	};
-	_device: string; // 运行设备，如 "cuda"、"cpu" 等
-	detected_language?: string; // 可选的检测到的语言代码，如 "en"、"zh" 等
-};
+
 
 export async function stageAsr(
 	taskId: string,
@@ -37,7 +24,7 @@ export async function stageAsr(
 		progress: 0,
 	});
 	const sessionAbsPath = resolve(REPO_ROOT, sessionPath);
-	const audioVocal = resolve(sessionAbsPath, 'media', 'audio_vocals.wav');
+	const audioVocal = resolve(sessionAbsPath, 'media', 'target_3_vocals.wav');
 	const videoSource = resolve(sessionAbsPath, 'media', 'video_source.mp4');
 
 	let audioPath = readConfig().stages?.asr?.useSeparated
@@ -45,18 +32,63 @@ export async function stageAsr(
 		: videoSource;
 	if (!existsSync(audioPath))
 		throw new Error(
-			`ASR input not found: ${audioPath}; 如果 asr.useSeparated=true, 请确保 audio_vocals.wav 存在；如果 asr.useSeparated=false, 请确保 video_source.mp4 存在`,
+			`ASR input not found: ${audioPath}; 如果 asr.useSeparated=true, 请确保 target_3_vocals.wav 存在；如果 asr.useSeparated=false, 请确保 video_source.mp4 存在`,
 		);
 
 	if (readConfig().stages?.asr?.useSeparated) {
-		const gatedVocal = resolve(sessionAbsPath, 'media', 'audio_vocals_gated.wav');
-		emitLog(taskId, '[ASR] Applying silence gate to Demucs vocals...');
-		ffmpeg([
-			'-i', audioVocal,
-			'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
-			'-y', gatedVocal,
-		]);
-		audioPath = gatedVocal;
+		const asrCfg = readConfig().stages?.asr;
+		const mixMode = asrCfg?.mixMode ?? 'vocals';
+		const reduceBgm = asrCfg?.reduceBgm ?? -12;
+		const useGate = asrCfg?.useGate ?? false;
+		let sourcePath = audioVocal;
+		if (mixMode === 'raw-sum') {
+			const bgmPath = resolve(sessionAbsPath, 'media', 'target_bgm.wav');
+			if (!existsSync(bgmPath)) {
+				emitLog(taskId, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
+			} else {
+				const mixedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_mixed.wav');
+				emitLog(taskId, `[ASR] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
+				ffmpeg([
+					'-i', sourcePath,
+					'-i', bgmPath,
+					'-filter_complex',
+					`[1:a]volume=${reduceBgm}dB[bgm_r];[0:a][bgm_r]amix=inputs=2:duration=first:weights=1 1[out]`,
+					'-map', '[out]',
+					'-y', mixedPath,
+				]);
+				sourcePath = mixedPath;
+			}
+		} else if (mixMode === 'sidechain') {
+			const bgmPath = resolve(sessionAbsPath, 'media', 'target_bgm.wav');
+			if (!existsSync(bgmPath)) {
+				emitLog(taskId, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
+			} else {
+				const mixedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_mixed.wav');
+				emitLog(taskId, `[ASR] sidechain: vocals + dynamically ducked BGM...`);
+				ffmpeg([
+					'-i', sourcePath,
+					'-i', bgmPath,
+					'-filter_complex',
+					`[0:a]asplit[v][v_key];[1:a][v_key]sidechaincompress=threshold=0.1:ratio=20:attack=1:release=500[bgm_sc];[v][bgm_sc]amix=inputs=2:duration=first:weights=1 1[out]`,
+					'-map', '[out]',
+					'-y', mixedPath,
+				]);
+				sourcePath = mixedPath;
+			}
+		}
+
+		if (useGate) {
+			const gatedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_gated.wav');
+			emitLog(taskId, '[ASR] Applying silence gate...');
+			ffmpeg([
+				'-i', sourcePath,
+				'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
+				'-y', gatedPath,
+			]);
+			sourcePath = gatedPath;
+		}
+
+		audioPath = sourcePath;
 	}
 
 	const asrCfg = readConfig().stages?.asr;
@@ -107,23 +139,9 @@ export async function stageAsr(
 			);
 		if (r.rtf) emitLog(taskId, `[ASR] RTF ${r.rtf}`);
 	} else if (runtime === 'pytorch') {
-		await asrPytorch(
-			taskId,
-			audioPath,
-			sessionAbsPath,
-			asrLanguage,
-			device,
-			pyBin,
-		);
+		await asrPytorch({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
 	} else {
-		await asrFasterWhisper(
-			taskId,
-			audioPath,
-			sessionAbsPath,
-			asrLanguage,
-			device,
-			pyBin,
-		);
+		await asrFasterWhisper({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
 	}
 
 	// 统一过滤超出音频时长的幻觉段（所有路径 shared）
@@ -153,14 +171,8 @@ export async function stageAsr(
 	});
 }
 
-async function asrPytorch(
-	taskId: string,
-	audioPath: string,
-	sessionAbsPath: string,
-	language: string | undefined,
-	device: string,
-	pyBin: string,
-) {
+async function asrPytorch(opts: AsrOptions) {
+	let { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin } = opts;
 	const script = join(
 		REPO_ROOT,
 		'packages',
@@ -253,14 +265,6 @@ async function asrPytorch(
 	}
 }
 
-function parseAsrOutput(stdout: string): string | null {
-	for (const line of stdout.split('\n')) {
-		const trimmed = line.trim();
-		if (trimmed.startsWith('ASR_OUTPUT:'))
-			return trimmed.slice('ASR_OUTPUT:'.length).trim();
-	}
-	return stdout.trim() || null;
-}
 
 function emitAsrTiming(taskId: string, asr: Record<string, any>, elapsedSec: number) {
 	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
@@ -272,14 +276,8 @@ function emitAsrTiming(taskId: string, asr: Record<string, any>, elapsedSec: num
 	}
 }
 
-async function asrFasterWhisper(
-	taskId: string,
-	audioPath: string,
-	sessionAbsPath: string,
-	language: string | undefined,
-	device: string,
-	pyBin: string,
-) {
+async function asrFasterWhisper(opts: AsrOptions) {
+	const { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin } = opts;
 	const asrScript = join(
 		REPO_ROOT,
 		'packages',

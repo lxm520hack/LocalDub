@@ -1,15 +1,11 @@
 import * as ort from 'onnxruntime-node';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { DEMUCS_MODEL_PATH, checkDemucsStatus } from './load';
+import { DEMUCS_MODEL_PATH, checkDemucsStatus, STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
 
 const SAMPLE_RATE = 44100;
 const SEGMENT_LEN = 343980;
 const HOP_LEN = SEGMENT_LEN >> 1;
-const NUM_STEMS = 4;
-const STEM_NAMES = ['drums', 'bass', 'other', 'vocals'] as const;
 const NUM_CHANNELS = 2;
-
-const STEM_PER_SAMPLE = NUM_STEMS * NUM_CHANNELS * SEGMENT_LEN;
 
 const HANN_WINDOW = (() => {
   const w = new Float32Array(SEGMENT_LEN);
@@ -28,26 +24,33 @@ export interface DemucsStems {
 }
 
 export class Demucs {
-  private session?: ort.InferenceSession;
+  private sessions?: Map<Stem, ort.InferenceSession>;
   private loaded = false;
+  private stems: readonly Stem[];
 
   constructor(
     private modelDir: string = DEMUCS_MODEL_PATH,
-    private options?: { executionProvider?: 'cpu' | 'webgpu' },
-  ) {}
+    private options?: { executionProvider?: 'cpu' | 'webgpu'; stems?: readonly Stem[] },
+  ) {
+    this.stems = options?.stems ?? ['vocals'];
+  }
 
   async load() {
-    const status = await checkDemucsStatus();
+    const status = await checkDemucsStatus(this.stems);
     if (!status.isReady) {
-      throw new Error(`Demucs model not ready in ${this.modelDir}. Missing ONNX file.`);
+      throw new Error(`Demucs model not ready in ${this.modelDir}. Missing ONNX files.`);
     }
 
     const ep = this.options?.executionProvider ?? 'cpu';
-    console.log(`[Demucs] Loading ONNX session (${ep})...`);
-    this.session = await ort.InferenceSession.create(
-      `${this.modelDir}/htdemucs_ft_vocals.onnx`,
-      { executionProviders: [ep] }
-    );
+    console.log(`[Demucs] Loading ${this.stems.length} ONNX bag session(s) (${ep}): ${this.stems.join(',')}...`);
+    const sessions = new Map<Stem, ort.InferenceSession>();
+    for (const stem of this.stems) {
+      sessions.set(stem, await ort.InferenceSession.create(
+        `${this.modelDir}/${STEM_FILE_NAMES[stem]}`,
+        { executionProviders: [ep] },
+      ));
+    }
+    this.sessions = sessions;
     this.loaded = true;
     console.log(`[Demucs] Ready.`);
   }
@@ -134,22 +137,21 @@ export class Demucs {
       audio[i] = (audio[i] - normMean) / (normStd + normEps);
     }
 
-    const outStems: Float32Array[] = [];
-    for (let s = 0; s < NUM_STEMS; s++) {
-      outStems.push(new Float32Array(totalSamples * NUM_CHANNELS));
-    }
+    const requestedSet = new Set<Stem>(this.stems);
+    const outStems: Float32Array[] = STEM_NAMES.map(stem =>
+      requestedSet.has(stem) ? new Float32Array(totalSamples * NUM_CHANNELS) : new Float32Array(0)
+    );
     const outWeight = new Float32Array(totalSamples * NUM_CHANNELS);
 
     const numSegments = Math.max(1, Math.ceil((totalSamples - SEGMENT_LEN) / HOP_LEN) + 1);
 
     for (let seg = 0; seg < numSegments; seg++) {
       const offset = seg * HOP_LEN;
-      const startSample = offset * NUM_CHANNELS;
 
       let segLen = SEGMENT_LEN;
       let pad = 0;
       if (offset + SEGMENT_LEN > totalSamples) {
-        pad = (offset + SEGMENT_LEN - totalSamples);
+        pad = offset + SEGMENT_LEN - totalSamples;
         segLen = totalSamples - offset;
       }
 
@@ -161,17 +163,21 @@ export class Demucs {
       }
 
       const inputTensor = new ort.Tensor('float32', segBuf, [1, NUM_CHANNELS, SEGMENT_LEN]);
-      const result = await this.session!.run({ 'mix': inputTensor });
-      const stemOut = (result['stems'] as ort.Tensor).data as Float32Array;
 
-      for (let s = 0; s < NUM_STEMS; s++) {
+      for (const stem of this.stems) {
+        const targetIdx = STEM_NAMES.indexOf(stem);
+        const stemOut = outStems[targetIdx];
+        const session = this.sessions!.get(stem)!;
+        const result = await session.run({ 'mix': inputTensor });
+        const allStems = (result['stems'] as ort.Tensor).data as Float32Array;
+
         for (let c = 0; c < NUM_CHANNELS; c++) {
           for (let i = 0; i < segLen; i++) {
             const idx = offset + i;
             const win = HANN_WINDOW[i];
-            const srcIdx = s * NUM_CHANNELS * SEGMENT_LEN + c * SEGMENT_LEN + i;
+            const srcIdx = targetIdx * NUM_CHANNELS * SEGMENT_LEN + c * SEGMENT_LEN + i;
             const dstIdx = idx * NUM_CHANNELS + c;
-            outStems[s][dstIdx] += stemOut[srcIdx] * win;
+            stemOut[dstIdx] += allStems[srcIdx] * win;
             outWeight[dstIdx] += win;
           }
         }
@@ -184,18 +190,22 @@ export class Demucs {
       }
     }
 
-    for (let s = 0; s < NUM_STEMS; s++) {
-      for (let i = 0; i < outStems[s].length; i++) {
+    for (const stem of this.stems) {
+      const targetIdx = STEM_NAMES.indexOf(stem);
+      const stemOut = outStems[targetIdx];
+      for (let i = 0; i < stemOut.length; i++) {
         if (outWeight[i] > 1e-6) {
-          outStems[s][i] /= outWeight[i];
+          stemOut[i] /= outWeight[i];
         }
       }
     }
 
-    // Un-normalize back to original scale
-    for (let s = 0; s < NUM_STEMS; s++) {
-      for (let i = 0; i < outStems[s].length; i++) {
-        outStems[s][i] = outStems[s][i] * (normStd + normEps) + normMean;
+    // Un-normalize back to original scale (only for requested stems)
+    for (const stem of this.stems) {
+      const targetIdx = STEM_NAMES.indexOf(stem);
+      const stemOut = outStems[targetIdx];
+      for (let i = 0; i < stemOut.length; i++) {
+        stemOut[i] = stemOut[i] * (normStd + normEps) + normMean;
       }
     }
 

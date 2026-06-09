@@ -78,10 +78,15 @@ def separate_audio(
 
     media_dir = session / "media"
     media_dir.mkdir(parents=True, exist_ok=True)
-    vocals_file = media_dir / "audio_vocals.wav"
-    bgm_file = media_dir / "audio_bgm.wav"
-    if vocals_file.exists() and bgm_file.exists():
-        return vocals_file, bgm_file
+    files = {
+        "drums": media_dir / "target_0_drums.wav",
+        "bass": media_dir / "target_1_bass.wav",
+        "other": media_dir / "target_2_other.wav",
+        "vocals": media_dir / "target_3_vocals.wav",
+    }
+    bgm_file = media_dir / "target_bgm.wav"
+    if all(f.exists() for f in files.values()) and bgm_file.exists():
+        return files["vocals"], bgm_file
 
     def report_progress(info: dict) -> None:
         if progress_callback is None:
@@ -98,13 +103,13 @@ def separate_audio(
     )
     _, separated = separator.separate_audio_file(str(video_file))
 
-    vocals = separated["vocals"]
     bgm = None
     for stem, source in separated.items():
         if stem == "vocals":
             continue
         bgm = source if bgm is None else bgm + source
 
-    save_audio(vocals, str(vocals_file), samplerate=separator.samplerate)
+    for stem, path in files.items():
+        save_audio(separated[stem], str(path), samplerate=separator.samplerate)
     save_audio(bgm, str(bgm_file), samplerate=separator.samplerate)
-    return vocals_file, bgm_file
+    return files["vocals"], bgm_file

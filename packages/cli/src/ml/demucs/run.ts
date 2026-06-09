@@ -24,7 +24,7 @@ async function main() {
   console.log(`[Demucs] Output dir: ${outputDir}`);
   console.log(`[Demucs] Provider: ${ep}`);
 
-  const demucs = new Demucs(undefined, { executionProvider: ep });
+  const demucs = new Demucs(undefined, { executionProvider: ep, stems: ['drums', 'bass', 'other', 'vocals'] });
   await demucs.load();
 
   const stems = await demucs.separate(inputFile);

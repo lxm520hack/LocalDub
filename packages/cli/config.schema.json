@@ -223,7 +223,7 @@
               "additionalProperties": false
             },
             "separate": {
-              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/audio_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/audio_bgm.wav  用于 MergeVideo 背景\n\t",
+              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\toutput: media/target_3_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/target_bgm.wav  用于 MergeVideo 背景\n\t",
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda"
@@ -316,7 +316,7 @@
                 },
                 "useSeparated": {
                   "default": false,
-                  "description": "使用分离后的人声 (audio_vocals.wav) 而非原始视频音频",
+                  "description": "使用分离后的人声 (target_3_vocals.wav) 而非原始视频音频",
                   "type": "boolean"
                 }
               },

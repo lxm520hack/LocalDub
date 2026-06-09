@@ -16,7 +16,7 @@ export async function benchmarkONNX(): Promise<BenchmarkResult[]> {
 
   console.log('[ONNX] Loading model...');
   const t0 = performance.now();
-  const model = new Demucs(undefined, { executionProvider: 'cpu' });
+  const model = new Demucs(undefined, { executionProvider: 'cpu', stems: ['drums', 'bass', 'other', 'vocals'] });
   await model.load();
   const loadTimeS = (performance.now() - t0) / 1000;
   console.log(`[ONNX] Model loaded in ${loadTimeS.toFixed(1)}s`);

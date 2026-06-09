@@ -7,7 +7,7 @@ Usage:
 
 Sets DEMUCS_DEVICE env var before loading the backend, so resolve_device() picks it up.
 
-Writes audio_vocals.wav and audio_bgm.wav to <session_path>/media/.
+Writes target_{0,1,2,3}_{drums,bass,other,vocals}.wav and target_bgm.wav to <session_path>/media/.
 Prints progress lines: [PROGRESS] <percent>
 Prints on success: <vocals_path>\n<bgm_path>
 """
