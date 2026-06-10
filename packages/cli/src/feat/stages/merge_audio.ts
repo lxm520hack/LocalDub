@@ -1,24 +1,25 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readJson, writeJson, writeFile, ensureDir } from './fileOps.ts';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB } from './utils.ts';
 
 export async function stageMergeAudio(taskId: string, sessionPath: string) {
   const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
-  const translationFile = translationFilePath(sessionPath, dstLangCode);
   const ttsDir = join(sessionPath, 'segments', 'tts');
   const tmpDir = join(sessionPath, 'tmp');
   const stretchedDir = join(sessionPath, 'segments', 'stretched');
   const metadataDir = join(sessionPath, 'metadata');
 
-  mkdirSync(tmpDir, { recursive: true });
-  mkdirSync(stretchedDir, { recursive: true });
-  mkdirSync(metadataDir, { recursive: true });
+  ensureDir(tmpDir, taskId);
+  ensureDir(stretchedDir, taskId);
+  ensureDir(metadataDir, taskId);
 
   const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
   const timingsFile = join(metadataDir, 'timings.json');
+  if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
-  const data = JSON.parse(readFileSync(translationFile, 'utf-8'));
+  const data = readJson(timingsFile, taskId);
   const translation = data.translation;
   const ttsFiles = translation.map((_: any, i: number) => join(ttsDir, `${String(i + 1).padStart(4, '0')}.wav`));
 
@@ -96,9 +97,9 @@ export async function stageMergeAudio(taskId: string, sessionPath: string) {
   if (segmentInputs.length === 0) throw new Error('No audio segments to merge');
 
   const concatFile = join(tmpDir, 'concat_list.txt');
-  writeFileSync(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'));
+  writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), taskId);
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 
-  writeFileSync(timingsFile, JSON.stringify({ translation }, null, 2));
+  writeJson(timingsFile, { translation }, taskId);
   await updateStageDB(taskId, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
 }

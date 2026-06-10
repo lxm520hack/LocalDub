@@ -216,6 +216,7 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
     device = params.get("device", "cpu")
     cfg_value = float(params.get("cfg_value", 2.0))
     timesteps = int(params.get("inference_timesteps", 10))
+    skip_existing = bool(params.get("skipExisting", False))
 
     tts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -243,7 +244,7 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
         idx = f"{index:04d}"
         out_path = tts_dir / f"{idx}.wav"
 
-        if out_path.exists():
+        if skip_existing and out_path.exists():
             skipped += 1
             _emit_progress("tts", task_id, index, total, emit=emit)
             continue
@@ -284,6 +285,11 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
         _emit_progress("tts", task_id, index, total, emit=emit)
 
     total_time = time.perf_counter() - t0
+    out_dur = sum(
+        item.get("end_time", 0) - item.get("start_time", 0)
+        for item in items
+    ) / 1000.0
+    rtf = round(gen_time / max(out_dur, 0.001), 3) if generated > 0 and out_dur > 0 else 0
     return {
         "generated": generated,
         "skipped": skipped,
@@ -291,6 +297,7 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
         "generate_time_s": round(gen_time, 3),
         "load_time_s": round(load_time, 3),
         "total_time_s": round(total_time, 3),
+        "rtf": rtf,
     }
 
 

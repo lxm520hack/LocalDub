@@ -4,13 +4,15 @@
 |-------|---------|--------|--------|
 | Demucs | Python (PyTorch) | CPU | GPU hang (CrossTransformer + Wiener filter) |
 | VoxCPM (TTS) | Python (PyTorch) | CPU | GPU: model loads but any forward pass → segfault |
-| VoxCPM (TTS) | vLLM-Omni (ROCm) | GPU (ROCm) | ❌ HIP ABI 不兼容 (PyTorch 2.10 vs 2.12) + GPU Hang |
+| VoxCPM (TTS) | vLLM-Omni (ROCm) | ❌ HIP ABI 不兼容 (PyTorch 2.10 vs 2.12) + GPU Hang |
 | VoxCPM (TTS) | ORT+MIGraphX | GPU (ROCm) | ✅ 可用，**Split strategy**: Prefill/VAE → CPU, Decode → GPU |
-| VoxCPM (TTS) | TypeScript (ONNX) | CPU / webgpu | ONNX 实现中，webgpu EP 可用于 RDNA 3 |
-| CosyVoice3 (TTS) | Python (ONNX) | CPU | 无 CUDA EP（缺 cuDNN 9），ONNX 全链路推理，社区 ayousanz/cosy-voice3-onnx |
-| Whisper (ASR) | Python (PyTorch) | GPU (cuda) | ❌ Segfault, regardless of `word_timestamps`; use faster-whisper |
-| Whisper (ASR) | Python (faster-whisper / CTranslate2) | GPU (cuda) | ✅ Works, only ~3-5s load time |
-| Whisper (ASR) | Python (PyTorch) | CPU | ✅ Works (~3GB RSS, ~15-30s load) |
+| VoxCPM (TTS) | TypeScript (ONNX) | CPU / webgpu | ❌ 废弃，Bun 多版本冲突 + `sharp` 依赖 + OOM |
+| CosyVoice3 (TTS) | Python (ONNX) | CPU | 无 CUDA EP，编译 ORT+MIGraphX 中（MIOpen conv solver hang）|
+| Whisper (ASR) | whisper.cpp | Vulkan (RADV) | ✅ **首选**，RTF ~0.09，编译 `-DGGML_VULKAN=ON` |
+| Whisper (ASR) | Python (faster-whisper / CTranslate2) | CPU | ✅ 可用，CTranslate2 GPU 路径因缺 libcuda.so 不可用 |
+| Whisper (ASR) | Python (PyTorch) | CPU | ✅ Works，GPU 端 segfault |
+| Whisper (ASR) | Python (faster-whisper) | GPU | ❌ CTranslate2 CUDA 依赖 libcuda.so+libcudart.so，ROCm 系统无 |
+| Whisper (ASR) | whisper.cpp HIPBLAS | GPU | ❌ MES 0x83 `REMOVE_QUEUE` hang，长音频必触发，已废弃 |
 | Translation | Python (OpenAI) | N/A | Remote API |
 
 ## ORT+MIGraphX hybrid strategy

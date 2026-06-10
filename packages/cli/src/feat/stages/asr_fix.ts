@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readJson, writeJson } from './fileOps.ts';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../config/config.ts';
 import { emitLog, nowISO, updateStageDB } from './utils.ts';
@@ -54,7 +55,7 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
     throw new Error(`ASR file not found: ${asrFile}; run ASR stage first`);
   }
 
-  const data = JSON.parse(readFileSync(asrFile, 'utf-8'));
+  const data = readJson(asrFile);
   let segments: any[] = (data.result?.segments || [])
     .map((s: any) => ({ text: (s.text || '').trim(), start: s.start, end: s.end }))
     .filter((s: any) => s.text && (data.audio_info?.duration ? s.start < (data.audio_info.duration / 1000) : true));
@@ -104,11 +105,11 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
   }
 
   const resultText = segments.map((s: any) => s.text).join(' ');
-  writeFileSync(fixedFile, JSON.stringify({
+  writeJson(fixedFile, {
     audio_info: data.audio_info || {},
     result: { text: resultText, segments },
     _llm_fixed: llmFix,
-  }, null, 2));
+  });
 
   emitLog(taskId, `[ASR Fix] Written ${segments.length} segs to asr_fixed.json`);
 

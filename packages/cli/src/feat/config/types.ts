@@ -106,7 +106,27 @@ const ASRConfigSchema = z
 		reduceBgm: z
 			.number()
 			.default(-12)
-			.describe('mixMode=raw-sum 时背景音降低量(dB)')
+			.describe('背景音降低量(dB); raw-sum 时叠加前直接衰减, sidechain 时压缩后额外衰减')
+			.optional(),
+		wordsOutput: z
+			.boolean()
+			.default(false)
+			.describe('是否在 asr.json 中包含词级时间戳 (words), 分离场景下可能受幻觉影响；默认关闭，调试时开启')
+			.optional(),
+		sidechainCompress: z
+			.object({
+				threshold: z.number().default(0.1).describe('压缩器阈值, 默认 0.1'),
+				ratio: z.number().default(20).describe('压缩比, 默认 20'),
+				attack: z.number().default(1).describe('attack 时间(ms), 默认 1'),
+				release: z.number().default(200).describe('release 时间(ms), 默认 200 (原 500)'),
+			})
+			.default({
+				threshold: 0.1,
+				ratio: 20,
+				attack: 1,
+				release: 200,
+			})
+			.describe('mixMode=sidechain 时侧链压缩器参数')
 			.optional(),
 		useGate: z
 			.boolean()
@@ -120,6 +140,8 @@ const ASRConfigSchema = z
 		useSeparated: false,
 		mixMode: 'sidechain',
 		reduceBgm: -12,
+		wordsOutput: false,
+		sidechainCompress: { threshold: 0.1, ratio: 20, attack: 1, release: 200 },
 		useGate: false,
 	})
 	.optional();
@@ -136,28 +158,19 @@ const TranslateConfigSchema = z
 	})
 	.optional();
 
-const TTSConfigSchema = z
-	.discriminatedUnion('runtime', [
-		z.object({
-			runtime: z.literal('pytorch'),
-			device: z.enum(['cuda', 'cpu', 'mps']).default('cuda'),
-		}),
-		z.object({
-			runtime: z
-				.literal('ort')
-				.describe('预留, 暂时没有正确的 onnx 模型文件支持'),
-			device: z.enum(['cuda', 'rocm', 'cpu', 'webgpu']).default('webgpu'),
-		}),
-		z
-			.object({ runtime: z.literal('ggml') })
-			.describe('预留 ggml 选项，虽然目前没有实现'),
-		z.looseObject({ runtime: z.literal('cloud') }),
-	])
+const TTSConfigSchema = z.object({
+		runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']),
+		device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda'),
+		skipExisting: z.boolean().default(true),
+	})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
+		skipExisting: true,
 	})
-	.optional();
+	.optional().describe(`input: 1. metadata/translation.{lang}.json: translation[i].dst
+		2. segments/vocals/{0001..N}.wav
+		output: segments/tts/{0001..N}.wav`);
 export type TTSConfig = z.output<typeof TTSConfigSchema>;
 
 const SplitAudioConfigSchema = z
@@ -369,7 +382,7 @@ export interface LocalInfo {
 		timestamp: string;
 		pipeline: 'dub' | 'subtitle';
 		stages: {
-			asr?: { runtime: string; device?: string; useSeparated?: boolean; mixMode?: string; reduceBgm?: number; useGate?: boolean };
+			asr?: { runtime: string; device?: string; useSeparated?: boolean; mixMode?: string; reduceBgm?: number; wordsOutput?: boolean; sidechainCompress?: { threshold?: number; ratio?: number; attack?: number; release?: number }; useGate?: boolean };
 			separate?: { runtime: string; device?: string; always?: boolean; stems?: string[] };
 			translate?: { apiBase?: string; model?: string; targetLang?: string };
 			tts?: { runtime: string; device?: string };

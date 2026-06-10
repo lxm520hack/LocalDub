@@ -73,6 +73,7 @@ def main():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--cfg-value", type=float, default=2.0)
     parser.add_argument("--inference-timesteps", type=int, default=10)
+    parser.add_argument("--skip-existing", action="store_true", default=False)
     args = parser.parse_args()
 
     os.makedirs(args.tts_dir, exist_ok=True)
@@ -110,7 +111,7 @@ def main():
         idx = f"{index:04d}"
         out_path = os.path.join(args.tts_dir, f"{idx}.wav")
 
-        if os.path.exists(out_path):
+        if args.skip_existing and os.path.exists(out_path):
             skipped += 1
             print(f"[PROGRESS] {index}/{total}")
             sys.stdout.flush()
@@ -156,8 +157,11 @@ def main():
         sys.stdout.flush()
 
     total_time = time.perf_counter() - t0
-    out_dur = generated * 0  # placeholder — we don't track per-segment duration in batch
-    rtf = round(gen_time / max(out_dur, 0.001), 3) if generated > 0 else 0
+    out_dur = sum(
+        item.get("end_time", 0) - item.get("start_time", 0)
+        for item in items
+    ) / 1000.0
+    rtf = round(gen_time / max(out_dur, 0.001), 3) if generated > 0 and out_dur > 0 else 0
 
     result = {
         "load_time_s": round(load_time, 3),

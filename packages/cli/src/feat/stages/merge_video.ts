@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readJson, writeFile } from './fileOps.ts';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig, readLocalInfo } from '../config/config.ts';
 import { alignmentToFfmpeg } from '../config/types.ts';
@@ -164,7 +165,7 @@ function writeSrt(translation: any[], dstLang: string, outputPath: string) {
 		}
 	}
 
-	writeFileSync(outputPath, lines.join('\n'));
+	writeFile(outputPath, lines.join('\n'));
 }
 
 function dstLangFromTranslation(translation: any[]): string {
@@ -241,9 +242,11 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 	if (pipeline === 'subtitle') {
 		const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 		const translationFile = translationFilePath(sessionPath, dstLangCode);
-		if (!existsSync(translationFile))
-			throw new Error(`translation.${dstLangCode}.json not found`);
-		const data = JSON.parse(readFileSync(translationFile, 'utf-8'));
+		const timingsFile = join(metadataDir, 'timings.json');
+		const srcFile = existsSync(timingsFile) ? timingsFile : translationFile;
+		if (!existsSync(srcFile))
+			throw new Error(`neither timings.json nor translation.${dstLangCode}.json found`);
+		const data = readJson(srcFile);
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, dstLang, subPath);
@@ -283,7 +286,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 			throw new Error('audio_dubbing.wav not found');
 		if (!existsSync(timingsFile)) throw new Error('timings.json not found');
 
-		const data = JSON.parse(readFileSync(timingsFile, 'utf-8'));
+		const data = readJson(timingsFile);
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, dstLang, subPath);

@@ -1,13 +1,6 @@
 import { spawn } from 'node:child_process';
-import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	rmSync,
-	statSync,
-	writeFileSync,
-} from 'node:fs';
+import { readJson, writeFile, ensureDir, removeFile } from './fileOps.ts';
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
 	VoxCPMCloud,
@@ -19,6 +12,7 @@ import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
+import { TranslateFile } from './translate.ts';
 
 function createTTSBackend(cfg: TTSConfig) {
 	if (!cfg) throw new Error('TTS config not found');
@@ -52,21 +46,16 @@ async function runPytorchBatch(
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
 	return new Promise<void>((resolve, reject) => {
-		const proc = spawn(
-			pyBin,
-			[
-				scriptPath,
-				'--model-dir',
-				modelDir,
-				'--translation-file',
-				translationFile,
-				'--vocals-dir',
-				vocalsDir,
-				'--tts-dir',
-				ttsDir,
-				'--device',
-				device,
-			],
+		const args = [
+			scriptPath,
+			'--model-dir', modelDir,
+			'--translation-file', translationFile,
+			'--vocals-dir', vocalsDir,
+			'--tts-dir', ttsDir,
+			'--device', device,
+		];
+		if (ttsCfg.skipExisting) args.push('--skip-existing');
+		const proc = spawn(pyBin, args,
 			{
 				env: { ...process.env, PYTHONPATH: voxcpmSrc },
 			},
@@ -126,10 +115,7 @@ export async function stageTts(
 	sessionPath: string,
 	daemon?: MLDaemon,
 ) {
-	const ttsCfg = readConfig().stages?.tts ?? {
-		runtime: 'pytorch' as const,
-		device: 'cuda' as const,
-	};
+	const ttsCfg = readConfig().stages?.tts!
 	const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 	const translationFile = resolve(
 		REPO_ROOT,
@@ -142,9 +128,9 @@ export async function stageTts(
 
 	if (!existsSync(translationFile))
 		throw new Error(`${translationFile} not found`);
-	mkdirSync(ttsDir, { recursive: true });
+	ensureDir(ttsDir, taskId);
 
-	const data = JSON.parse(readFileSync(translationFile, 'utf-8'));
+	const data: TranslateFile = readJson(translationFile, taskId);
 	const translation = data.translation;
 
 	const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
@@ -155,9 +141,8 @@ export async function stageTts(
 		for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
 		const sessionAbs = resolve(REPO_ROOT, sessionPath);
 		const dubbingFile = join(sessionAbs, 'tmp', 'audio_dubbing.wav');
-		const timingsFile = join(sessionAbs, 'metadata', 'timings.json');
 		const finalVideo = join(sessionAbs, 'media', `${taskId}_dub.mp4`);
-		for (const f of [dubbingFile, timingsFile, finalVideo]) {
+		for (const f of [dubbingFile, finalVideo]) {
 			if (existsSync(f)) rmSync(f);
 		}
 	}
@@ -174,6 +159,7 @@ export async function stageTts(
 				tts_dir: ttsDir,
 				model_dir: modelDir,
 				device: ttsCfg.device,
+				skipExisting: ttsCfg.skipExisting,
 			},
 			(current, total) => {
 				emitLog(taskId, `[TTS] ${current}/${total}`);
@@ -193,6 +179,8 @@ export async function stageTts(
 			emitLog(taskId, `[TTS] Generated in ${r.generate_time_s}s`);
 		if (r.total_time_s)
 			emitLog(taskId, `[TTS] Total ${r.total_time_s}s (load + generate)`);
+		if (r.rtf != null)
+			emitLog(taskId, `[VoxCPM] RTF ${r.rtf}`);
 		if (r.errors && r.errors > 0)
 			emitLog(taskId, `[WARN] [TTS] ${r.errors} segments had errors`);
 		await updateStageDB(taskId, 'tts', {
@@ -227,15 +215,17 @@ export async function stageTts(
 		const voxcpm = createTTSBackend(ttsCfg);
 		await voxcpm.load();
 
+		const t0 = performance.now();
+		let genMs = 0;
 		for (let i = 0; i < translation.length; i++) {
 			const item = translation[i];
 			const idx = String(i + 1).padStart(4, '0');
 			const outPath = resolve(ttsDir, `${idx}.wav`);
-			if (existsSync(outPath)) continue;
+			if (ttsCfg.skipExisting && existsSync(outPath)) continue;
 
-			const text = item.dst || item.zh || '';
+			const text = item.dst || '';
 			if (!text.trim()) {
-				writeFileSync(outPath, Buffer.alloc(44));
+				writeFile(outPath, Buffer.alloc(44), taskId);
 				continue;
 			}
 
@@ -248,7 +238,7 @@ export async function stageTts(
 					taskId,
 					`[WARN] [TTS] No reference for segment ${idx}, skipping`,
 				);
-				writeFileSync(outPath, Buffer.alloc(44));
+				writeFile(outPath, Buffer.alloc(44), taskId);
 				continue;
 			}
 
@@ -256,15 +246,22 @@ export async function stageTts(
 				last_message: `Generating ${i + 1}/${translation.length}...`,
 			});
 
+			const t1 = performance.now();
 			const { samples: audio } = await voxcpm.generate({
 				text,
 				referenceWavPath: refWav,
 				promptText: item.src,
 			});
+			genMs += performance.now() - t1;
 			writeWav(audio, outPath, 48000);
 		}
 
 		await voxcpm.dispose();
+
+		const genSec = genMs / 1000;
+		const audioSec = translation.reduce((s, t) => s + (t.end_time - t.start_time), 0) / 1000;
+		const rtf = audioSec > 0 && genSec > 0 ? genSec / audioSec : 0;
+		emitLog(taskId, `[VoxCPM] Generated in ${genSec.toFixed(1)}s | RTF ${rtf.toFixed(3)}`);
 	}
 
 	await updateStageDB(taskId, 'tts', {

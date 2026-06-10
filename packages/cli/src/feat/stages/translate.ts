@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readJson, writeJson } from './fileOps.ts';
+import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
 import { readConfig, setLocalInfo } from '../config/config.ts';
@@ -11,6 +12,24 @@ import {
 	updateStageDB,
 } from './utils.ts';
 
+/**
+ * translate.[dstLang].json 结构
+ *
+ * 由 translate 阶段写入，split_audio/tts/merge_audio/merge_video 读取。
+ * 时间戳源自 asr_fixed.json（秒→毫秒），文本是 LLM 翻译结果。
+ * 此文件在此阶段后冻结，split_audio 不修改它，而是创建 timings.json。
+ */
+export interface TranslateFile {
+	translation: {
+		src: string;
+		dst: string;
+		src_lang: string;
+		dst_lang: string;
+		start_time: number;
+		end_time: number;
+		speaker: string;
+	}[];
+}
 export async function stageTranslate(taskId: string, sessionPath: string) {
 	const metadataDir = join(sessionPath, 'metadata');
 
@@ -45,16 +64,14 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		return;
 	}
 
-	const data = JSON.parse(readFileSync(fixedFile, 'utf-8'));
+	const data = readJson(fixedFile);
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
 
 	let meta: any = {};
 	try {
-		meta = JSON.parse(
-			readFileSync(join(metadataDir, 'ytdlp_info.json'), 'utf-8'),
-		);
+		meta = readJson(join(metadataDir, 'ytdlp_info.json'));
 	} catch {
 		/* ignore */
 	}
@@ -242,7 +259,7 @@ ${correctionsStr}
 		speaker: '1',
 	}));
 
-	writeFileSync(translationFile, JSON.stringify({ translation }, null, 2));
+	writeJson(translationFile, { translation });
 
 	setLocalInfo(sessionPath, {
 		runInfo: {

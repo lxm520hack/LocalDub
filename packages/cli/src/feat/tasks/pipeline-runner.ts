@@ -57,7 +57,7 @@ function snapshotConfig(sessionPath: string) {
 	if (tts) {
 		snap.stages.tts = {
 			runtime: tts.runtime,
-			device: 'device' in tts ? (tts as Record<string, string>).device : undefined,
+			device: 'device' in tts ? (tts).device : undefined,
 		};
 	}
 	setLocalInfo(sessionPath, { lastRunConfig: snap });

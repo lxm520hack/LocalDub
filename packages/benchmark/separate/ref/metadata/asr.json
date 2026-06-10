@@ -1,0 +1,3763 @@
+{
+  "audio_info": {
+    "duration": 168880
+  },
+  "result": {
+    "text": "弱者 这小子也真是敢说 这可是剑仙啊 不行 我得出手了 万一夜白忍不住宰了慧天怎么办 我好像 看到那个老虎婆在为我喝汤 不对 醒来 能自己从幻境中醒来 不错 资质上场 不管是心性定理 还是剑道天赋 都比我那个不成器的师父强多了 阁下尚有一剑为主请赐教 我尚有七剑在手 但凭什么给你看 哪凉快哪待着去 阁下剑法精妙绝伦 叶白请求 拜阁下为师 叶剑仙 慧天修为尚寝 你这般 叶白 拜见师祖 我可不收你 别乱碰关系 把我师父都喊老了 师父若不收徒儿 徒儿便常跪在此 绝不起身 要凑齐药材还差百万零食 最重要的是 还差一把可以做零根的剑 寒光剑终究差了火候 还是缺零食啊 这里有两百万尚品零食 是我的全部家的 徒儿深夜来访 也不知道敲门 这般茅躁 成何体重 成了 早知道这么简单 我还傻乎乎在门外跪大半天干嘛 师父恕罪 徒儿一时情节 失了分寸 对了师父 白天您那一剑精妙绝伦 徒儿多出不解 求师父指点 看见外面躺着的那个人了吗 既然灵气和神识都无法察觉 就用心去感受 你若能救活他 便能悟透那一剑 谢师父指点 发财了 足足两百万尚品零食 拿这当彩礼 我能娶十个师姐 一百个师父 王慧天 你犯了天了 我让你娶一百个师父 还娶不娶 让你恐无遮拦 让你狂 王慧天 到底是个什么人 气头 你说 若是我那招鬼鹰闪 对上她那时无波无炎的断念 就叫谁胜谁负 宿主请不要怀疑 你是这世间最强的存在 也是 就算鬼鹰闪不敌 我还有一招 一刀流居和死 狮子哥哥 她王慧天 不过是个凡人罢了 而我 可是有系统半生的天命主角",
+    "segments": [
+      {
+        "text": "弱者",
+        "start": 0,
+        "end": 0.76,
+        "words": [
+          {
+            "word": "弱",
+            "start": 0.09,
+            "end": 0.28,
+            "probability": 0.949972
+          },
+          {
+            "word": "者",
+            "start": 0.34,
+            "end": 0.76,
+            "probability": 0.998283
+          }
+        ]
+      },
+      {
+        "text": "这小子也真是敢说",
+        "start": 0.96,
+        "end": 2.24,
+        "words": [
+          {
+            "word": "这",
+            "start": 0.96,
+            "end": 0.96,
+            "probability": 0.706036
+          },
+          {
+            "word": "小",
+            "start": 1.05,
+            "end": 1.12,
+            "probability": 0.993153
+          },
+          {
+            "word": "子",
+            "start": 1.12,
+            "end": 1.24,
+            "probability": 0.997527
+          },
+          {
+            "word": "也",
+            "start": 1.31,
+            "end": 1.48,
+            "probability": 0.983147
+          },
+          {
+            "word": "真",
+            "start": 1.48,
+            "end": 1.66,
+            "probability": 0.995177
+          },
+          {
+            "word": "是",
+            "start": 1.66,
+            "end": 1.84,
+            "probability": 0.991032
+          },
+          {
+            "word": "敢",
+            "start": 1.84,
+            "end": 2.01,
+            "probability": 0.997622
+          },
+          {
+            "word": "说",
+            "start": 2.02,
+            "end": 2.24,
+            "probability": 0.997468
+          }
+        ]
+      },
+      {
+        "text": "这可是剑仙啊",
+        "start": 2.36,
+        "end": 3.36,
+        "words": [
+          {
+            "word": "这",
+            "start": 2.45,
+            "end": 2.45,
+            "probability": 0.996324
+          },
+          {
+            "word": "可是",
+            "start": 2.45,
+            "end": 2.88,
+            "probability": 0.998392
+          },
+          {
+            "word": "剑",
+            "start": 2.88,
+            "end": 3.09,
+            "probability": 0.508358
+          },
+          {
+            "word": "仙",
+            "start": 3.09,
+            "end": 3.32,
+            "probability": 0.965386
+          },
+          {
+            "word": "啊",
+            "start": 3.32,
+            "end": 3.36,
+            "probability": 0.962982
+          }
+        ]
+      },
+      {
+        "text": "不行",
+        "start": 3.76,
+        "end": 4.2,
+        "words": [
+          {
+            "word": "不行",
+            "start": 3.79,
+            "end": 4.2,
+            "probability": 0.991529
+          }
+        ]
+      },
+      {
+        "text": "我得出手了",
+        "start": 4.44,
+        "end": 5.16,
+        "words": [
+          {
+            "word": "我",
+            "start": 4.44,
+            "end": 4.44,
+            "probability": 0.959838
+          },
+          {
+            "word": "得",
+            "start": 4.53,
+            "end": 4.58,
+            "probability": 0.999565
+          },
+          {
+            "word": "出",
+            "start": 4.58,
+            "end": 4.72,
+            "probability": 0.999514
+          },
+          {
+            "word": "手",
+            "start": 4.79,
+            "end": 4.96,
+            "probability": 0.999384
+          },
+          {
+            "word": "了",
+            "start": 4.96,
+            "end": 5.16,
+            "probability": 0.979331
+          }
+        ]
+      },
+      {
+        "text": "万一夜白忍不住宰了慧天怎么办",
+        "start": 5.36,
+        "end": 7.04,
+        "words": [
+          {
+            "word": "万",
+            "start": 5.36,
+            "end": 5.36,
+            "probability": 0.647584
+          },
+          {
+            "word": "一",
+            "start": 5.45,
+            "end": 5.5,
+            "probability": 0.994808
+          },
+          {
+            "word": "夜",
+            "start": 5.5,
+            "end": 5.64,
+            "probability": 0.564417
+          },
+          {
+            "word": "白",
+            "start": 5.71,
+            "end": 5.84,
+            "probability": 0.99553
+          },
+          {
+            "word": "忍",
+            "start": 5.84,
+            "end": 5.93,
+            "probability": 0.952422
+          },
+          {
+            "word": "不",
+            "start": 5.93,
+            "end": 6.02,
+            "probability": 0.999319
+          },
+          {
+            "word": "住",
+            "start": 6.02,
+            "end": 6.12,
+            "probability": 0.998458
+          },
+          {
+            "word": "宰",
+            "start": 6.12,
+            "end": 6.24,
+            "probability": 0.563766
+          },
+          {
+            "word": "了",
+            "start": 6.24,
+            "end": 6.36,
+            "probability": 0.996168
+          },
+          {
+            "word": "慧",
+            "start": 6.36,
+            "end": 6.48,
+            "probability": 0.422743
+          },
+          {
+            "word": "天",
+            "start": 6.48,
+            "end": 6.6,
+            "probability": 0.995706
+          },
+          {
+            "word": "怎么",
+            "start": 6.6,
+            "end": 6.89,
+            "probability": 0.904376
+          },
+          {
+            "word": "办",
+            "start": 6.9,
+            "end": 7.04,
+            "probability": 0.999645
+          }
+        ]
+      },
+      {
+        "text": "我好像",
+        "start": 15.2,
+        "end": 15.92,
+        "words": [
+          {
+            "word": "我",
+            "start": 15.2,
+            "end": 15.2,
+            "probability": 0.997099
+          },
+          {
+            "word": "好像",
+            "start": 15.23,
+            "end": 15.91,
+            "probability": 0.763258
+          }
+        ]
+      },
+      {
+        "text": "看到那个老虎婆在为我喝汤",
+        "start": 16.52,
+        "end": 18.68,
+        "words": [
+          {
+            "word": "看到",
+            "start": 16.52,
+            "end": 16.52,
+            "probability": 0.966564
+          },
+          {
+            "word": "那个",
+            "start": 16.55,
+            "end": 16.94,
+            "probability": 0.384445
+          },
+          {
+            "word": "老",
+            "start": 16.94,
+            "end": 17.19,
+            "probability": 0.866015
+          },
+          {
+            "word": "虎",
+            "start": 17.19,
+            "end": 17.44,
+            "probability": 0.112117
+          },
+          {
+            "word": "婆",
+            "start": 17.44,
+            "end": 17.72,
+            "probability": 0.303785
+          },
+          {
+            "word": "在",
+            "start": 17.72,
+            "end": 17.91,
+            "probability": 0.601539
+          },
+          {
+            "word": "为",
+            "start": 17.91,
+            "end": 18.1,
+            "probability": 0.844933
+          },
+          {
+            "word": "我",
+            "start": 18.1,
+            "end": 18.27,
+            "probability": 0.997569
+          },
+          {
+            "word": "喝",
+            "start": 18.29,
+            "end": 18.48,
+            "probability": 0.991476
+          },
+          {
+            "word": "汤",
+            "start": 18.48,
+            "end": 18.68,
+            "probability": 0.964627
+          }
+        ]
+      },
+      {
+        "text": "不对",
+        "start": 19.4,
+        "end": 19.88,
+        "words": [
+          {
+            "word": "不对",
+            "start": 19.43,
+            "end": 19.88,
+            "probability": 0.994945
+          }
+        ]
+      },
+      {
+        "text": "醒来",
+        "start": 20.48,
+        "end": 21.08,
+        "words": [
+          {
+            "word": "醒",
+            "start": 20.48,
+            "end": 20.48,
+            "probability": 0.995832
+          },
+          {
+            "word": "来",
+            "start": 20.51,
+            "end": 21.08,
+            "probability": 0.713509
+          }
+        ]
+      },
+      {
+        "text": "能自己从幻境中醒来",
+        "start": 21.64,
+        "end": 23.16,
+        "words": [
+          {
+            "word": "能",
+            "start": 21.64,
+            "end": 21.64,
+            "probability": 0.997425
+          },
+          {
+            "word": "自己",
+            "start": 21.73,
+            "end": 21.77,
+            "probability": 0.997586
+          },
+          {
+            "word": "从",
+            "start": 21.77,
+            "end": 21.92,
+            "probability": 0.996044
+          },
+          {
+            "word": "幻",
+            "start": 21.99,
+            "end": 22.22,
+            "probability": 0.991805
+          },
+          {
+            "word": "境",
+            "start": 22.22,
+            "end": 22.45,
+            "probability": 0.998298
+          },
+          {
+            "word": "中",
+            "start": 22.45,
+            "end": 22.68,
+            "probability": 0.990293
+          },
+          {
+            "word": "醒",
+            "start": 22.68,
+            "end": 22.91,
+            "probability": 0.9113
+          },
+          {
+            "word": "来",
+            "start": 22.91,
+            "end": 23.13,
+            "probability": 0.982864
+          }
+        ]
+      },
+      {
+        "text": "不错",
+        "start": 23.44,
+        "end": 23.84,
+        "words": [
+          {
+            "word": "不",
+            "start": 23.5,
+            "end": 23.5,
+            "probability": 0.995103
+          },
+          {
+            "word": "错",
+            "start": 23.53,
+            "end": 23.83,
+            "probability": 0.999676
+          }
+        ]
+      },
+      {
+        "text": "资质上场",
+        "start": 24.12,
+        "end": 24.88,
+        "words": [
+          {
+            "word": "资",
+            "start": 24.12,
+            "end": 24.12,
+            "probability": 0.970454
+          },
+          {
+            "word": "质",
+            "start": 24.21,
+            "end": 24.34,
+            "probability": 0.981919
+          },
+          {
+            "word": "上",
+            "start": 24.34,
+            "end": 24.6,
+            "probability": 0.474006
+          },
+          {
+            "word": "场",
+            "start": 24.6,
+            "end": 24.88,
+            "probability": 0.709794
+          }
+        ]
+      },
+      {
+        "text": "不管是心性定理",
+        "start": 25.4,
+        "end": 26.4,
+        "words": [
+          {
+            "word": "不管",
+            "start": 25.4,
+            "end": 25.4,
+            "probability": 0.998053
+          },
+          {
+            "word": "是",
+            "start": 25.49,
+            "end": 25.52,
+            "probability": 0.998645
+          },
+          {
+            "word": "心",
+            "start": 25.52,
+            "end": 25.68,
+            "probability": 0.675478
+          },
+          {
+            "word": "性",
+            "start": 25.75,
+            "end": 25.94,
+            "probability": 0.968398
+          },
+          {
+            "word": "定",
+            "start": 25.94,
+            "end": 26.15,
+            "probability": 0.998872
+          },
+          {
+            "word": "理",
+            "start": 26.15,
+            "end": 26.4,
+            "probability": 0.738595
+          }
+        ]
+      },
+      {
+        "text": "还是剑道天赋",
+        "start": 26.52,
+        "end": 27.44,
+        "words": [
+          {
+            "word": "还是",
+            "start": 26.61,
+            "end": 26.74,
+            "probability": 0.997944
+          },
+          {
+            "word": "剑",
+            "start": 26.74,
+            "end": 26.89,
+            "probability": 0.84238
+          },
+          {
+            "word": "道",
+            "start": 26.89,
+            "end": 27.07,
+            "probability": 0.95009
+          },
+          {
+            "word": "天",
+            "start": 27.07,
+            "end": 27.24,
+            "probability": 0.994492
+          },
+          {
+            "word": "赋",
+            "start": 27.24,
+            "end": 27.44,
+            "probability": 0.928083
+          }
+        ]
+      },
+      {
+        "text": "都比我那个不成器的师父强多了",
+        "start": 27.92,
+        "end": 29.4,
+        "words": [
+          {
+            "word": "都",
+            "start": 27.92,
+            "end": 27.92,
+            "probability": 0.988408
+          },
+          {
+            "word": "比",
+            "start": 27.92,
+            "end": 27.92,
+            "probability": 0.999012
+          },
+          {
+            "word": "我",
+            "start": 28.01,
+            "end": 28.04,
+            "probability": 0.993538
+          },
+          {
+            "word": "那个",
+            "start": 28.04,
+            "end": 28.44,
+            "probability": 0.990716
+          },
+          {
+            "word": "不",
+            "start": 28.44,
+            "end": 28.56,
+            "probability": 0.960298
+          },
+          {
+            "word": "成",
+            "start": 28.56,
+            "end": 28.68,
+            "probability": 0.989368
+          },
+          {
+            "word": "器",
+            "start": 28.68,
+            "end": 28.8,
+            "probability": 0.803495
+          },
+          {
+            "word": "的",
+            "start": 28.8,
+            "end": 28.92,
+            "probability": 0.993136
+          },
+          {
+            "word": "师",
+            "start": 28.92,
+            "end": 29.04,
+            "probability": 0.995303
+          },
+          {
+            "word": "父",
+            "start": 29.04,
+            "end": 29.16,
+            "probability": 0.768577
+          },
+          {
+            "word": "强",
+            "start": 29.16,
+            "end": 29.32,
+            "probability": 0.982988
+          },
+          {
+            "word": "多",
+            "start": 29.32,
+            "end": 29.36,
+            "probability": 0.972601
+          },
+          {
+            "word": "了",
+            "start": 29.36,
+            "end": 29.4,
+            "probability": 0.871682
+          }
+        ]
+      },
+      {
+        "text": "阁下尚有一剑为主请赐教",
+        "start": 29.4,
+        "end": 30.8,
+        "words": [
+          {
+            "word": "阁",
+            "start": 29.48,
+            "end": 29.52,
+            "probability": 0.824094
+          },
+          {
+            "word": "下",
+            "start": 29.52,
+            "end": 29.64,
+            "probability": 0.993989
+          },
+          {
+            "word": "尚",
+            "start": 29.64,
+            "end": 29.75,
+            "probability": 0.63279
+          },
+          {
+            "word": "有一",
+            "start": 29.75,
+            "end": 30.01,
+            "probability": 0.986124
+          },
+          {
+            "word": "剑",
+            "start": 30.01,
+            "end": 30.16,
+            "probability": 0.944398
+          },
+          {
+            "word": "为",
+            "start": 30.16,
+            "end": 30.28,
+            "probability": 0.830579
+          },
+          {
+            "word": "主",
+            "start": 30.28,
+            "end": 30.41,
+            "probability": 0.0434347
+          },
+          {
+            "word": "请",
+            "start": 30.41,
+            "end": 30.54,
+            "probability": 0.898537
+          },
+          {
+            "word": "赐",
+            "start": 30.54,
+            "end": 30.66,
+            "probability": 0.970595
+          },
+          {
+            "word": "教",
+            "start": 30.66,
+            "end": 30.8,
+            "probability": 0.949607
+          }
+        ]
+      },
+      {
+        "text": "我尚有七剑在手",
+        "start": 31.12,
+        "end": 32.16,
+        "words": [
+          {
+            "word": "我",
+            "start": 31.12,
+            "end": 31.12,
+            "probability": 0.993316
+          },
+          {
+            "word": "尚",
+            "start": 31.12,
+            "end": 31.17,
+            "probability": 0.974364
+          },
+          {
+            "word": "有",
+            "start": 31.21,
+            "end": 31.36,
+            "probability": 0.991093
+          },
+          {
+            "word": "七",
+            "start": 31.36,
+            "end": 31.55,
+            "probability": 0.978394
+          },
+          {
+            "word": "剑",
+            "start": 31.55,
+            "end": 31.73,
+            "probability": 0.999293
+          },
+          {
+            "word": "在",
+            "start": 31.73,
+            "end": 31.92,
+            "probability": 0.994035
+          },
+          {
+            "word": "手",
+            "start": 31.92,
+            "end": 32.16,
+            "probability": 0.939671
+          }
+        ]
+      },
+      {
+        "text": "但凭什么给你看",
+        "start": 32.6,
+        "end": 33.52,
+        "words": [
+          {
+            "word": "但",
+            "start": 32.6,
+            "end": 32.6,
+            "probability": 0.993945
+          },
+          {
+            "word": "凭",
+            "start": 32.6,
+            "end": 32.6,
+            "probability": 0.99861
+          },
+          {
+            "word": "什么",
+            "start": 32.69,
+            "end": 32.88,
+            "probability": 0.99794
+          },
+          {
+            "word": "给",
+            "start": 32.95,
+            "end": 33.1,
+            "probability": 0.996288
+          },
+          {
+            "word": "你看",
+            "start": 33.1,
+            "end": 33.52,
+            "probability": 0.985445
+          }
+        ]
+      },
+      {
+        "text": "哪凉快哪待着去",
+        "start": 34,
+        "end": 34.96,
+        "words": [
+          {
+            "word": "哪",
+            "start": 34,
+            "end": 34,
+            "probability": 0.978332
+          },
+          {
+            "word": "凉",
+            "start": 34,
+            "end": 34,
+            "probability": 0.589201
+          },
+          {
+            "word": "快",
+            "start": 34.09,
+            "end": 34.11,
+            "probability": 0.996658
+          },
+          {
+            "word": "哪",
+            "start": 34.11,
+            "end": 34.28,
+            "probability": 0.985308
+          },
+          {
+            "word": "待",
+            "start": 34.35,
+            "end": 34.51,
+            "probability": 0.602087
+          },
+          {
+            "word": "着",
+            "start": 34.51,
+            "end": 34.71,
+            "probability": 0.995154
+          },
+          {
+            "word": "去",
+            "start": 34.71,
+            "end": 34.96,
+            "probability": 0.992137
+          }
+        ]
+      },
+      {
+        "text": "阁下剑法精妙绝伦",
+        "start": 40.88,
+        "end": 42.12,
+        "words": [
+          {
+            "word": "阁",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.996843
+          },
+          {
+            "word": "下",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.999115
+          },
+          {
+            "word": "剑",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.994956
+          },
+          {
+            "word": "法",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.99834
+          },
+          {
+            "word": "精",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.942805
+          },
+          {
+            "word": "妙",
+            "start": 40.88,
+            "end": 40.88,
+            "probability": 0.994577
+          },
+          {
+            "word": "绝",
+            "start": 40.88,
+            "end": 41.15,
+            "probability": 0.976086
+          },
+          {
+            "word": "伦",
+            "start": 41.15,
+            "end": 42.12,
+            "probability": 0.993445
+          }
+        ]
+      },
+      {
+        "text": "叶白请求",
+        "start": 43.04,
+        "end": 43.76,
+        "words": [
+          {
+            "word": "叶",
+            "start": 43.04,
+            "end": 43.04,
+            "probability": 0.763922
+          },
+          {
+            "word": "白",
+            "start": 43.04,
+            "end": 43.04,
+            "probability": 0.971513
+          },
+          {
+            "word": "请",
+            "start": 43.13,
+            "end": 43.32,
+            "probability": 0.992258
+          },
+          {
+            "word": "求",
+            "start": 43.39,
+            "end": 43.76,
+            "probability": 0.999805
+          }
+        ]
+      },
+      {
+        "text": "拜阁下为师",
+        "start": 44.04,
+        "end": 44.88,
+        "words": [
+          {
+            "word": "拜",
+            "start": 44.04,
+            "end": 44.04,
+            "probability": 0.987202
+          },
+          {
+            "word": "阁",
+            "start": 44.12,
+            "end": 44.19,
+            "probability": 0.998273
+          },
+          {
+            "word": "下",
+            "start": 44.19,
+            "end": 44.32,
+            "probability": 0.999064
+          },
+          {
+            "word": "为",
+            "start": 44.4,
+            "end": 44.63,
+            "probability": 0.99826
+          },
+          {
+            "word": "师",
+            "start": 44.63,
+            "end": 44.87,
+            "probability": 0.996786
+          }
+        ]
+      },
+      {
+        "text": "叶剑仙",
+        "start": 45.68,
+        "end": 46.2,
+        "words": [
+          {
+            "word": "叶",
+            "start": 45.68,
+            "end": 45.68,
+            "probability": 0.995142
+          },
+          {
+            "word": "剑",
+            "start": 45.68,
+            "end": 45.74,
+            "probability": 0.916331
+          },
+          {
+            "word": "仙",
+            "start": 45.77,
+            "end": 46.2,
+            "probability": 0.995663
+          }
+        ]
+      },
+      {
+        "text": "慧天修为尚寝",
+        "start": 46.56,
+        "end": 47.44,
+        "words": [
+          {
+            "word": "慧",
+            "start": 46.56,
+            "end": 46.56,
+            "probability": 0.974271
+          },
+          {
+            "word": "天",
+            "start": 46.59,
+            "end": 46.59,
+            "probability": 0.999813
+          },
+          {
+            "word": "修",
+            "start": 46.65,
+            "end": 46.78,
+            "probability": 0.721534
+          },
+          {
+            "word": "为",
+            "start": 46.78,
+            "end": 46.98,
+            "probability": 0.997343
+          },
+          {
+            "word": "尚",
+            "start": 46.98,
+            "end": 47.17,
+            "probability": 0.764595
+          },
+          {
+            "word": "寝",
+            "start": 47.17,
+            "end": 47.44,
+            "probability": 0.133972
+          }
+        ]
+      },
+      {
+        "text": "你这般",
+        "start": 47.76,
+        "end": 48.2,
+        "words": [
+          {
+            "word": "你",
+            "start": 47.76,
+            "end": 47.76,
+            "probability": 0.975597
+          },
+          {
+            "word": "这",
+            "start": 47.85,
+            "end": 47.94,
+            "probability": 0.979714
+          },
+          {
+            "word": "般",
+            "start": 47.94,
+            "end": 48.2,
+            "probability": 0.663781
+          }
+        ]
+      },
+      {
+        "text": "叶白",
+        "start": 48.76,
+        "end": 49.12,
+        "words": [
+          {
+            "word": "叶",
+            "start": 48.76,
+            "end": 48.76,
+            "probability": 0.998751
+          },
+          {
+            "word": "白",
+            "start": 48.79,
+            "end": 49.04,
+            "probability": 0.99971
+          }
+        ]
+      },
+      {
+        "text": "拜见师祖",
+        "start": 49.6,
+        "end": 50.2,
+        "words": [
+          {
+            "word": "拜",
+            "start": 49.6,
+            "end": 49.6,
+            "probability": 0.987142
+          },
+          {
+            "word": "见",
+            "start": 49.66,
+            "end": 49.66,
+            "probability": 0.696776
+          },
+          {
+            "word": "师",
+            "start": 49.69,
+            "end": 49.88,
+            "probability": 0.968426
+          },
+          {
+            "word": "祖",
+            "start": 49.95,
+            "end": 50.2,
+            "probability": 0.986036
+          }
+        ]
+      },
+      {
+        "text": "我可不收你",
+        "start": 50.36,
+        "end": 50.96,
+        "words": [
+          {
+            "word": "我",
+            "start": 50.36,
+            "end": 50.36,
+            "probability": 0.998519
+          },
+          {
+            "word": "可",
+            "start": 50.45,
+            "end": 50.5,
+            "probability": 0.999243
+          },
+          {
+            "word": "不",
+            "start": 50.5,
+            "end": 50.64,
+            "probability": 0.999308
+          },
+          {
+            "word": "收",
+            "start": 50.75,
+            "end": 50.8,
+            "probability": 0.994844
+          },
+          {
+            "word": "你",
+            "start": 50.8,
+            "end": 50.96,
+            "probability": 0.984572
+          }
+        ]
+      },
+      {
+        "text": "别乱碰关系",
+        "start": 51.2,
+        "end": 51.88,
+        "words": [
+          {
+            "word": "别",
+            "start": 51.2,
+            "end": 51.2,
+            "probability": 0.996557
+          },
+          {
+            "word": "乱",
+            "start": 51.26,
+            "end": 51.32,
+            "probability": 0.998959
+          },
+          {
+            "word": "碰",
+            "start": 51.32,
+            "end": 51.47,
+            "probability": 0.85368
+          },
+          {
+            "word": "关",
+            "start": 51.55,
+            "end": 51.68,
+            "probability": 0.985488
+          },
+          {
+            "word": "系",
+            "start": 51.68,
+            "end": 51.88,
+            "probability": 0.938233
+          }
+        ]
+      },
+      {
+        "text": "把我师父都喊老了",
+        "start": 51.96,
+        "end": 52.8,
+        "words": [
+          {
+            "word": "把",
+            "start": 51.99,
+            "end": 52,
+            "probability": 0.998018
+          },
+          {
+            "word": "我",
+            "start": 52.05,
+            "end": 52.12,
+            "probability": 0.999085
+          },
+          {
+            "word": "师",
+            "start": 52.12,
+            "end": 52.23,
+            "probability": 0.99955
+          },
+          {
+            "word": "父",
+            "start": 52.24,
+            "end": 52.24,
+            "probability": 0.992545
+          },
+          {
+            "word": "都",
+            "start": 52.3,
+            "end": 52.48,
+            "probability": 0.992822
+          },
+          {
+            "word": "喊",
+            "start": 52.48,
+            "end": 52.6,
+            "probability": 0.980116
+          },
+          {
+            "word": "老",
+            "start": 52.6,
+            "end": 52.76,
+            "probability": 0.953172
+          },
+          {
+            "word": "了",
+            "start": 52.76,
+            "end": 52.8,
+            "probability": 0.645162
+          }
+        ]
+      },
+      {
+        "text": "师父若不收徒儿",
+        "start": 53.08,
+        "end": 54.04,
+        "words": [
+          {
+            "word": "师",
+            "start": 53.08,
+            "end": 53.08,
+            "probability": 0.998289
+          },
+          {
+            "word": "父",
+            "start": 53.14,
+            "end": 53.14,
+            "probability": 0.999186
+          },
+          {
+            "word": "若",
+            "start": 53.17,
+            "end": 53.3,
+            "probability": 0.995566
+          },
+          {
+            "word": "不",
+            "start": 53.3,
+            "end": 53.36,
+            "probability": 0.999561
+          },
+          {
+            "word": "收",
+            "start": 53.42,
+            "end": 53.64,
+            "probability": 0.99911
+          },
+          {
+            "word": "徒",
+            "start": 53.64,
+            "end": 53.8,
+            "probability": 0.870968
+          },
+          {
+            "word": "儿",
+            "start": 53.8,
+            "end": 54.04,
+            "probability": 0.899286
+          }
+        ]
+      },
+      {
+        "text": "徒儿便常跪在此",
+        "start": 54.56,
+        "end": 55.52,
+        "words": [
+          {
+            "word": "徒",
+            "start": 54.56,
+            "end": 54.56,
+            "probability": 0.999153
+          },
+          {
+            "word": "儿",
+            "start": 54.56,
+            "end": 54.56,
+            "probability": 0.999479
+          },
+          {
+            "word": "便",
+            "start": 54.65,
+            "end": 54.67,
+            "probability": 0.999363
+          },
+          {
+            "word": "常",
+            "start": 54.67,
+            "end": 54.84,
+            "probability": 0.84402
+          },
+          {
+            "word": "跪",
+            "start": 54.91,
+            "end": 55.09,
+            "probability": 0.917722
+          },
+          {
+            "word": "在",
+            "start": 55.09,
+            "end": 55.29,
+            "probability": 0.97934
+          },
+          {
+            "word": "此",
+            "start": 55.29,
+            "end": 55.52,
+            "probability": 0.929473
+          }
+        ]
+      },
+      {
+        "text": "绝不起身",
+        "start": 55.84,
+        "end": 56.44,
+        "words": [
+          {
+            "word": "绝",
+            "start": 55.84,
+            "end": 55.84,
+            "probability": 0.706417
+          },
+          {
+            "word": "不起",
+            "start": 55.87,
+            "end": 56.12,
+            "probability": 0.978347
+          },
+          {
+            "word": "身",
+            "start": 56.19,
+            "end": 56.44,
+            "probability": 0.973855
+          }
+        ]
+      },
+      {
+        "text": "要凑齐药材还差百万零食",
+        "start": 59.4,
+        "end": 63.8,
+        "words": [
+          {
+            "word": "要",
+            "start": 59.43,
+            "end": 60.04,
+            "probability": 0.272784
+          },
+          {
+            "word": "凑",
+            "start": 60.04,
+            "end": 60.68,
+            "probability": 0.996762
+          },
+          {
+            "word": "齐",
+            "start": 60.68,
+            "end": 61.29,
+            "probability": 0.958486
+          },
+          {
+            "word": "药",
+            "start": 61.32,
+            "end": 61.96,
+            "probability": 0.974923
+          },
+          {
+            "word": "材",
+            "start": 61.96,
+            "end": 62.63,
+            "probability": 0.9988
+          },
+          {
+            "word": "还",
+            "start": 62.63,
+            "end": 62.83,
+            "probability": 0.753799
+          },
+          {
+            "word": "差",
+            "start": 62.83,
+            "end": 63.01,
+            "probability": 0.965854
+          },
+          {
+            "word": "百",
+            "start": 63.02,
+            "end": 63.21,
+            "probability": 0.98075
+          },
+          {
+            "word": "万",
+            "start": 63.21,
+            "end": 63.4,
+            "probability": 0.999287
+          },
+          {
+            "word": "零",
+            "start": 63.4,
+            "end": 63.58,
+            "probability": 0.783354
+          },
+          {
+            "word": "食",
+            "start": 63.58,
+            "end": 63.8,
+            "probability": 0.971337
+          }
+        ]
+      },
+      {
+        "text": "最重要的是",
+        "start": 64.6,
+        "end": 65.32,
+        "words": [
+          {
+            "word": "最",
+            "start": 64.6,
+            "end": 64.6,
+            "probability": 0.958625
+          },
+          {
+            "word": "重要",
+            "start": 64.69,
+            "end": 64.7,
+            "probability": 0.992708
+          },
+          {
+            "word": "的是",
+            "start": 64.7,
+            "end": 65.31,
+            "probability": 0.908744
+          }
+        ]
+      },
+      {
+        "text": "还差一把可以做零根的剑",
+        "start": 65.8,
+        "end": 67.36,
+        "words": [
+          {
+            "word": "还",
+            "start": 65.8,
+            "end": 65.8,
+            "probability": 0.991452
+          },
+          {
+            "word": "差",
+            "start": 65.82,
+            "end": 65.82,
+            "probability": 0.994793
+          },
+          {
+            "word": "一",
+            "start": 65.89,
+            "end": 66.07,
+            "probability": 0.997269
+          },
+          {
+            "word": "把",
+            "start": 66.07,
+            "end": 66.32,
+            "probability": 0.999415
+          },
+          {
+            "word": "可以",
+            "start": 66.32,
+            "end": 66.61,
+            "probability": 0.942511
+          },
+          {
+            "word": "做",
+            "start": 66.61,
+            "end": 66.75,
+            "probability": 0.962819
+          },
+          {
+            "word": "零",
+            "start": 66.75,
+            "end": 66.88,
+            "probability": 0.950515
+          },
+          {
+            "word": "根",
+            "start": 66.88,
+            "end": 67.02,
+            "probability": 0.962201
+          },
+          {
+            "word": "的",
+            "start": 67.02,
+            "end": 67.15,
+            "probability": 0.997807
+          },
+          {
+            "word": "剑",
+            "start": 67.16,
+            "end": 67.36,
+            "probability": 0.987038
+          }
+        ]
+      },
+      {
+        "text": "寒光剑终究差了火候",
+        "start": 68.12,
+        "end": 69.76,
+        "words": [
+          {
+            "word": "寒",
+            "start": 68.12,
+            "end": 68.12,
+            "probability": 0.680624
+          },
+          {
+            "word": "光",
+            "start": 68.12,
+            "end": 68.12,
+            "probability": 0.995357
+          },
+          {
+            "word": "剑",
+            "start": 68.12,
+            "end": 68.12,
+            "probability": 0.997895
+          },
+          {
+            "word": "终",
+            "start": 68.21,
+            "end": 68.37,
+            "probability": 0.955506
+          },
+          {
+            "word": "究",
+            "start": 68.37,
+            "end": 68.63,
+            "probability": 0.96868
+          },
+          {
+            "word": "差",
+            "start": 68.63,
+            "end": 68.88,
+            "probability": 0.643953
+          },
+          {
+            "word": "了",
+            "start": 68.88,
+            "end": 69.15,
+            "probability": 0.996873
+          },
+          {
+            "word": "火",
+            "start": 69.15,
+            "end": 69.41,
+            "probability": 0.952735
+          },
+          {
+            "word": "候",
+            "start": 69.41,
+            "end": 69.76,
+            "probability": 0.671523
+          }
+        ]
+      },
+      {
+        "text": "还是缺零食啊",
+        "start": 72.16,
+        "end": 73.36,
+        "words": [
+          {
+            "word": "还是",
+            "start": 72.16,
+            "end": 72.16,
+            "probability": 0.681385
+          },
+          {
+            "word": "缺",
+            "start": 72.16,
+            "end": 72.16,
+            "probability": 0.994079
+          },
+          {
+            "word": "零",
+            "start": 72.25,
+            "end": 72.44,
+            "probability": 0.993962
+          },
+          {
+            "word": "食",
+            "start": 72.5,
+            "end": 73.2,
+            "probability": 0.997874
+          },
+          {
+            "word": "啊",
+            "start": 73.2,
+            "end": 73.36,
+            "probability": 0.803172
+          }
+        ]
+      },
+      {
+        "text": "这里有两百万尚品零食",
+        "start": 77.92,
+        "end": 79.28,
+        "words": [
+          {
+            "word": "这里",
+            "start": 78.01,
+            "end": 78.19,
+            "probability": 0.937666
+          },
+          {
+            "word": "有",
+            "start": 78.2,
+            "end": 78.34,
+            "probability": 0.993492
+          },
+          {
+            "word": "两",
+            "start": 78.34,
+            "end": 78.48,
+            "probability": 0.959318
+          },
+          {
+            "word": "百",
+            "start": 78.48,
+            "end": 78.62,
+            "probability": 0.998009
+          },
+          {
+            "word": "万",
+            "start": 78.62,
+            "end": 78.76,
+            "probability": 0.997864
+          },
+          {
+            "word": "尚",
+            "start": 78.76,
+            "end": 78.88,
+            "probability": 0.234205
+          },
+          {
+            "word": "品",
+            "start": 78.88,
+            "end": 79.01,
+            "probability": 0.997634
+          },
+          {
+            "word": "零",
+            "start": 79.01,
+            "end": 79.13,
+            "probability": 0.871589
+          },
+          {
+            "word": "食",
+            "start": 79.13,
+            "end": 79.27,
+            "probability": 0.999674
+          }
+        ]
+      },
+      {
+        "text": "是我的全部家的",
+        "start": 79.8,
+        "end": 80.76,
+        "words": [
+          {
+            "word": "是",
+            "start": 79.8,
+            "end": 79.8,
+            "probability": 0.957686
+          },
+          {
+            "word": "我的",
+            "start": 79.89,
+            "end": 79.91,
+            "probability": 0.993398
+          },
+          {
+            "word": "全部",
+            "start": 79.91,
+            "end": 80.33,
+            "probability": 0.958429
+          },
+          {
+            "word": "家",
+            "start": 80.33,
+            "end": 80.56,
+            "probability": 0.826734
+          },
+          {
+            "word": "的",
+            "start": 80.56,
+            "end": 80.76,
+            "probability": 0.965756
+          }
+        ]
+      },
+      {
+        "text": "徒儿深夜来访",
+        "start": 82.32,
+        "end": 83.28,
+        "words": [
+          {
+            "word": "徒",
+            "start": 82.32,
+            "end": 82.32,
+            "probability": 0.829442
+          },
+          {
+            "word": "儿",
+            "start": 82.32,
+            "end": 82.32,
+            "probability": 0.993944
+          },
+          {
+            "word": "深",
+            "start": 82.32,
+            "end": 82.32,
+            "probability": 0.997666
+          },
+          {
+            "word": "夜",
+            "start": 82.41,
+            "end": 82.44,
+            "probability": 0.999813
+          },
+          {
+            "word": "来",
+            "start": 82.44,
+            "end": 82.86,
+            "probability": 0.999508
+          },
+          {
+            "word": "访",
+            "start": 82.86,
+            "end": 83.28,
+            "probability": 0.996736
+          }
+        ]
+      },
+      {
+        "text": "也不知道敲门",
+        "start": 83.64,
+        "end": 84.52,
+        "words": [
+          {
+            "word": "也",
+            "start": 83.64,
+            "end": 83.64,
+            "probability": 0.997778
+          },
+          {
+            "word": "不知道",
+            "start": 83.67,
+            "end": 84.1,
+            "probability": 0.991679
+          },
+          {
+            "word": "敲",
+            "start": 84.1,
+            "end": 84.29,
+            "probability": 0.993283
+          },
+          {
+            "word": "门",
+            "start": 84.29,
+            "end": 84.52,
+            "probability": 0.999336
+          }
+        ]
+      },
+      {
+        "text": "这般茅躁",
+        "start": 84.96,
+        "end": 85.64,
+        "words": [
+          {
+            "word": "这",
+            "start": 84.96,
+            "end": 84.96,
+            "probability": 0.994566
+          },
+          {
+            "word": "般",
+            "start": 85.05,
+            "end": 85.08,
+            "probability": 0.9832
+          },
+          {
+            "word": "茅",
+            "start": 85.08,
+            "end": 85.35,
+            "probability": 0.104054
+          },
+          {
+            "word": "躁",
+            "start": 85.35,
+            "end": 85.64,
+            "probability": 0.432757
+          }
+        ]
+      },
+      {
+        "text": "成何体重",
+        "start": 86.16,
+        "end": 86.84,
+        "words": [
+          {
+            "word": "成",
+            "start": 86.16,
+            "end": 86.16,
+            "probability": 0.988715
+          },
+          {
+            "word": "何",
+            "start": 86.22,
+            "end": 86.22,
+            "probability": 0.993545
+          },
+          {
+            "word": "体",
+            "start": 86.25,
+            "end": 86.44,
+            "probability": 0.956317
+          },
+          {
+            "word": "重",
+            "start": 86.5,
+            "end": 86.84,
+            "probability": 0.251848
+          }
+        ]
+      },
+      {
+        "text": "成了",
+        "start": 87,
+        "end": 87.4,
+        "words": [
+          {
+            "word": "成",
+            "start": 87.09,
+            "end": 87.12,
+            "probability": 0.998652
+          },
+          {
+            "word": "了",
+            "start": 87.12,
+            "end": 87.39,
+            "probability": 0.995807
+          }
+        ]
+      },
+      {
+        "text": "早知道这么简单",
+        "start": 87.72,
+        "end": 88.6,
+        "words": [
+          {
+            "word": "早",
+            "start": 87.72,
+            "end": 87.72,
+            "probability": 0.981764
+          },
+          {
+            "word": "知道",
+            "start": 87.81,
+            "end": 87.91,
+            "probability": 0.998186
+          },
+          {
+            "word": "这么",
+            "start": 87.91,
+            "end": 88.25,
+            "probability": 0.982509
+          },
+          {
+            "word": "简",
+            "start": 88.25,
+            "end": 88.41,
+            "probability": 0.999691
+          },
+          {
+            "word": "单",
+            "start": 88.41,
+            "end": 88.6,
+            "probability": 0.999237
+          }
+        ]
+      },
+      {
+        "text": "我还傻乎乎在门外跪大半天干嘛",
+        "start": 88.76,
+        "end": 90.48,
+        "words": [
+          {
+            "word": "我",
+            "start": 88.76,
+            "end": 88.76,
+            "probability": 0.997617
+          },
+          {
+            "word": "还",
+            "start": 88.85,
+            "end": 88.86,
+            "probability": 0.997917
+          },
+          {
+            "word": "傻",
+            "start": 88.86,
+            "end": 88.99,
+            "probability": 0.995451
+          },
+          {
+            "word": "乎",
+            "start": 88.99,
+            "end": 89.11,
+            "probability": 0.920201
+          },
+          {
+            "word": "乎",
+            "start": 89.11,
+            "end": 89.28,
+            "probability": 0.997394
+          },
+          {
+            "word": "在",
+            "start": 89.28,
+            "end": 89.44,
+            "probability": 0.814288
+          },
+          {
+            "word": "门",
+            "start": 89.44,
+            "end": 89.56,
+            "probability": 0.971915
+          },
+          {
+            "word": "外",
+            "start": 89.56,
+            "end": 89.68,
+            "probability": 0.998367
+          },
+          {
+            "word": "跪",
+            "start": 89.68,
+            "end": 89.8,
+            "probability": 0.659362
+          },
+          {
+            "word": "大",
+            "start": 89.8,
+            "end": 89.9,
+            "probability": 0.727947
+          },
+          {
+            "word": "半",
+            "start": 89.9,
+            "end": 90,
+            "probability": 0.998481
+          },
+          {
+            "word": "天",
+            "start": 90,
+            "end": 90.11,
+            "probability": 0.999767
+          },
+          {
+            "word": "干",
+            "start": 90.12,
+            "end": 90.25,
+            "probability": 0.976095
+          },
+          {
+            "word": "嘛",
+            "start": 90.3,
+            "end": 90.48,
+            "probability": 0.941245
+          }
+        ]
+      },
+      {
+        "text": "师父恕罪",
+        "start": 91.04,
+        "end": 91.68,
+        "words": [
+          {
+            "word": "师",
+            "start": 91.04,
+            "end": 91.04,
+            "probability": 0.997584
+          },
+          {
+            "word": "父",
+            "start": 91.07,
+            "end": 91.08,
+            "probability": 0.983605
+          },
+          {
+            "word": "恕",
+            "start": 91.13,
+            "end": 91.31,
+            "probability": 0.964516
+          },
+          {
+            "word": "罪",
+            "start": 91.39,
+            "end": 91.68,
+            "probability": 0.983796
+          }
+        ]
+      },
+      {
+        "text": "徒儿一时情节",
+        "start": 92.16,
+        "end": 93.04,
+        "words": [
+          {
+            "word": "徒",
+            "start": 92.16,
+            "end": 92.16,
+            "probability": 0.996333
+          },
+          {
+            "word": "儿",
+            "start": 92.16,
+            "end": 92.16,
+            "probability": 0.998896
+          },
+          {
+            "word": "一",
+            "start": 92.25,
+            "end": 92.34,
+            "probability": 0.946842
+          },
+          {
+            "word": "时",
+            "start": 92.34,
+            "end": 92.44,
+            "probability": 0.990323
+          },
+          {
+            "word": "情",
+            "start": 92.5,
+            "end": 92.78,
+            "probability": 0.979182
+          },
+          {
+            "word": "节",
+            "start": 92.78,
+            "end": 93.04,
+            "probability": 0.691393
+          }
+        ]
+      },
+      {
+        "text": "失了分寸",
+        "start": 93.12,
+        "end": 93.76,
+        "words": [
+          {
+            "word": "失",
+            "start": 93.21,
+            "end": 93.22,
+            "probability": 0.976708
+          },
+          {
+            "word": "了",
+            "start": 93.22,
+            "end": 93.39,
+            "probability": 0.998616
+          },
+          {
+            "word": "分",
+            "start": 93.39,
+            "end": 93.58,
+            "probability": 0.997798
+          },
+          {
+            "word": "寸",
+            "start": 93.58,
+            "end": 93.76,
+            "probability": 0.999609
+          }
+        ]
+      },
+      {
+        "text": "对了师父",
+        "start": 94.32,
+        "end": 94.84,
+        "words": [
+          {
+            "word": "对",
+            "start": 94.32,
+            "end": 94.32,
+            "probability": 0.996778
+          },
+          {
+            "word": "了",
+            "start": 94.41,
+            "end": 94.52,
+            "probability": 0.996962
+          },
+          {
+            "word": "师",
+            "start": 94.52,
+            "end": 94.6,
+            "probability": 0.738549
+          },
+          {
+            "word": "父",
+            "start": 94.67,
+            "end": 94.84,
+            "probability": 0.972379
+          }
+        ]
+      },
+      {
+        "text": "白天您那一剑精妙绝伦",
+        "start": 95.32,
+        "end": 96.8,
+        "words": [
+          {
+            "word": "白",
+            "start": 95.32,
+            "end": 95.32,
+            "probability": 0.998093
+          },
+          {
+            "word": "天",
+            "start": 95.41,
+            "end": 95.59,
+            "probability": 0.992882
+          },
+          {
+            "word": "您",
+            "start": 95.6,
+            "end": 95.73,
+            "probability": 0.94933
+          },
+          {
+            "word": "那",
+            "start": 95.73,
+            "end": 95.86,
+            "probability": 0.979499
+          },
+          {
+            "word": "一",
+            "start": 95.86,
+            "end": 95.99,
+            "probability": 0.996282
+          },
+          {
+            "word": "剑",
+            "start": 95.99,
+            "end": 96.12,
+            "probability": 0.688099
+          },
+          {
+            "word": "精",
+            "start": 96.12,
+            "end": 96.29,
+            "probability": 0.717041
+          },
+          {
+            "word": "妙",
+            "start": 96.29,
+            "end": 96.45,
+            "probability": 0.994729
+          },
+          {
+            "word": "绝",
+            "start": 96.45,
+            "end": 96.61,
+            "probability": 0.974787
+          },
+          {
+            "word": "伦",
+            "start": 96.61,
+            "end": 96.8,
+            "probability": 0.985532
+          }
+        ]
+      },
+      {
+        "text": "徒儿多出不解",
+        "start": 97.16,
+        "end": 97.92,
+        "words": [
+          {
+            "word": "徒",
+            "start": 97.16,
+            "end": 97.16,
+            "probability": 0.994674
+          },
+          {
+            "word": "儿",
+            "start": 97.16,
+            "end": 97.16,
+            "probability": 0.999457
+          },
+          {
+            "word": "多",
+            "start": 97.25,
+            "end": 97.34,
+            "probability": 0.998403
+          },
+          {
+            "word": "出",
+            "start": 97.34,
+            "end": 97.44,
+            "probability": 0.633951
+          },
+          {
+            "word": "不",
+            "start": 97.51,
+            "end": 97.7,
+            "probability": 0.928357
+          },
+          {
+            "word": "解",
+            "start": 97.7,
+            "end": 97.92,
+            "probability": 0.991718
+          }
+        ]
+      },
+      {
+        "text": "求师父指点",
+        "start": 98.24,
+        "end": 98.96,
+        "words": [
+          {
+            "word": "求",
+            "start": 98.24,
+            "end": 98.24,
+            "probability": 0.998599
+          },
+          {
+            "word": "师",
+            "start": 98.32,
+            "end": 98.32,
+            "probability": 0.999457
+          },
+          {
+            "word": "父",
+            "start": 98.33,
+            "end": 98.51,
+            "probability": 0.996959
+          },
+          {
+            "word": "指",
+            "start": 98.51,
+            "end": 98.72,
+            "probability": 0.99859
+          },
+          {
+            "word": "点",
+            "start": 98.72,
+            "end": 98.96,
+            "probability": 0.988337
+          }
+        ]
+      },
+      {
+        "text": "看见外面躺着的那个人了吗",
+        "start": 99.2,
+        "end": 100.64,
+        "words": [
+          {
+            "word": "看",
+            "start": 99.2,
+            "end": 99.2,
+            "probability": 0.959593
+          },
+          {
+            "word": "见",
+            "start": 99.29,
+            "end": 99.32,
+            "probability": 0.999308
+          },
+          {
+            "word": "外",
+            "start": 99.32,
+            "end": 99.48,
+            "probability": 0.982988
+          },
+          {
+            "word": "面",
+            "start": 99.55,
+            "end": 99.68,
+            "probability": 0.996789
+          },
+          {
+            "word": "躺",
+            "start": 99.68,
+            "end": 99.8,
+            "probability": 0.930941
+          },
+          {
+            "word": "着",
+            "start": 99.8,
+            "end": 99.92,
+            "probability": 0.993456
+          },
+          {
+            "word": "的",
+            "start": 99.92,
+            "end": 100.04,
+            "probability": 0.994683
+          },
+          {
+            "word": "那个",
+            "start": 100.04,
+            "end": 100.28,
+            "probability": 0.956466
+          },
+          {
+            "word": "人",
+            "start": 100.28,
+            "end": 100.4,
+            "probability": 0.998778
+          },
+          {
+            "word": "了",
+            "start": 100.4,
+            "end": 100.52,
+            "probability": 0.996742
+          },
+          {
+            "word": "吗",
+            "start": 100.52,
+            "end": 100.64,
+            "probability": 0.982021
+          }
+        ]
+      },
+      {
+        "text": "既然灵气和神识都无法察觉",
+        "start": 101.08,
+        "end": 102.84,
+        "words": [
+          {
+            "word": "既",
+            "start": 101.08,
+            "end": 101.08,
+            "probability": 0.982382
+          },
+          {
+            "word": "然",
+            "start": 101.08,
+            "end": 101.08,
+            "probability": 0.999727
+          },
+          {
+            "word": "灵",
+            "start": 101.16,
+            "end": 101.22,
+            "probability": 0.994366
+          },
+          {
+            "word": "气",
+            "start": 101.22,
+            "end": 101.36,
+            "probability": 0.806857
+          },
+          {
+            "word": "和",
+            "start": 101.43,
+            "end": 101.62,
+            "probability": 0.988238
+          },
+          {
+            "word": "神",
+            "start": 101.62,
+            "end": 101.81,
+            "probability": 0.998744
+          },
+          {
+            "word": "识",
+            "start": 101.81,
+            "end": 102.04,
+            "probability": 0.551237
+          },
+          {
+            "word": "都",
+            "start": 102.04,
+            "end": 102.2,
+            "probability": 0.775833
+          },
+          {
+            "word": "无",
+            "start": 102.2,
+            "end": 102.36,
+            "probability": 0.998803
+          },
+          {
+            "word": "法",
+            "start": 102.36,
+            "end": 102.52,
+            "probability": 0.999708
+          },
+          {
+            "word": "察",
+            "start": 102.52,
+            "end": 102.68,
+            "probability": 0.986116
+          },
+          {
+            "word": "觉",
+            "start": 102.68,
+            "end": 102.83,
+            "probability": 0.998424
+          }
+        ]
+      },
+      {
+        "text": "就用心去感受",
+        "start": 103.16,
+        "end": 104.04,
+        "words": [
+          {
+            "word": "就",
+            "start": 103.16,
+            "end": 103.16,
+            "probability": 0.996894
+          },
+          {
+            "word": "用",
+            "start": 103.24,
+            "end": 103.24,
+            "probability": 0.998184
+          },
+          {
+            "word": "心",
+            "start": 103.25,
+            "end": 103.43,
+            "probability": 0.999317
+          },
+          {
+            "word": "去",
+            "start": 103.43,
+            "end": 103.64,
+            "probability": 0.99899
+          },
+          {
+            "word": "感",
+            "start": 103.64,
+            "end": 103.84,
+            "probability": 0.747806
+          },
+          {
+            "word": "受",
+            "start": 103.84,
+            "end": 104.04,
+            "probability": 0.994554
+          }
+        ]
+      },
+      {
+        "text": "你若能救活他",
+        "start": 104.6,
+        "end": 105.52,
+        "words": [
+          {
+            "word": "你",
+            "start": 104.6,
+            "end": 104.6,
+            "probability": 0.948572
+          },
+          {
+            "word": "若",
+            "start": 104.6,
+            "end": 104.6,
+            "probability": 0.999695
+          },
+          {
+            "word": "能",
+            "start": 104.69,
+            "end": 104.76,
+            "probability": 0.999415
+          },
+          {
+            "word": "救",
+            "start": 104.76,
+            "end": 104.88,
+            "probability": 0.998275
+          },
+          {
+            "word": "活",
+            "start": 104.94,
+            "end": 105.24,
+            "probability": 0.980897
+          },
+          {
+            "word": "他",
+            "start": 105.24,
+            "end": 105.52,
+            "probability": 0.710556
+          }
+        ]
+      },
+      {
+        "text": "便能悟透那一剑",
+        "start": 106,
+        "end": 106.96,
+        "words": [
+          {
+            "word": "便",
+            "start": 106,
+            "end": 106,
+            "probability": 0.983445
+          },
+          {
+            "word": "能",
+            "start": 106,
+            "end": 106,
+            "probability": 0.999563
+          },
+          {
+            "word": "悟",
+            "start": 106.05,
+            "end": 106.11,
+            "probability": 0.434408
+          },
+          {
+            "word": "透",
+            "start": 106.11,
+            "end": 106.28,
+            "probability": 0.999407
+          },
+          {
+            "word": "那",
+            "start": 106.35,
+            "end": 106.51,
+            "probability": 0.90395
+          },
+          {
+            "word": "一",
+            "start": 106.51,
+            "end": 106.71,
+            "probability": 0.945727
+          },
+          {
+            "word": "剑",
+            "start": 106.71,
+            "end": 106.96,
+            "probability": 0.973084
+          }
+        ]
+      },
+      {
+        "text": "谢师父指点",
+        "start": 108.04,
+        "end": 108.84,
+        "words": [
+          {
+            "word": "谢",
+            "start": 108.04,
+            "end": 108.04,
+            "probability": 0.861321
+          },
+          {
+            "word": "师",
+            "start": 108.04,
+            "end": 108.04,
+            "probability": 0.996545
+          },
+          {
+            "word": "父",
+            "start": 108.07,
+            "end": 108.07,
+            "probability": 0.990235
+          },
+          {
+            "word": "指",
+            "start": 108.07,
+            "end": 108.43,
+            "probability": 0.984752
+          },
+          {
+            "word": "点",
+            "start": 108.43,
+            "end": 108.84,
+            "probability": 0.975659
+          }
+        ]
+      },
+      {
+        "text": "发财了",
+        "start": 118.56,
+        "end": 119.32,
+        "words": [
+          {
+            "word": "发",
+            "start": 118.56,
+            "end": 118.56,
+            "probability": 0.970923
+          },
+          {
+            "word": "财",
+            "start": 118.56,
+            "end": 118.56,
+            "probability": 0.998738
+          },
+          {
+            "word": "了",
+            "start": 118.59,
+            "end": 119.32,
+            "probability": 0.977808
+          }
+        ]
+      },
+      {
+        "text": "足足两百万尚品零食",
+        "start": 119.48,
+        "end": 121.2,
+        "words": [
+          {
+            "word": "足",
+            "start": 119.51,
+            "end": 119.52,
+            "probability": 0.737791
+          },
+          {
+            "word": "足",
+            "start": 119.57,
+            "end": 119.72,
+            "probability": 0.997638
+          },
+          {
+            "word": "两",
+            "start": 119.72,
+            "end": 119.92,
+            "probability": 0.981983
+          },
+          {
+            "word": "百",
+            "start": 119.92,
+            "end": 120.12,
+            "probability": 0.999239
+          },
+          {
+            "word": "万",
+            "start": 120.12,
+            "end": 120.31,
+            "probability": 0.998982
+          },
+          {
+            "word": "尚",
+            "start": 120.31,
+            "end": 120.51,
+            "probability": 0.858754
+          },
+          {
+            "word": "品",
+            "start": 120.51,
+            "end": 120.71,
+            "probability": 0.999712
+          },
+          {
+            "word": "零",
+            "start": 120.71,
+            "end": 120.9,
+            "probability": 0.966889
+          },
+          {
+            "word": "食",
+            "start": 120.9,
+            "end": 121.2,
+            "probability": 0.999662
+          }
+        ]
+      },
+      {
+        "text": "拿这当彩礼",
+        "start": 122.28,
+        "end": 123.12,
+        "words": [
+          {
+            "word": "拿",
+            "start": 122.28,
+            "end": 122.28,
+            "probability": 0.993727
+          },
+          {
+            "word": "这",
+            "start": 122.28,
+            "end": 122.28,
+            "probability": 0.921324
+          },
+          {
+            "word": "当",
+            "start": 122.34,
+            "end": 122.34,
+            "probability": 0.938496
+          },
+          {
+            "word": "彩",
+            "start": 122.37,
+            "end": 122.71,
+            "probability": 0.912868
+          },
+          {
+            "word": "礼",
+            "start": 122.71,
+            "end": 123.11,
+            "probability": 0.992511
+          }
+        ]
+      },
+      {
+        "text": "我能娶十个师姐",
+        "start": 123.56,
+        "end": 124.8,
+        "words": [
+          {
+            "word": "我",
+            "start": 123.56,
+            "end": 123.56,
+            "probability": 0.995042
+          },
+          {
+            "word": "能",
+            "start": 123.59,
+            "end": 123.6,
+            "probability": 0.999457
+          },
+          {
+            "word": "娶",
+            "start": 123.65,
+            "end": 123.83,
+            "probability": 0.609661
+          },
+          {
+            "word": "十",
+            "start": 123.83,
+            "end": 124.08,
+            "probability": 0.954324
+          },
+          {
+            "word": "个",
+            "start": 124.08,
+            "end": 124.32,
+            "probability": 0.995402
+          },
+          {
+            "word": "师",
+            "start": 124.32,
+            "end": 124.56,
+            "probability": 0.935398
+          },
+          {
+            "word": "姐",
+            "start": 124.56,
+            "end": 124.8,
+            "probability": 0.978672
+          }
+        ]
+      },
+      {
+        "text": "一百个师父",
+        "start": 125.08,
+        "end": 126.32,
+        "words": [
+          {
+            "word": "一",
+            "start": 125.1,
+            "end": 125.1,
+            "probability": 0.978648
+          },
+          {
+            "word": "百",
+            "start": 125.11,
+            "end": 125.36,
+            "probability": 0.99934
+          },
+          {
+            "word": "个",
+            "start": 125.43,
+            "end": 125.7,
+            "probability": 0.998504
+          },
+          {
+            "word": "师",
+            "start": 125.7,
+            "end": 126,
+            "probability": 0.999413
+          },
+          {
+            "word": "父",
+            "start": 126,
+            "end": 126.32,
+            "probability": 0.769548
+          }
+        ]
+      },
+      {
+        "text": "王慧天",
+        "start": 132.52,
+        "end": 133.24,
+        "words": [
+          {
+            "word": "王",
+            "start": 132.52,
+            "end": 132.52,
+            "probability": 0.955709
+          },
+          {
+            "word": "慧",
+            "start": 132.52,
+            "end": 132.52,
+            "probability": 0.332292
+          },
+          {
+            "word": "天",
+            "start": 132.55,
+            "end": 133.23,
+            "probability": 0.996236
+          }
+        ]
+      },
+      {
+        "text": "你犯了天了",
+        "start": 133.4,
+        "end": 134.28,
+        "words": [
+          {
+            "word": "你",
+            "start": 133.43,
+            "end": 133.44,
+            "probability": 0.966494
+          },
+          {
+            "word": "犯",
+            "start": 133.49,
+            "end": 133.63,
+            "probability": 0.440172
+          },
+          {
+            "word": "了",
+            "start": 133.63,
+            "end": 133.83,
+            "probability": 0.991864
+          },
+          {
+            "word": "天",
+            "start": 133.83,
+            "end": 134.03,
+            "probability": 0.964158
+          },
+          {
+            "word": "了",
+            "start": 134.03,
+            "end": 134.28,
+            "probability": 0.985428
+          }
+        ]
+      },
+      {
+        "text": "我让你娶一百个师父",
+        "start": 134.48,
+        "end": 135.52,
+        "words": [
+          {
+            "word": "我",
+            "start": 134.48,
+            "end": 134.48,
+            "probability": 0.995
+          },
+          {
+            "word": "让",
+            "start": 134.54,
+            "end": 134.54,
+            "probability": 0.998186
+          },
+          {
+            "word": "你",
+            "start": 134.57,
+            "end": 134.67,
+            "probability": 0.998256
+          },
+          {
+            "word": "娶",
+            "start": 134.67,
+            "end": 134.76,
+            "probability": 0.955952
+          },
+          {
+            "word": "一",
+            "start": 134.83,
+            "end": 134.93,
+            "probability": 0.979924
+          },
+          {
+            "word": "百",
+            "start": 134.93,
+            "end": 135.06,
+            "probability": 0.998866
+          },
+          {
+            "word": "个",
+            "start": 135.06,
+            "end": 135.19,
+            "probability": 0.99608
+          },
+          {
+            "word": "师",
+            "start": 135.19,
+            "end": 135.32,
+            "probability": 0.99822
+          },
+          {
+            "word": "父",
+            "start": 135.32,
+            "end": 135.52,
+            "probability": 0.988276
+          }
+        ]
+      },
+      {
+        "text": "还娶不娶",
+        "start": 135.6,
+        "end": 136.24,
+        "words": [
+          {
+            "word": "还",
+            "start": 135.69,
+            "end": 135.7,
+            "probability": 0.993276
+          },
+          {
+            "word": "娶",
+            "start": 135.7,
+            "end": 135.86,
+            "probability": 0.985351
+          },
+          {
+            "word": "不",
+            "start": 135.87,
+            "end": 136.06,
+            "probability": 0.992573
+          },
+          {
+            "word": "娶",
+            "start": 136.06,
+            "end": 136.24,
+            "probability": 0.966606
+          }
+        ]
+      },
+      {
+        "text": "让你恐无遮拦",
+        "start": 136.4,
+        "end": 137.36,
+        "words": [
+          {
+            "word": "让",
+            "start": 136.49,
+            "end": 136.56,
+            "probability": 0.903729
+          },
+          {
+            "word": "你",
+            "start": 136.56,
+            "end": 136.68,
+            "probability": 0.960559
+          },
+          {
+            "word": "恐",
+            "start": 136.75,
+            "end": 136.88,
+            "probability": 0.206085
+          },
+          {
+            "word": "无",
+            "start": 136.88,
+            "end": 137.04,
+            "probability": 0.855668
+          },
+          {
+            "word": "遮",
+            "start": 137.04,
+            "end": 137.19,
+            "probability": 0.352138
+          },
+          {
+            "word": "拦",
+            "start": 137.19,
+            "end": 137.36,
+            "probability": 0.862937
+          }
+        ]
+      },
+      {
+        "text": "让你狂",
+        "start": 137.52,
+        "end": 138.12,
+        "words": [
+          {
+            "word": "让",
+            "start": 137.61,
+            "end": 137.61,
+            "probability": 0.993109
+          },
+          {
+            "word": "你",
+            "start": 137.61,
+            "end": 137.8,
+            "probability": 0.995911
+          },
+          {
+            "word": "狂",
+            "start": 137.87,
+            "end": 138.12,
+            "probability": 0.864553
+          }
+        ]
+      },
+      {
+        "text": "王慧天",
+        "start": 143.12,
+        "end": 144,
+        "words": [
+          {
+            "word": "王",
+            "start": 143.12,
+            "end": 143.12,
+            "probability": 0.926091
+          },
+          {
+            "word": "慧",
+            "start": 143.12,
+            "end": 143.12,
+            "probability": 0.995868
+          },
+          {
+            "word": "天",
+            "start": 143.15,
+            "end": 144,
+            "probability": 0.999683
+          }
+        ]
+      },
+      {
+        "text": "到底是个什么人",
+        "start": 144.44,
+        "end": 145.6,
+        "words": [
+          {
+            "word": "到底",
+            "start": 144.46,
+            "end": 144.46,
+            "probability": 0.978772
+          },
+          {
+            "word": "是",
+            "start": 144.53,
+            "end": 144.69,
+            "probability": 0.99215
+          },
+          {
+            "word": "个",
+            "start": 144.69,
+            "end": 144.92,
+            "probability": 0.992161
+          },
+          {
+            "word": "什么",
+            "start": 144.92,
+            "end": 145.39,
+            "probability": 0.471757
+          },
+          {
+            "word": "人",
+            "start": 145.39,
+            "end": 145.6,
+            "probability": 0.69931
+          }
+        ]
+      },
+      {
+        "text": "气头",
+        "start": 146.44,
+        "end": 146.84,
+        "words": [
+          {
+            "word": "气",
+            "start": 146.44,
+            "end": 146.44,
+            "probability": 0.220721
+          },
+          {
+            "word": "头",
+            "start": 146.47,
+            "end": 146.83,
+            "probability": 0.867421
+          }
+        ]
+      },
+      {
+        "text": "你说",
+        "start": 147.12,
+        "end": 147.56,
+        "words": [
+          {
+            "word": "你说",
+            "start": 147.15,
+            "end": 147.56,
+            "probability": 0.98152
+          }
+        ]
+      },
+      {
+        "text": "若是我那招鬼鹰闪",
+        "start": 147.88,
+        "end": 149,
+        "words": [
+          {
+            "word": "若",
+            "start": 147.97,
+            "end": 148.15,
+            "probability": 0.122476
+          },
+          {
+            "word": "是我",
+            "start": 148.22,
+            "end": 148.88,
+            "probability": 0.895414
+          },
+          {
+            "word": "那",
+            "start": 148.88,
+            "end": 148.9,
+            "probability": 0.277187
+          },
+          {
+            "word": "招",
+            "start": 148.9,
+            "end": 148.91,
+            "probability": 0.693374
+          },
+          {
+            "word": "鬼",
+            "start": 148.91,
+            "end": 148.93,
+            "probability": 0.369114
+          },
+          {
+            "word": "鹰",
+            "start": 148.93,
+            "end": 148.94,
+            "probability": 0.511433
+          },
+          {
+            "word": "闪",
+            "start": 148.94,
+            "end": 149,
+            "probability": 0.433388
+          }
+        ]
+      },
+      {
+        "text": "对上她那时无波无炎的断念",
+        "start": 149.76,
+        "end": 151.76,
+        "words": [
+          {
+            "word": "对",
+            "start": 149.76,
+            "end": 149.76,
+            "probability": 0.241715
+          },
+          {
+            "word": "上",
+            "start": 149.85,
+            "end": 150,
+            "probability": 0.710194
+          },
+          {
+            "word": "她",
+            "start": 150,
+            "end": 150.04,
+            "probability": 0.205816
+          },
+          {
+            "word": "那",
+            "start": 150.1,
+            "end": 150.3,
+            "probability": 0.768484
+          },
+          {
+            "word": "时",
+            "start": 150.3,
+            "end": 150.44,
+            "probability": 0.312857
+          },
+          {
+            "word": "无",
+            "start": 150.44,
+            "end": 150.59,
+            "probability": 0.608624
+          },
+          {
+            "word": "波",
+            "start": 150.59,
+            "end": 150.74,
+            "probability": 0.601365
+          },
+          {
+            "word": "无",
+            "start": 150.74,
+            "end": 150.89,
+            "probability": 0.979606
+          },
+          {
+            "word": "炎",
+            "start": 150.89,
+            "end": 151.04,
+            "probability": 0.143371
+          },
+          {
+            "word": "的",
+            "start": 151.04,
+            "end": 151.16,
+            "probability": 0.957737
+          },
+          {
+            "word": "断",
+            "start": 151.16,
+            "end": 151.46,
+            "probability": 0.670904
+          },
+          {
+            "word": "念",
+            "start": 151.46,
+            "end": 151.76,
+            "probability": 0.763157
+          }
+        ]
+      },
+      {
+        "text": "就叫谁胜谁负",
+        "start": 152.4,
+        "end": 153.64,
+        "words": [
+          {
+            "word": "就",
+            "start": 152.4,
+            "end": 152.4,
+            "probability": 0.889406
+          },
+          {
+            "word": "叫",
+            "start": 152.49,
+            "end": 152.5,
+            "probability": 0.431352
+          },
+          {
+            "word": "谁",
+            "start": 152.5,
+            "end": 152.87,
+            "probability": 0.95746
+          },
+          {
+            "word": "胜",
+            "start": 152.87,
+            "end": 153.24,
+            "probability": 0.927207
+          },
+          {
+            "word": "谁",
+            "start": 153.24,
+            "end": 153.52,
+            "probability": 0.919311
+          },
+          {
+            "word": "负",
+            "start": 153.52,
+            "end": 153.64,
+            "probability": 0.560395
+          }
+        ]
+      },
+      {
+        "text": "宿主请不要怀疑",
+        "start": 154.04,
+        "end": 155.16,
+        "words": [
+          {
+            "word": "宿",
+            "start": 154.04,
+            "end": 154.04,
+            "probability": 0.969007
+          },
+          {
+            "word": "主",
+            "start": 154.07,
+            "end": 154.43,
+            "probability": 0.999346
+          },
+          {
+            "word": "请",
+            "start": 154.43,
+            "end": 154.58,
+            "probability": 0.921553
+          },
+          {
+            "word": "不要",
+            "start": 154.58,
+            "end": 154.86,
+            "probability": 0.986358
+          },
+          {
+            "word": "怀",
+            "start": 154.86,
+            "end": 154.99,
+            "probability": 0.997506
+          },
+          {
+            "word": "疑",
+            "start": 154.99,
+            "end": 155.16,
+            "probability": 0.999655
+          }
+        ]
+      },
+      {
+        "text": "你是这世间最强的存在",
+        "start": 155.52,
+        "end": 157.2,
+        "words": [
+          {
+            "word": "你是",
+            "start": 155.6,
+            "end": 155.6,
+            "probability": 0.968921
+          },
+          {
+            "word": "这",
+            "start": 155.61,
+            "end": 155.8,
+            "probability": 0.984288
+          },
+          {
+            "word": "世",
+            "start": 155.87,
+            "end": 156.04,
+            "probability": 0.995201
+          },
+          {
+            "word": "间",
+            "start": 156.04,
+            "end": 156.28,
+            "probability": 0.996278
+          },
+          {
+            "word": "最",
+            "start": 156.28,
+            "end": 156.45,
+            "probability": 0.966578
+          },
+          {
+            "word": "强",
+            "start": 156.46,
+            "end": 156.64,
+            "probability": 0.998022
+          },
+          {
+            "word": "的",
+            "start": 156.64,
+            "end": 156.82,
+            "probability": 0.993453
+          },
+          {
+            "word": "存",
+            "start": 156.82,
+            "end": 157,
+            "probability": 0.993073
+          },
+          {
+            "word": "在",
+            "start": 157,
+            "end": 157.2,
+            "probability": 0.998833
+          }
+        ]
+      },
+      {
+        "text": "也是",
+        "start": 158.12,
+        "end": 158.64,
+        "words": [
+          {
+            "word": "也是",
+            "start": 158.15,
+            "end": 158.64,
+            "probability": 0.953966
+          }
+        ]
+      },
+      {
+        "text": "就算鬼鹰闪不敌",
+        "start": 159.2,
+        "end": 160.32,
+        "words": [
+          {
+            "word": "就",
+            "start": 159.2,
+            "end": 159.2,
+            "probability": 0.954234
+          },
+          {
+            "word": "算",
+            "start": 159.23,
+            "end": 159.59,
+            "probability": 0.998563
+          },
+          {
+            "word": "鬼",
+            "start": 159.59,
+            "end": 159.74,
+            "probability": 0.941514
+          },
+          {
+            "word": "鹰",
+            "start": 159.74,
+            "end": 159.87,
+            "probability": 0.984487
+          },
+          {
+            "word": "闪",
+            "start": 159.87,
+            "end": 160.04,
+            "probability": 0.998498
+          },
+          {
+            "word": "不",
+            "start": 160.04,
+            "end": 160.18,
+            "probability": 0.962427
+          },
+          {
+            "word": "敌",
+            "start": 160.18,
+            "end": 160.32,
+            "probability": 0.996044
+          }
+        ]
+      },
+      {
+        "text": "我还有一招",
+        "start": 160.64,
+        "end": 161.4,
+        "words": [
+          {
+            "word": "我",
+            "start": 160.64,
+            "end": 160.64,
+            "probability": 0.967864
+          },
+          {
+            "word": "还",
+            "start": 160.73,
+            "end": 160.74,
+            "probability": 0.994476
+          },
+          {
+            "word": "有一",
+            "start": 160.74,
+            "end": 161.17,
+            "probability": 0.990202
+          },
+          {
+            "word": "招",
+            "start": 161.17,
+            "end": 161.4,
+            "probability": 0.998363
+          }
+        ]
+      },
+      {
+        "text": "一刀流居和死",
+        "start": 161.68,
+        "end": 162.76,
+        "words": [
+          {
+            "word": "一",
+            "start": 161.7,
+            "end": 161.7,
+            "probability": 0.913703
+          },
+          {
+            "word": "刀",
+            "start": 161.77,
+            "end": 161.95,
+            "probability": 0.999361
+          },
+          {
+            "word": "流",
+            "start": 162.03,
+            "end": 162.16,
+            "probability": 0.556023
+          },
+          {
+            "word": "居",
+            "start": 162.16,
+            "end": 162.4,
+            "probability": 0.183947
+          },
+          {
+            "word": "和",
+            "start": 162.4,
+            "end": 162.56,
+            "probability": 0.614184
+          },
+          {
+            "word": "死",
+            "start": 162.56,
+            "end": 162.76,
+            "probability": 0.960735
+          }
+        ]
+      },
+      {
+        "text": "狮子哥哥",
+        "start": 163.16,
+        "end": 163.8,
+        "words": [
+          {
+            "word": "狮",
+            "start": 163.16,
+            "end": 163.16,
+            "probability": 0.960785
+          },
+          {
+            "word": "子",
+            "start": 163.19,
+            "end": 163.44,
+            "probability": 0.999051
+          },
+          {
+            "word": "哥",
+            "start": 163.51,
+            "end": 163.66,
+            "probability": 0.834444
+          },
+          {
+            "word": "哥",
+            "start": 163.66,
+            "end": 163.8,
+            "probability": 0.992219
+          }
+        ]
+      },
+      {
+        "text": "她王慧天",
+        "start": 163.88,
+        "end": 164.52,
+        "words": [
+          {
+            "word": "她",
+            "start": 163.97,
+            "end": 163.98,
+            "probability": 0.482154
+          },
+          {
+            "word": "王",
+            "start": 163.98,
+            "end": 164.15,
+            "probability": 0.978741
+          },
+          {
+            "word": "慧",
+            "start": 164.16,
+            "end": 164.34,
+            "probability": 0.998416
+          },
+          {
+            "word": "天",
+            "start": 164.34,
+            "end": 164.52,
+            "probability": 0.999817
+          }
+        ]
+      },
+      {
+        "text": "不过是个凡人罢了",
+        "start": 164.92,
+        "end": 166.12,
+        "words": [
+          {
+            "word": "不",
+            "start": 164.92,
+            "end": 164.92,
+            "probability": 0.970334
+          },
+          {
+            "word": "过",
+            "start": 164.92,
+            "end": 164.92,
+            "probability": 0.99755
+          },
+          {
+            "word": "是",
+            "start": 165.01,
+            "end": 165.12,
+            "probability": 0.997147
+          },
+          {
+            "word": "个",
+            "start": 165.12,
+            "end": 165.2,
+            "probability": 0.997895
+          },
+          {
+            "word": "凡",
+            "start": 165.26,
+            "end": 165.51,
+            "probability": 0.751078
+          },
+          {
+            "word": "人",
+            "start": 165.51,
+            "end": 165.71,
+            "probability": 0.999089
+          },
+          {
+            "word": "罢",
+            "start": 165.71,
+            "end": 165.9,
+            "probability": 0.994397
+          },
+          {
+            "word": "了",
+            "start": 165.9,
+            "end": 166.12,
+            "probability": 0.997112
+          }
+        ]
+      },
+      {
+        "text": "而我",
+        "start": 166.24,
+        "end": 166.6,
+        "words": [
+          {
+            "word": "而",
+            "start": 166.33,
+            "end": 166.36,
+            "probability": 0.9713
+          },
+          {
+            "word": "我",
+            "start": 166.36,
+            "end": 166.52,
+            "probability": 0.986411
+          }
+        ]
+      },
+      {
+        "text": "可是有系统半生的天命主角",
+        "start": 166.84,
+        "end": 168.88,
+        "words": [
+          {
+            "word": "可是",
+            "start": 166.93,
+            "end": 167.04,
+            "probability": 0.978455
+          },
+          {
+            "word": "有",
+            "start": 167.04,
+            "end": 167.12,
+            "probability": 0.885013
+          },
+          {
+            "word": "系",
+            "start": 167.19,
+            "end": 167.4,
+            "probability": 0.529052
+          },
+          {
+            "word": "统",
+            "start": 167.4,
+            "end": 167.6,
+            "probability": 0.997373
+          },
+          {
+            "word": "半",
+            "start": 167.6,
+            "end": 167.73,
+            "probability": 0.926231
+          },
+          {
+            "word": "生",
+            "start": 167.73,
+            "end": 167.86,
+            "probability": 0.997769
+          },
+          {
+            "word": "的",
+            "start": 167.86,
+            "end": 168,
+            "probability": 0.996746
+          },
+          {
+            "word": "天",
+            "start": 168,
+            "end": 168.19,
+            "probability": 0.744757
+          },
+          {
+            "word": "命",
+            "start": 168.2,
+            "end": 168.4,
+            "probability": 0.999441
+          },
+          {
+            "word": "主",
+            "start": 168.4,
+            "end": 168.64,
+            "probability": 0.974674
+          },
+          {
+            "word": "角",
+            "start": 168.64,
+            "end": 168.88,
+            "probability": 0.988294
+          }
+        ]
+      }
+    ]
+  },
+  "_engine": "whisper.cpp",
+  "_device": "vulkan",
+  "_rtf": "0.090"
+}
