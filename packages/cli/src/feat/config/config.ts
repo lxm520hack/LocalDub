@@ -47,7 +47,7 @@ export const localInfoPath = (sessionPath: string) =>
  */
 export const readLocalInfo = (sessionPath: string) => {
 	const path = localInfoPath(sessionPath);
-	console.log(`[File] read ${path}`);
+	console.log(`[Config] [File] read ${path}`);
 	const raw = JSON.parse(readFileSync(path, 'utf-8'));
 	return raw as LocalInfo;
 };
@@ -56,7 +56,7 @@ export const writeLocalInfo = (sessionPath: string, info: LocalInfo) => {
 	const raw = JSON.stringify(info, null, 2);
 	writeFileSync(path, raw);
 	const lines = raw.split('\n').length;
-	console.log(`[File] write ${path} (${raw.length}B, ${lines} lines)`);
+	console.log(`[Config] [File] write ${path} (${raw.length}B, ${lines} lines)`);
 	return info;
 };
 export const setLocalInfo = (
@@ -65,7 +65,7 @@ export const setLocalInfo = (
 ): void => {
 	const existing = readLocalInfo(sessionPath) ?? ({} as LocalInfo);
 	writeLocalInfo(sessionPath, { ...existing, ...patch });
-	console.log(`[File] set ${localInfoPath(sessionPath)}:`, JSON.stringify(patch));
+	console.log(`[Config] [File] set ${localInfoPath(sessionPath)}:`, JSON.stringify(patch));
 };
 export const readPipeline = (sessionPath: string) =>
 	readLocalInfo(sessionPath)?.pipeline || 'dub';

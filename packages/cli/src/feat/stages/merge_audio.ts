@@ -11,15 +11,15 @@ export async function stageMergeAudio(taskId: string, sessionPath: string) {
   const stretchedDir = join(sessionPath, 'segments', 'stretched');
   const metadataDir = join(sessionPath, 'metadata');
 
-  ensureDir(tmpDir, taskId);
-  ensureDir(stretchedDir, taskId);
-  ensureDir(metadataDir, taskId);
+  ensureDir(tmpDir, 'Merge Audio', taskId);
+  ensureDir(stretchedDir, 'Merge Audio', taskId);
+  ensureDir(metadataDir, 'Merge Audio', taskId);
 
   const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
   const timingsFile = join(metadataDir, 'timings.json');
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
-  const data = readJson(timingsFile, taskId);
+  const data = readJson(timingsFile, 'Merge Audio', taskId);
   const translation = data.translation;
   const ttsFiles = translation.map((_: any, i: number) => join(ttsDir, `${String(i + 1).padStart(4, '0')}.wav`));
 
@@ -97,9 +97,9 @@ export async function stageMergeAudio(taskId: string, sessionPath: string) {
   if (segmentInputs.length === 0) throw new Error('No audio segments to merge');
 
   const concatFile = join(tmpDir, 'concat_list.txt');
-  writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), taskId);
+  writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), 'Merge Audio', taskId);
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 
-  writeJson(timingsFile, { translation }, taskId);
+  writeJson(timingsFile, { translation }, 'Merge Audio', taskId);
   await updateStageDB(taskId, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
 }

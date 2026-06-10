@@ -74,12 +74,12 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const sourceAudio = hasVocals ? vocalsFile : sourceFile;
 
   // Read authoritative timings from asr_fixed.json (seconds)
-  const fixData = readJson(fixedFile, taskId);
+  const fixData = readJson(fixedFile, 'split_audio', taskId);
   const segmentsSrc: { text: string; start: number; end: number }[] = fixData.result?.segments;
   if (!segmentsSrc?.length) throw new Error('asr_fixed.json has no segments');
 
   // Read translated text from translation.json (1:1 by index)
-  const transData = readJson(translationFile, taskId);
+  const transData = readJson(translationFile, 'split_audio', taskId);
   const translation = transData.translation;
   if (!translation?.length) throw new Error('translation.json has no segments');
   if (segmentsSrc.length !== translation.length) {
@@ -102,7 +102,7 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   let totalMs = fixData.audio_info?.duration ?? 0;
   if (!totalMs) totalMs = probeDuration(sourceAudio);
 
-  ensureDir(segmentsDir, taskId);
+  ensureDir(segmentsDir, 'split_audio', taskId);
 
   // ---- Segment cutting (dub only) ----
   if (hasVocals) {
@@ -173,13 +173,13 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
     }
 
     if (corrected) {
-      writeJson(timingsFile, { translation: timings }, taskId);
+      writeJson(timingsFile, { translation: timings }, 'split_audio', taskId);
     }
   }
 
   // Write timings.json (created fresh or updated after VAD)
   if (!existsSync(timingsFile)) {
-    writeJson(timingsFile, { translation: timings }, taskId);
+    writeJson(timingsFile, { translation: timings }, 'split_audio', taskId);
   }
 
   await updateStageDB(taskId, 'split_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Split' });

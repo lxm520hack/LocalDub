@@ -64,14 +64,14 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		return;
 	}
 
-	const data = readJson(fixedFile);
+	const data = readJson(fixedFile, 'Translate');
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
 
 	let meta: any = {};
 	try {
-		meta = readJson(join(metadataDir, 'ytdlp_info.json'));
+		meta = readJson(join(metadataDir, 'ytdlp_info.json'), 'Translate');
 	} catch {
 		/* ignore */
 	}
@@ -259,7 +259,7 @@ ${correctionsStr}
 		speaker: '1',
 	}));
 
-	writeJson(translationFile, { translation });
+	writeJson(translationFile, { translation }, 'Translate');
 
 	setLocalInfo(sessionPath, {
 		runInfo: {

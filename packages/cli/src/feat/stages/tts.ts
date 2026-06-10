@@ -128,9 +128,9 @@ export async function stageTts(
 
 	if (!existsSync(translationFile))
 		throw new Error(`${translationFile} not found`);
-	ensureDir(ttsDir, taskId);
+	ensureDir(ttsDir, 'TTS', taskId);
 
-	const data: TranslateFile = readJson(translationFile, taskId);
+	const data: TranslateFile = readJson(translationFile, 'TTS', taskId);
 	const translation = data.translation;
 
 	const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
@@ -225,7 +225,7 @@ export async function stageTts(
 
 			const text = item.dst || '';
 			if (!text.trim()) {
-				writeFile(outPath, Buffer.alloc(44), taskId);
+				writeFile(outPath, Buffer.alloc(44), 'TTS', taskId);
 				continue;
 			}
 
@@ -238,7 +238,7 @@ export async function stageTts(
 					taskId,
 					`[WARN] [TTS] No reference for segment ${idx}, skipping`,
 				);
-				writeFile(outPath, Buffer.alloc(44), taskId);
+				writeFile(outPath, Buffer.alloc(44), 'TTS', taskId);
 				continue;
 			}
 

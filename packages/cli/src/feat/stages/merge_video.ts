@@ -165,7 +165,7 @@ function writeSrt(translation: any[], dstLang: string, outputPath: string) {
 		}
 	}
 
-	writeFile(outputPath, lines.join('\n'));
+	writeFile(outputPath, lines.join('\n'), 'Merge Video');
 }
 
 function dstLangFromTranslation(translation: any[]): string {
@@ -246,7 +246,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 		const srcFile = existsSync(timingsFile) ? timingsFile : translationFile;
 		if (!existsSync(srcFile))
 			throw new Error(`neither timings.json nor translation.${dstLangCode}.json found`);
-		const data = readJson(srcFile);
+		const data = readJson(srcFile, 'Merge Video');
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, dstLang, subPath);
@@ -286,7 +286,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 			throw new Error('audio_dubbing.wav not found');
 		if (!existsSync(timingsFile)) throw new Error('timings.json not found');
 
-		const data = readJson(timingsFile);
+		const data = readJson(timingsFile, 'Merge Video');
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, dstLang, subPath);

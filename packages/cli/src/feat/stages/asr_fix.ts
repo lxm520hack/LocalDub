@@ -55,7 +55,7 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
     throw new Error(`ASR file not found: ${asrFile}; run ASR stage first`);
   }
 
-  const data = readJson(asrFile);
+  const data = readJson(asrFile, 'ASR Fix');
   let segments: any[] = (data.result?.segments || [])
     .map((s: any) => ({ text: (s.text || '').trim(), start: s.start, end: s.end }))
     .filter((s: any) => s.text && (data.audio_info?.duration ? s.start < (data.audio_info.duration / 1000) : true));
@@ -109,7 +109,7 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
     audio_info: data.audio_info || {},
     result: { text: resultText, segments },
     _llm_fixed: llmFix,
-  });
+  }, 'ASR Fix');
 
   emitLog(taskId, `[ASR Fix] Written ${segments.length} segs to asr_fixed.json`);
 

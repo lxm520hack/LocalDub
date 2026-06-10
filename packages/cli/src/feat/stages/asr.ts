@@ -158,7 +158,7 @@ export async function stageAsr(
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
 	const asrFile = resolve(metadataDir, 'asr.json');
 	if (existsSync(asrFile)) {
-		const data = readJson(asrFile);
+		const data = readJson(asrFile, 'ASR');
 		const durationMs = data.audio_info?.duration ?? 0;
 		if (durationMs > 0 && data.result?.segments?.length) {
 			const before = data.result.segments.length;
@@ -168,7 +168,7 @@ export async function stageAsr(
 			if (data.result.segments.length < before) {
 				const removed = before - data.result.segments.length;
 				emitLog(taskId, `[ASR] Removed ${removed} hallucinated segment(s) (start >= ${durationMs}ms or end <= 0ms)`);
-				writeJson(asrFile, data);
+				writeJson(asrFile, data, 'ASR');
 			}
 		}
 
@@ -180,7 +180,7 @@ export async function stageAsr(
 			if (rms > 0 && rms < 0.005) {
 				const removed = data.result.segments.pop();
 				emitLog(taskId, `[ASR] Removed low-energy hallucinated segment "${removed.text.slice(0, 30)}" (RMS=${rms.toFixed(5)})`);
-				writeJson(asrFile, data);
+				writeJson(asrFile, data, 'ASR');
 			}
 		}
 	}
@@ -268,7 +268,7 @@ async function asrPytorch(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath);
+		const asr = readJson(asrOutputPath, 'ASR');
 		if (asr.detected_language) {
 			setLocalInfo(sessionAbsPath, {
 				asr_language: asr.detected_language,
@@ -339,13 +339,17 @@ async function asrWhisperCpp(
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
 	const audioDir = resolve(REPO_ROOT, sessionAbsPath, 'tmp');
-	ensureDir(audioDir);
+	ensureDir(audioDir, 'ASR');
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
 	// Copy/convert input to WAV
-	spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
-		timeout: 30_000,
-	});
+	if (audioPath.endsWith('.wav')) {
+		spawnSync('cp', [audioPath, tmpAudio], { timeout: 10_000 });
+	} else {
+		spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
+			timeout: 30_000,
+		});
+	}
 	if (!existsSync(tmpAudio)) {
 		throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
 	}
@@ -377,7 +381,7 @@ async function asrWhisperCpp(
 		throw new Error(`whisper-cli did not produce ${whisperJson}`);
 	}
 
-	const raw = readJson(whisperJson);
+	const raw = readJson(whisperJson, 'ASR');
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = readConfig().stages?.asr?.wordsOutput ?? true;
@@ -406,7 +410,7 @@ async function asrWhisperCpp(
 	const text = segments.map(s => s.text).join(' ');
 
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
-	ensureDir(metadataDir);
+	ensureDir(metadataDir, 'ASR');
 
 	const asrOutput = {
 		audio_info: { duration: segments.length ? segments[segments.length - 1].end * 1000 : 0 },
@@ -417,11 +421,11 @@ async function asrWhisperCpp(
 			? (elapsedSec / (segments[segments.length - 1].end)).toFixed(3)
 			: '0',
 	};
-	writeJson(join(metadataDir, 'asr.json'), asrOutput);
+	writeJson(join(metadataDir, 'asr.json'), asrOutput, 'ASR');
 
 	// Cleanup tmp audio and json
-	removeFile(tmpAudio);
-	removeFile(whisperJson);
+	removeFile(tmpAudio, 'ASR');
+	removeFile(whisperJson, 'ASR');
 
 	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
 	if (segments.length > 0) {
@@ -482,7 +486,7 @@ async function asrFasterWhisper(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath);
+		const asr = readJson(asrOutputPath, 'ASR');
 		const actualDevice = fallbackToCpu ? 'cpu' : useGpu ? 'cuda' : 'cpu';
 		if (asr.detected_language) {
 			setLocalInfo(sessionAbsPath, {
