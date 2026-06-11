@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readJson, writeFile } from './fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { stage } from './context.ts';
+import { stage } from './utils/context.ts';
 import { readConfig, readLocalInfo } from '../config/config.ts';
 import { alignmentToFfmpeg } from '../config/types.ts';
 import {
@@ -14,7 +14,7 @@ import {
 	translationFilePath,
 	updateStageDB,
 	updateTaskDB,
-} from './utils.ts';
+} from './utils/utils.ts';
 
 function writeSrt(translation: any[], dstLang: string, outputPath: string, useSource?: boolean) {
 	const CLOSING_QUOTES = new Set([
@@ -182,6 +182,7 @@ function probeStyle(
 	dstLang: string,
 	overrides?: {
 		fontSize?: number;
+		font?: string;
 		marginV?: number;
 		alignment?: number;
 		outline?: number;
@@ -215,7 +216,7 @@ function probeStyle(
 	const alignment = overrides?.alignment ?? 2;
 	const outline = overrides?.outline ?? 0;
 	const shadow = overrides?.shadow ?? 1;
-	const font = dstLang === 'zh' ? 'Noto Sans CJK SC' : 'Arial';
+	const font = overrides?.font ?? (dstLang === 'zh' ? 'Noto Sans CJK SC' : 'Arial');
 	return `FontName=${font},FontSize=${fontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=${outline > 0 ? 1 : 0},Outline=${outline},Shadow=${shadow},Alignment=${alignment},MarginV=${marginV}`;
 }
 
@@ -233,6 +234,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 	const mergeCfg = readConfig().stages?.merge_video;
 	const probeOverrides = {
 		fontSize: mergeCfg?.fontSize ?? undefined,
+		font: mergeCfg?.font ?? undefined,
 		marginV: mergeCfg?.marginV ?? undefined,
 		alignment: alignmentToFfmpeg(mergeCfg?.alignment ?? 'bottom-center'),
 		outline: mergeCfg?.outline ?? undefined,

@@ -251,6 +251,10 @@ const MergeVideoSchema = z
 		alignment: AlignmentSchema.optional(),
 		outline: z.number().min(0).default(0).optional(),
 		shadow: z.number().min(0).default(1).optional(),
+		font: z
+			.string()
+			.optional()
+			.describe('ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC'),
 	})
 	.default({
 		alignment: 'bottom-center',
