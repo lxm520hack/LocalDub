@@ -97,6 +97,7 @@
                 "separate",
                 "asr",
                 "asr_fix",
+                "ocr",
                 "translate",
                 "split_audio",
                 "tts",
@@ -124,6 +125,7 @@
                 "separate",
                 "asr",
                 "asr_fix",
+                "ocr",
                 "translate",
                 "split_audio",
                 "tts",
@@ -163,12 +165,12 @@
               "type": "string",
               "enum": [
                 "video",
-                "asr"
+                "asr",
+                "font"
               ]
             }
           },
           "required": [
-            "taskId",
             "type"
           ],
           "additionalProperties": false
@@ -295,6 +297,13 @@
                 "useSeparated": false,
                 "mixMode": "sidechain",
                 "reduceBgm": -12,
+                "wordsOutput": false,
+                "sidechainCompress": {
+                  "threshold": 0.1,
+                  "ratio": 20,
+                  "attack": 1,
+                  "release": 200
+                },
                 "useGate": false
               },
               "type": "object",
@@ -335,8 +344,52 @@
                 },
                 "reduceBgm": {
                   "default": -12,
-                  "description": "mixMode=raw-sum 时背景音降低量(dB)",
+                  "description": "背景音降低量(dB); raw-sum 时叠加前直接衰减, sidechain 时压缩后额外衰减",
                   "type": "number"
+                },
+                "wordsOutput": {
+                  "default": false,
+                  "description": "是否在 asr.json 中包含词级时间戳 (words), 分离场景下可能受幻觉影响；默认关闭，调试时开启",
+                  "type": "boolean"
+                },
+                "sidechainCompress": {
+                  "default": {
+                    "threshold": 0.1,
+                    "ratio": 20,
+                    "attack": 1,
+                    "release": 200
+                  },
+                  "description": "mixMode=sidechain 时侧链压缩器参数",
+                  "type": "object",
+                  "properties": {
+                    "threshold": {
+                      "default": 0.1,
+                      "description": "压缩器阈值, 默认 0.1",
+                      "type": "number"
+                    },
+                    "ratio": {
+                      "default": 20,
+                      "description": "压缩比, 默认 20",
+                      "type": "number"
+                    },
+                    "attack": {
+                      "default": 1,
+                      "description": "attack 时间(ms), 默认 1",
+                      "type": "number"
+                    },
+                    "release": {
+                      "default": 200,
+                      "description": "release 时间(ms), 默认 200 (原 500)",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "threshold",
+                    "ratio",
+                    "attack",
+                    "release"
+                  ],
+                  "additionalProperties": false
                 },
                 "useGate": {
                   "default": false,
@@ -385,7 +438,6 @@
               "additionalProperties": {}
             },
             "ocr": {
-              "description": "OCR 硬字幕提取（替换 ASR），使用 RapidOCR",
               "default": {
                 "fps": 1,
                 "textScore": 0.3
@@ -394,12 +446,12 @@
               "properties": {
                 "fps": {
                   "default": 1,
-                  "description": "帧率, 越高时间戳越准但越慢; 默认 1",
+                  "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 1",
                   "type": "number"
                 },
                 "textScore": {
                   "default": 0.3,
-                  "description": "OCR 识别置信度阈值, 默认 0.3 (单字需要 ≤0.3)",
+                  "description": "OCR 识别置信度阈值, 默认 0.3 (单字如\"啊\"需要 ≤0.3)",
                   "type": "number"
                 }
               },
@@ -465,87 +517,41 @@
               "additionalProperties": {}
             },
             "tts": {
+              "description": "input: 1. metadata/translation.{lang}.json: translation[i].dst\n\t\t2. segments/vocals/{0001..N}.wav\n\t\toutput: segments/tts/{0001..N}.wav",
               "default": {
                 "runtime": "pytorch",
-                "device": "cuda"
+                "device": "cuda",
+                "skipExisting": true
               },
-              "oneOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "pytorch"
-                    },
-                    "device": {
-                      "default": "cuda",
-                      "type": "string",
-                      "enum": [
-                        "cuda",
-                        "cpu",
-                        "mps"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "runtime",
-                    "device"
-                  ],
-                  "additionalProperties": false
+              "type": "object",
+              "properties": {
+                "runtime": {
+                  "default": "pytorch",
+                  "type": "string",
+                  "enum": [
+                    "ggml",
+                    "pytorch",
+                    "ort",
+                    "cloud"
+                  ]
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "ort",
-                      "description": "预留, 暂时没有正确的 onnx 模型文件支持"
-                    },
-                    "device": {
-                      "default": "webgpu",
-                      "type": "string",
-                      "enum": [
-                        "cuda",
-                        "rocm",
-                        "cpu",
-                        "webgpu"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "runtime",
-                    "device"
-                  ],
-                  "additionalProperties": false
+                "device": {
+                  "default": "cuda",
+                  "type": "string",
+                  "enum": [
+                    "webgpu",
+                    "cuda",
+                    "rocm",
+                    "cpu",
+                    "mps"
+                  ]
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "ggml"
-                    }
-                  },
-                  "required": [
-                    "runtime"
-                  ],
-                  "additionalProperties": false,
-                  "description": "预留 ggml 选项，虽然目前没有实现"
-                },
-                {
-                  "type": "object",
-                  "properties": {
-                    "runtime": {
-                      "type": "string",
-                      "const": "cloud"
-                    }
-                  },
-                  "required": [
-                    "runtime"
-                  ],
-                  "additionalProperties": {}
+                "skipExisting": {
+                  "default": true,
+                  "type": "boolean"
                 }
-              ]
+              },
+              "additionalProperties": false
             },
             "merge_audio": {
               "type": "object",

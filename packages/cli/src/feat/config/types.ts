@@ -179,9 +179,9 @@ const TranslateConfigSchema = z
 	.optional();
 
 const TTSConfigSchema = z.object({
-		runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']),
-		device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda'),
-		skipExisting: z.boolean().default(true),
+		runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']).default('pytorch').optional(),
+		device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
+		skipExisting: z.boolean().default(true).optional(),
 	})
 	.default({
 		runtime: 'pytorch',
@@ -380,7 +380,7 @@ const TaskSchema = z.looseObject({
 		.optional(),
 	check: z
 		.object({
-			taskId: TaskIdSchema,
+			taskId: TaskIdSchema.optional(),
 			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),

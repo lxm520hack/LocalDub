@@ -69,11 +69,11 @@ if (
 switch (cmd) {
 	case 'check': {
 		const p = config.check;
-		if (!p?.taskId) {
-			console.error('check.taskId required in config.json');
+		if (p?.type !== 'font' && !p?.taskId) {
+			console.error('check.taskId required for non-font checks');
 			process.exit(1);
 		}
-		await cmdCheck(p.type, p.taskId);
+		await cmdCheck({ type: p?.type, taskId: p?.taskId ?? undefined });
 		break;
 	}
 

@@ -7,16 +7,25 @@ import { db } from '../../db/index.ts';
 import { readConfig } from '../config/config.ts';
 import { tasks } from '../tasks/table.ts';
 
-export async function cmdCheck(type: 'video' | 'asr' | 'font' | undefined, taskId: string) {
-	const rows = await db
-		.select({ session_path: tasks.session_path })
-		.from(tasks)
-		.where(eq(tasks.id, taskId))
-		.limit(1);
-	const sp = rows[0]?.session_path;
-	const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
+export async function cmdCheck(opts: {
+	type: 'video' | 'asr' | 'font' | undefined;
+	taskId?: string;
+}) {
+	const { type, taskId } = opts;
 
 	if (type === 'video') {
+		if (!taskId) {
+			console.log(JSON.stringify({ ok: false, error: 'check video requires taskId' }));
+			process.exit(1);
+		}
+		const rows = await db
+			.select({ session_path: tasks.session_path })
+			.from(tasks)
+			.where(eq(tasks.id, taskId))
+			.limit(1);
+		const sp = rows[0]?.session_path;
+		const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
+
 		const videoPath = join(basePath, 'media', 'video_source.mp4');
 		if (!existsSync(videoPath)) {
 			console.log(JSON.stringify({ ok: false, error: 'video_source.mp4 not found' }));
@@ -35,6 +44,18 @@ export async function cmdCheck(type: 'video' | 'asr' | 'font' | undefined, taskI
 	}
 
 	if (type === 'asr') {
+		if (!taskId) {
+			console.log(JSON.stringify({ ok: false, error: 'check asr requires taskId' }));
+			process.exit(1);
+		}
+		const rows = await db
+			.select({ session_path: tasks.session_path })
+			.from(tasks)
+			.where(eq(tasks.id, taskId))
+			.limit(1);
+		const sp = rows[0]?.session_path;
+		const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
+
 		const asrPath = join(basePath, 'metadata', 'asr_fix.json');
 		const asrRawPath = join(basePath, 'metadata', 'asr.json');
 		let asrFile = asrPath;
@@ -56,13 +77,13 @@ export async function cmdCheck(type: 'video' | 'asr' | 'font' | undefined, taskI
 			const entry: Record<string, unknown> = {
 				idx: i + 1,
 				text: (s.text ?? '').slice(0, 60),
-			startMs: Math.round(s.start),
-			endMs: Math.round(s.end),
-		};
-		const gapMs =
-			i > 0
-				? Math.round(s.start - (segments[i - 1] as Record<string, any>).end)
-				: 0;
+				startMs: Math.round(s.start),
+				endMs: Math.round(s.end),
+			};
+			const gapMs =
+				i > 0
+					? Math.round(s.start - (segments[i - 1] as Record<string, any>).end)
+					: 0;
 			entry.gapMs = gapMs;
 			if (gapMs === 0) zeroGaps++;
 			const warnings: string[] = [];
