@@ -7,6 +7,7 @@ import { db } from './../../db/index.ts';
 import { getStages } from './../../feat/tasks/stages.ts';
 import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { TargetLang } from '../config/types.ts';
+import { readConfig } from '../config/config.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -110,6 +111,11 @@ export function readTaskLanguages(sessionPath: string): {
 
 export function translationFilePath(sessionPath: string, lang: string): string {
 	return join(sessionPath, 'metadata', `translation.${lang}.json`);
+}
+
+export function subtitleFilePath(sessionPath: string): string {
+	const src = readConfig().subtitleSource ?? 'asr';
+	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');
 }
 
 export function srtTime(ms: number): string {

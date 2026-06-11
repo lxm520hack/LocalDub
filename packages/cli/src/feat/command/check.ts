@@ -33,7 +33,7 @@ export async function cmdCheck(type: 'video' | 'asr' | undefined, taskId: string
 	}
 
 	if (type === 'asr') {
-		const asrPath = join(basePath, 'metadata', 'asr_fixed.json');
+		const asrPath = join(basePath, 'metadata', 'asr_fix.json');
 		const asrRawPath = join(basePath, 'metadata', 'asr.json');
 		let asrFile = asrPath;
 		if (!existsSync(asrPath) && existsSync(asrRawPath)) asrFile = asrRawPath;

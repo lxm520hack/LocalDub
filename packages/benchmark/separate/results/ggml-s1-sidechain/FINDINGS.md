@@ -13,7 +13,7 @@ GGML 分离（shifts=1）的人声在空白段（~7-15s）产生类语音 artifa
 
 - 源音频：`packages/benchmark/separate/results/ggml-s1/media/`（GGML shifts=1 分离）
 - ASR：whisper.cpp Vulkan（large-v3-turbo, zh）
-- Ground truth：`packages/benchmark/separate/ref/metadata/asr_manual.json`
+- Ground truth：`packages/benchmark/ref/metadata/srt_manual.json`
 - CER/WER：`packages/benchmark/separate/compute/test-sidechain.ts`（ffmpeg 混音 → whisper → compute-cer）
 
 ## 10 组参数对比

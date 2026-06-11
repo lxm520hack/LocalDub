@@ -15,7 +15,7 @@
 
 | 模型 | 设备 | 说明 |
 |------|------|------|
-| whisper.cpp ASR | Vulkan (RADV) | **实际路径**，RTF ~0.09，large-v3-turbo |
+| whisper.cpp ASR | Vulkan (RADV) | **实际路径**，RTF ~0.09-0.11 (参数相关)，large-v3-turbo |
 | Demucs (ONNX, onnxruntime-node) | CPU | **实际路径**，RTF ~1.0 |
 | CosyVoice3 TTS | CPU | 无可用 GPU EP |
 | 翻译 | CUDA | 正常 |
@@ -32,10 +32,13 @@
 - **OOM**: daemon RSS > 9.5GB 时可能 OOM。详情 → `packages/research/model-load-benchmarks.md`
 - **Dawn WebGPU**：≥3 sessions → `VK_ERROR_DEVICE_LOST`，限制 ≤2 个 WebGPU session
 - **ffmpeg swresample whisper 幻觉循环**：sidechain 混音音频在 ffmpeg `-ar 16000` 后尾段产生 x68+ 幻觉循环。已去掉该冗余重采样，让 miniaudio 内部处理。详情 → `.agents/asr-loop-fix.md`
+- **whisper.cpp 无法检测短语音**：0.5s+ 的短叹（"唉" 71.20）和轻笑（"哈哈哈" 115.42）在 38 个参数组合中几乎全部 miss。silero VAD v6 能捕获"唉"但 CER 涨 3-4ppt 且时间戳左漂 0.8-1.2s；"啊+哈哈哈"则没有任何参数能捕获——whisper 语言模型解码偏好将短语音合并入相邻段。详情 → `packages/benchmark/asr/whisper/results/FINDINGS.md`
+- **VAD 变体时间戳偏移**：所有 VAD 模式都系统性地将分段边界左移（s_off_mean -0.75~-1.85s），导致字幕 timing 不准。CER 最低的 sidechain+vad-v6-th02（7.00%）偏移 -0.76s。最佳平衡参数是 sidechain+temp-02（CER 7.72%，s_off +0.10s，557/557 字符）
 
 ## TODO
 
 - 自动设备检测：目前 default `device: "cuda"` 在 ROCm 上可能 hang，待实现运行时可感知的自动检测
+- ASR 参数基准测试完成：sidechain + vad-v6-th02 最佳 CER 7.00% 但 s_off -0.76s；sidechain + temp-02 最佳字符数 557/557 且 s_off +0.10s。详情 → `packages/benchmark/asr/whisper/results/FINDINGS.md`
 
 ## Navigation
 
@@ -45,3 +48,4 @@
 - `.agents/cosyvoice2.md` — CosyVoice2/3 ONNX 导出状态
 - `.agents/asr-loop-fix.md` — ffmpeg swresample 导致 whisper 幻觉循环根因
 - `docs/webgpu-oom.md` — WebGPU `VK_ERROR_DEVICE_LOST` 根因分析
+- `packages/benchmark/asr/whisper/results/FINDINGS.md` — ASR 参数基准测试详细结果（38 组合）

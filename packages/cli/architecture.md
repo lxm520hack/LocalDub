@@ -25,28 +25,70 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 
 ## Overview
 
+### 节点说明
+
+| 阶段 | 输入 | 输出 | 说明 |
+|------|------|------|------|
+| **download** | URL / 本地文件 | `video_source.mp4`, `ytdlp_info.json` | 下载/导入视频 |
+| **separate** | `video_source.mp4` | `target_3_vocals.wav`, `target_bgm.wav` | Demucs 人声/BGM 分离 |
+| **asr** | `target_3_vocals.wav` | `asr.json` | Whisper 语音转文字 |
+| **asr_fix** | `asr.json` | `asr_fix.json` | 时间戳 padding + 分段合并 |
+| **ocr** | `video_source.mp4` | `ocr.json` | RapidOCR 硬字幕提取（替代 asr+asr_fix） |
+| **translate** | `asr_fix.json` / `ocr.json` | `translation.json` | LLM 翻译。可跳过：`enabled: false` |
+| **split_audio** | `asr_fix.json` / `ocr.json` + `translation.json`(enabled) | `timings.json`, `segments/vocals/*.wav` | VAD 时间校正，统一写 `timings.json` |
+| **tts** | `timings.json`, `segments/vocals/*.wav` | `segments/tts/*.wav` | 语音合成（dub only） |
+| **merge_audio** | `timings.json`, `segments/tts/*.wav` | `audio_dubbing.wav` | 拼接 + 变速 + BGM 混音（dub only） |
+| **merge_video** | `timings.json` + 音视频 | `video_final.mp4` / `video_final_subtitle.mp4` | 字幕烧录 + 最终合成 |
+
+关键约定：
+- **`timings.json`** 是下游唯一数据源（merge_video / merge_audio / tts 只读此文件）
+- **`translation.json`** 仅作为 translate 的输出分界点，被 split_audio 消费后不再使用
+- **`asr_fix.json` / `ocr.json`** — 字幕源文件，各自归属 asr_fix / ocr 阶段，下游通过 `subtitleSource` config 精准选择
+
+### dub 流程
+
 ```mermaid
-flowchart TD
-
-  sep["video_source.mp4 -> separate(Demucs)<br>→ target_3_vocals.wav<br>→ target_bgm.wav"]
-  asr["asr(Whisper\ f-whisper)<br>→ asr.json <br> asr_fix(split sentences)<br>→ asr_fixed.json"]
-  tl["translate(LLM)<br>→ translation.json"]
-
-  subgraph dub["dub mode"]
-    tts["split_audio<br>→ segments/vocals/ <br>tts-vc<br>→ segments/tts/"]
-    ma["merge_audio<br>→ audio_dubbing.wav"]
-  end
-
-  subgraph sub["subtitle mode"]
-    sub_skip["skip"]
-  end
-
-  mv["merge_video -><br>video_final.mp4 (dub) \ video_final_subtitle.mp4 (sub)"]
-
-  sep --> asr  --> tl
-  tl --> tts --> ma --> mv
-  tl --> sub_skip --> mv
+flowchart LR
+  dl["download"] -->  sep["separate<br>Demucs"]
+  sep --> asr["asr + asr_fix<br>Whisper → asr_fix.json"]
+  asr --> cond{translate?}
+  cond -->|enabled=true| tl["translate<br>→ translation.json"]
+  cond -->|enabled=false| sa
+  tl --> sa["split_audio<br>→ timings.json"]
+  sa --> tts["tts"]
+  tts --> ma["merge_audio<br>+ BGM"]
+  ma --> mv["merge_video<br>← timings.json"]
+  mv --> out["video_final.mp4"]
 ```
+
+### subtitle 流程
+
+```mermaid
+flowchart 
+  cond_translate{translate<br>.enabled}
+  sep["separate"]
+  cond_sa{split_audio<br>.vadAlign}
+  sa["split_audio"]
+  mv["merge_video"]
+
+  dl["download"] --> sub_src_cond{subtitleSource}
+  sub_src_cond --> |asr| sep_cond
+  sub_src_cond --> |ocr| ocr
+  ocr --> cond_translate
+   sep_cond{separate<br>.always}
+  sep_cond --> |true| sep
+  sep_cond --> |false| asr
+   
+  sep --> asr
+  asr --> cond_translate
+  cond_translate -->|true| tl["translate"]
+  cond_translate -->|false| cond_sa
+  tl --> cond_sa
+  cond_sa --> |true| sa
+  cond_sa --> |false| mv
+  sa --> mv
+```
+
 
 ## Session Directory Layout
 
@@ -62,7 +104,8 @@ flowchart TD
   │   ├── local_info.json         # mode, languages, stage overrides
   │   ├── ytdlp_info.json         # [download] video metadata (yt-dlp --dump-json)
   │   ├── asr.json                # [asr] raw Whisper output (segments + words)
-  │   ├── asr_fixed.json          # [asr_fix] padded sentence timings
+  │   ├── asr_fix.json          # [asr_fix] padded sentence timings
+  │   ├── ocr.json           # [ocr] OCR subtitle recognition output
   │   ├── translation.<lang>.json # [translate] translated segments
   │   ├── timings.json            # [merge_audio] TTS segments with actual timings
   │   └── subtitles.<lang>.srt    # [merge_video] subtitle file (both modes)
@@ -159,17 +202,17 @@ Refine ASR timings — pad short segments, merge adjacent same-speaker segments.
 
 | Output | Destination | Description |
 |---|---|---|
-| `metadata/asr_fixed.json` | written by stage | Same schema as `asr.json`, timings padded |
+| `metadata/asr_fix.json` | written by stage | Same schema as `asr.json`, timings padded |
 
 ---
 
 ### translate
 
-Translate ASR text via LLM (OpenAI-compatible API).
+Translate ASR text via LLM (OpenAI-compatible API). 可跳过：`config.stages.translate.enabled = false` — 此时下游直接使用原文。
 
 | Input | Source | Description |
 |---|---|---|
-| `metadata/asr_fixed.json` | asr_fix | Sentences to translate |
+| `metadata/asr_fix.json` / `ocr.json` | asr_fix / ocr | Sentences to translate（取决于 `subtitleSource`） |
 | `metadata/ytdlp_info.json` | download | Optional context (title, description) |
 | `metadata/local_info.json` | download | Language settings |
 | config `translate.apiBase` | `config.json` | LLM API endpoint |
@@ -192,19 +235,22 @@ Translate ASR text via LLM (OpenAI-compatible API).
 
 ---
 
-### split_audio (dub only)
+### split_audio
 
 Slice vocals WAV into per-segment reference clips using translation timings.
+- subtitle 模式下仅在 `vadAlign: true` 时运行，否则 merge_video 直接读 `asr_fix.json` / `ocr.json`。
+- translate 跳过时从字幕源文件取原文作为 `src`/`dst`。
 
 | Input | Source | Description |
 |---|---|---|
 | `media/target_3_vocals.wav` | separate | Full vocals audio |
-| `metadata/translation.<lang>.json` | translate | Segment boundaries |
+| `metadata/translation.<lang>.json` | translate | Segment boundaries (enabled=true 时必需) |
 | `metadata/local_info.json` | download | Target language code |
 
 | Output | Destination | Description |
 |---|---|---|
 | `segments/vocals/<NNNN>.wav` | ffmpeg `-ss -to -c copy` | Per-segment WAV clips (44 bytes for empty) |
+| `metadata/timings.json` | written by stage | Segment timings with src/dst text |
 | (dir cleared on re-run) | | If translation file is newer than existing clips |
 
 ---
@@ -262,7 +308,7 @@ Combine audio + video + optional subtitles. Different output per mode:
 | Mode | Inputs | Output |
 |---|---|---|
 | **dub** | `video_source.mp4` + `audio_dubbing.wav` + `target_bgm.wav` + `timings.json` | `media/video_final.mp4` (dubbed audio + subtitles + BGM) |
-| **subtitle** | `video_source.mp4` + `translation.<lang>.json` | `media/video_final_subtitle.mp4` (burned-in subtitles) |
+| **subtitle** | `video_source.mp4` + `timings.json` | `media/video_final_subtitle.mp4` (burned-in subtitles) |
 
 Both modes produce an SRT subtitle file at `metadata/subtitles.<lang>.srt`.
 
@@ -314,7 +360,7 @@ Composite PK: `(task_id, name)`, FK → `tasks.id ON DELETE CASCADE`.
 | Stage | Dub | Subtitle |
 |---|---|---|
 | separate | Demucs (vocals + bgm) | Demucs (vocals + bgm, same handler) |
-| split_audio | ✅ YES | ❌ skipped |
+| split_audio | ✅ YES | ✅ only if `vadAlign: true` |
 | tts | ✅ YES | ❌ skipped |
 | merge_audio | ✅ YES | ❌ skipped |
 | merge_video | dubbing + BGM + subs | burned-in subtitles only |
@@ -327,7 +373,7 @@ Composite PK: `(task_id, name)`, FK → `tasks.id ON DELETE CASCADE`.
 | Demucs | `separate` | ✅ | ✅ |
 | ASR | `asr` | ✅ | ✅ |
 | Fix timings | `asr_fix` | ✅ | ✅ |
-| Translate | `translate` | ✅ | ✅ |
+| Translate | `translate` | ✅ (可跳过 via `enabled: false`) | ✅ (ditto) |
 | Split audio | `split_audio` | — | ✅ |
 | TTS | `tts` | — | ✅ |
 | Merge audio | `merge_audio` | — | ✅ |

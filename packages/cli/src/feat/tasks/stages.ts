@@ -1,3 +1,5 @@
+import { readConfig } from '../config/config.ts';
+
 export interface StageSpec {
 	name: string;
 	label: string;
@@ -24,10 +26,38 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 	{ name: 'split_audio', label: 'Split audio' },
 	{ name: 'merge_video', label: 'Merge video' },
 ];
-// Transcribed
+
+function withOcr(stages: StageSpec[], pipeline?: string): StageSpec[] {
+	const drop = new Set(['asr', 'asr_fix']);
+	if (pipeline === 'subtitle') drop.add('separate');
+	const filtered = stages.filter(s => !drop.has(s.name));
+	const idx = filtered.findIndex(s => s.name === 'translate');
+	const out = [...filtered];
+	if (idx === -1) {
+		out.push({ name: 'ocr', label: 'OCR' });
+	} else {
+		out.splice(idx, 0, { name: 'ocr', label: 'OCR' });
+	}
+	return out;
+}
+
+/** Build stage list based on pipeline mode and subtitleSource config */
 export function getStages(pipeline?: string): StageSpec[] {
-	if (pipeline === 'subtitle') return SUBTITLE_STAGES;
-	return DUB_STAGES;
+	let stages = pipeline === 'subtitle' ? SUBTITLE_STAGES : DUB_STAGES;
+	try {
+		const cfg = readConfig();
+		const src = cfg.subtitleSource ?? 'asr';
+		if (src === 'ocr') stages = withOcr(stages, pipeline);
+		if (cfg.stages?.translate?.enabled === false) {
+			stages = stages.filter(s => s.name !== 'translate');
+		}
+		if (pipeline === 'subtitle' && cfg.stages?.split_audio?.vadAlign !== true) {
+			stages = stages.filter(s => s.name !== 'split_audio');
+		}
+	} catch {
+		// config may not be available (e.g. import time); use default
+	}
+	return stages;
 }
 
 /** @deprecated Use DUB_STAGES or getStages(pipeline) */

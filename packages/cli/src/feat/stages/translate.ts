@@ -8,6 +8,7 @@ import {
 	LANG_NAMES,
 	nowISO,
 	readTaskLanguages,
+	subtitleFilePath,
 	translationFilePath,
 	updateStageDB,
 } from './utils.ts';
@@ -16,7 +17,7 @@ import {
  * translate.[dstLang].json 结构
  *
  * 由 translate 阶段写入，split_audio/tts/merge_audio/merge_video 读取。
- * 时间戳源自 asr_fixed.json（秒→毫秒），文本是 LLM 翻译结果。
+ * 时间戳源自 srt.json（秒→毫秒），文本是 LLM 翻译结果。
  * 此文件在此阶段后冻结，split_audio 不修改它，而是创建 timings.json。
  */
 export interface TranslateFile {
@@ -44,7 +45,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		setLocalInfo(sessionPath, { target_language: resolvedDstLang });
 	}
 
-	const fixedFile = join(metadataDir, 'asr_fixed.json');
+	const srtFile = subtitleFilePath(sessionPath);
 	const dstLangCode = resolvedDstLang;
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
@@ -52,8 +53,8 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 
 	if (
 		existsSync(translationFile) &&
-		existsSync(fixedFile) &&
-		statSync(fixedFile).mtimeMs <= statSync(translationFile).mtimeMs
+		existsSync(srtFile) &&
+		statSync(srtFile).mtimeMs <= statSync(translationFile).mtimeMs
 	) {
 		await updateStageDB(taskId, 'translate', {
 			status: 'succeeded',
@@ -64,7 +65,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		return;
 	}
 
-	const data = readJson(fixedFile, 'Translate');
+	const data = readJson(srtFile, 'Translate');
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');

@@ -16,6 +16,7 @@ import {
 } from '../config/config.ts';
 import type { LocalInfo } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
+import { setStage } from '../stages/context.ts';
 import {
 	currentTask,
 	emitLog,
@@ -32,11 +33,14 @@ function snapshotConfig(sessionPath: string) {
 	const snap: NonNullable<LocalInfo['lastRunConfig']> = {
 		timestamp: new Date().toISOString(),
 		pipeline: cfg.pipeline ?? 'dub',
+		subtitleSource: cfg.subtitleSource,
 		stages: {},
 		daemonPort: cfg.daemonPort,
 	};
 	const asr = cfg.stages?.asr;
 	if (asr) snap.stages.asr = { runtime: asr.runtime, device: asr.device, useSeparated: asr.useSeparated, mixMode: asr.mixMode, reduceBgm: asr.reduceBgm, useGate: asr.useGate };
+	const ocr = cfg.stages?.ocr;
+	if (ocr) snap.stages.ocr = { fps: ocr.fps, textScore: ocr.textScore };
 	const sep = cfg.stages?.separate;
 	if (sep) {
 		snap.stages.separate = {
@@ -51,6 +55,7 @@ function snapshotConfig(sessionPath: string) {
 			apiBase: tr.apiBase,
 			model: tr.model,
 			targetLang: tr.targetLang,
+			enabled: tr.enabled,
 		};
 	}
 	const tts = cfg.stages?.tts;
@@ -79,6 +84,7 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 	await updateTaskDB(taskId, { status: 'running', started_at: nowISO() });
 
 	for (const stage of stages) {
+		setStage(stage.name);
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -240,6 +246,7 @@ export async function resumePipeline(
 
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
+		setStage(stage.name);
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(

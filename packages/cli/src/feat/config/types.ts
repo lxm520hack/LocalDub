@@ -49,6 +49,7 @@ const stagesList = [
 	'separate',
 	'asr',
 	'asr_fix',
+	'ocr',
 	'translate',
 	'split_audio',
 	'tts',
@@ -57,25 +58,24 @@ const stagesList = [
 ] as const;
 export type StageName = (typeof stagesList)[number];
 
-const SeparateConfigAlways = z
-	.boolean()
-	.default(false)
-	.describe(
-		'效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量',
-	)
-	.optional();
 const SeparateConfigSchema = z.object({
-			runtime: z.enum(['ggml', 'ort', 'pytorch']),
-			device: z
-				.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
-				.default('cuda')
-				.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
-			always: SeparateConfigAlways,
-			stems: z
-				.array(z.enum(['drums', 'bass', 'other', 'vocals']))
-				.default(['vocals'])
-				.describe('需分离的 stems; 默认只分离 vocals, 目前仅支持 ort').optional(),
-		})
+		runtime: z.enum(['ggml', 'ort', 'pytorch']),
+		device: z
+			.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
+			.default('cuda')
+			.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
+		always: z
+			.boolean()
+			.default(false)
+			.describe(
+				'效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量',
+			)
+			.optional(),
+		stems: z
+			.array(z.enum(['drums', 'bass', 'other', 'vocals']))
+			.default(['vocals'])
+			.describe('需分离的 stems; 默认只分离 vocals, 目前仅支持 ort').optional(),
+	})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
@@ -147,6 +147,22 @@ const ASRConfigSchema = z
 	.optional();
 
 export type ASRConfig = z.output<typeof ASRConfigSchema>;
+const OcrConfigSchema = z
+	.looseObject({
+		fps: z
+			.number()
+			.default(1)
+			.describe('帧率 (fps), 越高时间戳越准但越慢; 默认 1')
+			.optional(),
+		textScore: z
+			.number()
+			.default(0.3)
+			.describe('OCR 识别置信度阈值, 默认 0.3 (单字如"啊"需要 ≤0.3)')
+			.optional(),
+	})
+	.default({ fps: 1, textScore: 0.3 })
+	.optional();
+export type OcrConfig = z.output<typeof OcrConfigSchema>;
 const TranslateConfigSchema = z
 	.looseObject({
 		apiBase: z.string().optional(),
@@ -155,6 +171,10 @@ const TranslateConfigSchema = z
 			.enum(targetLangList)
 			.optional()
 			.describe('如果不填则 按照这个逻辑: 源语言: zh -> en, 否则 any -> zh'), //
+		enabled: z
+			.boolean()
+			.optional()
+			.describe('设为 false 跳过翻译，直接使用原始识别文本'),
 	})
 	.optional();
 
@@ -275,6 +295,7 @@ const StagesSchema = z.object({
 			segmentPad: true,
 		})
 		.optional(),
+	ocr: OcrConfigSchema,
 	translate: TranslateConfigSchema,
 	split_audio: SplitAudioConfigSchema,
 	tts: TTSConfigSchema,
@@ -289,6 +310,11 @@ const BaseConfigSchema = z.looseObject({
 		.default('dub')
 		.optional()
 		.describe('任务模式, dub 配音,subtitle 仅字幕'),
+	subtitleSource: z
+		.enum(['asr', 'ocr'])
+		.default('asr')
+		.optional()
+		.describe('字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取)'),
 	targetStage: z
 		.enum(stagesList)
 		.optional()
@@ -381,10 +407,12 @@ export interface LocalInfo {
 	lastRunConfig?: {
 		timestamp: string;
 		pipeline: 'dub' | 'subtitle';
+		subtitleSource?: 'asr' | 'ocr';
 		stages: {
 			asr?: { runtime: string; device?: string; useSeparated?: boolean; mixMode?: string; reduceBgm?: number; wordsOutput?: boolean; sidechainCompress?: { threshold?: number; ratio?: number; attack?: number; release?: number }; useGate?: boolean };
 			separate?: { runtime: string; device?: string; always?: boolean; stems?: string[] };
-			translate?: { apiBase?: string; model?: string; targetLang?: string };
+			ocr?: { fps?: number; textScore?: number };
+			translate?: { apiBase?: string; model?: string; targetLang?: string; enabled?: boolean };
 			tts?: { runtime: string; device?: string };
 		};
 		daemonPort?: number;

@@ -7,7 +7,7 @@ import { RESULTS_DIR, audioDuration, round } from './bench-shared';
 const REPO_ROOT = resolve(__dirname, '..', '..', '..');
 const VIDEO_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'video_source.mp4');
 const TMP_WAV = join(REPO_ROOT, 'packages', 'tmp', 'demucs-ort-video.wav');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'asr_manual.json');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const WER_PY = join(__dirname, 'wer.py');
 const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan');

@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils.ts';
+import { readTaskLanguages, subtitleFilePath, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils.ts';
 import { readConfig } from '../config/config.ts';
 import { env } from '@repo/config';
 
@@ -61,45 +61,68 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const vocalsFile = join(sessionPath, 'media', 'target_3_vocals.wav');
   const sourceFile = join(sessionPath, 'media', 'video_source.mp4');
   const metadataDir = join(sessionPath, 'metadata');
-  const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
-  const translationFile = translationFilePath(sessionPath, dstLangCode);
-  const fixedFile = join(metadataDir, 'asr_fixed.json');
-  const timingsFile = join(metadataDir, 'timings.json');
-  const segmentsDir = join(sessionPath, 'segments', 'vocals');
+	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
+	const translationFile = translationFilePath(sessionPath, dstLangCode);
+	const srtFile = subtitleFilePath(sessionPath);
+	const timingsFile = join(metadataDir, 'timings.json');
+	const segmentsDir = join(sessionPath, 'segments', 'vocals');
 
-  if (!existsSync(translationFile)) throw new Error(`translation file not found: ${translationFile}`);
-  if (!existsSync(fixedFile)) throw new Error(`asr_fixed.json not found: ${fixedFile}`);
+	if (!existsSync(srtFile)) throw new Error(`subtitle file not found: ${srtFile}`);
 
-  const hasVocals = existsSync(vocalsFile);
-  const sourceAudio = hasVocals ? vocalsFile : sourceFile;
+	const hasVocals = existsSync(vocalsFile);
+	const sourceAudio = hasVocals ? vocalsFile : sourceFile;
 
-  // Read authoritative timings from asr_fixed.json (seconds)
-  const fixData = readJson(fixedFile, 'split_audio', taskId);
-  const segmentsSrc: { text: string; start: number; end: number }[] = fixData.result?.segments;
-  if (!segmentsSrc?.length) throw new Error('asr_fixed.json has no segments');
+	// Read authoritative timings from srt.json (seconds)
+	const srtData = readJson(srtFile, 'split_audio', taskId);
+	const segmentsSrc: { text: string; start: number; end: number }[] = srtData.result?.segments;
+	if (!segmentsSrc?.length) throw new Error('srt.json has no segments');
 
-  // Read translated text from translation.json (1:1 by index)
-  const transData = readJson(translationFile, 'split_audio', taskId);
-  const translation = transData.translation;
-  if (!translation?.length) throw new Error('translation.json has no segments');
-  if (segmentsSrc.length !== translation.length) {
-    throw new Error(`Segment count mismatch: asr_fixed (${segmentsSrc.length}) !== translation (${translation.length})`);
-  }
-
-  // Build timings array: asr_fixed timestamps + translation text
-  const timings = segmentsSrc.map((seg, i) => ({
-    seg_idx: i + 1,
-    src: translation[i].src,
-    dst: translation[i].dst,
-    src_lang: translation[i].src_lang,
-    dst_lang: translation[i].dst_lang,
-    start_time: Math.floor(seg.start * 1000),
-    end_time: Math.ceil(seg.end * 1000),
-    speaker: translation[i].speaker ?? '1',
-  }));
+	// Read translated text from translation.json, or original from srt.json
+	const translateEnabled = readConfig().stages?.translate?.enabled ?? true;
+	let timings: {
+		seg_idx: number;
+		src: string;
+		dst: string;
+		src_lang: string;
+		dst_lang: string;
+		start_time: number;
+		end_time: number;
+		speaker: string;
+	}[];
+	if (translateEnabled) {
+		if (!existsSync(translationFile))
+			throw new Error(`translation file not found: ${translationFile}`);
+		const transData = readJson(translationFile, 'split_audio', taskId);
+		const translation = transData.translation;
+		if (!translation?.length) throw new Error('translation.json has no segments');
+		if (segmentsSrc.length !== translation.length) {
+			throw new Error(`Segment count mismatch: srt (${segmentsSrc.length}) !== translation (${translation.length})`);
+		}
+		timings = segmentsSrc.map((seg, i) => ({
+			seg_idx: i + 1,
+			src: translation[i].src,
+			dst: translation[i].dst,
+			src_lang: translation[i].src_lang,
+			dst_lang: translation[i].dst_lang,
+			start_time: Math.floor(seg.start * 1000),
+			end_time: Math.ceil(seg.end * 1000),
+			speaker: translation[i].speaker ?? '1',
+		}));
+	} else {
+		timings = segmentsSrc.map((seg, i) => ({
+			seg_idx: i + 1,
+			src: seg.text,
+			dst: seg.text,
+			src_lang: srcLangCode,
+			dst_lang: srcLangCode,
+			start_time: Math.floor(seg.start * 1000),
+			end_time: Math.ceil(seg.end * 1000),
+			speaker: '1',
+		}));
+	}
 
   // Total audio duration
-  let totalMs = fixData.audio_info?.duration ?? 0;
+  let totalMs = srtData.audio_info?.duration ?? 0;
   if (!totalMs) totalMs = probeDuration(sourceAudio);
 
   ensureDir(segmentsDir, 'split_audio', taskId);

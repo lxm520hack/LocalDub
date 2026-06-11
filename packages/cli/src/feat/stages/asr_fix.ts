@@ -49,7 +49,7 @@ function padSegments(segments: any[], startPad = 0.1, endPad = 0.3): any[] {
 export async function stageAsrFix(taskId: string, sessionPath: string) {
   const metadataDir = join(sessionPath, 'metadata');
   const asrFile = join(metadataDir, 'asr.json');
-  const fixedFile = join(metadataDir, 'asr_fixed.json');
+  const srtFile = join(metadataDir, 'asr_fix.json');
 
   if (!existsSync(asrFile)) {
     throw new Error(`ASR file not found: ${asrFile}; run ASR stage first`);
@@ -105,13 +105,13 @@ export async function stageAsrFix(taskId: string, sessionPath: string) {
   }
 
   const resultText = segments.map((s: any) => s.text).join(' ');
-  writeJson(fixedFile, {
+  writeJson(srtFile, {
     audio_info: data.audio_info || {},
     result: { text: resultText, segments },
     _llm_fixed: llmFix,
   }, 'ASR Fix');
 
-  emitLog(taskId, `[ASR Fix] Written ${segments.length} segs to asr_fixed.json`);
+  emitLog(taskId, `[ASR Fix] Written ${segments.length} segs to asr_fix.json`);
 
   await updateStageDB(taskId, 'asr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,

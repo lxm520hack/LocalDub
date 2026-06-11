@@ -9,7 +9,7 @@ const WHISPER_CLI = join(WHISPER_BUILD, 'bin', 'whisper-vulkan');
 const MODEL = process.env.WHISPER_MODEL || join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const WER_PY = join(__dirname, 'wer.py');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'asr_manual.json');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
 
 interface VocalsFile {
   label: string;

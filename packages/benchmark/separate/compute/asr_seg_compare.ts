@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..');
 const RESULTS_DIR = join(__dirname, 'results');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'asr_manual.json');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
 
 interface Segment { text: string; start: number; end: number }
 

@@ -3,6 +3,7 @@ import { stageDownload } from './download.ts';
 import { stageSeparate } from './separate.ts';
 import { stageAsr } from './asr.ts';
 import { stageAsrFix } from './asr_fix.ts';
+import { stageOcr } from './ocr.ts';
 import { stageTranslate } from './translate.ts';
 import { stageSplitAudio } from './split_audio.ts';
 import { stageTts } from './tts.ts';
@@ -13,6 +14,7 @@ export { stageDownload };
 export { stageSeparate };
 export { stageAsr };
 export { stageAsrFix };
+export { stageOcr };
 export { stageTranslate };
 export { stageSplitAudio };
 export { stageTts };
@@ -26,6 +28,7 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
   separate: (id, sp, _task, d) => stageSeparate(id, sp, d),
   asr: (id, sp, _task, d) => stageAsr(id, sp, d),
   asr_fix: (id, sp, _task) => stageAsrFix(id, sp),
+  ocr: (id, sp, _task) => stageOcr(id, sp),
   translate: (id, sp, _task) => stageTranslate(id, sp),
   split_audio: (id, sp, _task) => stageSplitAudio(id, sp),
   tts: (id, sp, _task, d) => stageTts(id, sp, d),

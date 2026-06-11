@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
+import { stage } from '../stages/context.ts';
 import { type BaseConfigInput, ConfigSchema, type LocalInfo } from './types.ts';
 
 export { delimiter, REPO_ROOT };
@@ -47,25 +48,37 @@ export const localInfoPath = (sessionPath: string) =>
  */
 export const readLocalInfo = (sessionPath: string) => {
 	const path = localInfoPath(sessionPath);
-	console.log(`[Config] [File] read ${path}`);
+	const raw = _readLocalInfo(sessionPath)
+	console.log(`[${stage()}] [File] read ${path}`);
+	return raw as LocalInfo;
+};
+export const _readLocalInfo = (sessionPath: string) => {
+	const path = localInfoPath(sessionPath);
 	const raw = JSON.parse(readFileSync(path, 'utf-8'));
 	return raw as LocalInfo;
 };
 export const writeLocalInfo = (sessionPath: string, info: LocalInfo) => {
-	const path = join(sessionPath, 'metadata', 'local_info.json');
+	const path = localInfoPath(sessionPath);
 	const raw = JSON.stringify(info, null, 2);
 	writeFileSync(path, raw);
 	const lines = raw.split('\n').length;
-	console.log(`[Config] [File] write ${path} (${raw.length}B, ${lines} lines)`);
+	_writeLocalInfo(sessionPath, info);
+	console.log(`[${stage()}] [File] write ${path} (${raw.length}B, ${lines} lines)`);
+	return info;
+};
+export const _writeLocalInfo = (sessionPath: string, info: LocalInfo) => {
+	const path = localInfoPath(sessionPath);
+	const raw = JSON.stringify(info, null, 2);
+	writeFileSync(path, raw);
 	return info;
 };
 export const setLocalInfo = (
 	sessionPath: string,
 	patch: Partial<LocalInfo>,
 ): void => {
-	const existing = readLocalInfo(sessionPath) ?? ({} as LocalInfo);
-	writeLocalInfo(sessionPath, { ...existing, ...patch });
-	console.log(`[Config] [File] set ${localInfoPath(sessionPath)}:`, JSON.stringify(patch));
+	const existing = _readLocalInfo(sessionPath) ?? ({} as LocalInfo);
+	_writeLocalInfo(sessionPath, { ...existing, ...patch });
+	console.log(`[${stage()}] [File] set ${localInfoPath(sessionPath)}:`, JSON.stringify(patch));
 };
 export const readPipeline = (sessionPath: string) =>
 	readLocalInfo(sessionPath)?.pipeline || 'dub';
