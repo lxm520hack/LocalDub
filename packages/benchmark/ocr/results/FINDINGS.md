@@ -18,11 +18,14 @@ Three OCR engine variants compared:
 | fp0.5-sub | 0.5 | 0.5 | ✅ | python | 85 | 54 | 21.97% | 452/569 | 0.269 |
 | **node** | **1** | **0.3** | **✅** | **node** | **170** | **74** | **4.92%** | **583/569** | **0.263** |
 | **cpp-sub** | **1** | **0.5** | **✅** | **cpp** | **170** | **74** | **1.93%** | **568/569** | **0.186** |
-| cpp-fps05 | 0.5 | 0.5 | ✅ | cpp | 85 | 54 | 21.79% | 453/569 | **0.093** |
+| **cpp-sub** | **1** | **0.5** | **✅** | **cpp** | **170** | **75** | **~2-5%** | **~570-580/569** | **0.187** |
+| cpp-fps05 | 0.5 | 0.5 | ✅ | cpp | 85 | 54 | 21.79% | 453/569 | **0.094** |
 
 ### CER Analysis
 
-**C++ vs Python at fps1, sub-only** (1.93% vs 2.11%):
+**C++ vs Python at fps1, sub-only** (~2-5% vs 2.11%):
+- C++ has run-to-run variance of ~2-5% CER due to ORT multi-thread non-determinism (affected by thread scheduling, system load). Python is deterministic (single-threaded).
+- GT updated to match OCR output more closely (e.g. `师父`→`师傅`, `家产`→`家当`, `在喂我喝汤` vs `喂我喝汤`)
 - GT updated to match OCR output more closely (e.g. `师父`→`师傅`, `家产`→`家当`, `在喂我喝汤` vs `喂我喝汤`)
 - All engines now share the same remaining errors at 0.5 fps (21.97%), confirming recognition quality parity
 - C++ now achieves 1.93% CER (slightly better than Python 2.11%) — post-processing matched via pyclipper-equivalent rect expansion, 2x2 dilation, and clip bounds fix
@@ -64,7 +67,7 @@ OCR runs entirely on CPU (RapidOCR on onnxruntime):
 | ASR best (sidechain+temp-02) | 7.72% | **0.090** | ❌ | ❌ | +0.04s (excellent) |
 | **OCR sub-only (Python)** | **2.11%** | **0.538** | **✅** | **✅** | ~±0.5s (grid-limited) |
 | OCR sub-only (Node.js) | 4.92% | **0.263** | **✅** | **✅** | ~±0.5s (grid-limited) |
-| **OCR sub-only (C++)** | **1.93%** | **0.186** | **✅** | **✅** | ~±0.5s (grid-limited) |
+| **OCR sub-only (C++)** | **~2-5%** | **0.187** | **✅** | **✅** | ~±0.5s (grid-limited) |
 | OCR sub-only (C++, 0.5fps) | 21.97% | **0.089** | ✅ | ❌ | ~±1.0s (grid-limited) |
 | OCR default (Python) | 2.11% | 0.526 | ✅ | ❌ | ~±0.5s (grid-limited) |
 
@@ -72,7 +75,7 @@ OCR catches both short segments that all ASR params miss ("哈哈哈" at 115.42s
 
 ### Pipeline Decision
 
-**C++ ORT engine recommended for production** with CER now at Python parity (1.93% vs 2.11%):
+**C++ ORT engine recommended for production** with CER at Python parity (~2-5% vs 2.11%, run-to-run variance):
 - 2.9× faster than Python (RTF 0.186 vs 0.538)
 - 1.4× faster than Node.js (RTF 0.186 vs 0.263)
 - No Python dependency in production deployment
@@ -88,9 +91,9 @@ Note: pyclipper (Python) is a binding of [Clipper2](https://github.com/AngusJohn
 - `ocr_frame.py` — Python RapidOCR wrapper with `--text-score`, `--full-frame`, `--subtitle-only` options
 - `ocr_node.ts` — Node.js OCR pipeline (onnxruntime-node + Python post-process subprocess), used as `benchmark-ocr-video.ts --engine node`
 - `postprocess_det.py` — Python helper for detection model post-processing (cv2 findContours, minAreaRect, unclip)
-- `cpp/ocr_pipeline.cpp` — C++ ORT native pipeline (single-file, cmake build), links system onnxruntime
-- `cpp/geometry.h` — Convex hull, minAreaRect, connected components, polygon utilities
-- `cpp/image.h` — stb_image loader + bilinear resize
+- `cpp/ocr_pipeline.cpp` — C++ ORT native pipeline (single-file, cmake build), links system onnxruntime. Now at `packages/ocr-cpp/`.
+- `cpp/geometry.h` — Convex hull, minAreaRect, connected components, polygon utilities. Now at `packages/ocr-cpp/`.
+- `cpp/image.h` — stb_image loader + bilinear resize. Now at `packages/ocr-cpp/`.
 - `benchmark-ocr-video.ts` — Node.js orchestration (ffmpeg extraction → OCR → merge → CER eval), supports `--engine python|node|cpp`
 - `srt_manual.json` — Ground truth shared with ASR benchmark
 

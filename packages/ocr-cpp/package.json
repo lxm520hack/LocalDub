@@ -1,0 +1,9 @@
+{
+  "name": "@repo/ocr-cpp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cmake -B build && cmake --build build --parallel",
+    "postinstall": "cmake -B build && cmake --build build --parallel 2>/dev/null || echo 'ocr-cpp: cmake build failed (install cmake + onnxruntime)'"
+  }
+}

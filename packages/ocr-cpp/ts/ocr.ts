@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { REPO_ROOT } from "../../feat/config/config.ts";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const BINARY_PATH = resolve(REPO_ROOT, "packages", "ocr-cpp", "build", "ocr_pipeline");
-const LD_PATH = resolve(REPO_ROOT, "packages", "ocr-cpp", "build");
+const __dirname = resolve(fileURLToPath(import.meta.url), "..", "..");
+const BINARY_PATH = resolve(__dirname, "build", "ocr_pipeline");
+const LD_PATH = resolve(__dirname, "build");
 
 export interface OCRLine {
 	text: string;

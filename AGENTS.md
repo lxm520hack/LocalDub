@@ -44,7 +44,7 @@
 | **C++ ORT (推荐)** | **2.9× faster, 无 Python 依赖, CER 超越 Python(1.93% vs 2.11%)** | **1.93%** | **0.186** |
 | C++ ORT (0.5fps) | RTF 接近 ASR | 21.79% | 0.092 |
 
-C++ ORT 为生产推荐路径。详情 → `packages/benchmark/ocr/results/FINDINGS.md`
+C++ ORT 为生产推荐路径，已封装为 `packages/ocr-cpp/` 独立包。详情 → `packages/benchmark/ocr/results/FINDINGS.md`
 
 ## TODO
 

@@ -6,8 +6,8 @@ import { createSessions, ocrFrameWithSessions, releaseSessions } from './ocr_nod
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');
 const VIDEO_PATH = join(VIDEOS_PATH, 'video_source.mp4');
-const CPP_BIN = resolve(REPO_ROOT, 'packages', 'benchmark', 'ocr', 'cpp', 'build', 'ocr_pipeline');
-const CPP_LD_PATH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ocr', 'cpp', 'build');
+const CPP_BIN = resolve(REPO_ROOT, 'packages', 'ocr-cpp', 'build', 'ocr_pipeline');
+const CPP_LD_PATH = resolve(REPO_ROOT, 'packages', 'ocr-cpp', 'build');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const OCR_PY = resolve(__dirname, 'ocr_frame.py');
 const WER_PY = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'compute', 'wer.py');
