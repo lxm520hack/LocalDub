@@ -243,9 +243,12 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 
 	const noTranslate = readConfig().stages?.translate?.enabled === false;
 	const ntlSuffix = noTranslate ? '_ntl' : '';
+	const ocrSuffix = readConfig().subtitleSource === 'ocr' ? '_ocr' : '';
 	const finalVideo = join(
 		mediaDir,
-		pipeline === 'subtitle' ? `${taskId}_subtitle${ntlSuffix}.mp4` : `${taskId}_dub${ntlSuffix}.mp4`,
+		pipeline === 'subtitle'
+			? `${taskId}_subtitle${ocrSuffix}${ntlSuffix}.mp4`
+			: `${taskId}_dub${ocrSuffix}${ntlSuffix}.mp4`,
 	);
 
 	if (pipeline === 'subtitle') {
