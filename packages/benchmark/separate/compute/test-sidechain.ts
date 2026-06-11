@@ -90,18 +90,18 @@ function runOne(p: SidechainParams) {
 	const segments: any[] = (Array.isArray(raw.transcription) ? raw.transcription : raw.transcription?.segments ?? [])
 		.map((s: any) => ({
 			text: (s.text || '').trim(),
-			start: (s.offsets?.from ?? 0) / 1000,
-			end: (s.offsets?.to ?? 0) / 1000,
+			start: s.offsets?.from ?? 0,
+			end: s.offsets?.to ?? 0,
 			words: (s.tokens || [])
 				.filter((t: any) => { const txt = t.text?.trim(); return txt && !txt.startsWith('[') && t.offsets?.from != null; })
-				.map((t: any) => ({ word: t.text.trim(), start: (t.offsets.from ?? 0) / 1000, end: (t.offsets.to ?? 0) / 1000, probability: t.p })),
+				.map((t: any) => ({ word: t.text.trim(), start: t.offsets.from ?? 0, end: t.offsets.to ?? 0, probability: t.p })),
 		}));
 	const text = segments.map(s => s.text).join(' ');
-	const audioDur = segments.length > 0 ? segments[segments.length - 1].end : 0;
-	const rtf = whisperElapsed / Math.max(audioDur, 1);
+	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : 0;
+	const rtf = whisperElapsed / Math.max(audioDurMs / 1000, 1);
 
 	const asrOutput = {
-		audio_info: { duration: audioDur * 1000 },
+		audio_info: { duration: audioDurMs },
 		result: { text, segments },
 		_engine: 'whisper.cpp',
 		_device: 'vulkan',
@@ -116,7 +116,7 @@ function runOne(p: SidechainParams) {
 	const result = computeCER(asrPath);
 	console.log(`  cer: ${((performance.now() - t2) / 1000).toFixed(2)}s`);
 
-	console.log(`  RTF: ${rtf.toFixed(3)} (${whisperElapsed.toFixed(1)}s / ${audioDur.toFixed(1)}s)`);
+	console.log(`  RTF: ${rtf.toFixed(3)} (${whisperElapsed.toFixed(1)}s / ${(audioDurMs / 1000).toFixed(1)}s)`);
 	console.log(`  WER: ${(result.wer * 100).toFixed(2)}% | CER: ${(result.cer * 100).toFixed(2)}%`);
 	console.log(`  Hyp chars: ${result.hyp_chars}, Ref chars: ${result.ref_chars}`);
 

@@ -15,8 +15,8 @@ function loadSegments(path: string): Segment[] {
 	const d = JSON.parse(readFileSync(path, 'utf-8'));
 	return d.result.segments.map((s: any) => ({
 		text: s.text.trim(),
-		start: s.start,
-		end: s.end,
+		start: s.start / 1000,
+		end: s.end / 1000,
 	}));
 }
 

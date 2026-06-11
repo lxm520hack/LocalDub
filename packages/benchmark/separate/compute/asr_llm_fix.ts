@@ -60,8 +60,8 @@ function normalizeTranscription(data: any): Normalized {
   if (Array.isArray(data?.transcription)) {
     const segments: Segment[] = data.transcription.map((s: any) => ({
       text: (s.text || '').trim(),
-      start: (s.offsets?.from ?? 0) / 1000,
-      end: (s.offsets?.to ?? 0) / 1000,
+      start: s.offsets?.from ?? 0,
+      end: s.offsets?.to ?? 0,
     }));
     return { text: segments.map(s => s.text).join(' '), segments };
   }
@@ -117,7 +117,7 @@ async function main() {
 
   const fixedFile = join(metadataDir, `wer-${label}-llm-fixed.json`);
   writeFileSync(fixedFile, JSON.stringify({
-    audio_info: { duration: segments.length ? segments[segments.length - 1].end * 1000 : 0 },
+    audio_info: { duration: segments.length ? segments[segments.length - 1].end : 0 },
     result: { text: resultText, segments: resultSegments },
     _llm_fixed: true, _source: asrPath, _label: label,
   }, null, 2));

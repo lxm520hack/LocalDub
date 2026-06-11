@@ -31,7 +31,7 @@ function parseWhisperSegments(stdout: string): { text: string; segments: any[] }
       const startS = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 100;
       const endS = parseInt(m[5]) * 3600 + parseInt(m[6]) * 60 + parseInt(m[7]) + parseInt(m[8]) / 100;
       const text = m[9].trim();
-      segments.push({ text, start: startS, end: endS });
+      segments.push({ text, start: Math.round(startS * 1000), end: Math.round(endS * 1000) });
     }
   }
   const fullText = segments.map(s => s.text).join(' ');

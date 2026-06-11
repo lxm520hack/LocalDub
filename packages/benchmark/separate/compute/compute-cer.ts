@@ -63,8 +63,8 @@ function normalizeTranscription(data: any): Normalized {
   if (Array.isArray(data?.transcription)) {
     const segments: Segment[] = data.transcription.map((s: any) => ({
       text: (s.text || '').trim(),
-      start: (s.offsets?.from ?? 0) / 1000,
-      end: (s.offsets?.to ?? 0) / 1000,
+      start: s.offsets?.from ?? 0,
+      end: s.offsets?.to ?? 0,
     }));
     const text = segments.map(s => s.text).join(' ');
     return { text, segments };
@@ -98,7 +98,7 @@ function main() {
 
   const hypFile = join(metadataDir, `wer-${label}.json`);
   writeFileSync(hypFile, JSON.stringify({
-    audio_info: { duration: segments.length ? segments[segments.length - 1].end * 1000 : 0 },
+    audio_info: { duration: segments.length ? segments[segments.length - 1].end : 0 },
     result: { text, segments },
     _source: asrPath,
     _label: label,

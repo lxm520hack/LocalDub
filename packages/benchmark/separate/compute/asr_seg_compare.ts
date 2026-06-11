@@ -26,7 +26,7 @@ function loadJson(p: string): any {
   return JSON.parse(readFileSync(p, 'utf-8'));
 }
 
-function findGt(seg: Segment, gt: Segment[], tolerance = 4.0): { match: Segment; idx: number; dist: number } | null {
+function findGt(seg: Segment, gt: Segment[], tolerance = 4000): { match: Segment; idx: number; dist: number } | null {
   let best: { match: Segment; idx: number; dist: number } | null = null;
   for (let i = 0; i < gt.length; i++) {
     const dist = Math.abs(seg.start - gt[i].start);
@@ -35,7 +35,7 @@ function findGt(seg: Segment, gt: Segment[], tolerance = 4.0): { match: Segment;
   return best;
 }
 
-function findAsr(gtSeg: Segment, asr: Segment[], tolerance = 4.0): { match: Segment; idx: number; dist: number } | null {
+function findAsr(gtSeg: Segment, asr: Segment[], tolerance = 4000): { match: Segment; idx: number; dist: number } | null {
   let best: { match: Segment; idx: number; dist: number } | null = null;
   for (let i = 0; i < asr.length; i++) {
     const dist = Math.abs(gtSeg.start - asr[i].start);
@@ -179,7 +179,7 @@ function main() {
   for (const s of summary) {
     const cerImpr = s.cerOrig > 0 ? ((s.cerOrig - s.cerFixed) / s.cerOrig * 100).toFixed(1) : '0.0';
     console.log(
-      `${s.label.padEnd(6)}\t${s.gtSegs}\t${s.origSegs}\t${s.fixedSegs}\t${s.matched}\t${s.gtUnmatched}\t${s.extraOrig}\t${s.exactOrig}\t${s.exactFixed}\t${s.fixedCorrectCount}\t${s.fixedWrongCount}\t${s.sameWrongCount}\t${s.avgDist}s\t${s.cerOrig}%\t${s.cerFixed}%\t${cerImpr}%`,
+      `${s.label.padEnd(6)}\t${s.gtSegs}\t${s.origSegs}\t${s.fixedSegs}\t${s.matched}\t${s.gtUnmatched}\t${s.extraOrig}\t${s.exactOrig}\t${s.exactFixed}\t${s.fixedCorrectCount}\t${s.fixedWrongCount}\t${s.sameWrongCount}\t${(s.avgDist / 1000).toFixed(3)}s\t${s.cerOrig}%\t${s.cerFixed}%\t${cerImpr}%`,
     );
   }
 
@@ -226,7 +226,7 @@ function main() {
     const matchedSet = new Set(s.matches.map((m: any) => m.gtIdx));
     for (let gi = 0; gi < s.gtSegs; gi++) {
       if (!matchedSet.has(gi)) {
-        console.log(`  ${s.label}: GT[${gi}] '${gtSegs[gi].text}' @${gtSegs[gi].start}s`);
+        console.log(`  ${s.label}: GT[${gi}] '${gtSegs[gi].text}' @${(gtSegs[gi].start / 1000).toFixed(2)}s`);
       }
     }
   }

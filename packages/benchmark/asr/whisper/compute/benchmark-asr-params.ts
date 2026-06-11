@@ -98,8 +98,8 @@ interface Segment { text: string; start: number; end: number }
 function whisperToSegments(raw: any): Segment[] {
 	return (raw.transcription || []).map((s: any) => ({
 		text: (s.text || '').trim(),
-		start: (s.offsets?.from ?? 0) / 1000,
-		end: (s.offsets?.to ?? 0) / 1000,
+		start: s.offsets?.from ?? 0,
+		end: s.offsets?.to ?? 0,
 	}));
 }
 
@@ -128,13 +128,13 @@ function runOne(source: AudioSource, param: ParamSet) {
 
 	const segments = whisperToSegments(raw);
 	const text = segments.map(s => s.text).join(' ');
-	const audioDur = segments.length > 0 ? segments[segments.length - 1].end : 0;
-	const rtf = audioDur > 0 ? (timing.totalMs / 1000) / audioDur : 0;
+	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : 0;
+	const rtf = audioDurMs > 0 ? timing.totalMs / audioDurMs : 0;
 
 	writeFileSync(join(metadataDir, 'whisper_raw.json'), JSON.stringify(raw, null, 2));
 
 	const asrOutput = {
-		audio_info: { duration: audioDur * 1000 },
+		audio_info: { duration: audioDurMs },
 		result: { text, segments },
 		_engine: 'whisper.cpp',
 		_device: 'vulkan',
@@ -151,7 +151,7 @@ function runOne(source: AudioSource, param: ParamSet) {
 		source: source.label,
 		params: param,
 		segments: segments.length,
-		audio_duration_s: parseFloat(audioDur.toFixed(1)),
+		audio_duration_s: parseFloat((audioDurMs / 1000).toFixed(1)),
 		whisper_total_ms: timing.totalMs,
 		whisper_load_ms: timing.loadMs,
 		elapsed_ms: elapsedMs,
@@ -165,7 +165,7 @@ function runOne(source: AudioSource, param: ParamSet) {
 	};
 	writeFileSync(join(metadataDir, 'summary.json'), JSON.stringify(summary, null, 2));
 
-	console.log(`  segs=${segments.length} dur=${audioDur.toFixed(1)}s RTF=${rtf.toFixed(3)}`);
+	console.log(`  segs=${segments.length} dur=${(audioDurMs / 1000).toFixed(1)}s RTF=${rtf.toFixed(3)}`);
 	console.log(`  WER=${(werResult.wer * 100).toFixed(2)}% CER=${(werResult.cer * 100).toFixed(2)}%`);
 
 	return summary;
