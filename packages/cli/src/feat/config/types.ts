@@ -381,7 +381,7 @@ const TaskSchema = z.looseObject({
 	check: z
 		.object({
 			taskId: TaskIdSchema,
-			type: z.enum(['video', 'asr']).optional().default('video'),
+			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),
 });
