@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { readTaskLanguages, timingFilePath, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils/utils.ts';
+import { readTaskLanguages, subtitleFilePath, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils/utils.ts';
 import { readConfig } from '../config/config.ts';
 import { env } from '@repo/config';
 
@@ -63,7 +63,7 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const metadataDir = join(sessionPath, 'metadata');
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
-	const srtFile = timingFilePath(sessionPath);
+	const srtFile = subtitleFilePath(sessionPath);
 	const timingsFile = join(metadataDir, 'timings.json');
 	const segmentsDir = join(sessionPath, 'segments', 'vocals');
 
