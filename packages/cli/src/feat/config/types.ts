@@ -305,6 +305,8 @@ const StagesSchema = z.object({
 			segmentPad: true,
 		})
 		.optional(),
+
+	ocr: OcrConfigSchema,
 	ocr_fix: z
 		.looseObject({
 			llmFix: z
@@ -328,7 +330,6 @@ const StagesSchema = z.object({
 		})
 		.default({ llmFix: false })
 		.optional(),
-	ocr: OcrConfigSchema,
 	translate: TranslateConfigSchema,
 	split_audio: SplitAudioConfigSchema,
 	tts: TTSConfigSchema,

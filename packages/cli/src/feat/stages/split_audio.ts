@@ -200,10 +200,8 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
     }
   }
 
-  // Write timings.json (created fresh or updated after VAD)
-  if (!existsSync(timingsFile)) {
-    writeJson(timingsFile, { translation: timings }, 'split_audio', taskId);
-  }
+	// Write timings.json (always refresh to pick up updated OCR/OCR-fix timestamps)
+	writeJson(timingsFile, { translation: timings }, 'split_audio', taskId);
 
   await updateStageDB(taskId, 'split_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Split' });
 }
