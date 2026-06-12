@@ -1,4 +1,4 @@
-import { readJson, writeJson } from './fileOps.ts';
+import { readJson, writeJson } from './utils/fileOps.ts';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
@@ -70,11 +70,11 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
 
+	const ytdlpPath = join(metadataDir, 'ytdlp_info.json');
+	const hasMeta = existsSync(ytdlpPath);
 	let meta: any = {};
-	try {
-		meta = readJson(join(metadataDir, 'ytdlp_info.json'), 'Translate');
-	} catch {
-		/* ignore */
+	if (hasMeta) {
+		meta = readJson(ytdlpPath, 'Translate');
 	}
 
 	const transCfg = readConfig().stages?.translate;
@@ -93,7 +93,9 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		description: (meta.description || '').trim().slice(0, 500) || '(none)',
 	};
 
-	const preprocessPrompt = `你为视频字幕翻译做预处理。请阅读视频元信息和完整转录文本，输出 JSON。
+	let preprocessPrompt = '';
+	if (hasMeta) {
+		preprocessPrompt = `你为视频字幕翻译做预处理。请阅读视频元信息和完整转录文本，输出 JSON。
 转录原始语言：${srcLangName}
 目标译文语言：${dstLangName}
 
@@ -115,6 +117,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 
 # 转录文本
 ${fullText.slice(0, 10000)}`;
+	}
 
 	async function callJson(
 		system: string,
@@ -155,19 +158,21 @@ ${fullText.slice(0, 10000)}`;
 	let summary = '',
 		hotwords: string[] = [],
 		corrections: string[] = [];
-	try {
-		const pre = await callJson(
-			'You output strict JSON only.',
-			preprocessPrompt,
-			2048,
-		);
-		summary = pre.summary || '';
-		hotwords = (pre.hotwords || []).map((h: any) => `${h.src} -> ${h.dst}`);
-		corrections = (pre.corrections || []).map(
-			(c: any) => `${c.wrong} -> ${c.correct}`,
-		);
-	} catch (e: any) {
-		emitLog(taskId, `[WARN] [Translate] Preprocess failed: ${e.message}`);
+	if (hasMeta) {
+		try {
+			const pre = await callJson(
+				'You output strict JSON only.',
+				preprocessPrompt,
+				2048,
+			);
+			summary = pre.summary || '';
+			hotwords = (pre.hotwords || []).map((h: any) => `${h.src} -> ${h.dst}`);
+			corrections = (pre.corrections || []).map(
+				(c: any) => `${c.wrong} -> ${c.correct}`,
+			);
+		} catch (e: any) {
+			emitLog(taskId, `[WARN] [Translate] Preprocess failed: ${e.message}`);
+		}
 	}
 
 	const hotwordsStr = hotwords.length ? hotwords.join('\n') : '(none)';

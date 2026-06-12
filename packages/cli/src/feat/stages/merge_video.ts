@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readJson, writeFile } from './fileOps.ts';
+import { readJson, writeFile } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { stage } from './utils/context.ts';
@@ -138,7 +138,9 @@ function writeSrt(translation: any[], dstLang: string, outputPath: string, useSo
 			useSource ? (item.src || '').trim() : (item.dst || item.zh || '').trim()
 		);
 		if (!text) continue;
-		const fragments = splitSubtitle(text);
+		const fragments = readConfig().subtitleSource === 'ocr'
+			? [text]
+			: splitSubtitle(text);
 		if (!fragments.length) continue;
 
 		const totalDuration = end - start;
