@@ -6,45 +6,7 @@ import { REPO_ROOT, readConfig } from "../config/config.ts";
 import { ensureDir, writeJson } from "./fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime, updateStageDB } from "./utils/utils.ts";
 
-interface FrameResult {
-	text: string;
-	timestamp: number;
-	confidence: number;
-}
-
-interface Segment {
-	text: string;
-	start: number;
-	end: number;
-}
-
-function mergeFrames(frames: FrameResult[]): Segment[] {
-	const segments: Segment[] = [];
-	let currentText = "";
-	let currentStart = 0;
-
-	for (const f of frames) {
-		if (!f.text) continue;
-		if (f.text !== currentText) {
-			if (currentText) {
-				segments.push({
-					text: currentText,
-					start: currentStart,
-					end: f.timestamp,
-				});
-			}
-			currentText = f.text;
-			currentStart = f.timestamp;
-		}
-	}
-	if (currentText) {
-		const lastTs =
-			frames.length > 0 ? frames[frames.length - 1].timestamp : currentStart;
-		segments.push({ text: currentText, start: currentStart, end: lastTs });
-	}
-
-	return segments.filter((s) => s.end - s.start >= 500);
-}
+import { FrameResult, mergeFrames } from "./utils/ocrMerge.ts";
 
 export async function stageOcr(taskId: string, sessionPath: string) {
 	await updateStageDB(taskId, "ocr", {
@@ -68,12 +30,23 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 	ensureDir(frameDir, "OCR");
 	emitLog(taskId, `[OCR] Extracting frames at ${fps}fps...`);
 
+	const frProbe = spawnSync(
+		"ffprobe",
+		["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", videoPath],
+		{ timeout: 10_000, encoding: "utf-8" },
+	);
+	const frParts = (frProbe.stdout?.trim() || "30/1").split("/");
+	const srcFps = parseInt(frParts[0]) / parseInt(frParts[1]);
+	const step = Math.round(srcFps / fps);
+
 	ffmpeg([
 		"-y",
 		"-i",
 		videoPath,
 		"-vf",
-		`fps=${fps}`,
+		`select='not(mod(n,${step}))'`,
+		"-vsync",
+		"vfr",
 		"-qscale:v",
 		"2",
 		join(frameDir, "frame_%05d.jpg"),
@@ -95,7 +68,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 	const frameResults: FrameResult[] = [];
 	for (let i = 0; i < frameFiles.length; i++) {
 		const framePath = join(frameDir, frameFiles[i]);
-		const timestampMs = Math.round((i / fps) * 1000);
+		const timestampMs = Math.round((i * step / srcFps) * 1000);
 		try {
 			const lines = ocrFrame(framePath, { textScore, subtitleOnly });
 			const best = lines.reduce(
@@ -106,6 +79,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 				text: best.text,
 				timestamp: timestampMs,
 				confidence: best.confidence,
+				box: best.box,
 			});
 		} catch {
 			frameResults.push({ text: "", timestamp: timestampMs, confidence: 0 });
@@ -146,7 +120,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 	// 6. Write ocr.json (same format as asr_fix)
 	const metadataDir = resolve(sessionAbsPath, "metadata");
 	ensureDir(metadataDir, "OCR");
-	const segmentsOut = segments.map((s) => ({ ...s, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end) }));
+	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), ...(s.box_y ? { box_y: s.box_y } : {}) }));
 	writeJson(
 		join(metadataDir, "ocr.json"),
 		{

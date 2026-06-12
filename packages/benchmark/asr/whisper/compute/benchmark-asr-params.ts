@@ -9,7 +9,7 @@ const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const VAD_MODEL = join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-silero-v5.1.2.bin');
 const VAD_MODEL_V6 = join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-silero-v6.2.0.bin');
 const WER_PY = resolve(__dirname, '..', '..', '..', 'separate', 'compute', 'wer.py');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'asr_manual.json');
 const RESULTS_BASE = resolve(__dirname, '..', 'results');
 const TMP = resolve(REPO_ROOT, 'packages', 'tmp', 'benchmark-asr-params');
 
@@ -26,6 +26,7 @@ interface ParamSet {
 const AUDIO_SOURCES: AudioSource[] = [
 	{ label: 'ggml-s1-raw', path: resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'ref', 'media', 'video_source.mp4') },
 	{ label: 'ggml-s1-sidechain', path: resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1-sidechain', 'sc_t0.1_r20_a1_rel200_bgm-12', 'media', 'target_3_vocals_mixed.wav') },
+	{ label: 'ggml-s1-vocals', path: resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1', 'media', 'target_3_vocals.wav') },
 ];
 
 const PARAM_SETS: ParamSet[] = [
@@ -48,6 +49,9 @@ const PARAM_SETS: ParamSet[] = [
 	{ label: 'vad-v6', args: ['--vad', '-vm', VAD_MODEL_V6] },
 	{ label: 'vad-v6+nst-020', args: ['--vad', '-vm', VAD_MODEL_V6, '--no-speech-thold', '0.20'] },
 	{ label: 'vad-v6-th02', args: ['--vad', '-vm', VAD_MODEL_V6, '--vad-threshold', '0.2'] },
+	// Round 3: prompt engineering
+	{ label: 'prompt', args: ['--prompt', '转录所有声音，包括语气词如嗯啊唉哈哈'] },
+	{ label: 'prompt+carry', args: ['--prompt', '转录所有声音，包括语气词如嗯啊唉哈哈', '--carry-initial-prompt'] },
 ];
 
 function ensureWav(source: AudioSource): string {
