@@ -57,6 +57,47 @@ function detectSpeechStartMsSeek(source: string, startMs: number, endMs: number,
   return Math.max(0, removedMs);
 }
 
+function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
+  if (!segments.length) return segments;
+  const minGap = 50;
+
+  const startPadAt = (idx: number): number => {
+    const origStart = segments[idx].start;
+    if (idx === 0) return Math.max(0, origStart - startPad);
+    const prevEnd = segments[idx - 1].end;
+    const gap = origStart - prevEnd;
+    const total = startPad + endPad;
+    if (gap >= total + minGap) return origStart - startPad;
+    if (gap > minGap) {
+      const share = (gap - minGap) * startPad / total;
+      return origStart - share;
+    }
+    return prevEnd + gap / 2;
+  };
+
+  const endPadAt = (idx: number): number => {
+    const origEnd = segments[idx].end;
+    if (idx === segments.length - 1) {
+      return origEnd + endPad;
+    }
+    const nextStart = segments[idx + 1].start;
+    const gap = nextStart - origEnd;
+    const total = startPad + endPad;
+    if (gap >= total + minGap) return origEnd + endPad;
+    if (gap > minGap) {
+      const share = (gap - minGap) * endPad / total;
+      return origEnd + share;
+    }
+    return origEnd + gap / 2;
+  };
+
+  return segments.map((s, idx) => {
+    const newStart = startPadAt(idx);
+    const newEnd = endPadAt(idx);
+    return { ...s, start: Math.max(0, newStart), end: newEnd };
+  });
+}
+
 export async function stageSplitAudio(taskId: string, sessionPath: string) {
   const vocalsFile = join(sessionPath, 'media', 'target_3_vocals.wav');
   const sourceFile = join(sessionPath, 'media', 'video_source.mp4');
@@ -120,6 +161,8 @@ export async function stageSplitAudio(taskId: string, sessionPath: string) {
 			speaker: '1',
 		}));
 	}
+
+	timings = padSegments(timings);
 
   // Total audio duration
   let totalMs = srtData.audio_info?.duration ?? 0;
