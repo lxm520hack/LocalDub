@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { ocrFrame } from "../../ml/ocr/ocr.ts";
 import { REPO_ROOT, readConfig } from "../config/config.ts";
 import { ensureDir, writeJson } from "./fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime, updateStageDB } from "./utils.ts";
+import { emitLog, ffmpeg, nowISO, srtTime, updateStageDB } from "./utils/utils.ts";
 
 interface FrameResult {
 	text: string;
@@ -59,8 +59,9 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 	}
 
 	const ocrCfg = readConfig().stages?.ocr;
-	const fps = ocrCfg?.fps ?? 1;
-	const textScore = ocrCfg?.textScore ?? 0.3;
+	const fps = ocrCfg?.fps ?? 2;
+	const textScore = ocrCfg?.textScore ?? 0.45;
+	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
 
 	// 1. Extract frames
 	const frameDir = join(sessionAbsPath, "tmp", "ocr-frames");
@@ -96,7 +97,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 		const framePath = join(frameDir, frameFiles[i]);
 		const timestampMs = Math.round((i / fps) * 1000);
 		try {
-			const lines = ocrFrame(framePath, { textScore });
+			const lines = ocrFrame(framePath, { textScore, subtitleOnly });
 			const best = lines.reduce(
 				(a, b) => (a.confidence > b.confidence ? a : b),
 				{ text: "", confidence: 0, box: [] },
@@ -151,7 +152,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			result: { text, segments: segmentsOut },
-			_engine: "rapidocr-onnxruntime",
+			_engine: "cpp-ocr",
 			_fps: fps,
 			_textScore: textScore,
 			_source: "ocr",

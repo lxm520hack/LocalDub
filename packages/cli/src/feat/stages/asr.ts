@@ -9,7 +9,7 @@ import {
 	readConfig,
 	setLocalInfo,
 } from '../config/config.ts';
-import { emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, updateStageDB } from './utils.ts';
+import { emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, updateStageDB } from './utils/utils.ts';
 import { AsrOptions } from './asr/types.ts';
 import { parseAsrOutput } from './asr/utils.ts';
 
@@ -397,7 +397,7 @@ async function asrWhisperCpp(
 			end_fmt: srtTime(endMs),
 		};
 		if (emitWords) {
-			seg.words = (s.tokens || [])
+			const words = (s.tokens || [])
 				.filter((t: any) => {
 					const txt = t.text?.trim();
 					return txt && !txt.startsWith('[') && t.offsets?.from != null;
@@ -408,6 +408,14 @@ async function asrWhisperCpp(
 					end: t.offsets.to ?? 0,
 					probability: t.p,
 				}));
+			seg.words = words;
+			const probs = words.map(w => w.probability).filter((p: number) => p >= 0);
+			if (probs.length > 0) {
+				seg.confidence = {
+					avg: +(probs.reduce((a: number, b: number) => a + b, 0) / probs.length).toFixed(4),
+					min: +Math.min(...probs).toFixed(4),
+				};
+			}
 		}
 		return seg;
 	});

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import { stage } from '../stages/context.ts';
+import { stage } from '../stages/utils/context.ts';
 import { type BaseConfigInput, ConfigSchema, type LocalInfo } from './types.ts';
 
 export { delimiter, REPO_ROOT };

@@ -11,7 +11,7 @@ import {
 	subtitleFilePath,
 	translationFilePath,
 	updateStageDB,
-} from './utils.ts';
+} from './utils/utils.ts';
 
 /**
  * translate.[dstLang].json 结构

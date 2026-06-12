@@ -151,16 +151,21 @@ const OcrConfigSchema = z
 	.looseObject({
 		fps: z
 			.number()
-			.default(1)
-			.describe('帧率 (fps), 越高时间戳越准但越慢; 默认 1')
+			.default(2)
+			.describe('帧率 (fps), 越高时间戳越准但越慢; 默认 2')
 			.optional(),
 		textScore: z
 			.number()
-			.default(0.3)
-			.describe('OCR 识别置信度阈值, 默认 0.3 (单字如"啊"需要 ≤0.3)')
+			.default(0.45)
+			.describe('OCR 识别置信度阈值, 默认 0.45')
+			.optional(),
+		subtitleOnly: z
+			.boolean()
+			.default(true)
+			.describe('只识别字幕区域 (Y轴裁剪); 默认 true')
 			.optional(),
 	})
-	.default({ fps: 1, textScore: 0.3 })
+	.default({ fps: 2, textScore: 0.45, subtitleOnly: true })
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
 const TranslateConfigSchema = z

@@ -79,8 +79,8 @@ flowchart
   sep_cond --> |true| sep
   sep_cond --> |false| asr
    
-  sep --> asr
-  asr --> cond_translate
+  sep --> asr --> asr_fix
+  asr_fix --> cond_translate
   cond_translate -->|true| tl["translate"]
   cond_translate -->|false| cond_sa
   tl --> cond_sa

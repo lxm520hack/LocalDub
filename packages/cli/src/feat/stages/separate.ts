@@ -10,7 +10,7 @@ import {
 	readConfig,
 	readLocalInfo,
 } from '../config/config.ts';
-import { emitLog, ffmpeg, nowISO, updateStageDB } from './utils.ts';
+import { emitLog, ffmpeg, nowISO, updateStageDB } from './utils/utils.ts';
 
 export async function stageSeparate(
 	taskId: string,

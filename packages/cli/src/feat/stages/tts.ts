@@ -11,7 +11,7 @@ import {
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
-import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils.ts';
+import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 
 function createTTSBackend(cfg: TTSConfig) {

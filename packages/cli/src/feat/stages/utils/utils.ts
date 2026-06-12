@@ -3,11 +3,11 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env, LOG_DIR, REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { eq, sql } from 'drizzle-orm';
-import { db } from './../../db/index.ts';
-import { getStages } from './../../feat/tasks/stages.ts';
-import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import type { TargetLang } from '../config/types.ts';
-import { readConfig } from '../config/config.ts';
+import { db } from '../../../db/index.ts';
+import { getStages } from '../../tasks/stages.ts';
+import { taskStages, tasks } from '../../tasks/table.ts';
+import type { TargetLang } from '../../config/types.ts';
+import { readConfig } from '../../config/config.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -30,7 +30,7 @@ function ffmpegInstallHint(): string {
 	}
 }
 
-import { readLocalInfo } from '../config/config.ts';
+import { readLocalInfo } from '../../config/config.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function broadcastUpdate(_table: string, _mutations: any[]) {

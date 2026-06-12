@@ -2,7 +2,7 @@ import { readJson, writeJson } from './fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../config/config.ts';
-import { emitLog, nowISO, srtTime, updateStageDB } from './utils.ts';
+import { emitLog, nowISO, srtTime, updateStageDB } from './utils/utils.ts';
 import { segmentsToPrompt, parseLines, fixWithLLM } from './asr/llm.ts';
 
 function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {

@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { readTaskLanguages, subtitleFilePath, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils.ts';
+import { readTaskLanguages, subtitleFilePath, translationFilePath, ffmpeg, nowISO, updateStageDB, emitLog } from './utils/utils.ts';
 import { readConfig } from '../config/config.ts';
 import { env } from '@repo/config';
 

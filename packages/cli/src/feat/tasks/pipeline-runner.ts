@@ -16,7 +16,7 @@ import {
 } from '../config/config.ts';
 import type { LocalInfo } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
-import { setStage } from '../stages/context.ts';
+import { setStage } from '../stages/utils/context.ts';
 import {
 	currentTask,
 	emitLog,
@@ -24,7 +24,7 @@ import {
 	nowISO,
 	updateStageDB,
 	updateTaskDB,
-} from '../stages/utils.ts';
+} from '../stages/utils/utils.ts';
 
 export { getStageStatuses };
 
