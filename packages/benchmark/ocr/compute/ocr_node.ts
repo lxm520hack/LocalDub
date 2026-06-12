@@ -168,7 +168,6 @@ export async function ocrFrameWithSessions(
 	const tStart = performance.now();
 	let textScore = opts?.textScore ?? 0.5;
 	const subtitleOnly = opts?.subtitleOnly ?? false;
-	if (subtitleOnly && opts?.textScore == null) textScore = 0.3;
 
 	const imgBuf = readFileSync(imagePath);
 

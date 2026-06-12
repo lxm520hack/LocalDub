@@ -26,9 +26,6 @@ def ocr_frame(
 		y_offset = 0
 		roi = img
 
-	if subtitle_only and text_score is None:
-		text_score = 0.3
-
 	kwargs = {}
 	if text_score is not None:
 		kwargs["text_score"] = text_score

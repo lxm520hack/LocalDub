@@ -328,8 +328,6 @@ static OCRResult runOcr(
     using clock = std::chrono::high_resolution_clock;
     auto tStart = clock::now();
 
-    if (subtitleOnly && textScore > 0.3f) textScore = 0.3f;
-
     OCRResult result;
     result.detMs = result.postMs = result.recMs = 0;
 

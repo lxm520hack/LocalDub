@@ -1,5 +1,7 @@
 # OCR Benchmark Results
 
+## 参数解释
+
 ## Summary
 
 RapidOCR (PaddleOCR ONNX) on anime hard subtitles (720p video, 30fps, bottom-positioned dialogue subs). Ground truth: 569 chars (653 with spaces), 93 segments.
