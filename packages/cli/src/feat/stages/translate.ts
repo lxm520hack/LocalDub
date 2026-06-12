@@ -51,20 +51,6 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
 	const dstLangName = LANG_NAMES[dstLangCode] || dstLangCode;
 
-	if (
-		existsSync(translationFile) &&
-		existsSync(srtFile) &&
-		statSync(srtFile).mtimeMs <= statSync(translationFile).mtimeMs
-	) {
-		await updateStageDB(taskId, 'translate', {
-			status: 'succeeded',
-			completed_at: nowISO(),
-			progress: 100,
-			last_message: 'Already translated',
-		});
-		return;
-	}
-
 	const data = readJson(srtFile, 'Translate');
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());

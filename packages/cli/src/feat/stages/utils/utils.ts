@@ -123,6 +123,15 @@ export function subtitleFilePath(sessionPath: string): string {
 	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');
 }
 
+export function timingFilePath(sessionPath: string): string {
+	const src = readConfig().subtitleSource ?? 'asr';
+	if (src === 'ocr') {
+		const asrFile = join(sessionPath, 'metadata', 'asr.json');
+		if (existsSync(asrFile)) return asrFile;
+	}
+	return subtitleFilePath(sessionPath);
+}
+
 export function srtTime(ms: number): string {
 	const h = Math.floor(ms / 3600000);
 	const m = Math.floor((ms % 3600000) / 60000);
