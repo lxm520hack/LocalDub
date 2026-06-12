@@ -97,14 +97,29 @@ function whisperTranscribe(audioPath: string, extraArgs: string[]): { raw: any; 
 	return { raw, elapsedMs, timing };
 }
 
-interface Segment { text: string; start: number; end: number }
+interface Segment { text: string; start: number; end: number; confidence?: { avg: number; min: number } }
 
 function whisperToSegments(raw: any): Segment[] {
-	return (raw.transcription || []).map((s: any) => ({
-		text: (s.text || '').trim(),
-		start: s.offsets?.from ?? 0,
-		end: s.offsets?.to ?? 0,
-	}));
+	return (raw.transcription || []).map((s: any) => {
+		const tokens = (s.tokens || [])
+			.filter((t: any) => {
+				const txt = t.text?.trim();
+				return txt && !txt.startsWith('[') && t.p != null;
+			});
+		const probs = tokens.map((t: any) => t.p);
+		const confidence = probs.length > 0
+			? {
+				avg: +(probs.reduce((a: number, b: number) => a + b, 0) / probs.length).toFixed(4),
+				min: +Math.min(...probs).toFixed(4),
+			}
+			: undefined;
+		return {
+			text: (s.text || '').trim(),
+			start: s.offsets?.from ?? 0,
+			end: s.offsets?.to ?? 0,
+			confidence,
+		};
+	});
 }
 
 function computeCER(asrPath: string): any {
