@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync, copyFileSync, rmSync, mkdirSync, existsSync, type WriteFileOptions } from 'node:fs';
 import { emitLog } from './utils/utils.ts';
+import { getTaskId } from './utils/context.ts';
 
 function log(source: string, taskId: string | undefined, op: string, path: string, extra?: string) {
-	if (taskId) emitLog(taskId, `[${source}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
+	emitLog(taskId || getTaskId(), `[${source}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
 }
 
 export function readJson<T = any>(path: string, source: string, taskId?: string): T {

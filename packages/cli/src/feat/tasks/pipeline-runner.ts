@@ -16,7 +16,7 @@ import {
 } from '../config/config.ts';
 import type { LocalInfo } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
-import { setStage } from '../stages/utils/context.ts';
+import { setStage, setTaskId } from '../stages/utils/context.ts';
 import {
 	currentTask,
 	emitLog,
@@ -61,7 +61,7 @@ function snapshotConfig(sessionPath: string) {
 	const tts = cfg.stages?.tts;
 	if (tts) {
 		snap.stages.tts = {
-			runtime: tts.runtime,
+			runtime: tts.runtime ?? 'pytorch',
 			device: 'device' in tts ? (tts).device : undefined,
 		};
 	}
@@ -69,6 +69,7 @@ function snapshotConfig(sessionPath: string) {
 }
 
 export async function runPipeline(taskId: string, daemon?: MLDaemon) {
+	setTaskId(taskId);
 	let { task, sessionPath } = await currentTask(taskId);
 	mkdirSync(sessionPath, { recursive: true });
 
@@ -140,6 +141,7 @@ export async function resumePipeline(
 	stageOverrides?: Record<string, any>,
 	daemon?: MLDaemon,
 ) {
+	setTaskId(taskId);
 	let { task, sessionPath } = await currentTask(taskId);
 
 	const [info, err] = to(() => readLocalInfo(sessionPath));

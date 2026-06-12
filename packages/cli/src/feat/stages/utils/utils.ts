@@ -8,6 +8,7 @@ import { getStages } from '../../tasks/stages.ts';
 import { taskStages, tasks } from '../../tasks/table.ts';
 import type { TargetLang } from '../../config/types.ts';
 import { readConfig } from '../../config/config.ts';
+import { getTaskId } from './context.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -127,9 +128,11 @@ export function srtTime(ms: number): string {
 }
 
 export function emitLog(taskId: string, line: string) {
+	const tid = taskId || getTaskId();
 	console.log(line);
+	if (!tid) return;
 	const ts = nowISO();
-	const logPath = join(LOG_DIR, `${taskId}.log`);
+	const logPath = join(LOG_DIR, `${tid}.log`);
 	mkdirSync(LOG_DIR, { recursive: true });
 	appendFileSync(logPath, `[${ts}] ${line}\n`);
 }
