@@ -50,6 +50,7 @@ const stagesList = [
 	'asr',
 	'asr_fix',
 	'ocr',
+	'ocr_fix',
 	'translate',
 	'split_audio',
 	'tts',
@@ -303,6 +304,29 @@ const StagesSchema = z.object({
 			llmFix: false,
 			segmentPad: true,
 		})
+		.optional(),
+	ocr_fix: z
+		.looseObject({
+			llmFix: z
+				.boolean()
+				.default(false)
+				.describe('是否启用 LLM OCR 纠错').optional(),
+			llmModel: z
+				.string()
+				.default('gemma4:31b-cloud')
+				.optional()
+				.describe('LLM 模型名'),
+			llmApiBase: z
+				.string()
+				.default('http://localhost:11434/v1')
+				.optional()
+				.describe('LLM API 地址'),
+			domainHint: z
+				.string()
+				.optional()
+				.describe('领域提示'),
+		})
+		.default({ llmFix: false })
 		.optional(),
 	ocr: OcrConfigSchema,
 	translate: TranslateConfigSchema,

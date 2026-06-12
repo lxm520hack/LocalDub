@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { readJson, writeJson, ensureDir, removeFile } from './fileOps.ts';
+import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
@@ -409,7 +409,7 @@ async function asrWhisperCpp(
 					probability: t.p,
 				}));
 			seg.words = words;
-			const probs = words.map(w => w.probability).filter((p: number) => p >= 0);
+			const probs = words.map((w: any) => w.probability).filter((p: number) => p >= 0);
 			if (probs.length > 0) {
 				seg.confidence = {
 					avg: +(probs.reduce((a: number, b: number) => a + b, 0) / probs.length).toFixed(4),

@@ -33,10 +33,14 @@ function withOcr(stages: StageSpec[], pipeline?: string): StageSpec[] {
 	const filtered = stages.filter(s => !drop.has(s.name));
 	const idx = filtered.findIndex(s => s.name === 'translate');
 	const out = [...filtered];
+	const ocrStages: StageSpec[] = [
+		{ name: 'ocr', label: 'OCR' },
+		{ name: 'ocr_fix', label: 'OCR Fix' },
+	];
 	if (idx === -1) {
-		out.push({ name: 'ocr', label: 'OCR' });
+		out.push(...ocrStages);
 	} else {
-		out.splice(idx, 0, { name: 'ocr', label: 'OCR' });
+		out.splice(idx, 0, ...ocrStages);
 	}
 	return out;
 }

@@ -116,6 +116,10 @@ export function translationFilePath(sessionPath: string, lang: string): string {
 
 export function subtitleFilePath(sessionPath: string): string {
 	const src = readConfig().subtitleSource ?? 'asr';
+	if (src === 'ocr') {
+		const fixFile = join(sessionPath, 'metadata', 'ocr_fix.json');
+		if (existsSync(fixFile)) return fixFile;
+	}
 	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');
 }
 
