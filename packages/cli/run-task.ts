@@ -22,7 +22,7 @@ import { tasks } from './src/feat/tasks/table.ts';
 import { extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
 import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
-import { setCtx } from './src/feat/context/context.ts';
+import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 
 function needsMLDaemon(cfg: RawConfig): boolean {
 	const tts = cfg.stages?.tts;
@@ -69,20 +69,16 @@ if (
 switch (cmd) {
 	case 'check': {
 		const p = config.check;
-		if (p?.type !== 'font' && !p?.taskId) {
-			console.error('check.taskId required for non-font checks');
-			process.exit(1);
-		}
-		await cmdCheck({ type: p?.type, taskId: p?.taskId ?? undefined });
+
+		await cmdCheck({ type: p?.type, taskId: p?.sessionPath ?? undefined });
 		break;
 	}
 
 	case 'taskStatus': {
-		const taskId = config.taskStatus?.taskId;
-		if (!taskId) {
-			console.error('taskStatus.taskId required in config.json');
-			process.exit(1);
-		}
+		const sessionPath = config.taskStatus?.sessionPath!;
+
+		const ctx = await readCtx(sessionPath);
+		const taskId = ctx.task.id;
 		try {
 			const status = await getStageStatuses(taskId);
 			console.log(JSON.stringify(status, null, 2));
@@ -229,7 +225,7 @@ switch (cmd) {
 			);
 
 			console.log(`\n[CLI] Running pipeline for task ${videoId}...`);
-			await withDaemon(videoId, (d) => runPipeline(videoId, d));
+			await withDaemon(videoId, (d) => runPipeline(ctx, d));
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
 			console.error('createTask failed:', err);
@@ -239,35 +235,26 @@ switch (cmd) {
 	}
 
 	case 'resumeTask': {
-		const taskId = config.resumeTask?.taskId;
-		if (!taskId) {
-			console.error('resumeTask.taskId required in config.json');
+		const sessionPath = config.resumeTask?.sessionPath;
+		if (!sessionPath) {
+			console.error('resumeTask.sessionPath required in config.json');
 			process.exit(1);
 		}
+		const ctx = await readCtx(sessionPath);
+		const taskId = ctx.task.id;
 		const resumeFrom = config.resumeTask?.resumeFrom;
 		const label = resumeFrom ? ` from "${resumeFrom}"` : '';
 
 		// Allow pipeline switch on resume (e.g. subtitle → dub)
 		if (config.pipeline) {
-			const taskRows = await db
-				.select({ session_path: tasks.session_path })
-				.from(tasks)
-				.where(eq(tasks.id, taskId))
-				.limit(1);
-			if (taskRows.length > 0) {
-				const sessionPath = taskRows[0].session_path
-					? resolve(REPO_ROOT, taskRows[0].session_path)
-					: join(WORKFOLDER, taskId);
-
 				setCtx(sessionPath, { pipeline: config.pipeline });
 				console.log(`[CLI] Switched pipeline to "${config.pipeline}"`);
-			}
 		}
 
-		console.log(`[CLI] Resuming pipeline for task ${taskId}${label}...`);
+		console.log(`[CLI] Resuming pipeline for task ${sessionPath}${label}...`);
 		try {
 			await withDaemon(taskId, (d) =>
-				resumePipeline(taskId, resumeFrom, config.stages, d),
+				resumePipeline(ctx, resumeFrom, config.stages, d),
 			);
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
@@ -278,18 +265,20 @@ switch (cmd) {
 	}
 
 	case 'rerunStage': {
-		const taskId = config.rerunStage?.taskId;
+		const sessionPath = config.rerunStage?.sessionPath;
 		const stageName = config.rerunStage?.stageName;
-		if (!taskId || !stageName) {
+		if (!sessionPath || !stageName) {
 			console.error(
-				'rerunStage.taskId and rerunStage.stageName required in config.json',
+				'rerunStage.sessionPath and rerunStage.stageName required in config.json',
 			);
 			process.exit(1);
 		}
+		const ctx = await readCtx(sessionPath);
+		const taskId = ctx.task.id;
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
 			await withDaemon(taskId, (d) =>
-				rerunSingleStage(taskId, stageName, config.stages, d),
+				rerunSingleStage(ctx, stageName, config.stages, d),
 			);
 			console.log('[CLI] Stage completed');
 		} catch (err) {
@@ -336,14 +325,16 @@ switch (cmd) {
 
 	case 'startTask':
 	default: {
-		const taskId = config.startTask?.taskId;
-		if (!taskId) {
-			console.error('startTask.taskId required in config.json');
+		const sessionPath = config.startTask?.sessionPath;
+		if (!sessionPath) {
+			console.error('startTask.sessionPath required in config.json');
 			process.exit(1);
 		}
+				const ctx = await readCtx(sessionPath);
+		const taskId = ctx.task.id;
 		console.log(`[CLI] Starting pipeline for task ${taskId}...`);
 		try {
-			await withDaemon(taskId, (d) => runPipeline(taskId, d));
+			await withDaemon(taskId, (d) => runPipeline(ctx, d));
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
 			console.error('[CLI] Pipeline failed:', err);

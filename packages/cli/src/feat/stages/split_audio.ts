@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { translationFilePath, ffmpeg, nowISO, emitLog } from './utils/utils.ts';
+import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages } from './utils/utils.ts';
 import { env } from '@repo/config';
 import { Context, setStage } from '../context/context.ts';
 
@@ -100,23 +100,19 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 
 export interface StageSplitAudioInput {
   ctx: Context;
-  srcLangCode: string;
-  dstLangCode: string;
   vocalsFilePath?: string;
   sourceFilePath: string;
   srtFilePath: string;
 }
 export async function stageSplitAudio({
   ctx,
-  srcLangCode,
-  dstLangCode,
   vocalsFilePath,
   sourceFilePath,
   srtFilePath,
 }: StageSplitAudioInput) {
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
-  
+  const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const metadataDir = join(sessionPath, 'metadata');
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
 	const timingsFile = join(metadataDir, 'timings.json');
@@ -128,7 +124,7 @@ export async function stageSplitAudio({
 	const sourceAudio = hasVocals ? vocalsFilePath! : sourceFilePath;
 
 	// Read authoritative timings from srt.json (seconds)
-	const srtData = readJson(srtFilePath, ctx);
+	const srtData = await readJson(srtFilePath, ctx);
 	const segmentsSrc: { text: string; start: number; end: number }[] = srtData.result?.segments;
 	if (!segmentsSrc?.length) throw new Error('srt.json has no segments');
 
@@ -147,7 +143,7 @@ export async function stageSplitAudio({
 	if (translateEnabled) {
 		if (!existsSync(translationFile))
 			throw new Error(`translation file not found: ${translationFile}`);
-		const transData = readJson(translationFile, ctx);
+		const transData = await readJson(translationFile, ctx);
 		const translation = transData.translation;
 		if (!translation?.length) throw new Error('translation.json has no segments');
 		if (segmentsSrc.length !== translation.length) {
@@ -187,7 +183,7 @@ export async function stageSplitAudio({
   // ---- Segment cutting (dub only) ----
   if (hasVocals) {
     const anySeg = readdirSync(segmentsDir).find(f => f.endsWith('.wav'));
-    if (anySeg && statSync(translationFile).mtimeMs > statSync(join(segmentsDir, anySeg)).mtimeMs) {
+    if (anySeg && existsSync(translationFile) && statSync(translationFile).mtimeMs > statSync(join(segmentsDir, anySeg)).mtimeMs) {
       for (const f of readdirSync(segmentsDir)) rmSync(join(segmentsDir, f));
     }
 

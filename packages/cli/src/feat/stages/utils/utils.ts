@@ -97,15 +97,14 @@ export const LANG_NAMES: Record<string, string> = {
 	bn: 'Bengali',
 };
 
-export function readTaskLanguages(sessionPath: string): {
+export function readTaskLanguages(ctx: Context): {
 	asrLanguage: string;
 	targetLanguage: TargetLang;
 } {
-	const info = readCtx(sessionPath);
-	if (info) {
+	if (ctx) {
 		return {
-			asrLanguage: info.asr_language || 'en',
-			targetLanguage: info.target_language || 'zh',
+			asrLanguage: ctx.asr_language || 'en',
+			targetLanguage: ctx.target_language || 'zh',
 		};
 	}
 	return { asrLanguage: 'en', targetLanguage: 'zh' };

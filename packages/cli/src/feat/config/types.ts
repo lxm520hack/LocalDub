@@ -388,29 +388,29 @@ const TaskSchema = z.looseObject({
 		.optional(),
 	startTask: z
 		.object({
-			taskId: TaskIdSchema,
+			sessionPath: z.string(),
 		})
 		.optional(),
 	resumeTask: z
 		.object({
-			taskId: TaskIdSchema,
+			sessionPath: z.string(),
 			resumeFrom: z.enum(stagesList).optional(),
 		})
 		.optional(),
 	rerunStage: z
 		.object({
-			taskId: TaskIdSchema,
+			sessionPath: z.string(),
 			stageName: z.enum(stagesList),
 		})
 		.optional(),
 	taskStatus: z
 		.object({
-			taskId: TaskIdSchema,
+			sessionPath: z.string(),
 		})
 		.optional(),
 	check: z
 		.object({
-			taskId: TaskIdSchema.optional(),
+			sessionPath: z.string().optional(),
 			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),

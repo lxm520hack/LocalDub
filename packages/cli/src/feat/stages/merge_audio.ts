@@ -2,13 +2,13 @@ import { readJson, writeJson, writeFile, ensureDir } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB } from './utils/utils.ts';
-import { Context } from '../context/context.ts';
+import { readTaskLanguages, ffmpeg, nowISO,  } from './utils/utils.ts';
+import { Context, setStage } from '../context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
     const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
-  const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
+  const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const ttsDir = join(sessionPath, 'segments', 'tts');
   const tmpDir = join(sessionPath, 'tmp');
   const stretchedDir = join(sessionPath, 'segments', 'stretched');
@@ -22,7 +22,7 @@ export async function stageMergeAudio(ctx: Context) {
   const timingsFile = join(metadataDir, 'timings.json');
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
-  const data = readJson(timingsFile, ctx);
+  const data = await readJson(timingsFile, ctx);
   const translation = data.translation;
   const ttsFiles = translation.map((_: any, i: number) => join(ttsDir, `${String(i + 1).padStart(4, '0')}.wav`));
 
@@ -104,5 +104,5 @@ export async function stageMergeAudio(ctx: Context) {
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 
   writeJson(timingsFile, { translation }, ctx);
-  await updateStageDB(taskId, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
+  await setStage(sessionPath, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
 }

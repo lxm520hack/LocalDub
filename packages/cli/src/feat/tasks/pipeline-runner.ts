@@ -41,16 +41,18 @@ function snapshotConfig(sessionPath: string) {
 	setCtx(sessionPath, { input: snap });
 }
 
-export async function runPipeline(taskId: string, daemon?: MLDaemon) {
+export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
+	const taskId= ctx.task.id
+	const sessionPath = ctx.task.session_path
 	setTaskId(taskId);
-	let { task, sessionPath } = await readTask(taskId);
+	let task = await readTask(sessionPath);
 	mkdirSync(sessionPath, { recursive: true });
 
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);
 	const targetStage = readConfig().targetStage;
 	if (targetStage && !stages.find((s) => s.name === targetStage)) {
-		emitLog(taskId, `[WARN] targetStage "${targetStage}" 不在 ${pipeline} pipeline 中，忽略`);
+		emitLog(sessionPath, `[WARN] targetStage "${targetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
 	snapshotConfig(sessionPath);
@@ -64,7 +66,7 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
-				taskId,
+				sessionPath,
 				`[WARN] [Pipeline] No handler for stage ${stage.name}, skipping`,
 			);
 			continue;
@@ -95,10 +97,9 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 			throw err;
 		}
 
-		const next =  readTask(taskId)
+		const next = await readTask(taskId)
 		if (next) {
-			task = next.task;
-			sessionPath = next.sessionPath;
+			task = next;
 		}
 	}
 
@@ -111,13 +112,15 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 }
 
 export async function resumePipeline(
-	taskId: string,
+	ctx: Context,
 	resumeFrom?: string,
 	stageOverrides?: Record<string, any>,
 	daemon?: MLDaemon,
 ) {
+		const taskId= ctx.task.id
+	const sessionPath = ctx.task.session_path
 	setTaskId(taskId);
-	let { task, sessionPath } = await readTask(taskId);
+	let task = await readTask(sessionPath);
 
 	const [info, err] = to(() => readCtx(sessionPath));
 	if (err) {
@@ -250,10 +253,9 @@ export async function resumePipeline(
 			throw err;
 		}
 
-		const next =readTask(taskId)
+		const next = await readTask(taskId)
 		if (next) {
-			task = next.task;
-			sessionPath = next.sessionPath;
+			task = next;
 		}
 	}
 
@@ -266,16 +268,14 @@ export async function resumePipeline(
 }
 
 export async function rerunSingleStage(
-	taskId: string,
+	ctx: Context,
 	stageName: string,
 	stageOverrides?: Record<string, any>,
 	daemon?: MLDaemon,
 ) {
-	const {task} = await readTask(taskId)
-
-	const sessionPath = task.session_path
-		? resolve(REPO_ROOT, task.session_path)
-		: join(WORKFOLDER, taskId);
+	const taskId= ctx.task.id
+	const sessionPath = ctx.task.session_path
+	const task = await readTask(sessionPath)
 
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);

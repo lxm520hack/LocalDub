@@ -6,9 +6,10 @@ export function fileLog(ctx: Context, op: string, path: string, extra?: string) 
 	emitLog(ctx.task.session_path, `[${ctx.task.current_stage}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
 }
 
-export function readJson<T = any>(path: string,  ctx: Context): T {
+export   function readJson<T = any>(path: string,  ctx: Context){
 	fileLog(ctx, 'read', path);
-	return JSON.parse(readFileSync(path, 'utf-8'));
+	
+	return Bun.file(path).json() as Promise<T>; 
 }
 
 export function writeJson(path: string, data: any, ctx: Context) {

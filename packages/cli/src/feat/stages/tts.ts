@@ -9,11 +9,11 @@ import {
 	writeWav,
 } from '@repo/voxlab';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
-import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
+import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
-import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils/utils.ts';
+import { emitLog, nowISO, readTaskLanguages, } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
-import { Context } from '../context/context.ts';
+import { Context, setStage, setTask } from '../context/context.ts';
 
 function createTTSBackend(cfg: TTSConfig) {
 	if (!cfg) throw new Error('TTS config not found');
@@ -25,13 +25,15 @@ function createTTSBackend(cfg: TTSConfig) {
 }
 
 async function runPytorchBatch(
-	taskId: string,
+	ctx: Context,
 	ttsCfg: NonNullable<TTSConfig>,
 	translationFile: string,
 	vocalsDir: string,
 	ttsDir: string,
 	total: number,
 ) {
+	const sessionPath = ctx.task.session_path
+	const taskId = ctx.task.id
 	if (!ttsCfg) throw new Error('TTS config not found');
 
 	const device = 'device' in ttsCfg ? (ttsCfg.device as Device) : 'cuda';
@@ -71,19 +73,19 @@ async function runPytorchBatch(
 				if (progressMatch) {
 					const current = parseInt(progressMatch[1]);
 					const ttl = parseInt(progressMatch[2]);
-					updateStageDB(taskId, 'tts', {
+					setStage(sessionPath, 'tts', {
 						last_message: `Generating ${current}/${ttl}...`,
 					});
 				} else if (line.startsWith('{')) {
 					try {
 						const result = JSON.parse(line);
 						emitLog(
-							taskId,
+							sessionPath,
 							`[TTS] Batch complete: ${result.generated} generated, ${result.skipped} skipped, ${result.errors} errors in ${result.total_time_s}s`,
 						);
 						if (result.generate_time_s) {
 							emitLog(
-								taskId,
+								sessionPath,
 								`[VoxCPM] Generated in ${result.total_time_s}s | RTF ${result.rtf}`,
 							);
 						}
@@ -117,28 +119,31 @@ export async function stageTts(
 ) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
-	const ttsCfg = readConfig().stages?.tts!
-	const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
-	const translationFile = resolve(
+	setTask(sessionPath, {
+		current_stage: 'tts',
+	});
+	const ttsCfg = ctx.input?.stages?.tts!
+	const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
+	const timingsFile = resolve(
 		REPO_ROOT,
 		sessionPath,
 		'metadata',
-		`translation.${dstLangCode}.json`,
+		`timings.json`,
 	);
 	const vocalsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'vocals');
 	const ttsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'tts');
 
-	if (!existsSync(translationFile))
-		throw new Error(`${translationFile} not found`);
+	if (!existsSync(timingsFile))
+		throw new Error(`${timingsFile} not found`);
 	ensureDir(ttsDir, ctx);
 
-	const data: TranslateFile = readJson(translationFile, ctx);
+	const data: TranslateFile = await readJson(timingsFile, ctx);
 	const translation = data.translation;
 
 	const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
 	if (
 		anyTts &&
-		statSync(translationFile).mtimeMs > statSync(join(ttsDir, anyTts)).mtimeMs
+		statSync(timingsFile).mtimeMs > statSync(join(ttsDir, anyTts)).mtimeMs
 	) {
 		for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
 		const sessionAbs = resolve(REPO_ROOT, sessionPath);
@@ -150,13 +155,13 @@ export async function stageTts(
 	}
 
 	if (ttsCfg.runtime === 'pytorch' && daemon?.ready) {
-		emitLog(taskId, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
+		emitLog(sessionPath, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
 		const result = await daemon.runStage(
 			'tts',
 			taskId,
 			{
-				translation_file: translationFile,
+				translation_file: timingsFile,
 				vocals_dir: vocalsDir,
 				tts_dir: ttsDir,
 				model_dir: modelDir,
@@ -164,28 +169,28 @@ export async function stageTts(
 				skipExisting: ttsCfg.skipExisting,
 			},
 			(current, total) => {
-				emitLog(taskId, `[TTS] ${current}/${total}`);
-				updateStageDB(taskId, 'tts', {
+				emitLog(sessionPath, `[TTS] ${current}/${total}`);
+				setStage(sessionPath, 'tts', {
 					last_message: `Generating ${current}/${total}...`,
 				});
 			},
 		);
 		const r = result as Record<string, number>;
 		emitLog(
-			taskId,
+			sessionPath,
 			`[TTS] Batch complete: ${r.generated ?? 0} generated, ${r.skipped ?? 0} skipped, ${r.errors ?? 0} errors`,
 		);
 		if (r.load_time_s)
-			emitLog(taskId, `[TTS] Model loaded in ${r.load_time_s}s`);
+			emitLog(sessionPath, `[TTS] Model loaded in ${r.load_time_s}s`);
 		if (r.generate_time_s)
-			emitLog(taskId, `[TTS] Generated in ${r.generate_time_s}s`);
+			emitLog(sessionPath, `[TTS] Generated in ${r.generate_time_s}s`);
 		if (r.total_time_s)
-			emitLog(taskId, `[TTS] Total ${r.total_time_s}s (load + generate)`);
+			emitLog(sessionPath, `[TTS] Total ${r.total_time_s}s (load + generate)`);
 		if (r.rtf != null)
-			emitLog(taskId, `[VoxCPM] RTF ${r.rtf}`);
+			emitLog(sessionPath, `[VoxCPM] RTF ${r.rtf}`);
 		if (r.errors && r.errors > 0)
-			emitLog(taskId, `[WARN] [TTS] ${r.errors} segments had errors`);
-		await updateStageDB(taskId, 'tts', {
+			emitLog(sessionPath, `[WARN] [TTS] ${r.errors} segments had errors`);
+		await setStage(sessionPath, 'tts', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
@@ -196,9 +201,9 @@ export async function stageTts(
 
 	if (ttsCfg.runtime === 'pytorch') {
 		await runPytorchBatch(
-			taskId,
+			ctx,
 			ttsCfg,
-			translationFile,
+			timingsFile,
 			vocalsDir,
 			ttsDir,
 			translation.length,
@@ -237,14 +242,14 @@ export async function stageTts(
 			}
 			if (!refWav || !existsSync(refWav)) {
 				emitLog(
-					taskId,
+					sessionPath,
 					`[WARN] [TTS] No reference for segment ${idx}, skipping`,
 				);
 				writeFile(outPath, Buffer.alloc(44), ctx);
 				continue;
 			}
 
-			await updateStageDB(taskId, 'tts', {
+			setStage(sessionPath, 'tts', {
 				last_message: `Generating ${i + 1}/${translation.length}...`,
 			});
 
@@ -263,10 +268,10 @@ export async function stageTts(
 		const genSec = genMs / 1000;
 		const audioSec = translation.reduce((s, t) => s + (t.end_time - t.start_time), 0) / 1000;
 		const rtf = audioSec > 0 && genSec > 0 ? genSec / audioSec : 0;
-		emitLog(taskId, `[VoxCPM] Generated in ${genSec.toFixed(1)}s | RTF ${rtf.toFixed(3)}`);
+		emitLog(sessionPath, `[VoxCPM] Generated in ${genSec.toFixed(1)}s | RTF ${rtf.toFixed(3)}`);
 	}
 
-	await updateStageDB(taskId, 'tts', {
+	await setStage(sessionPath, 'tts', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

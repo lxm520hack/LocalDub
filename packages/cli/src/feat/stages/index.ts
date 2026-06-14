@@ -39,10 +39,12 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
   asr_fix: (id, sp, _task) => {
 
     const ctx = readCtx(sp)
-   return stageAsrFix(ctx)},
+    return stageAsrFix(ctx)
+  },
   ocr: (id, sp, _task) =>{
     const ctx = readCtx(sp)
-     return stageOcr(ctx)},
+    return stageOcr(ctx)
+  },
   ocr_fix: (id, sp, _task) => {
     const ctx = readCtx(sp)
     return stageOcrFix(ctx)},
@@ -50,12 +52,9 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
     const ctx = readCtx(sp)
     return stageTranslate(ctx)},
   split_audio: (id, sp, _task) => {
-    const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(sp);
     const ctx = readCtx(sp)
     return stageSplitAudio({
       ctx,
-      srcLangCode,
-      dstLangCode,
       vocalsFilePath: join(sp, 'media', 'target_3_vocals.wav'),
       sourceFilePath: join(sp, 'media', 'video_source.mp4'),
       srtFilePath: subtitleFilePath(sp),
@@ -63,11 +62,14 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
   },
   tts: (id, sp, _task, d) => {
     const ctx = readCtx(sp)
-     return stageTts(ctx, d)},
+    return stageTts(ctx, d)
+  },
   merge_audio: (id, sp, _task) => {
     const ctx = readCtx(sp)
-   return stageMergeAudio(ctx)},
+    return stageMergeAudio(ctx)
+  },
   merge_video: (id, sp, _task) =>{ 
     const ctx = readCtx(sp)
-    return stageMergeVideo(ctx)},
+    return stageMergeVideo(ctx)
+  },
 };

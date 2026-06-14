@@ -107,26 +107,25 @@ export const setCtx = (
 	const ctx = _writeCtx( { ...existing, ...patch });
 	console.log(`[${ctx.task.current_stage}] [File] set ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
 };
-export function readTask(taskId: string) {
-	const sp = join(WORKFOLDER, taskId)
-	const ctx_path = ctxPath(sp)
-	const [ctx, err] = to<Context>(() => JSON.parse(readFileSync(ctx_path, 'utf-8')))
+export async function readTask(sessionPath: string) {
+	const ctx_path = ctxPath(sessionPath)
+	const [ctx, err] = await to<Context>(Bun.file(ctx_path).json());
 	// const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-	if (err) throw new Error(`Task ${taskId} not found`);
+	if (err) throw new Error(`Task ${ctx_path} not found`);
 	fileLog(ctx, 'read', ctx_path); 
 	
-	return { task: ctx.task, sessionPath: sp };
+	return ctx.task;
 }
 export const writeTask = ( task: Task) => {
 		setCtx(task.session_path, { task });
 }
-export const setTask = (sessionPath: string, patch: Partial<Task>) => {
-	const existing = readTask(sessionPath)?.task ?? ({} as Task);
+export const  setTask = async (sessionPath: string, patch: Partial<Task>) => {
+	const existing = (await readTask(sessionPath)) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
 	writeTask(updated);
 }
 
-export const listStage = (sessionPath: string) => readCtx(sessionPath).stages ?? [];
+export const listStage = (sessionPath: string) => _readCtx(sessionPath).stages ?? [];
 const readStage = (sessionPath: string, stage: string) => {
 	return listStage(sessionPath).find((s) => s.name === stage)
 }
@@ -135,7 +134,7 @@ export const writeStages = (sessionPath: string, stages: TaskStage[]) => {
 	writeCtx({...ctx, stages});
 }
 const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => {
-	const ctx = readCtx(sessionPath);
+	const ctx = _readCtx(sessionPath);
 	const stages = ctx.stages ?? [];
 	const idx = stages.findIndex((s) => s.name === stage);
 	if (idx !== -1) {
@@ -143,7 +142,7 @@ const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => 
 	} else {
 		stages.push(newStage);
 	}
-	writeCtx(ctx);
+	_writeCtx(ctx);
 }
 export const setStage = (sessionPath: string, stage: string, patch: Partial<TaskStage>) => {
 	const existing = readStage(sessionPath, stage) ?? ({} as TaskStage);

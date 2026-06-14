@@ -19,13 +19,15 @@ if (!existsSync(audioSource)) throw new Error(`not found: ${audioSource}`);
 const ctx: Context = {
   task: { id: 'benchmark-split', source: 'local', url: '', status: 'running', session_path: resultDir, created_at: new Date().toISOString(), current_stage: 'split_audio' },
   pipeline: 'dub',
+  asr_language: 'zh',
+  target_language: 'zh',
   input: { stages: { translate: { enabled: false }, split_audio: { vadAlign: false } } },
 };
 writeCtx(ctx);
 ensureDir(join(resultDir, 'segments', 'vocals'), ctx);
 
 await stageSplitAudio({
-  ctx, srcLangCode: 'zh', dstLangCode: 'zh',
+  ctx,
   sourceFilePath: audioSource,
   srtFilePath: srtPath,
   vocalsFilePath: audioSource,
