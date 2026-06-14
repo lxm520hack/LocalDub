@@ -7,8 +7,11 @@ import { ensureDir, writeJson } from "./utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime, updateStageDB } from "./utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "./utils/ocrMerge.ts";
+import { Context } from "../context/context.ts";
 
-export async function stageOcr(taskId: string, sessionPath: string) {
+export async function stageOcr(ctx: Context) {
+		const taskId = ctx.task.id;
+		const sessionPath = ctx.task.session_path
 	await updateStageDB(taskId, "ocr", {
 		last_message: "Extracting frames...",
 		progress: 0,
@@ -27,8 +30,8 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 
 	// 1. Extract frames
 	const frameDir = join(sessionAbsPath, "tmp", "ocr-frames");
-	ensureDir(frameDir, "OCR");
-	emitLog(taskId, `[OCR] Extracting frames at ${fps}fps...`);
+	ensureDir(frameDir, ctx);
+	emitLog(sessionAbsPath, `[OCR] Extracting frames at ${fps}fps...`);
 
 	const frProbe = spawnSync(
 		"ffprobe",
@@ -86,14 +89,14 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 		}
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
-			emitLog(taskId, `[OCR] ${i + 1}/${frameFiles.length} frames`);
+			emitLog(sessionAbsPath, `[OCR] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
 
 	// 3. Merge into segments
 	const segments = mergeFrames(frameResults);
 	emitLog(
-		taskId,
+		sessionAbsPath,
 		`[OCR] ${frameFiles.length} frames → ${segments.length} segments`,
 	);
 
@@ -119,7 +122,7 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 
 	// 6. Write ocr.json (same format as asr_fix)
 	const metadataDir = resolve(sessionAbsPath, "metadata");
-	ensureDir(metadataDir, "OCR");
+	ensureDir(metadataDir, ctx);
 	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), ...(s.box_y ? { box_y: s.box_y } : {}) }));
 	writeJson(
 		join(metadataDir, "ocr.json"),
@@ -131,10 +134,10 @@ export async function stageOcr(taskId: string, sessionPath: string) {
 			_textScore: textScore,
 			_source: "ocr",
 		},
-		"OCR",
+		ctx,
 	);
 
-	emitLog(taskId, `[OCR] Written ${segments.length} segs to ocr.json`);
+	emitLog(sessionAbsPath, `[OCR] Written ${segments.length} segs to ocr.json`);
 
 	// 7. Cleanup frames
 	spawnSync("rm", ["-rf", frameDir]);

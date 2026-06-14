@@ -8,9 +8,9 @@ import {
 	pythonBin,
 	REPO_ROOT,
 	readConfig,
-	readLocalInfo,
 } from '../config/config.ts';
 import { emitLog, ffmpeg, nowISO, updateStageDB } from './utils/utils.ts';
+import { readCtx } from '../context/context.ts';
 
 export async function stageSeparate(
 	taskId: string,
@@ -18,7 +18,7 @@ export async function stageSeparate(
 	daemon?: MLDaemon,
 ) {
 	// subtitle 模式且未配置 always 时，跳过分离
-	const pipeline = readLocalInfo(sessionPath)?.pipeline || 'dub';
+	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
 	const sepCfg = readConfig().stages?.separate;
 	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(

@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { readJson, writeFile } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { stage } from './utils/context.ts';
-import { readConfig, readLocalInfo } from '../config/config.ts';
+import { Context, readCtx, stage } from '../context/context.ts';
+import { readConfig,} from '../config/config.ts';
 import { alignmentToFfmpeg } from '../config/types.ts';
 import {
 	ffmpeg,
@@ -16,7 +16,7 @@ import {
 	updateTaskDB,
 } from './utils/utils.ts';
 
-function writeSrt(translation: any[], dstLang: string, outputPath: string, useSource?: boolean) {
+function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
 	const CLOSING_QUOTES = new Set([
 		'"',
 		"'",
@@ -172,7 +172,7 @@ function writeSrt(translation: any[], dstLang: string, outputPath: string, useSo
 		}
 	}
 
-	writeFile(outputPath, lines.join('\n'), 'Merge Video');
+	writeFile(outputPath, lines.join('\n'), ctx);
 }
 
 function dstLangFromTranslation(translation: any[]): string {
@@ -222,7 +222,9 @@ function probeStyle(
 	return `FontName=${font},FontSize=${fontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=${outline > 0 ? 1 : 0},Outline=${outline},Shadow=${shadow},Alignment=${alignment},MarginV=${marginV}`;
 }
 
-export async function stageMergeVideo(taskId: string, sessionPath: string) {
+export async function stageMergeVideo(ctx: Context) {
+	const taskId = ctx.task.id;
+	const sessionPath = ctx.task.session_path;
 	const mediaDir = join(sessionPath, 'media');
 	const tmpDir = join(sessionPath, 'tmp');
 	const metadataDir = join(sessionPath, 'metadata');
@@ -231,7 +233,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 
 	if (!existsSync(videoFile)) throw new Error('video_source.mp4 not found');
 
-	const pipeline = readLocalInfo(sessionPath)?.pipeline || 'dub';
+	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
 
 	const mergeCfg = readConfig().stages?.merge_video;
 	const probeOverrides = {
@@ -258,13 +260,13 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 		const translateEnabled = readConfig().stages?.translate?.enabled ?? true;
 		let data: { translation: any[] };
 		if (vadAlign) {
-			data = readJson(join(metadataDir, 'timings.json'), 'Merge Video', taskId);
+			data = readJson(join(metadataDir, 'timings.json'), ctx);
 		} else if (translateEnabled) {
 			const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 			const trFile = translationFilePath(sessionPath, dstLangCode);
-			data = readJson(trFile, 'Merge Video', taskId);
+			data = readJson(trFile, ctx);
 		} else {
-			const srt = readJson(subtitleFilePath(sessionPath), 'Merge Video', taskId);
+			const srt = readJson(subtitleFilePath(sessionPath), ctx);
 			const segments = srt.result?.segments ?? [];
 			data = {
 				translation: segments.map((seg: any) => ({
@@ -278,7 +280,7 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 		}
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
-		writeSrt(data.translation, dstLang, subPath, !translateEnabled);
+		writeSrt(data.translation, ctx, subPath, !translateEnabled);
 		const style = probeStyle(videoFile, dstLang, probeOverrides);
 		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
@@ -308,17 +310,17 @@ export async function stageMergeVideo(taskId: string, sessionPath: string) {
 		);
 	} else {
 		const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
-		const bgmFile = join(mediaDir, 'target_bgm.wav');
+		const bgmFile = join(mediaDir, 'target_bgm.wav');``
 		const timingsFile = join(metadataDir, 'timings.json');
 
 		if (!existsSync(dubbingFile))
 			throw new Error('audio_dubbing.wav not found');
 		if (!existsSync(timingsFile)) throw new Error('timings.json not found');
 
-		const data = readJson(timingsFile, 'Merge Video', taskId);
+		const data = readJson(timingsFile, ctx);
 		const dstLang = dstLangFromTranslation(data.translation);
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
-		writeSrt(data.translation, dstLang, subPath);
+		writeSrt(data.translation, ctx, subPath);
 		const style = probeStyle(videoFile, dstLang, probeOverrides);
 		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 

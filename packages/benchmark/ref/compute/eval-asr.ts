@@ -132,8 +132,10 @@ function analyzeOffsets(gt: Segment[], hyp: Segment[]) {
     detectionRate: details.length > 0 ? details.length / gt.length : 0,
     startOffsetMean: offsetsStart.length > 0 ? offsetsStart.reduce((a, b) => a + b, 0) / offsetsStart.length : 0,
     startOffsetMedian: sortedStart.length > 0 ? median(sortedStart) : 0,
+    startOffsetMae: offsetsStart.length > 0 ? offsetsStart.reduce((a, b) => a + Math.abs(b), 0) / offsetsStart.length : 0,
     endOffsetMean: offsetsEnd.length > 0 ? offsetsEnd.reduce((a, b) => a + b, 0) / offsetsEnd.length : 0,
     endOffsetMedian: sortedEnd.length > 0 ? median(sortedEnd) : 0,
+    endOffsetMae: offsetsEnd.length > 0 ? offsetsEnd.reduce((a, b) => a + Math.abs(b), 0) / offsetsEnd.length : 0,
     falsePositives: fpCount,
     falsePositiveDetails: fps,
     missedSegments: missed,
@@ -184,8 +186,10 @@ function main(opts: Options & { hypScaleMs?: number }) {
       detectionRate: +(offsetResult.detectionRate * 100).toFixed(1),
       startOffsetMeanMs: +offsetResult.startOffsetMean.toFixed(1),
       startOffsetMedianMs: +offsetResult.startOffsetMedian.toFixed(1),
+      startOffsetMaeMs: +offsetResult.startOffsetMae.toFixed(1),
       endOffsetMeanMs: +offsetResult.endOffsetMean.toFixed(1),
       endOffsetMedianMs: +offsetResult.endOffsetMedian.toFixed(1),
+      endOffsetMaeMs: +offsetResult.endOffsetMae.toFixed(1),
       falsePositives: offsetResult.falsePositives,
       missedCount: offsetResult.missedSegments.length,
       coverRatio: +(offsetResult.coverRatio * 100).toFixed(1),
@@ -218,8 +222,8 @@ function main(opts: Options & { hypScaleMs?: number }) {
   out.push(`  Matched:      ${result.segments.matched}  (${result.segments.detectionRate}%)`);
   out.push(`  Missed:       ${result.segments.missedCount}`);
   out.push(`  False pos:    ${result.segments.falsePositives}`);
-  out.push(`  Start offset: mean=${result.segments.startOffsetMeanMs >= 0 ? '+' : ''}${result.segments.startOffsetMeanMs}ms  median=${result.segments.startOffsetMedianMs >= 0 ? '+' : ''}${result.segments.startOffsetMedianMs}ms`);
-  out.push(`  End offset:   mean=${result.segments.endOffsetMeanMs >= 0 ? '+' : ''}${result.segments.endOffsetMeanMs}ms  median=${result.segments.endOffsetMedianMs >= 0 ? '+' : ''}${result.segments.endOffsetMedianMs}ms`);
+  out.push(`  Start offset: mean=${result.segments.startOffsetMeanMs >= 0 ? '+' : ''}${result.segments.startOffsetMeanMs}ms  median=${result.segments.startOffsetMedianMs >= 0 ? '+' : ''}${result.segments.startOffsetMedianMs}ms  mae=${result.segments.startOffsetMaeMs}ms`);
+  out.push(`  End offset:   mean=${result.segments.endOffsetMeanMs >= 0 ? '+' : ''}${result.segments.endOffsetMeanMs}ms  median=${result.segments.endOffsetMedianMs >= 0 ? '+' : ''}${result.segments.endOffsetMedianMs}ms  mae=${result.segments.endOffsetMaeMs}ms`);
   out.push(`  Cover:  ${result.segments.coverRatio}%  (${result.segments.gapCount} gaps, total ${(result.segments.gapTotalMs/1000).toFixed(1)}s, avg ${result.segments.gapAvgMs}ms, max ${result.segments.gapMaxMs}ms)`);
 
   if (offsetResult.missedSegments.length > 0) {
@@ -285,8 +289,8 @@ function runBatch(baseDir: string, gtPath: string, hypScaleMs = 1) {
   console.log('  BATCH SUMMARY');
   console.log('='.repeat(72));
   console.log('');
-  console.log('  Label'.padEnd(22) + ' normCER  det%   segs  s_off_mn  e_off_mn  miss  fp  cover   gaps  g_avg');
-  console.log('  ' + '-'.repeat(78));
+  console.log('  Label'.padEnd(22) + ' normCER  det%   segs  s_off_mn  e_off_mn  s_mae  e_mae  miss  fp  cover   gaps  g_avg');
+  console.log('  ' + '-'.repeat(96));
 
   const sorted = [...results].sort((a, b) => a.normalized.cer - b.normalized.cer);
   for (const r of sorted) {
@@ -296,12 +300,14 @@ function runBatch(baseDir: string, gtPath: string, hypScaleMs = 1) {
     const segs = `${r.segments.nHyp}`.padStart(4);
     const som = (r.segments.startOffsetMeanMs >= 0 ? '+' : '') + r.segments.startOffsetMeanMs.toFixed(0);
     const eom = (r.segments.endOffsetMeanMs >= 0 ? '+' : '') + r.segments.endOffsetMeanMs.toFixed(0);
+    const smae = `${r.segments.startOffsetMaeMs.toFixed(0)}`.padStart(5);
+    const emae = `${r.segments.endOffsetMaeMs.toFixed(0)}`.padStart(5);
     const miss = `${r.segments.missedCount}`.padStart(4);
     const fp = `${r.segments.falsePositives}`.padStart(3);
     const cover = r.segments.coverRatio.toFixed(1).padStart(5);
     const gaps = `${r.segments.gapCount}`.padStart(4);
     const gAvg = `${r.segments.gapAvgMs}`.padStart(5);
-    console.log(`  ${label} ${cer}%  ${det}%  ${segs}  ${som}ms  ${eom}ms  ${miss}  ${fp}  ${cover}%  ${gaps}  ${gAvg}ms`);
+    console.log(`  ${label} ${cer}%  ${det}%  ${segs}  ${som}ms  ${eom}ms  ${smae}ms  ${emae}ms  ${miss}  ${fp}  ${cover}%  ${gaps}  ${gAvg}ms`);
   }
 
   console.log('');

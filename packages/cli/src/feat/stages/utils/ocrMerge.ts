@@ -107,5 +107,31 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		}
 	}
 
+	// fourth pass: remove overlapping segments with similar text
+	// (handles ASR segment overlap where end2fps scans produce duplicate
+	// segments with lev-distant text like 干嘛/于嘛 in the same time window)
+	dedupOverlap(segments);
+
 	return segments.filter((s) => s.end - s.start >= 500);
+}
+
+export function dedupOverlap(segments: Segment[]): Segment[] {
+	for (let i = 0; i < segments.length; i++) {
+		for (let j = i + 1; j < segments.length; j++) {
+			const a = segments[i];
+			const b = segments[j];
+			if (!a || !b) continue;
+			if (a.start < b.end && b.start < a.end && levenshtein(a.text, b.text) <= 2) {
+				segments[i] = {
+					text: a.text.length >= b.text.length ? a.text : b.text,
+					start: Math.min(a.start, b.start),
+					end: Math.max(a.end, b.end),
+					box_y: a.box_y,
+				};
+				segments.splice(j, 1);
+				j--;
+			}
+		}
+	}
+	return segments;
 }

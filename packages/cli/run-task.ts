@@ -9,7 +9,6 @@ import { db } from './src/db/index.ts';
 import {
 	pythonBin,
 	readConfig,
-	setLocalInfo,
 } from './src/feat/config/config.ts';
 import type { RawConfig } from './src/feat/config/types.ts';
 import { createTask, findTaskByVideoId } from './src/feat/tasks/fn.ts';
@@ -23,6 +22,7 @@ import { tasks } from './src/feat/tasks/table.ts';
 import { extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
 import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
+import { setCtx } from './src/feat/context/context.ts';
 
 function needsMLDaemon(cfg: RawConfig): boolean {
 	const tts = cfg.stages?.tts;
@@ -182,16 +182,16 @@ switch (cmd) {
 
 	case 'createTask': {
 		const p = config.createTask ?? {};
-		const url = p.youtubeUrl ?? p.bilibiliUrl;
-		if (!url && !p.sourceFile) {
+		const appVideoUrl = p.youtubeUrl ?? p.bilibiliUrl;
+		if (!appVideoUrl && !p.sourceFile) {
 			console.error(
 				'createTask: need youtubeUrl, bilibiliUrl, or sourceFile in config.json',
 			);
 			process.exit(1);
 		}
-		const videoId = url ? extractVideoId(url) : timeId({ size: 10 });
+		const videoId = appVideoUrl ? extractVideoId(appVideoUrl) : timeId({ size: 10 });
 		try {
-			if (url) {
+			if (appVideoUrl) {
 				const existing = await findTaskByVideoId(videoId);
 				if (existing) {
 					const row = await db
@@ -201,9 +201,7 @@ switch (cmd) {
 						.limit(1);
 					console.log(
 						JSON.stringify(
-							{ taskId: existing, url, status: 'exists', task: row[0] },
-							null,
-							2,
+							{ taskId: existing, appVideoUrl, status: 'exists', task: row[0] },
 						),
 					);
 					break;
@@ -211,54 +209,22 @@ switch (cmd) {
 			}
 
 			const taskPipeline = config.pipeline;
-			const [task] = await createTask({
+			const source = p.sourceFile ?  'local' : appVideoUrl ? (isYouTubeUrl(appVideoUrl) ? 'youtube' : 'bilibili') : 'local';
+			const url = source === 'local' ? p.sourceFile! : appVideoUrl!;
+			const ctx = await createTask({
+				source ,
 				url,
 				taskId: videoId,
-				sourceFile: p.sourceFile,
 				sourceLang: p.sourceLang,
 				targetLang: p.targetLang,
 				pipeline: taskPipeline,
 				stages: config.stages,
 			});
 
-			// Fetch video title via yt-dlp --dump-json (optional)
-			if (url) {
-				try {
-					const infoArgs = ['--dump-json'];
-					if (isYouTubeUrl(url) && existsSync(YOUTUBE_COOKIE_PATH))
-						infoArgs.push('--cookies', YOUTUBE_COOKIE_PATH);
-					if (isYouTubeUrl(url) && env.YTDLP_PROXY_PORT)
-						infoArgs.push(
-							'--proxy',
-							`http://127.0.0.1:${env.YTDLP_PROXY_PORT}`,
-						);
-					infoArgs.push(url);
-					const { spawnSync } = await import('node:child_process');
-					const infoR = spawnSync('yt-dlp', infoArgs, {
-						stdio: ['pipe', 'pipe', 'pipe'],
-						timeout: 30_000,
-					});
-					if (infoR.status === 0 && infoR.stdout.length > 0) {
-						const info = JSON.parse(infoR.stdout.toString());
-						if (info.title) {
-							await db
-								.update(tasks)
-								.set({ title: info.title })
-								.where(eq(tasks.id, videoId));
-							task.title = info.title;
-						}
-					}
-				} catch {
-					/* title is optional */
-				}
-			}
-
-			const displayUrl = url || p.sourceFile || '';
+			const displayUrl = appVideoUrl || p.sourceFile || '';
 			console.log(
 				JSON.stringify(
-					{ taskId: videoId, url: displayUrl, status: 'created', task },
-					null,
-					2,
+					{ taskId: videoId, url: displayUrl, status: 'created', task: ctx.task },
 				),
 			);
 
@@ -293,7 +259,7 @@ switch (cmd) {
 					? resolve(REPO_ROOT, taskRows[0].session_path)
 					: join(WORKFOLDER, taskId);
 
-				setLocalInfo(sessionPath, { pipeline: config.pipeline });
+				setCtx(sessionPath, { pipeline: config.pipeline });
 				console.log(`[CLI] Switched pipeline to "${config.pipeline}"`);
 			}
 		}

@@ -421,7 +421,7 @@ export type RawConfigInput = z.input<typeof ConfigSchema>;
 export type RawConfig = z.output<typeof ConfigSchema>;
 
 /** local_info.json — 运行时状态/自动探测层 */
-export interface LocalInfo {
+export interface Ctx {
 	// ——— 创建时写入，只读 ———
 	id: string; // 任务 ID (本地或url) | 视频id (视频平台)
 	title?: string;

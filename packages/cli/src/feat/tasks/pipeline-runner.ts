@@ -2,75 +2,48 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import { eq, sql } from 'drizzle-orm';
-import { db } from './../../db/index.ts';
+// import { eq, sql } from 'drizzle-orm';
+// import { db } from './../../db/index.ts';
 import { getStages } from './../../feat/tasks/stages.ts';
-import { taskStages, tasks } from './../../feat/tasks/table.ts';
+// import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
 	readConfig,
-	readLocalInfo,
-	readPipeline,
-	setLocalInfo,
-	writeLocalInfo,
 } from '../config/config.ts';
-import type { LocalInfo } from '../config/types.ts';
+import type { Ctx } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
-import { setStage, setTaskId } from '../stages/utils/context.ts';
+import { Context, setTaskId, 	readCtx,
+	readPipeline,
+	readTask,
+	setCtx,
+	setStage,
+	setTask,
+	writeCtx,
+    writeStages,  listStage, } from '../context/context.ts';
 import {
-	currentTask,
 	emitLog,
 	getStageStatuses,
 	nowISO,
-	updateStageDB,
-	updateTaskDB,
+	// updateStageDB,
+	// updateTaskDB,
 } from '../stages/utils/utils.ts';
 
 export { getStageStatuses };
 
 function snapshotConfig(sessionPath: string) {
 	const cfg = readConfig();
-	const snap: NonNullable<LocalInfo['lastRunConfig']> = {
+	const snap: NonNullable<Context['input']> = {
+		...cfg,
 		timestamp: new Date().toISOString(),
 		pipeline: cfg.pipeline ?? 'dub',
-		subtitleSource: cfg.subtitleSource,
-		stages: {},
-		daemonPort: cfg.daemonPort,
 	};
-	const asr = cfg.stages?.asr;
-	if (asr) snap.stages.asr = { runtime: asr.runtime, device: asr.device, useSeparated: asr.useSeparated, mixMode: asr.mixMode, reduceBgm: asr.reduceBgm, useGate: asr.useGate };
-	const ocr = cfg.stages?.ocr;
-	if (ocr) snap.stages.ocr = { fps: ocr.fps, textScore: ocr.textScore };
-	const sep = cfg.stages?.separate;
-	if (sep) {
-		snap.stages.separate = {
-			runtime: sep.runtime,
-			device: sep.device,
-			always: sep.always,
-		};
-	}
-	const tr = cfg.stages?.translate;
-	if (tr) {
-		snap.stages.translate = {
-			apiBase: tr.apiBase,
-			model: tr.model,
-			targetLang: tr.targetLang,
-			enabled: tr.enabled,
-		};
-	}
-	const tts = cfg.stages?.tts;
-	if (tts) {
-		snap.stages.tts = {
-			runtime: tts.runtime ?? 'pytorch',
-			device: 'device' in tts ? (tts).device : undefined,
-		};
-	}
-	setLocalInfo(sessionPath, { lastRunConfig: snap });
+
+	setCtx(sessionPath, { input: snap });
 }
 
 export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 	setTaskId(taskId);
-	let { task, sessionPath } = await currentTask(taskId);
+	let { task, sessionPath } = await readTask(taskId);
 	mkdirSync(sessionPath, { recursive: true });
 
 	const pipeline = readPipeline(sessionPath);
@@ -82,10 +55,12 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 
 	snapshotConfig(sessionPath);
 
-	await updateTaskDB(taskId, { status: 'running', started_at: nowISO() });
+	await setTask(sessionPath, { status: 'running', started_at: nowISO() });
 
 	for (const stage of stages) {
-		setStage(stage.name);
+		setTask(sessionPath, {
+			current_stage: stage.name
+		});
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -95,12 +70,12 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 			continue;
 		}
 
-		await updateStageDB(taskId, stage.name, {
+		await setStage(sessionPath, stage.name, {
 			status: 'running',
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-		await updateTaskDB(taskId, { current_stage: stage.name });
+		await setTask(sessionPath, { current_stage: stage.name });
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
@@ -111,23 +86,23 @@ export async function runPipeline(taskId: string, daemon?: MLDaemon) {
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
 			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
-			await updateStageDB(taskId, stage.name, {
+			await setStage(sessionPath, stage.name, {
 				status: 'failed',
 				error_message: msg,
 				completed_at: nowISO(),
 			});
-			await updateTaskDB(taskId, { status: 'failed', error_message: msg });
+			 setTask(sessionPath, { status: 'failed', error_message: msg });
 			throw err;
 		}
 
-		const next = await currentTask(taskId).catch(() => null);
+		const next =  readTask(taskId)
 		if (next) {
 			task = next.task;
 			sessionPath = next.sessionPath;
 		}
 	}
 
-	await updateTaskDB(taskId, {
+	 setTask(sessionPath, {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		current_stage: null,
@@ -142,9 +117,9 @@ export async function resumePipeline(
 	daemon?: MLDaemon,
 ) {
 	setTaskId(taskId);
-	let { task, sessionPath } = await currentTask(taskId);
+	let { task, sessionPath } = await readTask(taskId);
 
-	const [info, err] = to(() => readLocalInfo(sessionPath));
+	const [info, err] = to(() => readCtx(sessionPath));
 	if (err) {
 		throw new Error(`Failed to read local info: ${err.message}`);
 	}
@@ -158,14 +133,12 @@ export async function resumePipeline(
 		);
 
 		const stages = getStages(info.pipeline);
-		const existing = await db
-			.select({ name: taskStages.name })
-			.from(taskStages)
-			.where(eq(taskStages.task_id, taskId));
+		const existing = listStage(sessionPath);
 		const existingNames = new Set(existing.map((r) => r.name));
 		const newStages = stages.filter((s) => !existingNames.has(s.name));
 		if (newStages.length > 0) {
-			await db.insert(taskStages).values(
+
+			writeStages(sessionPath,
 				newStages.map((s) => ({
 					task_id: taskId,
 					name: s.name,
@@ -174,23 +147,18 @@ export async function resumePipeline(
 				})),
 			);
 		}
-
 		// merge_video produces different output per pipeline → force re-run
-		await db
-			.update(taskStages)
-			.set({
-				status: 'pending',
+		setStage(sessionPath, 'merge_video', {
+							status: 'pending',
 				started_at: null,
 				completed_at: null,
 				error_message: null,
 				progress: 0,
-			})
-			.where(
-				sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = 'merge_video'`,
-			);
+		})
+
 	}
 
-	writeLocalInfo(sessionPath, info);
+	writeCtx(info);
 
 	snapshotConfig(sessionPath);
 
@@ -203,7 +171,7 @@ export async function resumePipeline(
 		startIdx = stages.findIndex((s) => s.name === resumeFrom);
 		if (startIdx === -1) throw new Error(`Unknown stage "${resumeFrom}"`);
 		for (let i = startIdx; i < stages.length; i++) {
-			await updateStageDB(taskId, stages[i].name, {
+			setStage(sessionPath, stages[i].name, {
 				status: 'pending',
 				started_at: null,
 				completed_at: null,
@@ -216,10 +184,7 @@ export async function resumePipeline(
 			`[Pipeline] Resetting from "${resumeFrom}" (${stages.length - startIdx} stage(s)), resuming...`,
 		);
 	} else {
-		const rows = await db
-			.select({ name: taskStages.name, status: taskStages.status })
-			.from(taskStages)
-			.where(eq(taskStages.task_id, taskId));
+		const rows = listStage(sessionPath);
 		const stageStatus = new Map(rows.map((r) => [r.name, r.status]));
 
 		for (let i = 0; i < stages.length; i++) {
@@ -244,11 +209,13 @@ export async function resumePipeline(
 		emitLog(taskId, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
-	await updateTaskDB(taskId, { status: 'running', started_at: nowISO() });
+	setTask(sessionPath, { status: 'running', started_at: nowISO() });
 
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
-		setStage(stage.name);
+		setTask(sessionPath, {
+			current_stage: stage.name
+		});
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -258,12 +225,12 @@ export async function resumePipeline(
 			continue;
 		}
 
-		await updateStageDB(taskId, stage.name, {
+		setStage(sessionPath, stage.name, {
 			status: 'running',
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-		await updateTaskDB(taskId, { current_stage: stage.name });
+		setTask(sessionPath, { current_stage: stage.name });
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
@@ -274,23 +241,23 @@ export async function resumePipeline(
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
 			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
-			await updateStageDB(taskId, stage.name, {
+			setStage(sessionPath, stage.name, {
 				status: 'failed',
 				error_message: msg,
 				completed_at: nowISO(),
 			});
-			await updateTaskDB(taskId, { status: 'failed', error_message: msg });
+			setTask(sessionPath, { status: 'failed', error_message: msg });
 			throw err;
 		}
 
-		const next = await currentTask(taskId).catch(() => null);
+		const next =readTask(taskId)
 		if (next) {
 			task = next.task;
 			sessionPath = next.sessionPath;
 		}
 	}
 
-	await updateTaskDB(taskId, {
+	setTask(sessionPath, {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		current_stage: null,
@@ -304,8 +271,7 @@ export async function rerunSingleStage(
 	stageOverrides?: Record<string, any>,
 	daemon?: MLDaemon,
 ) {
-	const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-	if (!task) throw new Error(`Task ${taskId} not found`);
+	const {task} = await readTask(taskId)
 
 	const sessionPath = task.session_path
 		? resolve(REPO_ROOT, task.session_path)
@@ -322,35 +288,32 @@ export async function rerunSingleStage(
 
 	snapshotConfig(sessionPath);
 
-	await updateStageDB(taskId, stageName, {
-		status: 'pending',
-		started_at: null,
+	setStage(sessionPath, stageName, {
+		status: 'running',
 		completed_at: null,
 		error_message: null,
-		progress: 0,
-	});
-	await updateStageDB(taskId, stageName, {
-		status: 'running',
 		started_at: nowISO(),
+		progress: 0,
 		last_message: `Rerunning ${stage.label}...`,
 	});
-	await updateTaskDB(taskId, { status: 'running', current_stage: stageName });
+
+	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
 	try {
 		await handler(taskId, sessionPath, task, daemon);
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
 		emitLog(taskId, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);
-		await updateStageDB(taskId, stageName, {
+		await setStage(sessionPath, stageName, {
 			status: 'failed',
 			error_message: msg,
 			completed_at: nowISO(),
 		});
-		await updateTaskDB(taskId, { status: 'failed', error_message: msg });
+		await setTask(sessionPath, { status: 'failed', error_message: msg });
 		throw err;
 	}
 
-	await updateStageDB(taskId, stageName, {
+	await setStage(sessionPath, stageName, {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

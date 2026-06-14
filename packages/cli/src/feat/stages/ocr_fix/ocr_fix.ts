@@ -4,8 +4,11 @@ import { join } from 'node:path';
 import { readConfig } from '../../config/config.ts';
 import { emitLog, nowISO, srtTime, updateStageDB } from '../utils/utils.ts';
 import { buildSystemPrompt, segmentsToPrompt, fixWithLLM, parseLines } from './llm.ts';
+import { Context } from '../../context/context.ts';
 
-export async function stageOcrFix(taskId: string, sessionPath: string) {
+export async function stageOcrFix(ctx: Context) {
+    const taskId = ctx.task.id;
+  const sessionPath = ctx.task.session_path
   const metadataDir = join(sessionPath, 'metadata');
   const ocrFile = join(metadataDir, 'ocr.json');
   const fixFile = join(metadataDir, 'ocr_fix.json');
@@ -14,7 +17,7 @@ export async function stageOcrFix(taskId: string, sessionPath: string) {
     throw new Error(`OCR file not found: ${ocrFile}; run OCR stage first`);
   }
 
-  const data = readJson(ocrFile, 'OCR Fix');
+  const data = readJson(ocrFile, ctx);
   let segments: any[] = (data.result?.segments || [])
     .map((s: any) => ({ text: (s.text || '').trim(), start: s.start, end: s.end }))
     .filter((s: any) => s.text);
@@ -60,7 +63,7 @@ export async function stageOcrFix(taskId: string, sessionPath: string) {
     audio_info: data.audio_info || {},
     result: { text: resultText, segments },
     _llm_fixed: llmFix,
-  }, 'OCR Fix');
+  }, ctx);
 
   emitLog(taskId, `[OCR Fix] Written ${segments.length} segs to ocr_fix.json`);
 

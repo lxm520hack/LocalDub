@@ -3,23 +3,26 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readTaskLanguages, translationFilePath, ffmpeg, nowISO, updateStageDB } from './utils/utils.ts';
+import { Context } from '../context/context.ts';
 
-export async function stageMergeAudio(taskId: string, sessionPath: string) {
+export async function stageMergeAudio(ctx: Context) {
+    const taskId = ctx.task.id;
+  const sessionPath = ctx.task.session_path
   const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
   const ttsDir = join(sessionPath, 'segments', 'tts');
   const tmpDir = join(sessionPath, 'tmp');
   const stretchedDir = join(sessionPath, 'segments', 'stretched');
   const metadataDir = join(sessionPath, 'metadata');
 
-  ensureDir(tmpDir, 'Merge Audio', taskId);
-  ensureDir(stretchedDir, 'Merge Audio', taskId);
-  ensureDir(metadataDir, 'Merge Audio', taskId);
+  ensureDir(tmpDir, ctx);
+  ensureDir(stretchedDir, ctx);
+  ensureDir(metadataDir, ctx);
 
   const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
   const timingsFile = join(metadataDir, 'timings.json');
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
-  const data = readJson(timingsFile, 'Merge Audio', taskId);
+  const data = readJson(timingsFile, ctx);
   const translation = data.translation;
   const ttsFiles = translation.map((_: any, i: number) => join(ttsDir, `${String(i + 1).padStart(4, '0')}.wav`));
 
@@ -97,9 +100,9 @@ export async function stageMergeAudio(taskId: string, sessionPath: string) {
   if (segmentInputs.length === 0) throw new Error('No audio segments to merge');
 
   const concatFile = join(tmpDir, 'concat_list.txt');
-  writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), 'Merge Audio', taskId);
+  writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), ctx);
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 
-  writeJson(timingsFile, { translation }, 'Merge Audio', taskId);
+  writeJson(timingsFile, { translation }, ctx);
   await updateStageDB(taskId, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
 }

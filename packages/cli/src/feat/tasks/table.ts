@@ -47,3 +47,4 @@ export const taskStages = sqliteTable(
 		}),
 	],
 );
+type TaskStage = typeof taskStages.$inferSelect;

@@ -1,43 +1,43 @@
 import { readFileSync, writeFileSync, copyFileSync, rmSync, mkdirSync, existsSync, type WriteFileOptions } from 'node:fs';
 import { emitLog } from './utils.ts';
-import { getTaskId } from './context.ts';
+import { Context,  } from '../../context/context.ts';
 
-function log(source: string, taskId: string | undefined, op: string, path: string, extra?: string) {
-	emitLog(taskId || getTaskId(), `[${source}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
+export function fileLog(ctx: Context, op: string, path: string, extra?: string) {
+	emitLog(ctx.task.session_path, `[${ctx.task.current_stage}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
 }
 
-export function readJson<T = any>(path: string, source: string, taskId?: string): T {
-	log(source, taskId, 'read', path);
+export function readJson<T = any>(path: string,  ctx: Context): T {
+	fileLog(ctx, 'read', path);
 	return JSON.parse(readFileSync(path, 'utf-8'));
 }
 
-export function writeJson(path: string, data: any, source: string, taskId?: string) {
+export function writeJson(path: string, data: any, ctx: Context) {
 	const raw = JSON.stringify(data, null, 2);
 	writeFileSync(path, raw);
 	const lines = raw.split('\n').length;
-	log(source, taskId, 'write', path, `(${raw.length}B, ${lines} lines)`);
+	fileLog(ctx, 'write', path, `(${raw.length}B, ${lines} lines)`);
 }
 
-export function writeFile(path: string, content: string | Buffer, source: string, taskId?: string) {
+export function writeFile(path: string, content: string | Buffer, ctx: Context) {
 	writeFileSync(path, content);
-	log(source, taskId, 'write', path, `(${Buffer.byteLength(content)}B)`);
+	fileLog(ctx, 'write', path, `(${Buffer.byteLength(content)}B)`);
 }
 
-export function copyFile(src: string, dst: string, source: string, taskId?: string) {
+export function copyFile(src: string, dst: string, ctx: Context) {
 	copyFileSync(src, dst);
-	log(source, taskId, 'copy', `${src} → ${dst}`);
+	fileLog(ctx, 'copy', `${src} → ${dst}`);
 }
 
-export function removeFile(path: string, source: string, taskId?: string) {
+export function removeFile(path: string, ctx: Context) {
 	if (!existsSync(path)) return;
 	rmSync(path);
-	log(source, taskId, 'rm', path);
+	fileLog(ctx, 'rm', path);
 }
 
-export function ensureDir(path: string, source: string, taskId?: string) {
+export function ensureDir(path: string, ctx: Context) {
 	if (existsSync(path)) return;
 	mkdirSync(path, { recursive: true });
-	log(source, taskId, 'mkdir', path);
+	fileLog(ctx, 'mkdir', path);
 }
 
 export { existsSync, readFileSync, rmSync, mkdirSync, writeFileSync, copyFileSync };

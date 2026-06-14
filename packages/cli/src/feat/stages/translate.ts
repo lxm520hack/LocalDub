@@ -2,7 +2,7 @@ import { readJson, writeJson } from './utils/fileOps.ts';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
-import { readConfig, setLocalInfo } from '../config/config.ts';
+import { readConfig, } from '../config/config.ts';
 import {
 	emitLog,
 	LANG_NAMES,
@@ -12,6 +12,7 @@ import {
 	translationFilePath,
 	updateStageDB,
 } from './utils/utils.ts';
+import { Context, setCtx } from '../context/context.ts';
 
 /**
  * translate.[dstLang].json 结构
@@ -31,7 +32,9 @@ export interface TranslateFile {
 		speaker: string;
 	}[];
 }
-export async function stageTranslate(taskId: string, sessionPath: string) {
+export async function stageTranslate(ctx: Context) {
+	const taskId = ctx.task.id;
+	const sessionPath = ctx.task.session_path
 	const metadataDir = join(sessionPath, 'metadata');
 
 	// 解析目标语言: config > auto 推断
@@ -42,7 +45,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 		configTargetLang ?? (srcLangCode === 'zh' ? 'en' : 'zh');
 
 	if (resolvedDstLang !== existingDstLang) {
-		setLocalInfo(sessionPath, { target_language: resolvedDstLang });
+		setCtx(sessionPath, { target_language: resolvedDstLang });
 	}
 
 	const srtFile = subtitleFilePath(sessionPath);
@@ -51,7 +54,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
 	const dstLangName = LANG_NAMES[dstLangCode] || dstLangCode;
 
-	const data = readJson(srtFile, 'Translate');
+	const data = readJson(srtFile, ctx);
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
@@ -60,7 +63,7 @@ export async function stageTranslate(taskId: string, sessionPath: string) {
 	const hasMeta = existsSync(ytdlpPath);
 	let meta: any = {};
 	if (hasMeta) {
-		meta = readJson(ytdlpPath, 'Translate');
+		meta = readJson(ytdlpPath, ctx);
 	}
 
 	const transCfg = readConfig().stages?.translate;
@@ -251,18 +254,7 @@ ${correctionsStr}
 		speaker: '1',
 	}));
 
-	writeJson(translationFile, { translation }, 'Translate');
-
-	setLocalInfo(sessionPath, {
-		runInfo: {
-			translate: {
-				resolvedDstLang,
-				actualModel: api.model,
-				apiBase: api.baseUrl,
-				batchSize: BATCH_SIZE,
-			},
-		},
-	});
+	writeJson(translationFile, { translation }, ctx);
 
 	await updateStageDB(taskId, 'translate', {
 		status: 'succeeded',

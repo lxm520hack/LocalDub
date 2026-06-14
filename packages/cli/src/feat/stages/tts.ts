@@ -13,6 +13,7 @@ import { pythonBin, REPO_ROOT, readConfig } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, nowISO, readTaskLanguages, updateStageDB } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
+import { Context } from '../context/context.ts';
 
 function createTTSBackend(cfg: TTSConfig) {
 	if (!cfg) throw new Error('TTS config not found');
@@ -111,10 +112,11 @@ async function runPytorchBatch(
 }
 
 export async function stageTts(
-	taskId: string,
-	sessionPath: string,
+	ctx: Context,
 	daemon?: MLDaemon,
 ) {
+	const taskId = ctx.task.id;
+	const sessionPath = ctx.task.session_path
 	const ttsCfg = readConfig().stages?.tts!
 	const { targetLanguage: dstLangCode } = readTaskLanguages(sessionPath);
 	const translationFile = resolve(
@@ -128,9 +130,9 @@ export async function stageTts(
 
 	if (!existsSync(translationFile))
 		throw new Error(`${translationFile} not found`);
-	ensureDir(ttsDir, 'TTS', taskId);
+	ensureDir(ttsDir, ctx);
 
-	const data: TranslateFile = readJson(translationFile, 'TTS', taskId);
+	const data: TranslateFile = readJson(translationFile, ctx);
 	const translation = data.translation;
 
 	const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
@@ -225,7 +227,7 @@ export async function stageTts(
 
 			const text = item.dst || '';
 			if (!text.trim()) {
-				writeFile(outPath, Buffer.alloc(44), 'TTS', taskId);
+				writeFile(outPath, Buffer.alloc(44), ctx);
 				continue;
 			}
 
@@ -238,7 +240,7 @@ export async function stageTts(
 					taskId,
 					`[WARN] [TTS] No reference for segment ${idx}, skipping`,
 				);
-				writeFile(outPath, Buffer.alloc(44), 'TTS', taskId);
+				writeFile(outPath, Buffer.alloc(44), ctx);
 				continue;
 			}
 

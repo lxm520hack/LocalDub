@@ -11,7 +11,6 @@ import { join, relative } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { sanitizeText } from './../../feat/tasks/fn.ts';
 import { extractVideoId, isYouTubeUrl } from './../../feat/tasks/validate.ts';
-import { readLocalInfo, writeLocalInfo } from '../config/config.ts';
 import {
 	emitLog,
 	ffmpeg,
@@ -19,6 +18,7 @@ import {
 	updateStageDB,
 	updateTaskDB,
 } from './utils/utils.ts';
+import { readCtx, setStage, writeCtx } from '../context/context.ts';
 
 export async function stageDownload(
 	taskId: string,
@@ -29,8 +29,8 @@ export async function stageDownload(
 	let videoPath = join(mediaDir, 'video_source.mp4');
 
 	if (existsSync(videoPath)) {
-		emitLog(taskId, '[Download] Already on disk');
-		await updateStageDB(taskId, 'download', {
+		emitLog(sessionPath, '[Download] Already on disk');
+		await setStage(sessionPath, 'download', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
@@ -41,8 +41,8 @@ export async function stageDownload(
 
 	// Local upload URL (local://upload/<uploadTaskId>)
 	if (url.startsWith('local://')) {
-		emitLog(taskId, '[Download] Importing local video...');
-		await updateStageDB(taskId, 'download', {
+		emitLog(sessionPath, '[Download] Importing local video...');
+		await setStage(sessionPath, 'download', {
 			last_message: 'Importing local video...',
 			progress: 0,
 		});
@@ -85,22 +85,24 @@ export async function stageDownload(
 			throw new Error('ffmpeg did not produce video_source.mp4');
 
 		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
-		emitLog(taskId, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+		emitLog(sessionPath, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
 
 		// Preserve existing fields  from fn.ts
-		const existing = readLocalInfo(sessionPath);
-		writeLocalInfo(sessionPath, {
+		const existing = readCtx(sessionPath);
+		writeCtx( {
 			...existing,
-			id: uploadTaskId,
-			title: files[0].replace(/\.\w+$/, ''),
-			source: 'local',
-			webpage_url: url,
-			original_path: sourceFile,
+			task: {
+				...existing.task,
+				id: uploadTaskId,
+				source: 'local',
+				title: files[0].replace(/\.\w+$/, ''),
+				url,
+			},
 			asr_language: 'auto',
 			pipeline: existing?.pipeline || 'dub',
 		});
 
-		await updateStageDB(taskId, 'download', {
+		await setStage(sessionPath, 'download', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
@@ -160,7 +162,7 @@ export async function stageDownload(
 	mediaDir = join(resolvedSession, 'media');
 	videoPath = join(mediaDir, 'video_source.mp4');
 
-	emitLog(taskId, '[Download] Downloading video...');
+	emitLog(sessionPath, '[Download] Downloading video...');
 	await updateStageDB(taskId, 'download', {
 		last_message: 'Downloading video...',
 		progress: 0,
@@ -197,8 +199,8 @@ export async function stageDownload(
 		throw new Error('yt-dlp did not produce video_source.mp4');
 
 	const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
-	emitLog(taskId, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
-	emitLog(taskId, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
+	emitLog(sessionPath, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+	emitLog(sessionPath, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
 
 	await updateStageDB(taskId, 'download', {
 		status: 'succeeded',

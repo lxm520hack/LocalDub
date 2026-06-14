@@ -7,19 +7,20 @@ import {
 	pythonBin,
 	REPO_ROOT,
 	readConfig,
-	setLocalInfo,
 } from '../config/config.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, updateStageDB } from './utils/utils.ts';
 import { AsrOptions } from './asr/types.ts';
 import { parseAsrOutput } from './asr/utils.ts';
+import { Context, setCtx } from '../context/context.ts';
 
 
 
 export async function stageAsr(
-	taskId: string,
-	sessionPath: string,
+	ctx: Context,
 	daemon?: MLDaemon,
 ) {
+	  const taskId = ctx.task.id;
+  const sessionPath = ctx.task.session_path
 	await updateStageDB(taskId, 'asr', {
 		last_message: 'Transcribing...',
 		progress: 0,
@@ -47,10 +48,10 @@ export async function stageAsr(
 		if (mixMode === 'raw-sum') {
 			const bgmPath = resolve(sessionAbsPath, 'media', 'target_bgm.wav');
 			if (!existsSync(bgmPath)) {
-				emitLog(taskId, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
+				emitLog(sessionAbsPath, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
 			} else {
 				const mixedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_mixed.wav');
-				emitLog(taskId, `[ASR] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
+				emitLog(sessionAbsPath, `[ASR] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
 				ffmpeg([
 					'-i', sourcePath,
 					'-i', bgmPath,
@@ -64,12 +65,12 @@ export async function stageAsr(
 		} else if (mixMode === 'sidechain') {
 			const bgmPath = resolve(sessionAbsPath, 'media', 'target_bgm.wav');
 			if (!existsSync(bgmPath)) {
-				emitLog(taskId, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
+				emitLog(sessionAbsPath, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
 			} else {
 				const mixedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_mixed.wav');
 				const scParams = `threshold=${sc.threshold ?? 0.1}:ratio=${sc.ratio ?? 20}:attack=${sc.attack ?? 1}:release=${sc.release ?? 500}`;
 				const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
-				emitLog(taskId, `[ASR] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
+				emitLog(sessionAbsPath, `[ASR] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
 				ffmpeg([
 					'-i', sourcePath,
 					'-i', bgmPath,
@@ -84,7 +85,7 @@ export async function stageAsr(
 
 		if (useGate) {
 			const gatedPath = resolve(sessionAbsPath, 'media', 'target_3_vocals_gated.wav');
-			emitLog(taskId, '[ASR] Applying silence gate...');
+			emitLog(sessionAbsPath, '[ASR] Applying silence gate...');
 			ffmpeg([
 				'-i', sourcePath,
 				'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
@@ -99,13 +100,13 @@ export async function stageAsr(
 	const asrCfg = readConfig().stages?.asr;
 	const runtime = asrCfg?.runtime ?? 'pytorch';
 	const device = asrCfg?.device ?? 'cuda';
-	emitLog(taskId, `[ASR] runtime=${runtime} device=${device}`);
+	emitLog(sessionAbsPath, `[ASR] runtime=${runtime} device=${device}`);
 
 	const pyBin = pythonBin();
 	const { asrLanguage } = readTaskLanguages(sessionPath);
 
 	if (runtime === 'pytorch' && daemon?.ready) {
-		emitLog(taskId, `[ASR] Using Python daemon (device=${device})`);
+		emitLog(sessionAbsPath, `[ASR] Using Python daemon (device=${device})`);
 		const result = await daemon.runStage('asr', taskId, {
 			vocals_path: audioPath,
 			session_path: sessionAbsPath,
@@ -121,7 +122,7 @@ export async function stageAsr(
 			);
 		}
 		if (r.detected_language) {
-			setLocalInfo(sessionAbsPath, {
+			setCtx(sessionAbsPath, {
 				asr_language: r.detected_language,
 				runInfo: {
 					asr: {
@@ -134,21 +135,21 @@ export async function stageAsr(
 			});
 		}
 		if (r.load_time_s)
-			emitLog(taskId, `[ASR] Model loaded in ${r.load_time_s}s`);
+			emitLog(sessionAbsPath, `[ASR] Model loaded in ${r.load_time_s}s`);
 		if (r.process_time_s)
-			emitLog(taskId, `[ASR] Transcribed in ${r.process_time_s}s`);
+			emitLog(sessionAbsPath, `[ASR] Transcribed in ${r.process_time_s}s`);
 		if (r.audio_duration_s)
 			emitLog(
-				taskId,
+				sessionAbsPath,
 				`[ASR] Audio duration ${Number(r.audio_duration_s).toFixed(1)}s`,
 			);
-		if (r.rtf) emitLog(taskId, `[ASR] RTF ${r.rtf}`);
+		if (r.rtf) emitLog(sessionAbsPath, `[ASR] RTF ${r.rtf}`);
 	} else if (runtime === 'pytorch') {
-		await asrPytorch({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
+		await asrPytorch({ ctx,taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
 	} else if (runtime === 'ggml') {
-		await asrWhisperCpp(taskId, audioPath, sessionAbsPath, asrLanguage || 'auto');
+		await asrWhisperCpp(ctx, audioPath, sessionAbsPath, asrLanguage || 'auto');
 	} else {
-		await asrFasterWhisper({ taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
+		await asrFasterWhisper({ ctx, taskId, audioPath, sessionPath: sessionAbsPath, language: asrLanguage, device, pythonBin: pyBin });
 	}
 
 	/**
@@ -158,7 +159,7 @@ export async function stageAsr(
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
 	const asrFile = resolve(metadataDir, 'asr.json');
 	if (existsSync(asrFile)) {
-		const data = readJson(asrFile, 'ASR');
+		const data = readJson(asrFile, ctx);
 		const durationMs = data.audio_info?.duration ?? 0;
 		if (durationMs > 0 && data.result?.segments?.length) {
 			const before = data.result.segments.length;
@@ -167,8 +168,8 @@ export async function stageAsr(
 			);
 			if (data.result.segments.length < before) {
 				const removed = before - data.result.segments.length;
-				emitLog(taskId, `[ASR] Removed ${removed} hallucinated segment(s) (start >= ${durationMs}ms or end <= 0ms)`);
-				writeJson(asrFile, data, 'ASR');
+				emitLog(sessionAbsPath, `[ASR] Removed ${removed} hallucinated segment(s) (start >= ${durationMs}ms or end <= 0ms)`);
+				writeJson(asrFile, data, ctx);
 			}
 		}
 
@@ -179,8 +180,8 @@ export async function stageAsr(
 			console.log(`[ASR] Last segment RMS: ${rms}`);
 			if (rms > 0 && rms < 0.005) {
 				const removed = data.result.segments.pop();
-				emitLog(taskId, `[ASR] Removed low-energy hallucinated segment "${removed.text.slice(0, 30)}" (RMS=${rms.toFixed(5)})`);
-				writeJson(asrFile, data, 'ASR');
+				emitLog(sessionAbsPath, `[ASR] Removed low-energy hallucinated segment "${removed.text.slice(0, 30)}" (RMS=${rms.toFixed(5)})`);
+				writeJson(asrFile, data, ctx);
 			}
 		}
 	}
@@ -194,7 +195,7 @@ export async function stageAsr(
 }
 
 async function asrPytorch(opts: AsrOptions) {
-	let { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin } = opts;
+	let { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin, ctx } = opts;
 	const script = join(
 		REPO_ROOT,
 		'packages',
@@ -268,9 +269,9 @@ async function asrPytorch(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath, 'ASR');
+		const asr = readJson(asrOutputPath, ctx);
 		if (asr.detected_language) {
-			setLocalInfo(sessionAbsPath, {
+			setCtx(sessionAbsPath, {
 				asr_language: asr.detected_language,
 				runInfo: {
 					asr: {
@@ -282,19 +283,19 @@ async function asrPytorch(opts: AsrOptions) {
 				},
 			});
 		}
-		emitAsrTiming(taskId, asr, elapsedSec);
+		emitAsrTiming(sessionAbsPath, asr, elapsedSec);
 		return;
 	}
 }
 
 
-function emitAsrTiming(taskId: string, asr: Record<string, any>, elapsedSec: number) {
-	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
+function emitAsrTiming(sessionPath: string, asr: Record<string, any>, elapsedSec: number) {
+	emitLog(sessionPath, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
 	const durationMs = asr.audio_info?.duration ?? 0;
 	if (durationMs > 0) {
 		const audioDurationS = durationMs / 1000;
-		emitLog(taskId, `[ASR] Audio duration ${audioDurationS.toFixed(1)}s`);
-		emitLog(taskId, `[ASR] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
+		emitLog(sessionPath, `[ASR] Audio duration ${audioDurationS.toFixed(1)}s`);
+		emitLog(sessionPath, `[ASR] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 	}
 }
 
@@ -323,7 +324,7 @@ function segmentRms(audioPath: string, startMs: number, endMs: number): Promise<
 }
 
 async function asrWhisperCpp(
-	taskId: string,
+	ctx: Context,
 	audioPath: string,
 	sessionAbsPath: string,
 	language: string,
@@ -335,11 +336,11 @@ async function asrWhisperCpp(
 		process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin',
 	);
 
-	emitLog(taskId, `[ASR] runtime=ggml binary=${whisperCli}`);
+	emitLog(sessionAbsPath, `[ASR] runtime=ggml binary=${whisperCli}`);
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
 	const audioDir = resolve(REPO_ROOT, sessionAbsPath, 'tmp');
-	ensureDir(audioDir, 'ASR');
+	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
 	// Copy/convert input to WAV
@@ -381,7 +382,7 @@ async function asrWhisperCpp(
 		throw new Error(`whisper-cli did not produce ${whisperJson}`);
 	}
 
-	const raw = readJson(whisperJson, 'ASR');
+	const raw = readJson(whisperJson, ctx);
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = readConfig().stages?.asr?.wordsOutput ?? true;
@@ -422,7 +423,7 @@ async function asrWhisperCpp(
 	const text = segments.map(s => s.text).join(' ');
 
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
-	ensureDir(metadataDir, 'ASR');
+	ensureDir(metadataDir, ctx);
 
 	const lastEndMs = segments.length ? segments[segments.length - 1].end : 0;
 	const asrOutput = {
@@ -434,22 +435,22 @@ async function asrWhisperCpp(
 			? (elapsedSec / (lastEndMs / 1000)).toFixed(3)
 			: '0',
 	};
-	writeJson(join(metadataDir, 'asr.json'), asrOutput, 'ASR');
+	writeJson(join(metadataDir, 'asr.json'), asrOutput, ctx);
 
 	// Cleanup tmp audio and json
-	removeFile(tmpAudio, 'ASR');
-	removeFile(whisperJson, 'ASR');
+	removeFile(tmpAudio, ctx);
+	removeFile(whisperJson, ctx);
 
-	emitLog(taskId, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(sessionAbsPath, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
 	if (segments.length > 0) {
 		const audioDurationMs = segments[segments.length - 1].end;
-		emitLog(taskId, `[ASR] Audio duration ${(audioDurationMs / 1000).toFixed(1)}s`);
-		emitLog(taskId, `[ASR] RTF ${(elapsedSec / (audioDurationMs / 1000)).toFixed(3)}`);
+		emitLog(sessionAbsPath, `[ASR] Audio duration ${(audioDurationMs / 1000).toFixed(1)}s`);
+		emitLog(sessionAbsPath, `[ASR] RTF ${(elapsedSec / (audioDurationMs / 1000)).toFixed(3)}`);
 	}
 }
 
 async function asrFasterWhisper(opts: AsrOptions) {
-	const { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin } = opts;
+	const { taskId, audioPath, sessionPath: sessionAbsPath, language, device, pythonBin: pyBin, ctx } = opts;
 	const asrScript = join(
 		REPO_ROOT,
 		'packages',
@@ -499,10 +500,10 @@ async function asrFasterWhisper(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath, 'ASR');
+		const asr = readJson(asrOutputPath, ctx);
 		const actualDevice = fallbackToCpu ? 'cpu' : useGpu ? 'cuda' : 'cpu';
 		if (asr.detected_language) {
-			setLocalInfo(sessionAbsPath, {
+			setCtx(sessionAbsPath, {
 				asr_language: asr.detected_language,
 				runInfo: {
 					asr: {
@@ -515,7 +516,7 @@ async function asrFasterWhisper(opts: AsrOptions) {
 				},
 			});
 		}
-		emitAsrTiming(taskId, asr, elapsedSec);
+		emitAsrTiming(sessionAbsPath, asr, elapsedSec);
 
 		return;
 	}

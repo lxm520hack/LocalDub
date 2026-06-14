@@ -7,8 +7,8 @@ import { db } from '../../../db/index.ts';
 import { getStages } from '../../tasks/stages.ts';
 import { taskStages, tasks } from '../../tasks/table.ts';
 import type { TargetLang } from '../../config/types.ts';
-import { readConfig } from '../../config/config.ts';
-import { getTaskId } from './context.ts';
+import {  readConfig } from '../../config/config.ts';
+import { Context, getTaskId, readCtx } from '../../context/context.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -31,7 +31,8 @@ function ffmpegInstallHint(): string {
 	}
 }
 
-import { readLocalInfo } from '../../config/config.ts';
+import { fileLog, readJson } from './fileOps.ts';
+import { to } from '@repo/shared/lib/utils/try.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function broadcastUpdate(_table: string, _mutations: any[]) {
@@ -100,7 +101,7 @@ export function readTaskLanguages(sessionPath: string): {
 	asrLanguage: string;
 	targetLanguage: TargetLang;
 } {
-	const info = readLocalInfo(sessionPath);
+	const info = readCtx(sessionPath);
 	if (info) {
 		return {
 			asrLanguage: info.asr_language || 'en',
@@ -140,13 +141,12 @@ export function srtTime(ms: number): string {
 	return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ml).padStart(3, '0')}`;
 }
 
-export function emitLog(taskId: string, line: string) {
-	const tid = taskId || getTaskId();
+export function emitLog(sessionPath: string, line: string) {
+	const tid = getTaskId();
 	console.log(line);
 	if (!tid) return;
 	const ts = nowISO();
-	const logPath = join(LOG_DIR, `${tid}.log`);
-	mkdirSync(LOG_DIR, { recursive: true });
+	const logPath = join(sessionPath, `${tid}.log`);
 	appendFileSync(logPath, `[${ts}] ${line}\n`);
 }
 
@@ -166,14 +166,7 @@ export function ffmpeg(args: string[], timeout = 120_000) {
 		);
 }
 
-export async function currentTask(taskId: string) {
-	const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-	if (!task) throw new Error(`Task ${taskId} not found`);
-	const sp = task.session_path
-		? resolve(REPO_ROOT, task.session_path)
-		: join(WORKFOLDER, taskId);
-	return { task, sessionPath: sp };
-}
+
 
 function msDiff(a: string | null, b: string | null): number | null {
 	if (!a || !b) return null;
@@ -239,7 +232,7 @@ export async function getStageStatuses(taskId: string) {
 		.where(eq(taskStages.task_id, taskId));
 
 	const sessionPath = join(REPO_ROOT, task.session_path || task.id);
-	const pipeline = readLocalInfo(sessionPath)?.pipeline || 'dub';
+	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
 
 	const stageSpecs = getStages(pipeline);
 	const stageMap = new Map(rows.map((r) => [r.name, r]));

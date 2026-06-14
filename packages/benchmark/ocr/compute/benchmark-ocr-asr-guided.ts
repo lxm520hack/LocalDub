@@ -4,6 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { levenshtein, FrameResult, mergeFrames, dedupOverlap } from '../../../cli/src/feat/stages/utils/ocrMerge';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const CPP_BIN = resolve(REPO_ROOT, 'packages', 'ocr-cpp', 'build', 'ocr_pipeline');
@@ -32,7 +33,7 @@ function parseArgs() {
     if (args[i] === '--label') LABEL = args[++i];
     if (args[i] === '--strategy') STRATEGY = args[++i];
     if (args[i] === '--help') {
-      console.log('Usage: ASR_SOURCE=... ASR_PARAM=... bun run benchmark-ocr-asr-guided.ts [--text-score 0.45] [--subtitle-only] [--strategy mid1fps|end1fps] [--label name]');
+      console.log('Usage: ASR_SOURCE=... ASR_PARAM=... bun run benchmark-ocr-asr-guided.ts [--text-score 0.45] [--subtitle-only] [--strategy mid1fps|end1fps|end2fps] [--label name]');
       process.exit(0);
     }
   }
@@ -82,7 +83,7 @@ function mergeSegments(segs: Segment[], sameTextGapMs = 1000): Segment[] {
       merged.push({ ...s });
     }
   }
-  return merged;
+  return dedupOverlap(merged);
 }
 
 function segmentsToText(segs: Segment[]): string { return segs.map((s) => s.text).join(''); }
@@ -101,34 +102,94 @@ function extractFrame(videoPath: string, timeMs: number, outPath: string): boole
   return r.status === 0;
 }
 
-function run(label: string, segs: Segment[], desc: string, asrSrc: ASRSeg[], ocrCallCount?: number, elapsedSec?: number) {
-  const text = segmentsToText(segs);
+function fixOverlap(asrSegs: Segment[], rawFrames: FrameResult[], ocrSegs: Segment[]): Segment[] {
+  const fix = asrSegs.map((s) => ({ ...s }));
+  const sorted = [...rawFrames].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Pass 1: fix overlapping ASR segments using OCR frame text change points
+  for (let i = 1; i < fix.length; i++) {
+    const prev = fix[i - 1];
+    const cur = fix[i];
+    if (cur.start >= prev.end) continue;
+    const overlapEnd = Math.min(prev.end, cur.end);
+    for (const f of sorted) {
+      if (f.timestamp < cur.start) continue;
+      if (f.timestamp > overlapEnd) break;
+      const dCur = levenshtein(f.text, cur.text);
+      const dPrev = levenshtein(f.text, prev.text);
+      if (dCur <= 2 && dCur < dPrev) {
+        prev.end = f.timestamp;
+        cur.start = f.timestamp;
+        break;
+      }
+    }
+  }
+
+  // Pass 2: if ASR start is > 500ms before the matching OCR segment start, clip to OCR start
+  for (const seg of fix) {
+    let bestOcr: Segment | null = null;
+    let bestOverlap = 0;
+    for (const o of ocrSegs) {
+      const overlap = Math.min(seg.end, o.end) - Math.max(seg.start, o.start);
+      if (overlap > bestOverlap && levenshtein(seg.text, o.text) <= 2) {
+        bestOverlap = overlap;
+        bestOcr = o;
+      }
+    }
+    if (bestOcr && seg.start + 500 < bestOcr.start) {
+      seg.start = bestOcr.start;
+    }
+  }
+
+  return fix;
+}
+
+function run(label: string, ocrSegs: Segment[], asrSegs: Segment[], rawFrames: FrameResult[], desc: string, asrSrc: ASRSeg[], ocrCallCount?: number, elapsedSec?: number) {
+  const ocrText = segmentsToText(ocrSegs);
+  const asrText = segmentsToText(asrSegs);
   const resultDir = join(RESULTS_BASE, label);
   mkdirSync(resultDir, { recursive: true });
   mkdirSync(join(resultDir, 'metadata'), { recursive: true });
 
   const asrSrcPath = `packages/benchmark/asr/whisper/results/${ASR_SOURCE}/${ASR_PARAM}/metadata/whisper_raw.json`;
 
-  // summary.json — lightweight bench stats
-  writeFileSync(join(resultDir, 'metadata', 'summary.json'), JSON.stringify({ label, desc, segments: segs.length, hyp_chars: text.length, ocrCalls: ocrCallCount ?? 0, elapsedSec: elapsedSec ?? 0 }, null, 2));
+  // asr_ocr_fix — use OCR frame data to find text change points in overlapping regions
+  const fixSegs = fixOverlap(asrSegs, rawFrames, ocrSegs).filter((s) => s.end > s.start);
+  const fixText = segmentsToText(fixSegs);
 
-  // ocr.json — for eval-asr.ts --ms
+  // summary.json — lightweight bench stats
+  writeFileSync(join(resultDir, 'metadata', 'summary.json'), JSON.stringify({ label, desc, ocrSegments: ocrSegs.length, asrSegments: asrSegs.length, fixSegments: fixSegs.length, ocrHypChars: ocrText.length, asrHypChars: asrText.length, fixHypChars: fixText.length, ocrCalls: ocrCallCount ?? 0, elapsedSec: elapsedSec ?? 0 }, null, 2));
+
+  // ocr.json — pure OCR boundaries (for eval-asr.ts --ms)
   writeFileSync(join(resultDir, 'metadata', 'ocr.json'), JSON.stringify({
-    audio_info: { duration: segs.length > 0 ? segs[segs.length - 1].end : 0 },
-    result: { text, segments: segs.map((s) => ({ text: s.text, start: s.start, end: s.end })) },
+    audio_info: { duration: ocrSegs.length > 0 ? ocrSegs[ocrSegs.length - 1].end : 0 },
+    _boundary: 'ocr',
+    result: { text: ocrText, segments: ocrSegs.map((s) => ({ text: s.text, start: s.start, end: s.end })) },
   }, null, 2));
 
-  // asr_ocr.json — provenance + full segments
+  // asr_ocr.json — ASR-guided boundaries (dev reference)
   writeFileSync(join(resultDir, 'metadata', 'asr_ocr.json'), JSON.stringify({
-    _engine: 'asr_ocr', _strategy: STRATEGY,
+    _engine: 'asr_ocr', _strategy: STRATEGY, _boundary: 'asr',
     _asr: { engine: 'whisper.cpp', model: 'ggml-large-v3-turbo', device: 'Vulkan (RADV)', source: asrSrcPath },
     _ocr: { engine: 'cpp-ort', model: 'rapidocar (det+cls+rec)', device: 'CPU', textScore: TEXT_SCORE, subtitleOnly: SUBTITLE_ONLY },
     _fusion_params: { strategy: STRATEGY, ocrCalls: ocrCallCount ?? 0, elapsedSec: elapsedSec ? Math.round(elapsedSec * 10) / 10 : 0 },
-    result: { text, segments: segs.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: formatTime(s.start), end_fmt: formatTime(s.end) })) },
+    result: { text: asrText, segments: asrSegs.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: formatTime(s.start), end_fmt: formatTime(s.end) })) },
+  }, null, 2));
+
+  // asr_ocr_fix.json — ASR-guided with overlap clipped (dev reference)
+  writeFileSync(join(resultDir, 'metadata', 'asr_ocr_fix.json'), JSON.stringify({
+    _engine: 'asr_ocr', _strategy: STRATEGY, _boundary: 'asr_fix',
+    _asr: { engine: 'whisper.cpp', model: 'ggml-large-v3-turbo', device: 'Vulkan (RADV)', source: asrSrcPath },
+    _ocr: { engine: 'cpp-ort', model: 'rapidocar (det+cls+rec)', device: 'CPU', textScore: TEXT_SCORE, subtitleOnly: SUBTITLE_ONLY },
+    _fusion_params: { strategy: STRATEGY, ocrCalls: ocrCallCount ?? 0, elapsedSec: elapsedSec ? Math.round(elapsedSec * 10) / 10 : 0 },
+    result: { text: fixText, segments: fixSegs.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: formatTime(s.start), end_fmt: formatTime(s.end) })) },
   }, null, 2));
 
   console.log(`[${label}] ${desc}`);
-  console.log(`  segs=${segs.length} hyp=${text.length} calls=${ocrCallCount} in ${elapsedSec?.toFixed(1)}s`);
+  console.log(`  OCR-boundary: segs=${ocrSegs.length} hyp=${ocrText.length}`);
+  console.log(`  ASR-boundary: segs=${asrSegs.length} hyp=${asrText.length}`);
+  console.log(`  ASR-fix:      segs=${fixSegs.length} hyp=${fixText.length}`);
+  console.log(`  calls=${ocrCallCount} in ${elapsedSec?.toFixed(1)}s`);
 }
 
 if (require.main === module) {
@@ -143,15 +204,24 @@ if (require.main === module) {
 
   mkdirSync(TMP_DIR, { recursive: true });
 
-  const results: { text: string; start: number; end: number }[] = [];
+  // ASR-guided results: text + ASR segment boundaries
+  const asrResults: { text: string; start: number; end: number }[] = [];
+  // Pure frame-level data for OCR boundary detection
+  const rawFrames: FrameResult[] = [];
   let ocrCount = 0;
   let ocrStart = Date.now();
 
   for (let i = 0; i < asrSegs.length; i++) {
     const asr = asrSegs[i];
     const frames: number[] = [];
-    if (STRATEGY === 'end1fps') {
+    if (i === 0) {
+      // 第一段 10fps，精确找字幕首次出现帧
+      for (let t = Math.round(asr.start); t <= Math.round(asr.end); t += 100) frames.push(Math.round(t));
+    } else if (STRATEGY === 'end1fps') {
       for (let t = Math.round(asr.end) - 200; t >= asr.start; t -= 1000) frames.push(Math.round(t));
+      frames.sort((a, b) => a - b);
+    } else if (STRATEGY === 'end2fps') {
+      for (let t = Math.round(asr.end); t >= asr.start; t -= 500) frames.push(Math.round(t));
       frames.sort((a, b) => a - b);
     } else {
       const midMs = Math.round((asr.start + asr.end) / 2);
@@ -169,14 +239,15 @@ if (require.main === module) {
       const best = lines.reduce((a, b) => a.confidence > b.confidence ? a : b, { text: '', confidence: 0 });
       const threshold = TEXT_SCORE ?? 0.3;
       if (best.text && best.confidence > threshold) {
-        results.push({ text: best.text, start: asr.start, end: asr.end });
+        asrResults.push({ text: best.text, start: i === 0 ? Math.max(0, frameMs - 90) : asr.start, end: asr.end });
+        rawFrames.push({ text: best.text, timestamp: frameMs, confidence: best.confidence });
       }
     }
   }
 
-  // Dedup consecutive same-text
+  // --- ASR-guided boundaries ---
   const deduped: { text: string; start: number; end: number }[] = [];
-  for (const r of results) {
+  for (const r of asrResults) {
     const last = deduped[deduped.length - 1];
     if (last && last.text === r.text && r.start <= last.end + 1000) {
       last.start = Math.min(last.start, r.start);
@@ -185,11 +256,15 @@ if (require.main === module) {
       deduped.push({ text: r.text, start: r.start, end: r.end });
     }
   }
+  const asrSegs_merged = mergeSegments(deduped, 1000);
+
+  // --- Pure OCR boundaries (from frame timestamps) ---
+  rawFrames.sort((a, b) => a.timestamp - b.timestamp);
+  const ocrSegs_merged = mergeFrames(rawFrames).map((s) => ({ text: s.text, start: s.start, end: s.end }));
 
   const elapsed = (Date.now() - ocrStart) / 1000;
-  const segs = mergeSegments(deduped, 1000);
   const hop = STRATEGY === 'end1fps' ? 'end-200ms 1fps clamped' : 'mid ±1fps clamped';
-  run(LABEL, segs, `ASR ${hop} (${ocrCount} OCR calls, ${elapsed.toFixed(1)}s)`, asrSegs, ocrCount, elapsed);
+  run(LABEL, ocrSegs_merged, asrSegs_merged, rawFrames, `ASR ${hop} (${ocrCount} OCR calls, ${elapsed.toFixed(1)}s)`, asrSegs, ocrCount, elapsed);
 
   spawnSync('rm', ['-rf', TMP_DIR]);
   console.log(`\nResults: ${join(RESULTS_BASE, LABEL)}`);

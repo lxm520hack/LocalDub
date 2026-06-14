@@ -1,4 +1,7 @@
+import { Context } from "../../context/context";
+
 export interface AsrOptions {
+	ctx: Context;
 	taskId: string;
 	audioPath: string;
 	sessionPath: string;

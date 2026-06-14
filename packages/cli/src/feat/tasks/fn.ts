@@ -1,12 +1,14 @@
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { WORKFOLDER } from '@repo/config';
+import { env, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { eq, sql } from 'drizzle-orm';
 import { db } from './../../db/index.ts';
 import { DUB_STAGES, getStages } from './../../feat/tasks/stages.ts';
 import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import { writeLocalInfo } from '../config/config.ts';
-import type { LocalInfo, TargetLang } from '../config/types.ts';
+import type { Ctx, TargetLang } from '../config/types.ts';
+import { Context, writeCtx } from '../context/context.ts';
+import { isYouTubeUrl } from './validate.ts';
+import { existsSync } from '../stages/utils/fileOps.ts';
 
 export function sanitizeText(value: string, fallback = 'untitled'): string {
 	const cleaned = value
@@ -32,91 +34,128 @@ export async function findTaskByVideoId(
 	return rows[0]?.id ?? null;
 }
 
-export async function createTask(params: {
-	url?: string;
+export async function createTask({
+	pipeline = 'dub',
+	url,
+	source,
+	...params}: {
+		url: string;
 	taskId: string;
-	sourceFile?: string;
+	source: 'youtube' | 'bilibili' | 'local';
 	sourceLang?: string;
 	targetLang?: TargetLang;
 	pipeline?: 'dub' | 'subtitle';
 	stages?: Record<string, Record<string, unknown>>;
 }) {
 	const createdAt = nowISO();
-	const pipeline: 'dub' | 'subtitle' = params.pipeline || 'dub';
-	let taskUrl = params.url!;
-
-	if (params.sourceFile) {
+	const stages = getStages(pipeline);
+	let ctx: Context = {
+		task: {
+				id: params.taskId,
+				status: 'queued',
+				source,
+				url: url,
+				created_at: createdAt,
+				current_stage: stages[0].name,
+				session_path: 'unset',
+			},
+			asr_language: params.sourceLang || 'auto',
+			pipeline,
+			lastRunPipeline: pipeline,
+			stages: stages.map((stage) => ({
+				task_id: params.taskId,
+				name: stage.name,
+				label: stage.label,
+				status: 'pending',
+			}))
+	}
+	if (source==='local') {
 		const uploadDir = join(WORKFOLDER, '_uploads', params.taskId);
 		mkdirSync(uploadDir, { recursive: true });
 
 		let filename: string;
 		if (
-			params.sourceFile.startsWith('http://') ||
-			params.sourceFile.startsWith('https://')
+			url.startsWith('http://') ||
+			url.startsWith('https://')
 		) {
-			const url = new URL(params.sourceFile);
-			filename = basename(url.pathname) || 'video.mp4';
-			const resp = await fetch(params.sourceFile);
+			const urlO = new URL(url);
+			filename = basename(urlO.pathname) || 'video.mp4';
+			const resp = await fetch(url);
 			if (!resp.ok)
 				throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
 			const buf = Buffer.from(await resp.arrayBuffer());
 			writeFileSync(join(uploadDir, filename), buf);
 		} else {
-			filename = basename(params.sourceFile);
-			copyFileSync(params.sourceFile, join(uploadDir, filename));
+			filename = basename(url);
+			copyFileSync(url, join(uploadDir, filename));
 		}
-		taskUrl = `local://upload/${params.taskId}`;
 
 		const sessionPath = join(WORKFOLDER, 'local', params.taskId);
 		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
-		const localInfo: LocalInfo = {
-			id: params.taskId,
-			title: filename.replace(/\.\w+$/, ''),
-			source: 'local',
-			webpage_url: taskUrl,
-			original_path: params.sourceFile,
-			asr_language: params.sourceLang || 'auto',
-			pipeline,
-			lastRunPipeline: pipeline,
-		};
+		ctx.task.title = filename.replace(/\.\w+$/, '')
+		ctx.task.session_path =`workfolder/local/${params.taskId}`
 
-		writeLocalInfo(sessionPath, localInfo);
+		
+	} else if (source === 'youtube' || source === 'bilibili') {
+		// Fetch video title via yt-dlp --dump-json (optional)
+		try {
+			const infoArgs = ['--dump-json'];
+			if (isYouTubeUrl(url) && existsSync(YOUTUBE_COOKIE_PATH))
+				infoArgs.push('--cookies', YOUTUBE_COOKIE_PATH);
+			if (isYouTubeUrl(url) && env.YTDLP_PROXY_PORT)
+				infoArgs.push(
+					'--proxy',
+					`http://127.0.0.1:${env.YTDLP_PROXY_PORT}`,
+				);
+			infoArgs.push(url);
+			const { spawnSync } = await import('node:child_process');
+			const infoR = spawnSync('yt-dlp', infoArgs, {
+				stdio: ['pipe', 'pipe', 'pipe'],
+				timeout: 30_000,
+			});
+			if (infoR.status === 0 && infoR.stdout.length > 0) {
+				const info = JSON.parse(infoR.stdout.toString());
+				if (info.title) {
+					ctx.task.title = info.title;
+				}
+			}
+		} catch {
+			/* title is optional */
+		}
 	}
 
-	const stages = getStages(pipeline);
+	// const { ret } = await db.transaction(async (tx) => {
+	// 	const ret = await tx
+	// 		.insert(tasks)
+	// 		.values({
+	// 			id: params.taskId,
+	// 			url: taskUrl,
+	// 			status: 'queued',
+	// 			current_stage: stages[0].name,
+	// 			created_at: createdAt,
+	// 		})
+	// 		.returning();
 
-	const { ret } = await db.transaction(async (tx) => {
-		const ret = await tx
-			.insert(tasks)
-			.values({
-				id: params.taskId,
-				url: taskUrl,
-				status: 'queued',
-				current_stage: stages[0].name,
-				created_at: createdAt,
-			})
-			.returning();
+	// 	await tx.insert(taskStages).values(
+	// 		stages.map((stage) => ({
+	// 			task_id: params.taskId,
+	// 			name: stage.name,
+	// 			label: stage.label,
+	// 			status: 'pending',
+	// 		})),
+	// 	);
 
-		await tx.insert(taskStages).values(
-			stages.map((stage) => ({
-				task_id: params.taskId,
-				name: stage.name,
-				label: stage.label,
-				status: 'pending',
-			})),
-		);
+	// 	return { ret };
+	// });
 
-		return { ret };
-	});
-
-	if (params.sourceFile) {
-		await db
-			.update(tasks)
-			.set({ session_path: `workfolder/local/${params.taskId}` })
-			.where(eq(tasks.id, params.taskId));
-	}
-
-	return ret;
+	// if (url) {
+	// 	await db
+	// 		.update(tasks)
+	// 		.set({ session_path: `workfolder/local/${params.taskId}` })
+	// 		.where(eq(tasks.id, params.taskId));
+	// }
+	writeCtx(ctx);
+	return ctx;
 }
 
 const STAGE_ORDER_CASE = sql`CASE ${DUB_STAGES.map(

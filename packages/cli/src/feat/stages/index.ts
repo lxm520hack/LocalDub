@@ -10,6 +10,9 @@ import { stageSplitAudio } from './split_audio.ts';
 import { stageTts } from './tts.ts';
 import { stageMergeAudio } from './merge_audio.ts';
 import { stageMergeVideo } from './merge_video.ts';
+import { readTaskLanguages, subtitleFilePath } from './utils/utils.ts';
+import { join } from 'node:path';
+import { readCtx, Task } from '../context/context.ts';
 
 export { stageDownload };
 export { stageSeparate };
@@ -23,18 +26,48 @@ export { stageTts };
 export { stageMergeAudio };
 export { stageMergeVideo };
 
-export type StageHandler = (taskId: string, sessionPath: string, task: any, daemon?: MLDaemon) => Promise<void>;
+
+export type StageHandler = (taskId: string, sessionPath: string, task: Task, daemon?: MLDaemon) => Promise<void>;
 
 export const STAGE_HANDLERS: Record<string, StageHandler> = {
   download: async (id, sp, task) => stageDownload(id, sp, task.url),
   separate: (id, sp, _task, d) => stageSeparate(id, sp, d),
-  asr: (id, sp, _task, d) => stageAsr(id, sp, d),
-  asr_fix: (id, sp, _task) => stageAsrFix(id, sp),
-  ocr: (id, sp, _task) => stageOcr(id, sp),
-  ocr_fix: (id, sp, _task) => stageOcrFix(id, sp),
-  translate: (id, sp, _task) => stageTranslate(id, sp),
-  split_audio: (id, sp, _task) => stageSplitAudio(id, sp),
-  tts: (id, sp, _task, d) => stageTts(id, sp, d),
-  merge_audio: (id, sp, _task) => stageMergeAudio(id, sp),
-  merge_video: (id, sp, _task) => stageMergeVideo(id, sp),
+  asr: (id, sp, _task, d) => { 
+    const ctx = readCtx(sp)
+    return stageAsr(ctx, d)
+  },
+  asr_fix: (id, sp, _task) => {
+
+    const ctx = readCtx(sp)
+   return stageAsrFix(ctx)},
+  ocr: (id, sp, _task) =>{
+    const ctx = readCtx(sp)
+     return stageOcr(ctx)},
+  ocr_fix: (id, sp, _task) => {
+    const ctx = readCtx(sp)
+    return stageOcrFix(ctx)},
+  translate: (id, sp, _task) => {
+    const ctx = readCtx(sp)
+    return stageTranslate(ctx)},
+  split_audio: (id, sp, _task) => {
+    const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(sp);
+    const ctx = readCtx(sp)
+    return stageSplitAudio({
+      ctx,
+      srcLangCode,
+      dstLangCode,
+      vocalsFilePath: join(sp, 'media', 'target_3_vocals.wav'),
+      sourceFilePath: join(sp, 'media', 'video_source.mp4'),
+      srtFilePath: subtitleFilePath(sp),
+    })
+  },
+  tts: (id, sp, _task, d) => {
+    const ctx = readCtx(sp)
+     return stageTts(ctx, d)},
+  merge_audio: (id, sp, _task) => {
+    const ctx = readCtx(sp)
+   return stageMergeAudio(ctx)},
+  merge_video: (id, sp, _task) =>{ 
+    const ctx = readCtx(sp)
+    return stageMergeVideo(ctx)},
 };
