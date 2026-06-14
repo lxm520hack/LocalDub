@@ -15,10 +15,9 @@ import {
 	emitLog,
 	ffmpeg,
 	nowISO,
-	updateStageDB,
-	updateTaskDB,
+
 } from './utils/utils.ts';
-import { readCtx, setStage, writeCtx } from '../context/context.ts';
+import { readCtx, setStage, setTask, writeCtx } from '../context/context.ts';
 
 export async function stageDownload(
 	taskId: string,
@@ -151,7 +150,7 @@ export async function stageDownload(
 				infoR.stdout,
 			);
 
-			await updateTaskDB(taskId, {
+			await setTask(sessionPath, {
 				session_path: relative(REPO_ROOT, resolvedSession),
 			});
 		}
@@ -163,7 +162,7 @@ export async function stageDownload(
 	videoPath = join(mediaDir, 'video_source.mp4');
 
 	emitLog(sessionPath, '[Download] Downloading video...');
-	await updateStageDB(taskId, 'download', {
+	await setStage(sessionPath, 'download', {
 		last_message: 'Downloading video...',
 		progress: 0,
 	});
@@ -202,7 +201,7 @@ export async function stageDownload(
 	emitLog(sessionPath, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
 	emitLog(sessionPath, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
 
-	await updateStageDB(taskId, 'download', {
+	await setStage(sessionPath, 'download', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,
