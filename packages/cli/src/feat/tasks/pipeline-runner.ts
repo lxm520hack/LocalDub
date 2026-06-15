@@ -97,7 +97,7 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 			throw err;
 		}
 
-		const next = await readTask(taskId)
+		const next = await readTask(sessionPath)
 		if (next) {
 			task = next;
 		}
