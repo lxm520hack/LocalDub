@@ -50,6 +50,7 @@ export interface Context {
 			fallbackToCpu?: boolean;
 		};
   }
+	video_file_path?: string; // join(mediaDir, 'video_source.mp4')
   asr_language?: string; // ASR 自动检测的语言
 	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
 }
@@ -112,7 +113,6 @@ export async function readTask(sessionPath: string) {
 	const [ctx, err] = await to<Context>(Bun.file(ctx_path).json());
 	// const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
 	if (err) throw new Error(`Task ${ctx_path} not found`);
-	fileLog(ctx, 'read', ctx_path); 
 	
 	return ctx.task;
 }

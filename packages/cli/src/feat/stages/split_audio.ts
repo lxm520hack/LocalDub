@@ -100,13 +100,11 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 
 export interface StageSplitAudioInput {
   ctx: Context;
-  vocalsFilePath?: string;
   sourceFilePath: string;
   srtFilePath: string;
 }
 export async function stageSplitAudio({
   ctx,
-  vocalsFilePath,
   sourceFilePath,
   srtFilePath,
 }: StageSplitAudioInput) {
@@ -119,7 +117,7 @@ export async function stageSplitAudio({
 	const segmentsDir = join(sessionPath, 'segments', 'vocals');
 
 	if (!existsSync(srtFilePath)) throw new Error(`subtitle file not found: ${srtFilePath}`);
-
+  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath;
 	const hasVocals = vocalsFilePath ? existsSync(vocalsFilePath) : false
 	const sourceAudio = hasVocals ? vocalsFilePath! : sourceFilePath;
 

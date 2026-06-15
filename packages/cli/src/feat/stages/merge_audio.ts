@@ -3,11 +3,12 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { readTaskLanguages, ffmpeg, nowISO,  } from './utils/utils.ts';
-import { Context, setStage } from '../context/context.ts';
+import { Context, setStage, setTask } from '../context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
-    const taskId = ctx.task.id;
+  const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
+  setTask(sessionPath, { current_stage: 'merge_audio' });
   const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const ttsDir = join(sessionPath, 'segments', 'tts');
   const tmpDir = join(sessionPath, 'tmp');

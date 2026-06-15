@@ -17,7 +17,7 @@ import {
 	nowISO,
 
 } from './utils/utils.ts';
-import { readCtx, setStage, setTask, writeCtx } from '../context/context.ts';
+import { readCtx, setCtx, setStage, setTask, writeCtx } from '../context/context.ts';
 
 export async function stageDownload(
 	taskId: string,
@@ -206,5 +206,8 @@ export async function stageDownload(
 		completed_at: nowISO(),
 		progress: 100,
 		last_message: 'Downloaded',
+	});
+	await setCtx(sessionPath, {
+		video_file_path: relative(REPO_ROOT, videoPath),
 	});
 }

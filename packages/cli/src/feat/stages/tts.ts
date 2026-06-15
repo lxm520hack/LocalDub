@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readJson, writeFile, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -11,7 +11,7 @@ import {
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
-import { emitLog, nowISO, readTaskLanguages, } from './utils/utils.ts';
+import { emitLog, ffmpeg, nowISO, readTaskLanguages, } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
 
@@ -132,25 +132,26 @@ export async function stageTts(
 	);
 	const vocalsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'vocals');
 	const ttsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'tts');
+	const tmpDir = resolve(REPO_ROOT, sessionPath, 'tmp');
 
 	if (!existsSync(timingsFile))
 		throw new Error(`${timingsFile} not found`);
 	ensureDir(ttsDir, ctx);
+	ensureDir(tmpDir, ctx);
 
 	const data: TranslateFile = await readJson(timingsFile, ctx);
 	const translation = data.translation;
 
-	const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
-	if (
-		anyTts &&
-		statSync(timingsFile).mtimeMs > statSync(join(ttsDir, anyTts)).mtimeMs
-	) {
-		for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
-		const sessionAbs = resolve(REPO_ROOT, sessionPath);
-		const dubbingFile = join(sessionAbs, 'tmp', 'audio_dubbing.wav');
-		const finalVideo = join(sessionAbs, 'media', `${taskId}_dub.mp4`);
-		for (const f of [dubbingFile, finalVideo]) {
-			if (existsSync(f)) rmSync(f);
+	if (!ttsCfg.skipExisting) {
+		const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
+		if (anyTts) {
+			for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
+			const sessionAbs = resolve(REPO_ROOT, sessionPath);
+			const dubbingFile = join(sessionAbs, 'tmp', 'audio_dubbing.wav');
+			const finalVideo = join(sessionAbs, 'media', `${taskId}_dub.mp4`);
+			for (const f of [dubbingFile, finalVideo]) {
+				if (existsSync(f)) rmSync(f);
+			}
 		}
 	}
 
@@ -247,6 +248,22 @@ export async function stageTts(
 				);
 				writeFile(outPath, Buffer.alloc(44), ctx);
 				continue;
+			}
+
+			const minRefMs = 2500;
+			const durProbe = spawnSync('ffprobe',
+				['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', refWav],
+				{ stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 },
+			);
+			const refMs = parseFloat(durProbe.stdout.toString().trim()) * 1000 || 0;
+			if (refMs > 0 && refMs < minRefMs) {
+				const doubled = resolve(tmpDir, `ref_${idx}_x2.wav`);
+				if (!existsSync(doubled)) {
+					const listPath = resolve(tmpDir, `ref_${idx}_list.txt`);
+					writeFile(listPath, `file '${refWav}'\nfile '${refWav}'`, ctx);
+					ffmpeg(['-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', doubled]);
+				}
+				refWav = doubled;
 			}
 
 			setStage(sessionPath, 'tts', {

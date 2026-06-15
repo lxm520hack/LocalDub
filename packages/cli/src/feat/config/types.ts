@@ -205,9 +205,11 @@ const SplitAudioConfigSchema = z
 			.boolean()
 			.default(false)
 			.describe('是否启用静音检测对齐: 修正 segments 前后静音导致的偏移').optional(),
+			vocalsFilePath: z.string().optional().describe('人声文件路径, 调试使用'),
 	})
 	.default({
 		vadAlign: false,
+		
 	})
 	.optional();
 
@@ -261,6 +263,8 @@ const MergeVideoSchema = z
 			.string()
 			.optional()
 			.describe('ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC'),
+		srtPath: z.string().optional().describe('调试使用'),
+		bgmPath: z.string().optional().describe('调试使用'),
 	})
 	.default({
 		alignment: 'bottom-center',

@@ -270,17 +270,17 @@ function main(opts: Options & { hypScaleMs?: number }) {
   return result;
 }
 
-function runBatch(baseDir: string, gtPath: string, hypScaleMs = 1) {
+function runBatch(baseDir: string, gtPath: string, hypScaleMs = 1, hypFile = 'ocr.json') {
   const { readdirSync, statSync } = require('fs');
   const entries = readdirSync(baseDir, { withFileTypes: true });
   const results: any[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const ocrPath = join(baseDir, entry.name, 'metadata', 'ocr.json');
-    try { statSync(ocrPath); } catch { continue; }
+    const hypPath = join(baseDir, entry.name, 'metadata', hypFile);
+    try { statSync(hypPath); } catch { continue; }
     const label = entry.name;
-    const r = main({ gtPath, hypPath: ocrPath, label, hypScaleMs });
+    const r = main({ gtPath, hypPath, label, hypScaleMs });
     results.push(r);
   }
 
@@ -325,8 +325,15 @@ if (require.main === module) {
 
   if (args[0] === '--batch') {
     const baseDir = resolve(args[1]);
-    const gtPath = args[2] && !args[2].startsWith('--') ? resolve(args[2]) : DEFAULT_GT;
-    runBatch(baseDir, gtPath);
+    let gtPath = DEFAULT_GT;
+    let hypFile = 'ocr.json';
+    let batchScaleMs = 1;
+    for (let i = 2; i < args.length; i++) {
+      if (args[i] === '--hyp-file') hypFile = args[++i];
+      else if (args[i] === '--ms') batchScaleMs = 1;
+      else if (!args[i].startsWith('--')) gtPath = resolve(args[i]);
+    }
+    runBatch(baseDir, gtPath, batchScaleMs, hypFile);
     process.exit(0);
   }
 
