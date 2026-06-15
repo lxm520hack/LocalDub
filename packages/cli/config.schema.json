@@ -24,16 +24,8 @@
         "createTask": {
           "type": "object",
           "properties": {
-            "youtubeUrl": {
-              "type": "string",
-              "format": "uri"
-            },
-            "bilibiliUrl": {
-              "type": "string",
-              "format": "uri"
-            },
-            "sourceFile": {
-              "description": "本地文件路径或云端文件 url",
+            "url": {
+              "description": "本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl",
               "type": "string"
             },
             "sourceLang": {
@@ -73,22 +65,20 @@
         "startTask": {
           "type": "object",
           "properties": {
-            "taskId": {
-              "type": "string",
-              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            "sessionPath": {
+              "type": "string"
             }
           },
           "required": [
-            "taskId"
+            "sessionPath"
           ],
           "additionalProperties": false
         },
         "resumeTask": {
           "type": "object",
           "properties": {
-            "taskId": {
-              "type": "string",
-              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            "sessionPath": {
+              "type": "string"
             },
             "resumeFrom": {
               "type": "string",
@@ -108,16 +98,15 @@
             }
           },
           "required": [
-            "taskId"
+            "sessionPath"
           ],
           "additionalProperties": false
         },
         "rerunStage": {
           "type": "object",
           "properties": {
-            "taskId": {
-              "type": "string",
-              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            "sessionPath": {
+              "type": "string"
             },
             "stageName": {
               "type": "string",
@@ -137,7 +126,7 @@
             }
           },
           "required": [
-            "taskId",
+            "sessionPath",
             "stageName"
           ],
           "additionalProperties": false
@@ -145,22 +134,20 @@
         "taskStatus": {
           "type": "object",
           "properties": {
-            "taskId": {
-              "type": "string",
-              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            "sessionPath": {
+              "type": "string"
             }
           },
           "required": [
-            "taskId"
+            "sessionPath"
           ],
           "additionalProperties": false
         },
         "check": {
           "type": "object",
           "properties": {
-            "taskId": {
-              "type": "string",
-              "description": "任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) "
+            "sessionPath": {
+              "type": "string"
             },
             "type": {
               "default": "video",
@@ -549,6 +536,10 @@
                   "default": false,
                   "description": "是否启用静音检测对齐: 修正 segments 前后静音导致的偏移",
                   "type": "boolean"
+                },
+                "vocalsFilePath": {
+                  "description": "人声文件路径, 调试使用",
+                  "type": "string"
                 }
               },
               "additionalProperties": {}
@@ -655,6 +646,14 @@
                 },
                 "font": {
                   "description": "ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC",
+                  "type": "string"
+                },
+                "srtPath": {
+                  "description": "调试使用",
+                  "type": "string"
+                },
+                "bgmPath": {
+                  "description": "调试使用",
                   "type": "string"
                 }
               },

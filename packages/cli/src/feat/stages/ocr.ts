@@ -4,15 +4,15 @@ import { join, resolve } from "node:path";
 import { ocrFrame } from "../../ml/ocr/ocr.ts";
 import { REPO_ROOT, readConfig } from "../config/config.ts";
 import { ensureDir, writeJson } from "./utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime, updateStageDB } from "./utils/utils.ts";
+import { emitLog, ffmpeg, nowISO, srtTime,  } from "./utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "./utils/ocrMerge.ts";
-import { Context } from "../context/context.ts";
+import { Context, setStage } from "../context/context.ts";
 
 export async function stageOcr(ctx: Context) {
 		const taskId = ctx.task.id;
 		const sessionPath = ctx.task.session_path
-	await updateStageDB(taskId, "ocr", {
+	await setStage(sessionPath, "ocr", {
 		last_message: "Extracting frames...",
 		progress: 0,
 	});
@@ -64,7 +64,7 @@ export async function stageOcr(ctx: Context) {
 	}
 
 	// 2. OCR each frame
-	await updateStageDB(taskId, "ocr", {
+	await setStage(sessionAbsPath, "ocr", {
 		last_message: `OCR'ing ${frameFiles.length} frames...`,
 	});
 
@@ -142,7 +142,7 @@ export async function stageOcr(ctx: Context) {
 	// 7. Cleanup frames
 	spawnSync("rm", ["-rf", frameDir]);
 
-	await updateStageDB(taskId, "ocr", {
+	await setStage(sessionAbsPath, "ocr", {
 		status: "succeeded",
 		completed_at: nowISO(),
 		progress: 100,

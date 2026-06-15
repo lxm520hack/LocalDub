@@ -30,7 +30,9 @@ export { stageMergeVideo };
 export type StageHandler = (taskId: string, sessionPath: string, task: Task, daemon?: MLDaemon) => Promise<void>;
 
 export const STAGE_HANDLERS: Record<string, StageHandler> = {
-  download: async (id, sp, task) => stageDownload(id, sp, task.url),
+  download: async (id, sp, task) => {
+    const ctx = readCtx(sp)
+   return stageDownload(ctx)},
   separate: (id, sp, _task, d) => stageSeparate(id, sp, d),
   asr: (id, sp, _task, d) => { 
     const ctx = readCtx(sp)
@@ -55,7 +57,7 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
     const ctx = readCtx(sp)
     return stageSplitAudio({
       ctx,
-      vocalsFilePath: join(sp, 'media', 'target_3_vocals.wav'),
+      // vocalsFilePath: join(sp, 'media', 'target_3_vocals.wav'),
       sourceFilePath: join(sp, 'media', 'video_source.mp4'),
       srtFilePath: subtitleFilePath(sp),
     })

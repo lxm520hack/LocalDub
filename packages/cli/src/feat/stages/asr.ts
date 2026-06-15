@@ -103,7 +103,7 @@ export async function stageAsr(
 	emitLog(sessionAbsPath, `[ASR] runtime=${runtime} device=${device}`);
 
 	const pyBin = pythonBin();
-	const { asrLanguage } = readTaskLanguages(sessionPath);
+	const { asrLanguage } = readTaskLanguages(ctx);
 
 	if (runtime === 'pytorch' && daemon?.ready) {
 		emitLog(sessionAbsPath, `[ASR] Using Python daemon (device=${device})`);
@@ -159,7 +159,7 @@ export async function stageAsr(
 	const metadataDir = resolve(sessionAbsPath, 'metadata');
 	const asrFile = resolve(metadataDir, 'asr.json');
 	if (existsSync(asrFile)) {
-		const data = readJson(asrFile, ctx);
+		const data = await readJson(asrFile, ctx);
 		const durationMs = data.audio_info?.duration ?? 0;
 		if (durationMs > 0 && data.result?.segments?.length) {
 			const before = data.result.segments.length;
@@ -269,7 +269,7 @@ async function asrPytorch(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath, ctx);
+		const asr = await readJson(asrOutputPath, ctx);
 		if (asr.detected_language) {
 			setCtx(sessionAbsPath, {
 				asr_language: asr.detected_language,
@@ -382,7 +382,7 @@ async function asrWhisperCpp(
 		throw new Error(`whisper-cli did not produce ${whisperJson}`);
 	}
 
-	const raw = readJson(whisperJson, ctx);
+	const raw = await readJson(whisperJson, ctx);
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = readConfig().stages?.asr?.wordsOutput ?? true;
@@ -500,7 +500,7 @@ async function asrFasterWhisper(opts: AsrOptions) {
 			throw new Error(`Python ASR did not produce output at ${asrOutputPath}`);
 		}
 
-		const asr = readJson(asrOutputPath, ctx);
+		const asr = await readJson(asrOutputPath, ctx);
 		const actualDevice = fallbackToCpu ? 'cpu' : useGpu ? 'cuda' : 'cpu';
 		if (asr.detected_language) {
 			setCtx(sessionAbsPath, {

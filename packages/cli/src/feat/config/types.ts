@@ -383,9 +383,7 @@ const TaskSchema = z.looseObject({
 		`),
 	createTask: z
 		.object({
-			youtubeUrl: z.url().optional(),
-			bilibiliUrl: z.url().optional(),
-			sourceFile: z.string().optional().describe('本地文件路径或云端文件 url'),
+			url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),
 			sourceLang: z.string().optional(),
 			targetLang: z.enum(targetLangList).optional(),
 		})
@@ -429,7 +427,7 @@ export interface Ctx {
 	// ——— 创建时写入，只读 ———
 	id: string; // 任务 ID (本地或url) | 视频id (视频平台)
 	title?: string;
-	source: 'youtube' | 'bilibili' | 'local';
+	source: 'youtube' | 'bilibili' | 'local' | 'remote'
 	webpage_url?: string;
 	original_path?: string;
 

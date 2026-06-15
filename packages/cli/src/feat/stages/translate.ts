@@ -10,9 +10,8 @@ import {
 	readTaskLanguages,
 	subtitleFilePath,
 	translationFilePath,
-	updateStageDB,
 } from './utils/utils.ts';
-import { Context, setCtx } from '../context/context.ts';
+import { Context, setCtx, setStage } from '../context/context.ts';
 
 /**
  * translate.[dstLang].json 结构
@@ -40,7 +39,7 @@ export async function stageTranslate(ctx: Context) {
 	// 解析目标语言: config > auto 推断
 	const configTargetLang = readConfig().stages?.translate?.targetLang;
 	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =
-		readTaskLanguages(sessionPath);
+		readTaskLanguages(ctx);
 	const resolvedDstLang =
 		configTargetLang ?? (srcLangCode === 'zh' ? 'en' : 'zh');
 
@@ -54,7 +53,7 @@ export async function stageTranslate(ctx: Context) {
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
 	const dstLangName = LANG_NAMES[dstLangCode] || dstLangCode;
 
-	const data = readJson(srtFile, ctx);
+	const data = await readJson(srtFile, ctx);
 	const segments = data.result.segments;
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
@@ -160,7 +159,7 @@ ${fullText.slice(0, 10000)}`;
 				(c: any) => `${c.wrong} -> ${c.correct}`,
 			);
 		} catch (e: any) {
-			emitLog(taskId, `[WARN] [Translate] Preprocess failed: ${e.message}`);
+			emitLog(sessionPath, `[WARN] [Translate] Preprocess failed: ${e.message}`);
 		}
 	}
 
@@ -215,7 +214,7 @@ ${correctionsStr}
 						(dst.match(/[\u4e00-\u9fff]/g) || []).length / (dst.length || 1);
 					if (dstLangCode !== 'zh' && chineseRatio > 0.3) {
 						emitLog(
-							taskId,
+							sessionPath,
 							`[WARN] [Translate] Item ${i + 1} still Chinese (ratio=${chineseRatio.toFixed(2)}), using source`,
 						);
 						return batchTexts[i];
@@ -228,7 +227,7 @@ ${correctionsStr}
 		} catch (e: any) {
 			if (attempt < 2) return translateBatch(batchTexts, attempt + 1);
 			emitLog(
-				taskId,
+				sessionPath,
 				`[WARN] [Translate] Batch failed after 3 attempts: ${e.message} — using source as fallback`,
 			);
 			return batchTexts;
@@ -239,7 +238,7 @@ ${correctionsStr}
 		const batch = texts.slice(i, i + BATCH_SIZE);
 		const results = await translateBatch(batch);
 		dsts.push(...results);
-		await updateStageDB(taskId, 'translate', {
+		await setStage(sessionPath, 'translate', {
 			last_message: `Translating ${Math.min(i + BATCH_SIZE, texts.length)}/${texts.length}...`,
 		});
 	}
@@ -256,7 +255,7 @@ ${correctionsStr}
 
 	writeJson(translationFile, { translation }, ctx);
 
-	await updateStageDB(taskId, 'translate', {
+	await setStage(sessionPath, 'translate', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

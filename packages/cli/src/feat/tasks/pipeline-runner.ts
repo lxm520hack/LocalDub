@@ -82,12 +82,12 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 		try {
 			await handler(taskId, sessionPath, task, daemon);
 			if (targetStage && stage.name === targetStage) {
-				emitLog(taskId, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
+				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
 				break;
 			}
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
-			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
+			emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
 			await setStage(sessionPath, stage.name, {
 				status: 'failed',
 				error_message: msg,
@@ -108,7 +108,7 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 		completed_at: nowISO(),
 		current_stage: null,
 	});
-	emitLog(taskId, `[Pipeline] Task ${taskId} completed`);
+	emitLog(sessionPath, `[Pipeline] Task ${taskId} completed`);
 }
 
 export async function resumePipeline(
@@ -183,7 +183,7 @@ export async function resumePipeline(
 			});
 		}
 		emitLog(
-			taskId,
+			sessionPath,
 			`[Pipeline] Resetting from "${resumeFrom}" (${stages.length - startIdx} stage(s)), resuming...`,
 		);
 	} else {
@@ -198,7 +198,7 @@ export async function resumePipeline(
 		}
 
 		if (startIdx === 0) {
-			emitLog(taskId, `[Pipeline] Resuming from beginning`);
+			emitLog(sessionPath, `[Pipeline] Resuming from beginning`);
 		} else {
 			emitLog(
 				taskId,
@@ -209,7 +209,7 @@ export async function resumePipeline(
 
 	const resumeTargetStage = readConfig().targetStage;
 	if (resumeTargetStage && !stages.find((s) => s.name === resumeTargetStage)) {
-		emitLog(taskId, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
+		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
 	setTask(sessionPath, { status: 'running', started_at: nowISO() });
@@ -238,12 +238,12 @@ export async function resumePipeline(
 		try {
 			await handler(taskId, sessionPath, task, daemon);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
-				emitLog(taskId, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
+				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
 				break;
 			}
 		} catch (err: any) {
 			const msg = err.message ?? String(err);
-			emitLog(taskId, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
+			emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stage.name} failed: ${msg}`);
 			setStage(sessionPath, stage.name, {
 				status: 'failed',
 				error_message: msg,
@@ -253,7 +253,7 @@ export async function resumePipeline(
 			throw err;
 		}
 
-		const next = await readTask(taskId)
+		const next = await readTask(sessionPath)
 		if (next) {
 			task = next;
 		}
@@ -264,7 +264,7 @@ export async function resumePipeline(
 		completed_at: nowISO(),
 		current_stage: null,
 	});
-	emitLog(taskId, `[Pipeline] Task ${taskId} completed`);
+	emitLog(sessionPath, `[Pipeline] Task ${taskId} completed`);
 }
 
 export async function rerunSingleStage(
@@ -303,7 +303,7 @@ export async function rerunSingleStage(
 		await handler(taskId, sessionPath, task, daemon);
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
-		emitLog(taskId, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);
+		emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);
 		await setStage(sessionPath, stageName, {
 			status: 'failed',
 			error_message: msg,
@@ -319,5 +319,5 @@ export async function rerunSingleStage(
 		progress: 100,
 		last_message: `${stage.label} completed`,
 	});
-	emitLog(taskId, `[Pipeline] Stage ${stageName} completed`);
+	emitLog(sessionPath, `[Pipeline] Stage ${stageName} completed`);
 }

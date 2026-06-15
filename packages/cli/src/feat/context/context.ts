@@ -21,9 +21,10 @@ export function getTaskId(): string {
 	return readTaskId;
 }
 
+export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote'
 export interface Task {
   id: string;
-  source: 'youtube' | 'bilibili' | 'local';
+  source: VideoSource
   url: string;
   title?: string | null | undefined;
   status: string; // queued

@@ -117,7 +117,7 @@ export async function stageSplitAudio({
 	const segmentsDir = join(sessionPath, 'segments', 'vocals');
 
 	if (!existsSync(srtFilePath)) throw new Error(`subtitle file not found: ${srtFilePath}`);
-  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath;
+  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? join(sessionPath, 'media', 'target_3_vocals.wav')
 	const hasVocals = vocalsFilePath ? existsSync(vocalsFilePath) : false
 	const sourceAudio = hasVocals ? vocalsFilePath! : sourceFilePath;
 
@@ -194,7 +194,7 @@ export async function stageSplitAudio({
       const endMs = timings[i].end_time;
       if (startMs >= endMs) {
         writeFileSync(outPath, Buffer.alloc(44));
-        emitLog(taskId, `[split_audio] #${i + 1} invalid (${startMs} >= ${endMs}), empty wav`);
+        emitLog(sessionPath, `[split_audio] #${i + 1} invalid (${startMs} >= ${endMs}), empty wav`);
         continue;
       }
 
@@ -227,11 +227,11 @@ export async function stageSplitAudio({
 
       const newStartMs = startMs + removedMs - 80;
       if (newStartMs >= endMs) {
-        emitLog(taskId, `vadAlign #${i + 1}: would exceed end (${newStartMs} >= ${endMs}), truncating`);
+        emitLog(sessionPath, `vadAlign #${i + 1}: would exceed end (${newStartMs} >= ${endMs}), truncating`);
         continue;
       }
 
-      emitLog(taskId, `vadAlign #${i + 1}: start ${startMs} → ${newStartMs} (removed ${removedMs}ms)`);
+      emitLog(sessionPath, `vadAlign #${i + 1}: start ${startMs} → ${newStartMs} (removed ${removedMs}ms)`);
 
       // Re-cut WAV with corrected timing (dub only)
       if (hasVocals) {

@@ -1,3 +1,7 @@
+import { timeId } from "@repo/shared/db/timeId";
+import { VideoSource } from "../context/context";
+import { to } from "@repo/shared/lib/utils/try";
+
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
 const BILIBILI_BV_RE = /BV[A-Za-z0-9]{10}/
 const BILIBILI_HOSTS = new Set(['bilibili.com', 'www.bilibili.com', 'm.bilibili.com'])
@@ -33,10 +37,17 @@ function extractBilibiliId(parsed: URL): string | null {
 }
 
 export function extractVideoId(url: string): string {
-  const parsed = new URL(url.trim())
+  const [parsed, err] = to(() => new URL(url.trim())) 
+  if (err) {
+    // 可能是本地文件路径
+     // 本地文件路径 → 取文件名（去掉扩展名）
+    const name = url.split('/').pop()?.replace(/\.[^.]+$/, '')
+    if (name) return name // todo: 重复性检查
+    return timeId({ size: 10 })
+  }
   const videoId = extractYouTubeId(parsed) ?? extractBilibiliId(parsed)
   if (videoId) return videoId
-  throw new Error('Only YouTube or Bilibili single-video URLs are supported.')
+  return timeId({ size: 10 })
 }
 
 export function isYouTubeUrl(url: string): boolean {
@@ -53,4 +64,12 @@ export function isBilibiliUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+export async function classifySource(url: string): Promise<VideoSource> {
+  if (isYouTubeUrl(url)) return 'youtube';
+  if (isBilibiliUrl(url)) return 'bilibili';
+  try { if (await Bun.file(url).exists()) return 'local'; } catch {}
+  if (/^https?:\/\//.test(url)) return 'remote';
+  throw new Error('Unable to classify video source. URL must be a valid YouTube/Bilibili link, an existing local file path, or a remote URL.');
 }

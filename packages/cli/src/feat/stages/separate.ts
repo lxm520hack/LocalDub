@@ -46,7 +46,7 @@ export async function stageSeparate(
 	const device = sepCfg?.device ?? 'cuda';
 
 	if (runtime === 'pytorch' && daemon?.ready) {
-		emitLog(taskId, `[Separate] Using Python daemon (device=${device})`);
+		emitLog(sessionPath, `[Separate] Using Python daemon (device=${device})`);
 		const absSession = resolve(REPO_ROOT, sessionPath);
 		const absVideo = resolve(
 			REPO_ROOT,
@@ -63,7 +63,7 @@ export async function stageSeparate(
 				device,
 			},
 			(current, _total) => {
-				emitLog(taskId, `[Separate] ${current}%`);
+				emitLog(sessionPath, `[Separate] ${current}%`);
 				updateStageDB(taskId, 'separate', {
 					progress: current,
 					last_message: `Separating ${current}%...`,
@@ -72,15 +72,15 @@ export async function stageSeparate(
 		);
 		const sr = result as Record<string, number>;
 		if (sr.load_time_s)
-			emitLog(taskId, `[Separate] Model loaded in ${sr.load_time_s}s`);
+			emitLog(sessionPath, `[Separate] Model loaded in ${sr.load_time_s}s`);
 		if (sr.process_time_s)
-			emitLog(taskId, `[Separate] Processed in ${sr.process_time_s}s`);
+			emitLog(sessionPath, `[Separate] Processed in ${sr.process_time_s}s`);
 		if (sr.audio_duration_s)
 			emitLog(
 				taskId,
 				`[Separate] Audio duration ${sr.audio_duration_s.toFixed(1)}s`,
 			);
-		if (sr.rtf) emitLog(taskId, `[Separate] RTF ${sr.rtf}`);
+		if (sr.rtf) emitLog(sessionPath, `[Separate] RTF ${sr.rtf}`);
 	} else if (runtime === 'pytorch') {
 		await separatePytorch(taskId, sessionPath, videoPath, device);
 	} else if (runtime === 'ggml') {
@@ -132,9 +132,9 @@ async function separateOrt(
 	const stems = await demucs.separate(audioPath);
 	const elapsedSec = (performance.now() - t0) / 1000;
 
-	emitLog(taskId, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 	const audioDurationS = stems.vocals.length / 88200;
-	emitLog(taskId, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
+	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
 	const mediaDir = join(sessionPath, 'media');
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
@@ -176,7 +176,7 @@ async function separatePytorch(
 		device,
 	];
 
-	emitLog(taskId, `[Separate] runtime=pytorch device=${device}`);
+	emitLog(sessionPath, `[Separate] runtime=pytorch device=${device}`);
 
 	return new Promise<void>((resolve, reject) => {
 		const proc = spawn(pyBin, pythonArgs);
@@ -229,7 +229,7 @@ async function separateGgml(
 	const outDir = resolve(REPO_ROOT, sessionPath, 'tmp', 'ggml-separate');
 	mkdirSync(outDir, { recursive: true });
 
-	emitLog(taskId, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
+	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV
 	const audioPath = resolve(REPO_ROOT, sessionPath, 'tmp', 'audio_source.wav');
@@ -252,7 +252,7 @@ async function separateGgml(
 		throw new Error(`GGML separate failed (${result.status}): ${result.stderr?.toString().slice(-300)}`);
 	}
 
-	emitLog(taskId, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
 	// Copy output WAVs to media/
 	const mediaDir = resolve(REPO_ROOT, sessionPath, 'media');
@@ -264,7 +264,7 @@ async function separateGgml(
 		if (existsSync(src)) {
 			copyFileSync(src, dst);
 		} else {
-			emitLog(taskId, `[Separate] WARN: ${src} not found`);
+			emitLog(sessionPath, `[Separate] WARN: ${src} not found`);
 		}
 	}
 
@@ -293,6 +293,6 @@ async function separateGgml(
 		} catch { return 0; }
 	})();
 	if (durationS > 0) {
-		emitLog(taskId, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
+		emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
 	}
 }

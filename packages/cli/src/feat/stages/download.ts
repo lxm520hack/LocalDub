@@ -17,13 +17,15 @@ import {
 	nowISO,
 
 } from './utils/utils.ts';
-import { readCtx, setCtx, setStage, setTask, writeCtx } from '../context/context.ts';
+import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '../context/context.ts';
 
 export async function stageDownload(
-	taskId: string,
-	sessionPath: string,
-	url: string,
+	ctx: Context,
 ) {
+	const taskId = ctx.task.id;
+	const sessionPath = ctx.task.session_path;
+
+	const url = ctx.task.url;
 	let mediaDir = join(sessionPath, 'media');
 	let videoPath = join(mediaDir, 'video_source.mp4');
 
@@ -39,7 +41,7 @@ export async function stageDownload(
 	}
 
 	// Local upload URL (local://upload/<uploadTaskId>)
-	if (url.startsWith('local://')) {
+	if (ctx.task.source === 'local') {
 		emitLog(sessionPath, '[Download] Importing local video...');
 		await setStage(sessionPath, 'download', {
 			last_message: 'Importing local video...',
@@ -48,15 +50,10 @@ export async function stageDownload(
 		mkdirSync(mediaDir, { recursive: true });
 		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
 
-		const parsed = new URL(url);
-		// 从路径解析出 taskId
-		const uploadTaskId = parsed.pathname.replace(/^\/+/, '').split('/')[0];
-
-		const uploadDir = join(WORKFOLDER, '_uploads', uploadTaskId);
-		const files = readdirSync(uploadDir).filter((f) => f !== '.' && f !== '..');
+		const files = readdirSync(sessionPath).filter((f) => f !== '.' && f !== '..');
 		if (files.length === 0)
-			throw new Error(`Upload directory empty: ${uploadDir}`);
-		const sourceFile = join(uploadDir, files[0]);
+			throw new Error(`Upload directory empty: ${sessionPath}`);
+		const sourceFile = join(sessionPath, files[0]);
 
 		const t0 = Date.now();
 		ffmpeg([
@@ -92,13 +89,8 @@ export async function stageDownload(
 			...existing,
 			task: {
 				...existing.task,
-				id: uploadTaskId,
-				source: 'local',
 				title: files[0].replace(/\.\w+$/, ''),
-				url,
 			},
-			asr_language: 'auto',
-			pipeline: existing?.pipeline || 'dub',
 		});
 
 		await setStage(sessionPath, 'download', {
@@ -149,7 +141,7 @@ export async function stageDownload(
 				join(resolvedSession, 'metadata', 'ytdlp_info.json'),
 				infoR.stdout,
 			);
-
+			console.log(`[Download] setTask ${sessionPath}`);
 			await setTask(sessionPath, {
 				session_path: relative(REPO_ROOT, resolvedSession),
 			});

@@ -222,8 +222,7 @@ function probeStyle(
 export async function stageMergeVideo(ctx: Context) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
-	const video_file_path = ctx.video_file_path;
-	if (!video_file_path) throw new Error('video_file_path not found in context');
+	const video_file_path = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4')
 	await setTask(sessionPath, { current_stage: 'merge_video' });
 	const mediaDir = join(sessionPath, 'media');
 	ensureDir(mediaDir, ctx);

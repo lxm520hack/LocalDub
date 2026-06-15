@@ -3,15 +3,12 @@ import { existsSync } from 'node:fs';
 import { connect } from 'node:net';
 import { join, resolve } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
-import { eq } from 'drizzle-orm';
 import { timeId } from '../shared/db/timeId.ts';
-import { db } from './src/db/index.ts';
 import {
 	pythonBin,
 	readConfig,
 } from './src/feat/config/config.ts';
 import type { RawConfig } from './src/feat/config/types.ts';
-import { createTask, findTaskByVideoId } from './src/feat/tasks/fn.ts';
 import {
 	getStageStatuses,
 	rerunSingleStage,
@@ -19,10 +16,11 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { tasks } from './src/feat/tasks/table.ts';
-import { extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
+import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
 import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
+import { createTask } from './src/feat/command/createTask.ts';
 
 function needsMLDaemon(cfg: RawConfig): boolean {
 	const tts = cfg.stages?.tts;
@@ -178,35 +176,17 @@ switch (cmd) {
 
 	case 'createTask': {
 		const p = config.createTask ?? {};
-		const appVideoUrl = p.youtubeUrl ?? p.bilibiliUrl;
-		if (!appVideoUrl && !p.sourceFile) {
+		const url = p.url
+		if (!url) {
 			console.error(
-				'createTask: need youtubeUrl, bilibiliUrl, or sourceFile in config.json',
+				'createTask: need createTask.url in config.json',
 			);
 			process.exit(1);
 		}
-		const videoId = appVideoUrl ? extractVideoId(appVideoUrl) : timeId({ size: 10 });
+		const videoId = extractVideoId(url)
 		try {
-			if (appVideoUrl) {
-				const existing = await findTaskByVideoId(videoId);
-				if (existing) {
-					const row = await db
-						.select()
-						.from(tasks)
-						.where(eq(tasks.id, existing))
-						.limit(1);
-					console.log(
-						JSON.stringify(
-							{ taskId: existing, appVideoUrl, status: 'exists', task: row[0] },
-						),
-					);
-					break;
-				}
-			}
-
 			const taskPipeline = config.pipeline;
-			const source = p.sourceFile ?  'local' : appVideoUrl ? (isYouTubeUrl(appVideoUrl) ? 'youtube' : 'bilibili') : 'local';
-			const url = source === 'local' ? p.sourceFile! : appVideoUrl!;
+			const source = await classifySource(url)
 			const ctx = await createTask({
 				source ,
 				url,
@@ -217,10 +197,9 @@ switch (cmd) {
 				stages: config.stages,
 			});
 
-			const displayUrl = appVideoUrl || p.sourceFile || '';
 			console.log(
 				JSON.stringify(
-					{ taskId: videoId, url: displayUrl, status: 'created', task: ctx.task },
+					{ taskId: videoId, url, status: 'created', task: ctx.task },
 				),
 			);
 
