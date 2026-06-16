@@ -9,8 +9,8 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../config/config.ts';
-import { emitLog, ffmpeg, nowISO, updateStageDB } from './utils/utils.ts';
-import { readCtx } from '../context/context.ts';
+import { emitLog, ffmpeg, nowISO,  } from './utils/utils.ts';
+import { readCtx, setStage } from '../context/context.ts';
 
 export async function stageSeparate(
 	taskId: string,
@@ -22,10 +22,10 @@ export async function stageSeparate(
 	const sepCfg = readConfig().stages?.separate;
 	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(
-			taskId,
+			sessionPath,
 			'[Separate] Skipped (subtitle pipeline, set separate.always=true to force)',
 		);
-		await updateStageDB(taskId, 'separate', {
+		await setStage(sessionPath, 'separate', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
@@ -34,7 +34,7 @@ export async function stageSeparate(
 		return;
 	}
 
-	await updateStageDB(taskId, 'separate', {
+	await setStage(sessionPath, 'separate', {
 		last_message: 'Separating audio...',
 		progress: 0,
 	});
@@ -64,7 +64,7 @@ export async function stageSeparate(
 			},
 			(current, _total) => {
 				emitLog(sessionPath, `[Separate] ${current}%`);
-				updateStageDB(taskId, 'separate', {
+				setStage(sessionPath, 'separate', {
 					progress: current,
 					last_message: `Separating ${current}%...`,
 				});
@@ -89,7 +89,7 @@ export async function stageSeparate(
 		await separateOrt(taskId, sessionPath, videoPath, device);
 	}
 
-	await updateStageDB(taskId, 'separate', {
+	await setStage(sessionPath, 'separate', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,
@@ -188,7 +188,7 @@ async function separatePytorch(
 			for (const line of lines) {
 				const m = line.match(/^\[PROGRESS\] (\d+)$/);
 				if (m) {
-					updateStageDB(taskId, 'separate', {
+					setStage(sessionPath, 'separate', {
 						progress: parseInt(m[1]),
 						last_message: `Separating ${m[1]}%`,
 					});

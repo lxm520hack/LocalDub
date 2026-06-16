@@ -39,16 +39,16 @@ function broadcastUpdate(_table: string, _mutations: any[]) {
 	// CLI 模式下不发送 socket 事务
 }
 
-export async function updateTaskDB(
-	taskId: string,
-	fields: Record<string, unknown>,
-) {
-	if (Object.keys(fields).length === 0) return;
-	await db.update(tasks).set(fields).where(eq(tasks.id, taskId));
-	broadcastUpdate('tasks', [
-		{ type: 'update', id: taskId, data: fields as any },
-	]);
-}
+// export async function updateTaskDB(
+// 	taskId: string,
+// 	fields: Record<string, unknown>,
+// ) {
+// 	if (Object.keys(fields).length === 0) return;
+// 	await db.update(tasks).set(fields).where(eq(tasks.id, taskId));
+// 	broadcastUpdate('tasks', [
+// 		{ type: 'update', id: taskId, data: fields as any },
+// 	]);
+// }
 
 export async function updateStageDB(
 	taskId: string,

@@ -2,9 +2,9 @@ import { readJson, writeJson } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../../config/config.ts';
-import { emitLog, nowISO, srtTime, updateStageDB } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
 import { buildSystemPrompt, segmentsToPrompt, fixWithLLM, parseLines } from './llm.ts';
-import { Context } from '../../context/context.ts';
+import { Context, setStage } from '../../context/context.ts';
 
 export async function stageOcrFix(ctx: Context) {
     const taskId = ctx.task.id;
@@ -37,7 +37,7 @@ export async function stageOcrFix(ctx: Context) {
 
     if (domainHint) emitLog(sessionPath, `[OCR Fix] domainHint: ${domainHint}`);
 
-    await updateStageDB(taskId, 'ocr_fix', {
+    await setStage(sessionPath, 'ocr_fix', {
       last_message: `LLM fixing ${segments.length} segments...`,
     });
 
@@ -67,7 +67,7 @@ export async function stageOcrFix(ctx: Context) {
 
   emitLog(sessionPath, `[OCR Fix] Written ${segments.length} segs to ocr_fix.json`);
 
-  await updateStageDB(taskId, 'ocr_fix', {
+  await setStage(sessionPath, 'ocr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,
     last_message: llmFix ? `LLM fixed ${segments.length} segs` : 'Fixed',
   });

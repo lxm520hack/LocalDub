@@ -36,7 +36,7 @@ export async function createTask({
       url: url,
       created_at: createdAt,
       current_stage: stages[0].name,
-      session_path: 'unset',
+      session_path: '',
     },
     asr_language: params.sourceLang || 'auto',
     pipeline,
