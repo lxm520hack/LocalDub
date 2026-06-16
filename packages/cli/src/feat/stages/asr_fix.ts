@@ -2,9 +2,9 @@ import { readJson, writeJson } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../config/config.ts';
-import { emitLog, nowISO, srtTime, updateStageDB } from './utils/utils.ts';
+import { emitLog, nowISO, srtTime,  } from './utils/utils.ts';
 import { segmentsToPrompt, parseLines, fixWithLLM } from './asr/llm.ts';
-import { Context } from '../context/context.ts';
+import { Context, setStage } from '../context/context.ts';
 
 function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   if (!segments.length) return segments;
@@ -79,7 +79,7 @@ export async function stageAsrFix(ctx: Context) {
 
     if (domainHint) emitLog(sessionPath, `[ASR Fix] domainHint: ${domainHint}`);
 
-    await updateStageDB(taskId, 'asr_fix', {
+    await setStage(sessionPath, 'asr_fix', {
       last_message: `LLM fixing ${segments.length} segments...`,
     });
 
@@ -117,7 +117,7 @@ export async function stageAsrFix(ctx: Context) {
 
   emitLog(sessionPath, `[ASR Fix] Written ${segments.length} segs to asr_fix.json`);
 
-  await updateStageDB(taskId, 'asr_fix', {
+  await setStage(sessionPath, 'asr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,
     last_message: llmFix ? `LLM fixed ${segments.length} segs` : 'Fixed',
   });

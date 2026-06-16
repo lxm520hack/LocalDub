@@ -50,26 +50,26 @@ function broadcastUpdate(_table: string, _mutations: any[]) {
 // 	]);
 // }
 
-export async function updateStageDB(
-	taskId: string,
-	name: string,
-	fields: Record<string, unknown>,
-) {
-	if (Object.keys(fields).length === 0) return;
-	await db
-		.update(taskStages)
-		.set(fields)
-		.where(
-			sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = ${name}`,
-		);
-	broadcastUpdate('task_stages', [
-		{
-			type: 'update',
-			id: `${taskId}_${name}`,
-			data: { task_id: taskId, name, ...fields } as any,
-		},
-	]);
-}
+// export async function updateStageDB(
+// 	taskId: string,
+// 	name: string,
+// 	fields: Record<string, unknown>,
+// ) {
+// 	if (Object.keys(fields).length === 0) return;
+// 	await db
+// 		.update(taskStages)
+// 		.set(fields)
+// 		.where(
+// 			sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = ${name}`,
+// 		);
+// 	broadcastUpdate('task_stages', [
+// 		{
+// 			type: 'update',
+// 			id: `${taskId}_${name}`,
+// 			data: { task_id: taskId, name, ...fields } as any,
+// 		},
+// 	]);
+// }
 
 export const LANG_NAMES: Record<string, string> = {
 	en: 'English',
