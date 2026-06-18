@@ -19,14 +19,14 @@ export async function stageAsr(
 	ctx: Context,
 	daemon?: MLDaemon,
 ) {
-	  const taskId = ctx.task.id;
+	const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
 	await setStage(sessionPath, 'asr', {
 		last_message: 'Transcribing...',
 		progress: 0,
 	});
-	const audioVocal = resolve(sessionPath, 'media', 'target_3_vocals.wav');
-	const videoSource = resolve(sessionPath, 'media', 'video_source.mp4');
+	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? join(sessionPath, 'media', 'target_3_vocals.wav');
+	const videoSource = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4');
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal
@@ -155,8 +155,8 @@ export async function stageAsr(
 	 * asr 后处理, 避免 asr_fix 拿到多余数据
 	 */
 	// 统一过滤超出音频时长的幻觉段（所有路径 shared）
-	const metadataDir = resolve(sessionPath, 'metadata');
-	const asrFile = resolve(metadataDir, 'asr.json');
+	const metadataDir = join(sessionPath, 'metadata');
+	const asrFile = join(metadataDir, 'asr.json');
 	if (existsSync(asrFile)) {
 		const data = await readJson(asrFile, ctx);
 		const durationMs = data.audio_info?.duration ?? 0;
@@ -338,7 +338,7 @@ async function asrWhisperCpp(
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
-	const audioDir = resolve(REPO_ROOT, sessionPath, 'tmp');
+	const audioDir = join(REPO_ROOT, sessionPath, 'tmp');
 	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 

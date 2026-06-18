@@ -10,16 +10,17 @@ import {
 	readConfig,
 } from '../config/config.ts';
 import { emitLog, ffmpeg, nowISO,  } from './utils/utils.ts';
-import { readCtx, setStage } from '../context/context.ts';
+import { Context, readCtx, setStage } from '../context/context.ts';
 
 export async function stageSeparate(
-	taskId: string,
-	sessionPath: string,
+	ctx: Context,
 	daemon?: MLDaemon,
 ) {
+	const taskId = ctx.task.id;
+	const sessionPath = ctx.task.session_path
 	// subtitle 模式且未配置 always 时，跳过分离
-	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
-	const sepCfg = readConfig().stages?.separate;
+	const pipeline = ctx?.pipeline || 'dub';
+	const sepCfg = ctx.input?.stages?.separate;
 	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(
 			sessionPath,
@@ -47,7 +48,6 @@ export async function stageSeparate(
 
 	if (runtime === 'pytorch' && daemon?.ready) {
 		emitLog(sessionPath, `[Separate] Using Python daemon (device=${device})`);
-		const absSession = resolve(REPO_ROOT, sessionPath);
 		const absVideo = resolve(
 			REPO_ROOT,
 			sessionPath,
@@ -59,7 +59,7 @@ export async function stageSeparate(
 			taskId,
 			{
 				video_path: absVideo,
-				session_path: absSession,
+				session_path: sessionPath,
 				device,
 			},
 			(current, _total) => {

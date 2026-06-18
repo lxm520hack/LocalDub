@@ -134,6 +134,7 @@ const ASRConfigSchema = z
 			.default(false)
 			.describe('对分离后的人声应用 silence gate 过滤静音段噪声')
 			.optional(),
+		vocalAudioPath: z.string().optional().describe('ASR 输入的人声音频路径, 调试使用'),
 	})
 	.default({
 		runtime: 'pytorch',
@@ -306,6 +307,7 @@ const StagesSchema = z.object({
 				.string()
 				.optional()
 				.describe('领域提示，帮助 LLM 理解上下文，例如"仙侠题材，角色：叶白、慧天、夜白"'),
+			asrFilePath: z.string().optional().describe('ASR 结果文件路径, 调试使用'),
 		})
 		.default({
 			llmFix: false,

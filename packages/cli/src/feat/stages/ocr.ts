@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ocrFrame } from "../../ml/ocr/ocr.ts";
-import { REPO_ROOT, readConfig } from "../config/config.ts";
 import { ensureDir, writeJson } from "./utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime,  } from "./utils/utils.ts";
 
@@ -17,21 +16,20 @@ export async function stageOcr(ctx: Context) {
 		progress: 0,
 	});
 
-	const sessionAbsPath = resolve(REPO_ROOT, sessionPath);
-	const videoPath = resolve(sessionAbsPath, "media", "video_source.mp4");
+	const videoPath = join(sessionPath, "media", "video_source.mp4");
 	if (!existsSync(videoPath)) {
 		throw new Error(`OCR input not found: ${videoPath}`);
 	}
 
-	const ocrCfg = readConfig().stages?.ocr;
+	const ocrCfg = ctx.input?.stages?.ocr;
 	const fps = ocrCfg?.fps ?? 2;
 	const textScore = ocrCfg?.textScore ?? 0.45;
 	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
 
 	// 1. Extract frames
-	const frameDir = join(sessionAbsPath, "tmp", "ocr-frames");
+	const frameDir = join(sessionPath, "tmp", "ocr-frames");
 	ensureDir(frameDir, ctx);
-	emitLog(sessionAbsPath, `[OCR] Extracting frames at ${fps}fps...`);
+	emitLog(sessionPath, `[OCR] Extracting frames at ${fps}fps...`);
 
 	const frProbe = spawnSync(
 		"ffprobe",
@@ -64,7 +62,7 @@ export async function stageOcr(ctx: Context) {
 	}
 
 	// 2. OCR each frame
-	await setStage(sessionAbsPath, "ocr", {
+	await setStage(sessionPath, "ocr", {
 		last_message: `OCR'ing ${frameFiles.length} frames...`,
 	});
 
@@ -89,14 +87,14 @@ export async function stageOcr(ctx: Context) {
 		}
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
-			emitLog(sessionAbsPath, `[OCR] ${i + 1}/${frameFiles.length} frames`);
+			emitLog(sessionPath, `[OCR] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
 
 	// 3. Merge into segments
 	const segments = mergeFrames(frameResults);
 	emitLog(
-		sessionAbsPath,
+		sessionPath,
 		`[OCR] ${frameFiles.length} frames → ${segments.length} segments`,
 	);
 
@@ -121,7 +119,7 @@ export async function stageOcr(ctx: Context) {
 	const videoDurationS = parseFloat(probe.stdout?.trim() || "0");
 
 	// 6. Write ocr.json (same format as asr_fix)
-	const metadataDir = resolve(sessionAbsPath, "metadata");
+	const metadataDir = resolve(sessionPath, "metadata");
 	ensureDir(metadataDir, ctx);
 	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), ...(s.box_y ? { box_y: s.box_y } : {}) }));
 	writeJson(
@@ -137,12 +135,12 @@ export async function stageOcr(ctx: Context) {
 		ctx,
 	);
 
-	emitLog(sessionAbsPath, `[OCR] Written ${segments.length} segs to ocr.json`);
+	emitLog(sessionPath, `[OCR] Written ${segments.length} segs to ocr.json`);
 
 	// 7. Cleanup frames
 	spawnSync("rm", ["-rf", frameDir]);
 
-	await setStage(sessionAbsPath, "ocr", {
+	await setStage(sessionPath, "ocr", {
 		status: "succeeded",
 		completed_at: nowISO(),
 		progress: 100,

@@ -32,8 +32,12 @@ export type StageHandler = (taskId: string, sessionPath: string, task: Task, dae
 export const STAGE_HANDLERS: Record<string, StageHandler> = {
   download: async (id, sp, task) => {
     const ctx = readCtx(sp)
-   return stageDownload(ctx)},
-  separate: (id, sp, _task, d) => stageSeparate(id, sp, d),
+    return stageDownload(ctx)
+  },
+  separate: (id, sp, _task, d) => {
+    const ctx = readCtx(sp)
+    return stageSeparate(ctx, d)
+  },
   asr: (id, sp, _task, d) => { 
     const ctx = readCtx(sp)
     return stageAsr(ctx, d)

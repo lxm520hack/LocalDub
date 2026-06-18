@@ -51,7 +51,7 @@ export async function stageAsrFix(ctx: Context) {
     const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
   const metadataDir = join(sessionPath, 'metadata');
-  const asrFile = join(metadataDir, 'asr.json');
+  const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(metadataDir, 'asr.json');
   const srtFile = join(metadataDir, 'asr_fix.json');
 
   if (!existsSync(asrFile)) {
