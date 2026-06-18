@@ -47,10 +47,12 @@ export type Command = (typeof commandList)[number];
 const stagesList = [
 	'download',
 	'separate',
+	'separate_after',
 	'asr',
 	'asr_fix',
 	'ocr',
 	'ocr_fix',
+	'asr_ocr',
 	'translate',
 	'split_audio',
 	'tts',
@@ -88,6 +90,7 @@ const SeparateConfigSchema = z.object({
 						media/target_bgm.wav  用于 MergeVideo 背景
 	`);
 export type SeparateConfig = z.infer<typeof SeparateConfigSchema>;
+
 const ASRConfigSchema = z
 	.looseObject({
 		runtime: z.enum(['ggml','faster-whisper', 'pytorch', ]).default('pytorch'),
@@ -119,7 +122,7 @@ const ASRConfigSchema = z
 				threshold: z.number().default(0.1).describe('压缩器阈值, 默认 0.1'),
 				ratio: z.number().default(20).describe('压缩比, 默认 20'),
 				attack: z.number().default(1).describe('attack 时间(ms), 默认 1'),
-				release: z.number().default(200).describe('release 时间(ms), 默认 200 (原 500)'),
+				release: z.number().default(200).describe('release 时间(ms), 默认 200'),
 			})
 			.default({
 				threshold: 0.1,
@@ -135,6 +138,14 @@ const ASRConfigSchema = z
 			.describe('对分离后的人声应用 silence gate 过滤静音段噪声')
 			.optional(),
 		vocalAudioPath: z.string().optional().describe('ASR 输入的人声音频路径, 调试使用'),
+		// whisper.cpp specific params (ignored by other runtimes)
+		vad: z.boolean().default(false).optional().describe('whisper.cpp: 启用 VAD'),
+		vadModel: z.enum(['silero-v5', 'silero-v6']).optional().describe('whisper.cpp: VAD 模型, silero-v5 (默认) 或 silero-v6'),
+		vadThreshold: z.number().min(0).max(1).default(0.5).optional().describe('whisper.cpp: VAD 阈值, 默认 0.5'),
+		noSpeechThold: z.number().min(0).default(0.6).optional().describe('whisper.cpp: no-speech 阈值, 默认 0.6'),
+		temperature: z.number().min(0).max(2).default(0.0).optional().describe('whisper.cpp: 解码温度, 默认 0.0'),
+		maxLen: z.number().int().min(0).default(0).optional().describe('whisper.cpp: 最大段长(字符), 0=不限'),
+		splitOnWord: z.boolean().default(false).optional().describe('whisper.cpp: 按词边界分割'),
 	})
 	.default({
 		runtime: 'pytorch',
@@ -207,7 +218,7 @@ const SplitAudioConfigSchema = z
 			.default(false)
 			.describe('是否启用静音检测对齐: 修正 segments 前后静音导致的偏移').optional(),
 		vocalsFilePath: z.string().optional().describe('人声文件路径, 调试使用'),
-		
+		sourceFilePath: z.string().optional().describe('原始视频音频路径, 调试使用'),
 	})
 	.default({
 		vadAlign: false,
@@ -353,6 +364,10 @@ const StagesSchema = z.object({
 });
 type StagesConfigInput = z.input<typeof StagesSchema>;
 export type StagesConfig = z.output<typeof StagesSchema>;
+
+const subtitleSourceList = ['asr', 'ocr', 'asr_ocr'] as const;
+export type SubtitleSource = (typeof subtitleSourceList)[number];
+
 const BaseConfigSchema = z.looseObject({
 	pipeline: z
 		.enum(['dub', 'subtitle'])
@@ -360,10 +375,10 @@ const BaseConfigSchema = z.looseObject({
 		.optional()
 		.describe('任务模式, dub 配音,subtitle 仅字幕'),
 	subtitleSource: z
-		.enum(['asr', 'ocr'])
+		.enum(subtitleSourceList)
 		.default('asr')
 		.optional()
-		.describe('字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取)'),
+		.describe('字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)'),
 	targetStage: z
 		.enum(stagesList)
 		.optional()

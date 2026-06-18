@@ -135,3 +135,43 @@ export function dedupOverlap(segments: Segment[]): Segment[] {
 	}
 	return segments;
 }
+
+export function fixOverlap(asrSegs: Segment[], rawFrames: FrameResult[], ocrSegs: Segment[], maxAdvanceMs = 500): Segment[] {
+	const fix = asrSegs.map((s) => ({ ...s }));
+	const sorted = [...rawFrames].sort((a, b) => a.timestamp - b.timestamp);
+
+	for (let i = 1; i < fix.length; i++) {
+		const prev = fix[i - 1];
+		const cur = fix[i];
+		if (cur.start >= prev.end) continue;
+		const overlapEnd = Math.min(prev.end, cur.end);
+		for (const f of sorted) {
+			if (f.timestamp < cur.start) continue;
+			if (f.timestamp > overlapEnd) break;
+			const dCur = levenshtein(f.text, cur.text);
+			const dPrev = levenshtein(f.text, prev.text);
+			if (dCur <= 2 && dCur < dPrev) {
+				prev.end = f.timestamp;
+				cur.start = f.timestamp;
+				break;
+			}
+		}
+	}
+
+	for (const seg of fix) {
+		let bestOcr: Segment | null = null;
+		let bestOverlap = 0;
+		for (const o of ocrSegs) {
+			const overlap = Math.min(seg.end, o.end) - Math.max(seg.start, o.start);
+			if (overlap > bestOverlap && levenshtein(seg.text, o.text) <= 2) {
+				bestOverlap = overlap;
+				bestOcr = o;
+			}
+		}
+		if (bestOcr && seg.start + maxAdvanceMs < bestOcr.start) {
+			seg.start = bestOcr.start;
+		}
+	}
+
+	return fix;
+}

@@ -27,9 +27,9 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 	{ name: 'merge_video', label: 'Merge video' },
 ];
 
-function withOcr(stages: StageSpec[], pipeline?: string): StageSpec[] {
+function withOcrStages(stages: StageSpec[], pipeline?: string): StageSpec[] {
 	const drop = new Set(['asr', 'asr_fix', 'separate']);
-	if (pipeline === 'subtitle') drop.add('separate'); // already in set, no-op
+	if (pipeline === 'subtitle') drop.add('separate');
 	const filtered = stages.filter(s => !drop.has(s.name));
 	const idx = filtered.findIndex(s => s.name === 'translate');
 	const out = [...filtered];
@@ -45,13 +45,26 @@ function withOcr(stages: StageSpec[], pipeline?: string): StageSpec[] {
 	return out;
 }
 
+function withAsrOcrStages(stages: StageSpec[], _pipeline?: string): StageSpec[] {
+	const out: StageSpec[] = [];
+	for (const s of stages) {
+		if (s.name === 'asr_fix' || s.name === 'ocr' || s.name === 'ocr_fix') continue;
+		out.push(s);
+		if (s.name === 'asr') {
+			out.push({ name: 'asr_ocr', label: 'ASR+OCR' });
+		}
+	}
+	return out;
+}
+
 /** Build stage list based on pipeline mode and subtitleSource config */
 export function getStages(pipeline?: string): StageSpec[] {
 	let stages = pipeline === 'subtitle' ? SUBTITLE_STAGES : DUB_STAGES;
 	try {
 		const cfg = readConfig();
 		const src = cfg.subtitleSource ?? 'asr';
-		if (src === 'ocr') stages = withOcr(stages, pipeline);
+		if (src === 'ocr') stages = withOcrStages(stages, pipeline);
+		else if (src === 'asr_ocr') stages = withAsrOcrStages(stages, pipeline);
 		if (cfg.stages?.translate?.enabled === false) {
 			stages = stages.filter(s => s.name !== 'translate');
 		}

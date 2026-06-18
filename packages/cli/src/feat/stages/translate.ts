@@ -35,7 +35,7 @@ export async function stageTranslate(ctx: Context) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
 	const metadataDir = join(sessionPath, 'metadata');
-
+	const subtitleSource = ctx.input?.subtitleSource;
 	// 解析目标语言: config > auto 推断
 	const configTargetLang = readConfig().stages?.translate?.targetLang;
 	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =
@@ -47,7 +47,7 @@ export async function stageTranslate(ctx: Context) {
 		setCtx(sessionPath, { target_language: resolvedDstLang });
 	}
 
-	const srtFile = subtitleFilePath(sessionPath);
+	const srtFile = subtitleFilePath(sessionPath, subtitleSource);
 	const dstLangCode = resolvedDstLang;
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;

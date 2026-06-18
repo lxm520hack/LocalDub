@@ -131,6 +131,7 @@ export async function stageOcr(ctx: Context) {
 			_fps: fps,
 			_textScore: textScore,
 			_source: "ocr",
+			_frames_raw: frameResults,
 		},
 		ctx,
 	);

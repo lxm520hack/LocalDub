@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
 	pythonBin,
@@ -12,6 +13,39 @@ import { emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from './utils/u
 import { AsrOptions } from './asr/types.ts';
 import { parseAsrOutput } from './asr/utils.ts';
 import { Context, setCtx, setStage } from '../context/context.ts';
+
+const VAD_CANDIDATES: Record<string, string[]> = {
+	'silero-v5': [
+		'silero-v5.1.2',
+		'silero-vad-v5',
+	],
+	'silero-v6': [
+		'silero-v6.2.0',
+		'silero-vad-v6',
+	],
+};
+
+const VAD_SEARCH_DIRS: string[] = [
+	join(homedir(), '.cache', 'pywhispercpp'),
+	join(REPO_ROOT, 'submodule', 'whisper.cpp', 'models'),
+];
+
+function resolveVadModel(name: string): string {
+	const candidates = VAD_CANDIDATES[name];
+	if (!candidates) return name;
+	for (const dir of VAD_SEARCH_DIRS) {
+		for (const c of candidates) {
+			const p = join(dir, `ggml-${c}.bin`);
+			if (existsSync(p)) return p;
+		}
+	}
+	const dir = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'models');
+	throw new Error(
+		`VAD model '${name}' not found. Install via:\n` +
+		`  bash ${dir}/download-vad-model.sh ${candidates[0]}\n` +
+		`Expected locations: ${VAD_SEARCH_DIRS.map(d => `\n  - ${d}/ggml-{${candidates.join(',')}}.bin`).join('')}`
+	);
+}
 
 
 
@@ -67,7 +101,7 @@ export async function stageAsr(
 				emitLog(sessionPath, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
 			} else {
 				const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-				const scParams = `threshold=${sc.threshold ?? 0.1}:ratio=${sc.ratio ?? 20}:attack=${sc.attack ?? 1}:release=${sc.release ?? 500}`;
+				const scParams = `threshold=${sc.threshold ?? 0.1}:ratio=${sc.ratio ?? 20}:attack=${sc.attack ?? 1}:release=${sc.release ?? 200}`;
 				const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
 				emitLog(sessionPath, `[ASR] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
 				ffmpeg([
@@ -355,9 +389,21 @@ async function asrWhisperCpp(
 	}
 
 	const t0 = performance.now();
-	const result = spawnSync(whisperCli, [
-		'-m', model, tmpAudio, '-l', language, '-t', '4', '-ojf',
-	], {
+	const whisperArgs = ['-m', model, tmpAudio, '-l', language, '-t', '4', '-ojf'];
+	const asrCfg = ctx.input?.stages?.asr;
+	if (asrCfg?.vad) {
+		whisperArgs.push('--vad');
+		if (asrCfg.vadModel) whisperArgs.push('-vm', resolveVadModel(asrCfg.vadModel));
+	}
+	['vadThreshold', 'noSpeechThold', 'temperature'].forEach(k => {
+		const v = (asrCfg as any)?.[k];
+		if (v !== undefined && v !== null) {
+			whisperArgs.push(`--${k.replace(/([A-Z])/g, '-$1').toLowerCase()}`, String(v));
+		}
+	});
+	if (asrCfg?.maxLen && asrCfg.maxLen > 0) whisperArgs.push('--max-len', String(asrCfg.maxLen));
+	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
+	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
 		env: {
 			...process.env,
@@ -429,6 +475,11 @@ async function asrWhisperCpp(
 		audio_info: { duration: lastEndMs },
 		result: { text, segments },
 		_engine: 'whisper.cpp',
+		_model: model,
+		_params: Object.fromEntries(
+			Object.entries(asrCfg ?? {}).filter(([, v]) => v !== undefined),
+		),
+		_input_audio: audioPath,
 		_device: 'vulkan',
 		_rtf: elapsedSec > 0 && lastEndMs > 0
 			? (elapsedSec / (lastEndMs / 1000)).toFixed(3)

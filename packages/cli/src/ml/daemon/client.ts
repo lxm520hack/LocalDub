@@ -78,6 +78,7 @@ export class MLDaemon {
 			detached: true,
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
+		this.proc.stderr?.pipe(process.stderr);
 		this.proc.unref();
 
 		// 3) Wait for TCP ready

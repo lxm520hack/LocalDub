@@ -128,7 +128,7 @@ export async function resumePipeline(
 	if (lastRunMode && lastRunMode !== info.pipeline) {
 		info.lastRunPipeline = info.pipeline;
 		emitLog(
-			taskId,
+			sessionPath,
 			`[Pipeline] switched from "${lastRunMode}" to "${info.pipeline}"`,
 		);
 
@@ -198,7 +198,7 @@ export async function resumePipeline(
 			emitLog(sessionPath, `[Pipeline] Resuming from beginning`);
 		} else {
 			emitLog(
-				taskId,
+				sessionPath,
 				`[Pipeline] Skipping ${startIdx} completed stage(s), resuming from "${stages[startIdx].name}"`,
 			);
 		}
@@ -219,7 +219,7 @@ export async function resumePipeline(
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
-				taskId,
+				sessionPath,
 				`[WARN] [Pipeline] No handler for stage ${stage.name}, skipping`,
 			);
 			continue;

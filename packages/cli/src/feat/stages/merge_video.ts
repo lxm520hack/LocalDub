@@ -10,6 +10,7 @@ import {
 	readTaskLanguages,
 	srtTime,
 	subtitleFilePath,
+	finalVideoFilename,
 	translationFilePath,
 } from './utils/utils.ts';
 
@@ -135,7 +136,7 @@ function writeSrt(translation: any[], ctx: Context, outputPath: string, useSourc
 			useSource ? (item.src || '').trim() : (item.dst || item.zh || '').trim()
 		);
 		if (!text) continue;
-		const fragments = ctx.input?.subtitleSource === 'ocr'
+		const fragments = ctx.input?.subtitleSource === 'ocr' || ctx.input?.subtitleSource === 'asr_ocr'
 			? [text]
 			: splitSubtitle(text);
 		if (!fragments.length) continue;
@@ -229,7 +230,7 @@ export async function stageMergeVideo(ctx: Context) {
 	const tmpDir = join(sessionPath, 'tmp');
 	const metadataDir = join(sessionPath, 'metadata');
 	const srtPath = ctx.input?.stages?.merge_video?.srtPath
-
+	const subtitleSource = ctx.input?.subtitleSource;
 	if (!existsSync(video_file_path)) throw new Error('video_source.mp4 not found');
 
 	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
@@ -245,13 +246,9 @@ export async function stageMergeVideo(ctx: Context) {
 	};
 
 	const noTranslate = ctx.input?.stages?.translate?.enabled === false;
-	const ntlSuffix = noTranslate ? '_ntl' : '';
-	const ocrSuffix = ctx.input?.subtitleSource === 'ocr' ? '_ocr' : '';
 	const finalVideo = join(
 		mediaDir,
-		pipeline === 'subtitle'
-			? `${taskId}_subtitle${ocrSuffix}${ntlSuffix}.mp4`
-			: `${taskId}_dub${ocrSuffix}${ntlSuffix}.mp4`,
+		finalVideoFilename(taskId, pipeline, ctx.input?.subtitleSource ?? 'asr', noTranslate),
 	);
 
 	if (pipeline === 'subtitle') {
@@ -265,7 +262,7 @@ export async function stageMergeVideo(ctx: Context) {
 			const trFile = translationFilePath(sessionPath, dstLangCode);
 			data = await readJson(trFile, ctx);
 		} else {
-			const srt = await readJson(srtPath ? srtPath : subtitleFilePath(sessionPath), ctx);
+			const srt = await readJson(srtPath ? srtPath : subtitleFilePath(sessionPath, subtitleSource), ctx);
 			const segments = srt.result?.segments ?? [];
 			data = {
 				translation: segments.map((seg: any) => ({

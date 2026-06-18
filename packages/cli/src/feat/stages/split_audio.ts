@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages } from './utils/utils.ts';
+import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath } from './utils/utils.ts';
 import { env } from '@repo/config';
 import { Context, setStage } from '../context/context.ts';
 
@@ -100,16 +100,15 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 
 export interface StageSplitAudioInput {
   ctx: Context;
-  sourceFilePath: string;
-  srtFilePath: string;
 }
 export async function stageSplitAudio({
   ctx,
-  sourceFilePath,
-  srtFilePath,
+  
 }: StageSplitAudioInput) {
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
+  const srtFilePath = subtitleFilePath(sessionPath, ctx.input?.subtitleSource);
+  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? join(sessionPath, 'media', 'video_source.mp4');
   const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const metadataDir = join(sessionPath, 'metadata');
 	const translationFile = translationFilePath(sessionPath, dstLangCode);

@@ -5,6 +5,7 @@ import { stageAsr } from './asr.ts';
 import { stageAsrFix } from './asr_fix.ts';
 import { stageOcr } from './ocr.ts';
 import { stageOcrFix } from './ocr_fix/ocr_fix.ts';
+import { stageAsrOcr } from './asr_ocr.ts';
 import { stageTranslate } from './translate.ts';
 import { stageSplitAudio } from './split_audio.ts';
 import { stageTts } from './tts.ts';
@@ -20,6 +21,7 @@ export { stageAsr };
 export { stageAsrFix };
 export { stageOcr };
 export { stageOcrFix };
+export { stageAsrOcr };
 export { stageTranslate };
 export { stageSplitAudio };
 export { stageTts };
@@ -43,7 +45,6 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
     return stageAsr(ctx, d)
   },
   asr_fix: (id, sp, _task) => {
-
     const ctx = readCtx(sp)
     return stageAsrFix(ctx)
   },
@@ -54,6 +55,10 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
   ocr_fix: (id, sp, _task) => {
     const ctx = readCtx(sp)
     return stageOcrFix(ctx)},
+  asr_ocr: (id, sp, _task) => {
+    const ctx = readCtx(sp)
+    return stageAsrOcr(ctx)
+  },
   translate: (id, sp, _task) => {
     const ctx = readCtx(sp)
     return stageTranslate(ctx)},
@@ -61,9 +66,6 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
     const ctx = readCtx(sp)
     return stageSplitAudio({
       ctx,
-      // vocalsFilePath: join(sp, 'media', 'target_3_vocals.wav'),
-      sourceFilePath: join(sp, 'media', 'video_source.mp4'),
-      srtFilePath: subtitleFilePath(sp),
     })
   },
   tts: (id, sp, _task, d) => {

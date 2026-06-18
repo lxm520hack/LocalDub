@@ -276,7 +276,7 @@ async function separateGgml(
 	} else {
 		// Generate bgm via ffmpeg mix if not produced by GGML
 		const bgmInputs = stemNames.slice(0, 3).map(s => join(mediaDir, `target_${stemNames.indexOf(s)}_${s}.wav`));
-		const filter = `[0:a][1:a][2:a]amix=inputs=3:duration=first[out]`;
+		const filter = `[0:a][1:a][2:a]amix=inputs=3:duration=first:normalize=0[out]`;
 		spawnSync('ffmpeg', [
 			'-i', bgmInputs[0], '-i', bgmInputs[1], '-i', bgmInputs[2],
 			'-filter_complex', filter, '-map', '[out]', '-y', bgmDst,

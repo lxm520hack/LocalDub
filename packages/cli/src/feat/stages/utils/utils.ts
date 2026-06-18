@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env, LOG_DIR, REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { getStages } from '../../tasks/stages.ts';
-import type { TargetLang } from '../../config/types.ts';
+import type { SubtitleSource, TargetLang } from '../../config/types.ts';
 import {  readConfig } from '../../config/config.ts';
 import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';
 
@@ -111,10 +111,13 @@ export function translationFilePath(sessionPath: string, lang: string): string {
 	return join(sessionPath, 'metadata', `translation.${lang}.json`);
 }
 
-export function subtitleFilePath(sessionPath: string): string {
-	const src = readConfig().subtitleSource ?? 'asr';
+export function subtitleFilePath(sessionPath: string, src: SubtitleSource = 'asr'): string {
 	if (src === 'ocr') {
 		const fixFile = join(sessionPath, 'metadata', 'ocr_fix.json');
+		if (existsSync(fixFile)) return fixFile;
+	}
+	if (src === 'asr_ocr') {
+		const fixFile = join(sessionPath, 'metadata', 'asr_ocr_fix.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
 	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');
@@ -127,6 +130,13 @@ export function timingFilePath(sessionPath: string): string {
 		if (existsSync(asrFile)) return asrFile;
 	}
 	return subtitleFilePath(sessionPath);
+}
+
+export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
+	const suffix = subtitleSource === 'asr_ocr' ? '_asr_ocr' : subtitleSource === 'ocr' ? '_ocr' : '';
+	const ntlSuffix = noTranslate ? '_ntl' : '';
+	const mode = pipeline === 'subtitle' ? 'subtitle' : 'dub';
+	return `${taskId}_${mode}${suffix}${ntlSuffix}.mp4`;
 }
 
 export function srtTime(ms: number): string {

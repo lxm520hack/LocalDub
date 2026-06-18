@@ -85,10 +85,12 @@
               "enum": [
                 "download",
                 "separate",
+                "separate_after",
                 "asr",
                 "asr_fix",
                 "ocr",
                 "ocr_fix",
+                "asr_ocr",
                 "translate",
                 "split_audio",
                 "tts",
@@ -113,10 +115,12 @@
               "enum": [
                 "download",
                 "separate",
+                "separate_after",
                 "asr",
                 "asr_fix",
                 "ocr",
                 "ocr_fix",
+                "asr_ocr",
                 "translate",
                 "split_audio",
                 "tts",
@@ -183,12 +187,13 @@
           ]
         },
         "subtitleSource": {
-          "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取)",
+          "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)",
           "default": "asr",
           "type": "string",
           "enum": [
             "asr",
-            "ocr"
+            "ocr",
+            "asr_ocr"
           ]
         },
         "targetStage": {
@@ -197,10 +202,12 @@
           "enum": [
             "download",
             "separate",
+            "separate_after",
             "asr",
             "asr_fix",
             "ocr",
             "ocr_fix",
+            "asr_ocr",
             "translate",
             "split_audio",
             "tts",
@@ -369,7 +376,7 @@
                     },
                     "release": {
                       "default": 200,
-                      "description": "release 时间(ms), 默认 200 (原 500)",
+                      "description": "release 时间(ms), 默认 200",
                       "type": "number"
                     }
                   },
@@ -384,6 +391,55 @@
                 "useGate": {
                   "default": false,
                   "description": "对分离后的人声应用 silence gate 过滤静音段噪声",
+                  "type": "boolean"
+                },
+                "vocalAudioPath": {
+                  "description": "ASR 输入的人声音频路径, 调试使用",
+                  "type": "string"
+                },
+                "vad": {
+                  "description": "whisper.cpp: 启用 VAD",
+                  "default": false,
+                  "type": "boolean"
+                },
+                "vadModel": {
+                  "description": "whisper.cpp: VAD 模型, silero-v5 (默认) 或 silero-v6",
+                  "type": "string",
+                  "enum": [
+                    "silero-v5",
+                    "silero-v6"
+                  ]
+                },
+                "vadThreshold": {
+                  "description": "whisper.cpp: VAD 阈值, 默认 0.5",
+                  "default": 0.5,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "noSpeechThold": {
+                  "description": "whisper.cpp: no-speech 阈值, 默认 0.6",
+                  "default": 0.6,
+                  "type": "number",
+                  "minimum": 0
+                },
+                "temperature": {
+                  "description": "whisper.cpp: 解码温度, 默认 0.0",
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "maxLen": {
+                  "description": "whisper.cpp: 最大段长(字符), 0=不限",
+                  "default": 0,
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "splitOnWord": {
+                  "description": "whisper.cpp: 按词边界分割",
+                  "default": false,
                   "type": "boolean"
                 }
               },
@@ -422,6 +478,10 @@
                 },
                 "domainHint": {
                   "description": "领域提示，帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+                  "type": "string"
+                },
+                "asrFilePath": {
+                  "description": "ASR 结果文件路径, 调试使用",
                   "type": "string"
                 }
               },
@@ -540,6 +600,10 @@
                 "vocalsFilePath": {
                   "description": "人声文件路径, 调试使用",
                   "type": "string"
+                },
+                "sourceFilePath": {
+                  "description": "原始视频音频路径, 调试使用",
+                  "type": "string"
                 }
               },
               "additionalProperties": {}
@@ -597,7 +661,7 @@
                 "maxAdvanceMs": {
                   "description": "字幕允许提前显示的最大毫秒数, 利用前段剩余时间",
                   "default": 500,
-                  "type": "integer",
+                  "type": "number",
                   "minimum": 0
                 }
               },
@@ -675,7 +739,7 @@
                   "type": "string"
                 },
                 "bgmGain": {
-                  "description": "背景音乐增益(dB), 0=不变, 默认14",
+                  "description": "背景音乐增益(dB), 0=不变",
                   "default": 14,
                   "type": "number",
                   "minimum": 0
