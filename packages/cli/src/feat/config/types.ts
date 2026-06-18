@@ -205,11 +205,12 @@ const SplitAudioConfigSchema = z
 			.boolean()
 			.default(false)
 			.describe('是否启用静音检测对齐: 修正 segments 前后静音导致的偏移').optional(),
-			vocalsFilePath: z.string().optional().describe('人声文件路径, 调试使用'),
+		vocalsFilePath: z.string().optional().describe('人声文件路径, 调试使用'),
+		
 	})
 	.default({
 		vadAlign: false,
-		
+
 	})
 	.optional();
 
@@ -265,11 +266,13 @@ const MergeVideoSchema = z
 			.describe('ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC'),
 		srtPath: z.string().optional().describe('调试使用'),
 		bgmPath: z.string().optional().describe('调试使用'),
+		bgmGain: z.number().min(0).default(14).optional().describe('背景音乐增益(dB), 0=不变'),
 	})
 	.default({
 		alignment: 'bottom-center',
 		outline: 0,
 		shadow: 1,
+		bgmGain: 14,
 	})
 	.optional();
 
@@ -337,7 +340,13 @@ const StagesSchema = z.object({
 	translate: TranslateConfigSchema,
 	split_audio: SplitAudioConfigSchema,
 	tts: TTSConfigSchema,
-	merge_audio: z.object({}).optional(),
+	merge_audio: z.object({
+		maxSpeed: z.number().min(1).default(1.05).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
+		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间')
+	}).default({
+				maxSpeed: 1.05,
+				maxAdvanceMs: 500,
+	}).optional(),
 	merge_video: MergeVideoSchema,
 });
 type StagesConfigInput = z.input<typeof StagesSchema>;

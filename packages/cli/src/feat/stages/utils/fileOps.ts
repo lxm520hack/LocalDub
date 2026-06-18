@@ -2,7 +2,15 @@ import { readFileSync, writeFileSync, copyFileSync, rmSync, mkdirSync, existsSyn
 import { emitLog } from './utils.ts';
 import { Context,  } from '../../context/context.ts';
 
-export function fileLog(ctx: Context, op: string, path: string, extra?: string) {
+export function getLastSegment(path: string) {
+	const last = path.replace(/\\/g, "/").split("/").filter(Boolean).pop();
+	if (!last) throw new Error(`Invalid path: ${path}`);
+  return last
+}
+
+export type FileOp = 'read' | 'write' | 'copy' | 'rm' | 'mkdir';
+
+export function fileLog(ctx: Context, op: FileOp, path: string, extra?: string) {
 	emitLog(ctx.task.session_path, `[${ctx.task.current_stage}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
 }
 

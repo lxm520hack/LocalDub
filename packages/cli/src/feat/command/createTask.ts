@@ -1,10 +1,7 @@
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
-import { eq, sql } from 'drizzle-orm';
-import { db } from './../../db/index.ts';
 import { DUB_STAGES, getStages } from './../../feat/tasks/stages.ts';
-import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { Ctx, TargetLang } from '../config/types.ts';
 import { Context, VideoSource, writeCtx } from '../context/context.ts';
 import { existsSync } from '../stages/utils/fileOps.ts';
@@ -99,37 +96,6 @@ export async function createTask({
 			/* title is optional */
 		}
 	}
-
-	// const { ret } = await db.transaction(async (tx) => {
-	// 	const ret = await tx
-	// 		.insert(tasks)
-	// 		.values({
-	// 			id: params.taskId,
-	// 			url: taskUrl,
-	// 			status: 'queued',
-	// 			current_stage: stages[0].name,
-	// 			created_at: createdAt,
-	// 		})
-	// 		.returning();
-
-	// 	await tx.insert(taskStages).values(
-	// 		stages.map((stage) => ({
-	// 			task_id: params.taskId,
-	// 			name: stage.name,
-	// 			label: stage.label,
-	// 			status: 'pending',
-	// 		})),
-	// 	);
-
-	// 	return { ret };
-	// });
-
-	// if (url) {
-	// 	await db
-	// 		.update(tasks)
-	// 		.set({ session_path: `workfolder/local/${params.taskId}` })
-	// 		.where(eq(tasks.id, params.taskId));
-	// }
 	writeCtx(ctx);
 	return ctx;
 }

@@ -3,23 +3,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import { fileLog } from '../stages/utils/fileOps.ts';
-let currentStage = 'system';
-let readTaskId = '';
+import { fileLog, getLastSegment } from '../stages/utils/fileOps.ts';
 
-
-
-export function stage(): string {
-	return currentStage;
-}
-
-export function setTaskId(id: string) {
-	readTaskId = id;
-}
-
-export function getTaskId(): string {
-	return readTaskId;
-}
+export const getTaskId = (sessionPath: string) => getLastSegment(sessionPath)
 
 export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote'
 export interface Task {
@@ -66,7 +52,6 @@ export interface TaskStage {
   progress?: number | null | undefined;
   started_at?: string | null | undefined;
   status: string;
-  task_id: string;
 }
 
 export const ctxPath = (sessionPath: string) =>
@@ -112,7 +97,6 @@ export const setCtx = (
 export async function readTask(sessionPath: string) {
 	const ctx_path = ctxPath(sessionPath)
 	const [ctx, err] = await to<Context>(Bun.file(ctx_path).json());
-	// const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
 	if (err) throw new Error(`Task ${ctx_path} not found`);
 	
 	return ctx.task;

@@ -3,7 +3,6 @@ import { join, resolve } from 'node:path';
 import { REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
-// import { db } from './../../db/index.ts';
 import { getStages } from './../../feat/tasks/stages.ts';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
@@ -12,7 +11,7 @@ import {
 } from '../config/config.ts';
 import type { Ctx } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
-import { Context, setTaskId, 	readCtx,
+import { Context, 	readCtx,
 	readPipeline,
 	readTask,
 	setCtx,
@@ -44,7 +43,6 @@ function snapshotConfig(sessionPath: string) {
 export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
-	setTaskId(taskId);
 	let task = await readTask(sessionPath);
 	mkdirSync(sessionPath, { recursive: true });
 
@@ -103,7 +101,7 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 		}
 	}
 
-	 setTask(sessionPath, {
+	setTask(sessionPath, {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		current_stage: null,
@@ -119,7 +117,6 @@ export async function resumePipeline(
 ) {
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
-	setTaskId(taskId);
 	let task = await readTask(sessionPath);
 
 	const [info, err] = to(() => readCtx(sessionPath));

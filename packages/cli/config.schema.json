@@ -582,15 +582,33 @@
               "additionalProperties": false
             },
             "merge_audio": {
+              "default": {
+                "maxSpeed": 1.05,
+                "maxAdvanceMs": 500
+              },
               "type": "object",
-              "properties": {},
+              "properties": {
+                "maxSpeed": {
+                  "description": "TTS 音频最大变速比, 1.0=不变速",
+                  "default": 1.05,
+                  "type": "number",
+                  "minimum": 1
+                },
+                "maxAdvanceMs": {
+                  "description": "字幕允许提前显示的最大毫秒数, 利用前段剩余时间",
+                  "default": 500,
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
               "additionalProperties": false
             },
             "merge_video": {
               "default": {
                 "alignment": "bottom-center",
                 "outline": 0,
-                "shadow": 1
+                "shadow": 1,
+                "bgmGain": 14
               },
               "type": "object",
               "properties": {
@@ -655,6 +673,12 @@
                 "bgmPath": {
                   "description": "调试使用",
                   "type": "string"
+                },
+                "bgmGain": {
+                  "description": "背景音乐增益(dB), 0=不变, 默认14",
+                  "default": 14,
+                  "type": "number",
+                  "minimum": 0
                 }
               },
               "additionalProperties": false

@@ -314,9 +314,9 @@ function segmentRms(audioPath: string, startMs: number, endMs: number): Promise<
 			if (code !== 0) return resolve(0);
 			const m = stderr.match(/lavfi\.astats\.Overall\.RMS_level=([-\d.]+)/);
 			if (!m) return resolve(0);
-			const db = parseFloat(m[1]);
+			const dB = parseFloat(m[1]);
 			// dB → linear: linear = 10^(dB/20)
-			resolve(Math.pow(10, db / 20));
+			resolve(Math.pow(10, dB / 20));
 		});
 		proc.on('error', () => resolve(0));
 	});

@@ -38,22 +38,14 @@ export async function stageMergeAudio(ctx: Context) {
   let lastEndMs = 0;
   let drift = 0;
 
+  const maxSpeed = ctx.input?.stages?.merge_audio?.maxSpeed ?? 1.05;
+  const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
+
   for (let i = 0; i < translation.length; i++) {
     const segment = translation[i];
     const ttsFile = ttsFiles[i];
     const idx = String(i + 1).padStart(4, '0');
     const stretchedFile = join(stretchedDir, `${idx}.wav`);
-
-    const realStartMs = Math.max(segment.start_time, lastEndMs);
-
-    if (realStartMs > lastEndMs) {
-      const gapSec = (realStartMs - lastEndMs) / 1000;
-      const silenceFile = join(tmpDir, `silence_${i}.wav`);
-      if (!existsSync(silenceFile)) {
-        ffmpeg(['-f', 'lavfi', '-i', `anullsrc=r=${sampleRate}:cl=mono`, '-t', String(gapSec), silenceFile]);
-      }
-      segmentInputs.push(silenceFile);
-    }
 
     // Probe original TTS duration
     const ttsDurProbe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', ttsFile], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -68,23 +60,54 @@ export async function stageMergeAudio(ctx: Context) {
     const durProbe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', trimmedFile], { stdio: ['pipe', 'pipe', 'pipe'] });
     const trimmedSec = parseFloat(durProbe.stdout.toString().trim()) || 0;
 
+    // Determine advance — conservative for segments that already fit
+    const originalSlotBaseSec = (segment.end_time - segment.start_time) / 1000;
+    let advanceMs = 0;
+    if (trimmedSec <= originalSlotBaseSec) {
+      const surplusNoAdvanceSec = drift + (originalSlotBaseSec - trimmedSec);
+      if (surplusNoAdvanceSec < 0.5) {
+        advanceMs = Math.min(
+          Math.round((0.5 - surplusNoAdvanceSec) * 1000),
+          Math.round(maxAdvanceMs * 0.2)
+        );
+      }
+    } else {
+      advanceMs = Math.min(maxAdvanceMs, Math.max(0, Math.round(drift * 1000)));
+    }
+
+    const realStartMs = Math.max(segment.start_time - advanceMs, lastEndMs, 0);
+    advanceMs = Math.max(0, segment.start_time - realStartMs);
+    const effectiveDrift = drift - advanceMs / 1000;
+
+    if (realStartMs > lastEndMs) {
+      const gapSec = (realStartMs - lastEndMs) / 1000;
+      const silenceFile = join(tmpDir, `silence_${i}.wav`);
+      if (!existsSync(silenceFile)) {
+        ffmpeg(['-f', 'lavfi', '-i', `anullsrc=r=${sampleRate}:cl=mono`, '-t', String(gapSec), silenceFile]);
+      }
+      segmentInputs.push(silenceFile);
+    }
+
     const originalSlotSec = (segment.end_time - realStartMs) / 1000;
     // floor at 50ms so speed calc never goes negative
-    const slotSec = Math.max(0.05, originalSlotSec + drift);
+    const slotSec = Math.max(0.05, originalSlotSec + effectiveDrift);
 
     let stretchedSec: number;
     let newDrift: number;
-
-    if (trimmedSec <= slotSec) {
+    let speed = 1.0;
+    if (trimmedSec <= originalSlotSec) {
       stretchedSec = trimmedSec;
-      newDrift = slotSec - trimmedSec;
+      ffmpeg(['-i', trimmedFile, '-c', 'copy', stretchedFile]);
+    } else if (trimmedSec <= slotSec) {
+      stretchedSec = trimmedSec;
       ffmpeg(['-i', trimmedFile, '-c', 'copy', stretchedFile]);
     } else {
-      const speed = Math.min(1.05, trimmedSec / slotSec);
+      speed = Math.min(maxSpeed, trimmedSec / slotSec);
       stretchedSec = trimmedSec / speed;
-      newDrift = speed < 1.05 ? 0 : slotSec - stretchedSec;
       ffmpeg(['-i', trimmedFile, '-filter:a', `rubberband=tempo=${speed.toFixed(4)}`, stretchedFile]);
     }
+    newDrift = originalSlotSec - stretchedSec;
+    if (newDrift > maxAdvanceMs / 1000) newDrift = maxAdvanceMs / 1000;
 
     drift = newDrift;
     segmentInputs.push(stretchedFile);
@@ -92,10 +115,14 @@ export async function stageMergeAudio(ctx: Context) {
     const realEndMs = Math.floor(realStartMs + stretchedSec * 1000);
     lastEndMs = realEndMs;
 
+    segment.original_duration_ms = segment.end_time - segment.start_time;
+    segment.drift_ms = Math.round(drift * 1000);
+    segment.advance_ms = advanceMs;
     segment.actual_start_time = Math.floor(realStartMs);
     segment.actual_end_time = realEndMs;
     segment.tts_duration_ms = Math.round(ttsSec * 1000);
     segment.stretched_duration_ms = Math.round(stretchedSec * 1000);
+    segment.stretch_ratio = parseFloat((trimmedSec <= slotSec ? 1.0 : speed).toFixed(4));
   }
 
   if (segmentInputs.length === 0) throw new Error('No audio segments to merge');

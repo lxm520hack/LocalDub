@@ -2,13 +2,10 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env, LOG_DIR, REPO_ROOT, WORKFOLDER } from '@repo/config';
-import { eq, sql } from 'drizzle-orm';
-import { db } from '../../../db/index.ts';
 import { getStages } from '../../tasks/stages.ts';
-import { taskStages, tasks } from '../../tasks/table.ts';
 import type { TargetLang } from '../../config/types.ts';
 import {  readConfig } from '../../config/config.ts';
-import { Context, getTaskId, readCtx } from '../../context/context.ts';
+import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -141,7 +138,7 @@ export function srtTime(ms: number): string {
 }
 
 export function emitLog(sessionPath: string, line: string) {
-	const tid = getTaskId();
+	const tid = getTaskId(sessionPath);
 	console.log(line);
 	if (!tid) return;
 	const ts = nowISO();
@@ -167,7 +164,7 @@ export function ffmpeg(args: string[], timeout = 120_000) {
 
 
 
-function msDiff(a: string | null, b: string | null): number | null {
+function msDiff(a?: string | null, b?: string | null): number | null {
 	if (!a || !b) return null;
 	return Math.max(0, new Date(a).getTime() - new Date(b).getTime());
 }
@@ -180,16 +177,7 @@ function fmtDuration(ms: number | null): string {
 	return `${Math.floor(s / 60)}m${s % 60}s`;
 }
 
-function enrichStage(s: {
-	name: string;
-	label: string;
-	status: string;
-	progress: number | null;
-	last_message: string | null;
-	error_message: string | null;
-	started_at: string | null;
-	completed_at: string | null;
-}) {
+function enrichStage(s: TaskStage) {
 	return {
 		...s,
 		progress: s.progress ?? 0,
@@ -199,7 +187,7 @@ function enrichStage(s: {
 
 function buildSummary(
 	stages: ReturnType<typeof enrichStage>[],
-	task: typeof tasks.$inferSelect,
+	task: Task
 ): string {
 	const done = stages.filter((s) => s.status === 'completed').length;
 	const total = stages.length;
@@ -212,25 +200,8 @@ function buildSummary(
 		: `${task.status}${stageInfo} — ${done}/${total} stages done, elapsed ${elapsed}`;
 }
 
-export async function getStageStatuses(taskId: string) {
-	const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-	if (!task) throw new Error(`Task ${taskId} not found`);
-
-	const rows = await db
-		.select({
-			name: taskStages.name,
-			label: taskStages.label,
-			status: taskStages.status,
-			progress: taskStages.progress,
-			last_message: taskStages.last_message,
-			error_message: taskStages.error_message,
-			started_at: taskStages.started_at,
-			completed_at: taskStages.completed_at,
-		})
-		.from(taskStages)
-		.where(eq(taskStages.task_id, taskId));
-
-	const sessionPath = join(REPO_ROOT, task.session_path || task.id);
+export async function getStageStatuses(sessionPath: string) {
+	const { task, stages: rows = []} =  _readCtx(sessionPath); // ensure ctx exists and is valid
 	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
 
 	const stageSpecs = getStages(pipeline);
@@ -251,7 +222,7 @@ export async function getStageStatuses(taskId: string) {
 	);
 
 	return {
-		taskId,
+		taskId: task.id,
 		url: task.url,
 		title: task.title,
 		status: task.status,

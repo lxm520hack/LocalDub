@@ -1,10 +1,7 @@
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { env, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
-import { eq, sql } from 'drizzle-orm';
-import { db } from './../../db/index.ts';
 import { DUB_STAGES, getStages } from './../../feat/tasks/stages.ts';
-import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import type { Ctx, TargetLang } from '../config/types.ts';
 import { Context, writeCtx } from '../context/context.ts';
 import { isYouTubeUrl } from './validate.ts';
@@ -22,17 +19,17 @@ export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
 }
 
-export async function findTaskByVideoId(
-	videoId: string,
-): Promise<string | null> {
-	const rows = await db
-		.select({ id: tasks.id })
-		.from(tasks)
-		.where(sql`${tasks.id} = ${videoId} OR ${tasks.url} LIKE ${`%${videoId}%`}`)
-		.orderBy(sql`created_at DESC, rowid DESC`)
-		.limit(1);
-	return rows[0]?.id ?? null;
-}
+// export async function findTaskByVideoId(
+// 	videoId: string,
+// ): Promise<string | null> {
+// 	const rows = await db
+// 		.select({ id: tasks.id })
+// 		.from(tasks)
+// 		.where(sql`${tasks.id} = ${videoId} OR ${tasks.url} LIKE ${`%${videoId}%`}`)
+// 		.orderBy(sql`created_at DESC, rowid DESC`)
+// 		.limit(1);
+// 	return rows[0]?.id ?? null;
+// }
 
 export async function createTask({
 	pipeline = 'dub',
@@ -158,32 +155,32 @@ export async function createTask({
 	return ctx;
 }
 
-const STAGE_ORDER_CASE = sql`CASE ${DUB_STAGES.map(
-	(s, i) => sql`WHEN ${taskStages.name} = ${s.name} THEN ${i + 1}`,
-)} ELSE 99 END`;
+// const STAGE_ORDER_CASE = sql`CASE ${DUB_STAGES.map(
+// 	(s, i) => sql`WHEN ${taskStages.name} = ${s.name} THEN ${i + 1}`,
+// )} ELSE 99 END`;
 
-export async function updateTask(
-	taskId: string,
-	fields: Record<string, unknown>,
-) {
-	if (Object.keys(fields).length === 0) return;
-	await db.update(tasks).set(fields).where(eq(tasks.id, taskId));
-}
+// export async function updateTask(
+// 	taskId: string,
+// 	fields: Record<string, unknown>,
+// ) {
+// 	if (Object.keys(fields).length === 0) return;
+// 	await db.update(tasks).set(fields).where(eq(tasks.id, taskId));
+// }
 
-export async function updateStage(
-	taskId: string,
-	name: string,
-	fields: Record<string, unknown>,
-) {
-	if (Object.keys(fields).length === 0) return;
-	await db
-		.update(taskStages)
-		.set(fields)
-		.where(
-			sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = ${name}`,
-		);
-}
+// export async function updateStage(
+// 	taskId: string,
+// 	name: string,
+// 	fields: Record<string, unknown>,
+// ) {
+// 	if (Object.keys(fields).length === 0) return;
+// 	await db
+// 		.update(taskStages)
+// 		.set(fields)
+// 		.where(
+// 			sql`${taskStages.task_id} = ${taskId} AND ${taskStages.name} = ${name}`,
+// 		);
+// }
 
-export async function deleteTask(taskId: string) {
-	await db.delete(tasks).where(eq(tasks.id, taskId));
-}
+// export async function deleteTask(taskId: string) {
+// 	await db.delete(tasks).where(eq(tasks.id, taskId));
+// }

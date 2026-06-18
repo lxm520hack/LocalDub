@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { readJson, writeFile, ensureDir } from './utils/fileOps.ts';
+import { readJson, writeFile, ensureDir, fileLog } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Context, readCtx, setStage, setTask, stage } from '../context/context.ts';
+import { Context, readCtx, setStage, setTask, } from '../context/context.ts';
 import { alignmentToFfmpeg } from '../config/types.ts';
 import {
 	ffmpeg,
@@ -324,6 +324,7 @@ export async function stageMergeVideo(ctx: Context) {
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
 		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
+		const bgmGain = ctx.input?.stages?.merge_video?.bgmGain ?? 14;
 		const mixedAudio = join(tmpDir, 'audio_mixed.m4a');
 		ffmpeg([
 			'-i',
@@ -331,7 +332,7 @@ export async function stageMergeVideo(ctx: Context) {
 			'-i',
 			bgmFile,
 			'-filter_complex',
-			'[1:a]volume=7dB[a1];[0:a][a1]amix=inputs=2:duration=longest:normalize=0[aout]',
+			`[1:a]volume=${bgmGain}dB[a1];[0:a][a1]amix=inputs=2:duration=longest:normalize=0,acompressor=threshold=-24dB:ratio=2:makeup=2dB,alimiter=limit=-1dB[aout]`,
 			'-map',
 			'[aout]',
 			'-c:a',
@@ -368,7 +369,7 @@ export async function stageMergeVideo(ctx: Context) {
 		);
 	}
 
-	console.log(`[${stage()}] [File] write ${finalVideo}`);
+	fileLog(ctx, 'write', finalVideo);
 
 	await setStage(sessionPath, 'merge_video', {
 		status: 'succeeded',

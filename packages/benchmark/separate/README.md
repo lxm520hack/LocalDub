@@ -1,5 +1,7 @@
 # Separate Benchmark — Demucs 音频分离
 
+## 模型参数
+
 ## 测试内容
 对三段不同时长（10s / 60s / 120s）的音频（粉红噪声，16-bit 44.1kHz 单声道 WAV）进行 Demucs 4-stem 分离，提取人声 + 背景音。对比三个后端，支持 `shifts=1`（公平对比）和 `shifts=3`（高质量）：
 
