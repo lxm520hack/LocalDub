@@ -2,8 +2,22 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from './utils/utils.ts';
-import { FrameResult, Segment, mergeFrames, fixOverlap } from './utils/ocrMerge.ts';
+import { FrameResult, Segment, mergeFrames, fixOverlap, dedupOverlap } from './utils/ocrMerge.ts';
 import { Context, setStage } from '../context/context.ts';
+
+function mergeSegments(segs: Segment[], sameTextGapMs = 1000): Segment[] {
+	const merged: Segment[] = [];
+	for (const s of segs) {
+		if (!s.text) continue;
+		const last = merged[merged.length - 1];
+		if (last && last.text === s.text && s.start - last.end <= sameTextGapMs) {
+			last.end = Math.max(last.end, s.end);
+		} else {
+			merged.push({ ...s });
+		}
+	}
+	return dedupOverlap(merged);
+}
 
 export async function stageAsrOcrFix(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
@@ -36,17 +50,39 @@ export async function stageAsrOcrFix(ctx: Context) {
 	}));
 
 	const frameResults: FrameResult[] = (ocrFramesData._frames_raw ?? []);
-	const ocrSegments: Segment[] = (ocrData.result?.segments ?? []).map((s: any) => ({
-		text: s.text,
-		start: Math.round(s.start),
-		end: Math.round(s.end),
-	}));
 
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!frameResults.length) throw new Error('No OCR frames found (empty ocr_frames.json)');
 
-	// ASR-guided boundaries: mergeFrames handles Levenshtein + substring + triplet + dedup
-	const asrSegsMerged = mergeFrames(frameResults);
+	// ASR-guided boundaries: assign each OCR frame to its parent ASR segment
+	const asrResults: { text: string; start: number; end: number }[] = [];
+	for (const f of frameResults) {
+		if (!f.text) continue;
+		const parent = asrSegs.find(s => f.timestamp >= s.start && f.timestamp <= s.end);
+		if (!parent) continue;
+		const isFirstSeg = parent === asrSegs[0];
+		asrResults.push({
+			text: f.text,
+			start: isFirstSeg ? Math.max(0, f.timestamp - 90) : parent.start,
+			end: parent.end,
+		});
+	}
+
+	// Simple dedup: adjacent same text, gap ≤ 1s → merge
+	const deduped: { text: string; start: number; end: number }[] = [];
+	for (const r of asrResults) {
+		const last = deduped[deduped.length - 1];
+		if (last && last.text === r.text && r.start <= last.end + 1000) {
+			last.start = Math.min(last.start, r.start);
+			last.end = Math.max(last.end, r.end);
+		} else {
+			deduped.push({ text: r.text, start: r.start, end: r.end });
+		}
+	}
+	const asrSegsMerged = mergeSegments(
+		deduped.map(s => ({ text: s.text, start: s.start, end: s.end })),
+		1000,
+	);
 	const asrOcrText = asrSegsMerged.map(s => s.text).join(' ');
 
 	const segmentsOut = asrSegsMerged.map(s => ({
@@ -72,9 +108,25 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
-	// Write asr_ocr_fused.json — fixOverlap fused result
+	// Pure OCR boundaries (from mergeFrames, matching benchmark ocr.json)
+	const ocrSegsMerged = mergeFrames(frameResults).map(s => ({ text: s.text, start: s.start, end: s.end }));
+	writeJson(
+		join(metadataDir, 'ocr_merged.json'),
+		{
+			audio_info: { duration: ocrSegsMerged.length > 0 ? ocrSegsMerged[ocrSegsMerged.length - 1].end : 0 },
+			_boundary: 'ocr',
+			_fusion_params: { strategy: 'end2fps', ocrCalls: frameResults.length },
+			result: {
+				text: ocrSegsMerged.map(s => s.text).join(' '),
+				segments: ocrSegsMerged.map(s => ({ text: s.text, start: s.start, end: s.end })),
+			},
+		},
+		ctx,
+	);
+
+	// Write asr_ocr_fused.json — fixOverlap fused result (uses ASR-guided input, matching benchmark)
 	const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
-	const fix = fixOverlap(asrSegsMerged, frameResults, ocrSegments, maxAdvanceMs).filter(
+	const fix = fixOverlap(asrSegsMerged, frameResults, ocrSegsMerged, maxAdvanceMs).filter(
 		s => s.end > s.start,
 	);
 	const fixText = fix.map(s => s.text).join(' ');
@@ -97,7 +149,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
-	emitLog(sessionPath, `[ASR+OCR-FIX] ${frameResults.length} OCR frames → ${asrSegsMerged.length} merged segs, ${fix.length} fused segs`);
+	emitLog(sessionPath, `[ASR+OCR-FIX] ${frameResults.length} OCR frames → ${asrSegsMerged.length} ASR-boundary segs, ${fix.length} fused segs`);
 
 	await setStage(sessionPath, 'asr_ocr_fix', {
 		status: 'succeeded',
