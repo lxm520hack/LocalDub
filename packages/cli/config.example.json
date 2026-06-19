@@ -1,31 +1,64 @@
 {
   "$schema": "./config.schema.json",
   "command": "createTask",
-  "createTask": {
-    "sourceFile": "/home/aa/repos/learn_ls/YouDub-webui/workfolder/local/VLmkCww00z/media/video_source.mp4"
+  "check": {
+    "type": "font"
   },
-  "pipeline": "subtitle",
+  "createTask": {
+    "url": "/home/aa/下载/大/14.mp4",
+    "sourceLang": "zh"
+  },
+  "resumeTask": {
+    "resumeFrom": "merge_audio",
+    "sessionPath": "/home/aa/repos/env_ls/LocalDub/workfolder/local/大/11"
+  },
+  "targetStage": "merge_video",
+  "pipeline": "dub",
+  "subtitleSource": "asr_ocr",
   "stages": {
     "separate": {
-      "runtime": "pytorch",
-      "device": "cuda"
+      "runtime": "ggml",
+      "device": "cpu",
+      "always": true
     },
     "asr": {
-      "runtime": "pytorch",
-      "device": "cuda"
+      "runtime": "ggml",
+      "device": "vulkan",
+      "useSeparated": true,
+      "mixMode": "sidechain",
+      "vad": true,
+      "vadModel": "silero-v6",
+      "vadThreshold": 0.2
+    },
+    "asr_fix": {
+      "llmFix": true,
+      "domainHint": "仙侠, 系统; 角色: 叶白, 慧天；术语：灵石、灵根、剑仙、心性定力、系统伴生、资质上乘、狮子歌歌、一刀流居合死; 常见纠错: 夜白->叶白, 在为我喝汤->在喂我喝汤, 这般茅造->这般毛躁, 对上他那时->对上他那式, 无波无言->无波无澜, 就叫谁胜谁负->究竟谁胜谁负; 根据上下文的纠错:(万一夜白忍不住宰了慧天怎么办)->(万一叶白忍不住宰了慧天怎么办), (我好想 看到一个老婆婆在喂我喝汤)->(我好像 看到一个老婆婆在喂我喝汤), (一时情节)->(一时情急)"
+    },
+    "ocr_fix": {
+      "llmFix": true
     },
     "translate": {
+      "enabled": true,
       "targetLang": "vi",
       "apiBase": "http://localhost:11434/v1",
       "model": "gemma4:31b-cloud"
     },
+    "split_audio": {
+      "vadAlign": false
+    },
     "tts": {
-      "runtime": "cloud",
-      "device": "cuda"
+      "runtime": "pytorch",
+      "device": "cpu"
+    },
+    "merge_audio": {
+      "maxSpeed": 1.35
     },
     "merge_video": {
-      "fontSize": 19,
-      "marginV": 34
+      "fontSize": 21.4,
+      "marginV": 37,
+      "font": "Noto Sans CJK SC Medium",
+      "shadow": 1.1,
+      "bgmGain": -9
     }
   }
 }
