@@ -213,24 +213,28 @@ ${correctionsStr}
 					const chineseRatio =
 						(dst.match(/[\u4e00-\u9fff]/g) || []).length / (dst.length || 1);
 					if (dstLangCode !== 'zh' && chineseRatio > 0.3) {
-						emitLog(
-							sessionPath,
-							`[WARN] [Translate] Item ${i + 1} still Chinese (ratio=${chineseRatio.toFixed(2)}), using source`,
-						);
-						return batchTexts[i];
+						const msg = `[Translate] Item ${i + 1} still Chinese (ratio=${chineseRatio.toFixed(2)}, expected ${dstLangCode})`;
+						emitLog(sessionPath, `[ERROR] ${msg}`);
+						throw new Error(msg);
 					}
-					return dst || batchTexts[i];
+					if (!dst) {
+						const msg = `[Translate] Item ${i + 1} got empty dst`;
+						emitLog(sessionPath, `[ERROR] ${msg}`);
+						throw new Error(msg);
+					}
+					return dst;
 				});
-			while (results.length < batchTexts.length)
-				results.push(batchTexts[results.length]);
+			if (results.length < batchTexts.length) {
+				const msg = `[Translate] batch produced ${results.length} translations for ${batchTexts.length} inputs`;
+				emitLog(sessionPath, `[ERROR] ${msg}`);
+				throw new Error(msg);
+			}
 			return results;
 		} catch (e: any) {
 			if (attempt < 2) return translateBatch(batchTexts, attempt + 1);
-			emitLog(
-				sessionPath,
-				`[WARN] [Translate] Batch failed after 3 attempts: ${e.message} — using source as fallback`,
-			);
-			return batchTexts;
+			const msg = `[Translate] batch failed after 3 attempts: ${e.message || e} (expected ${dstLangCode})`;
+			emitLog(sessionPath, `[ERROR] ${msg}`);
+			throw new Error(msg);
 		}
 	}
 

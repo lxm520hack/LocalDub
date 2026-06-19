@@ -9,13 +9,33 @@ import { nowISO } from '../stages/utils/utils.ts';
 import { isYouTubeUrl } from '../tasks/validate.ts';
 
 
+function parseDirAndId(filePath: string): { dir: string; id: string } {
+	const parts = filePath.split(/[/\\]/).filter(Boolean);
+	if (parts.length === 0) return { dir: 'default', id: 'video' };
+	const fileName = parts.pop() || 'video';
+	const id = fileName.replace(/\.[^.]+$/, '');
+	const parentDir = parts.pop() || 'default';
+	const genericDirs = new Set([
+		'videos', 'video', 'downloads', 'download', 'media',
+		'tmp', 'temp', 'uploads', 'upload', 'files', 'workfolder', 'local'
+	]);
+	if (genericDirs.has(parentDir.toLowerCase()) && parts.length > 0) {
+		const grandParentDir = parts.pop();
+		if (grandParentDir && !genericDirs.has(grandParentDir.toLowerCase())) {
+			return { dir: grandParentDir, id };
+		}
+	}
+	return { dir: parentDir || 'root', id };
+}
+
 export async function createTask({
 	pipeline = 'dub',
 	url,
 	source,
-	...params}: {
-		url: string;
-	taskId: string;
+	...params
+}: {
+	url: string;
+	taskId?: string;
 	source: VideoSource
 	sourceLang?: string;
 	targetLang?: TargetLang;
@@ -24,29 +44,31 @@ export async function createTask({
 }) {
 	const createdAt = nowISO();
 	const stages = getStages(pipeline);
+	const { dir: parsedDir, id: parsedId } = parseDirAndId(url);
+	const taskId = params.taskId || parsedId;
 
 	let ctx: Context = {
 		task: {
-      id: params.taskId,
-      status: 'queued',
-      source,
-      url: url,
-      created_at: createdAt,
-      current_stage: stages[0].name,
-      session_path: '',
-    },
-    asr_language: params.sourceLang || 'auto',
-    pipeline,
-    lastRunPipeline: pipeline,
-    stages: stages.map((stage) => ({
-      task_id: params.taskId,
-      name: stage.name,
-      label: stage.label,
-      status: 'pending',
-    }))
+			id: taskId,
+			status: 'queued',
+			source,
+			url: url,
+			created_at: createdAt,
+			current_stage: stages[0].name,
+			session_path: '',
+		},
+		asr_language: params.sourceLang || 'auto',
+		pipeline,
+		lastRunPipeline: pipeline,
+		stages: stages.map((stage) => ({
+			task_id: taskId,
+			name: stage.name,
+			label: stage.label,
+			status: 'pending',
+		}))
 	}
-	if (source==='local' || source === 'remote') {
-		const  sessionPath = join(WORKFOLDER, 'local', params.taskId);
+	if (source === 'local' || source === 'remote') {
+		const sessionPath = join(WORKFOLDER, 'local', parsedDir, taskId);
 		mkdirSync(sessionPath, { recursive: true });
 
 		let filename: string;
@@ -68,7 +90,7 @@ export async function createTask({
 
 		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
 		ctx.task.title = filename.replace(/\.\w+$/, '')
-		ctx.task.session_path =sessionPath
+		ctx.task.session_path = sessionPath
 	} else if (source === 'youtube' || source === 'bilibili') {
 		// Fetch video title via yt-dlp --dump-json (optional)
 		try {

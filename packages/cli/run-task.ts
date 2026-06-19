@@ -185,28 +185,27 @@ switch (cmd) {
 			);
 			process.exit(1);
 		}
-		const videoId = extractVideoId(url)
 		try {
 			const taskPipeline = config.pipeline;
 			const source = await classifySource(url)
 			const ctx = await createTask({
-				source ,
+				source,
 				url,
-				taskId: videoId,
 				sourceLang: p.sourceLang,
 				targetLang: p.targetLang,
 				pipeline: taskPipeline,
 				stages: config.stages,
 			});
 
+			const taskId = ctx.task.id;
 			console.log(
 				JSON.stringify(
-					{ taskId: videoId, url, status: 'created', task: ctx.task },
+					{ taskId, sessionPath: ctx.task.session_path, url, status: 'created', task: ctx.task },
 				),
 			);
 
-			console.log(`\n[CLI] Running pipeline for task ${videoId}...`);
-			await withDaemon(videoId, (d) => runPipeline(ctx, d));
+			console.log(`\n[CLI] Running pipeline for task ${taskId} (${ctx.task.session_path})...`);
+			await withDaemon(taskId, (d) => runPipeline(ctx, d));
 			console.log('[CLI] Pipeline completed');
 		} catch (err) {
 			console.error('createTask failed:', err);

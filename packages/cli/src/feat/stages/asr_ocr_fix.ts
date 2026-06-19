@@ -2,22 +2,8 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from './utils/utils.ts';
-import { FrameResult, Segment, mergeFrames, fixOverlap, dedupOverlap } from './utils/ocrMerge.ts';
+import { FrameResult, Segment, mergeFrames, fixOverlap } from './utils/ocrMerge.ts';
 import { Context, setStage } from '../context/context.ts';
-
-function mergeSegments(segs: Segment[], sameTextGapMs = 1000): Segment[] {
-	const merged: Segment[] = [];
-	for (const s of segs) {
-		if (!s.text) continue;
-		const last = merged[merged.length - 1];
-		if (last && last.text === s.text && s.start - last.end <= sameTextGapMs) {
-			last.end = Math.max(last.end, s.end);
-		} else {
-			merged.push({ ...s });
-		}
-	}
-	return dedupOverlap(merged);
-}
 
 export async function stageAsrOcrFix(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
@@ -59,31 +45,8 @@ export async function stageAsrOcrFix(ctx: Context) {
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!frameResults.length) throw new Error('No OCR frames found (empty ocr_frames.json)');
 
-	// ASR-guided boundaries: dedup + merge adjacent same-text frames
-	const asrResults: { text: string; start: number; end: number }[] = [];
-	for (const f of frameResults) {
-		if (!f.text) continue;
-		asrResults.push({
-			text: f.text,
-			start: f.timestamp,
-			end: f.timestamp,
-		});
-	}
-
-	const deduped: { text: string; start: number; end: number }[] = [];
-	for (const r of asrResults) {
-		const last = deduped[deduped.length - 1];
-		if (last && last.text === r.text && r.start <= last.end + 1000) {
-			last.start = Math.min(last.start, r.start);
-			last.end = Math.max(last.end, r.end);
-		} else {
-			deduped.push({ text: r.text, start: r.start, end: r.end });
-		}
-	}
-	const asrSegsMerged = mergeSegments(
-		deduped.map(s => ({ text: s.text, start: s.start, end: s.end })),
-		1000,
-	);
+	// ASR-guided boundaries: mergeFrames handles Levenshtein + substring + triplet + dedup
+	const asrSegsMerged = mergeFrames(frameResults);
 	const asrOcrText = asrSegsMerged.map(s => s.text).join(' ');
 
 	const segmentsOut = asrSegsMerged.map(s => ({
