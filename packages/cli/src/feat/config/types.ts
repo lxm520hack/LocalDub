@@ -279,13 +279,15 @@ const MergeVideoSchema = z
 			.describe('ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC'),
 		srtPath: z.string().optional().describe('调试使用'),
 		bgmPath: z.string().optional().describe('调试使用'),
-		bgmGain: z.number().min(0).default(14).optional().describe('背景音乐增益(dB), 0=不变'),
+		bgmGain: z.number().default(-6).optional().describe('背景音乐增益(dB), 0=不变, 负值=衰减'),
+		dubGain: z.number().default(3).optional().describe('配音增益(dB), 补偿合成语音偏小的听感差'),
 	})
 	.default({
 		alignment: 'bottom-center',
 		outline: 0,
 		shadow: 1,
-		bgmGain: 14,
+		bgmGain: -6,
+		dubGain: 3,
 	})
 	.optional();
 

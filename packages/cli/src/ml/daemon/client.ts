@@ -100,7 +100,9 @@ export class MLDaemon {
 
 	async stop(): Promise<void> {
 		if (this.conn) {
-			this.conn.write(JSON.stringify({ action: 'shutdown' }) + '\n');
+			if (this.proc) {
+				this.conn.write(JSON.stringify({ action: 'shutdown' }) + '\n');
+			}
 			this.conn.end();
 			this.conn = null;
 		}

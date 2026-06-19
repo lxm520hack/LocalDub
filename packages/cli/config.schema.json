@@ -651,7 +651,8 @@
             "merge_audio": {
               "default": {
                 "maxSpeed": 1.05,
-                "maxAdvanceMs": 500
+                "maxAdvanceMs": 500,
+                "maxDelayMs": 500
               },
               "type": "object",
               "properties": {
@@ -666,6 +667,12 @@
                   "default": 500,
                   "type": "number",
                   "minimum": 0
+                },
+                "maxDelayMs": {
+                  "description": "字幕允许延迟显示的最大毫秒数, 借用后段留白",
+                  "default": 500,
+                  "type": "number",
+                  "minimum": 0
                 }
               },
               "additionalProperties": false
@@ -675,7 +682,8 @@
                 "alignment": "bottom-center",
                 "outline": 0,
                 "shadow": 1,
-                "bgmGain": 14
+                "bgmGain": -6,
+                "dubGain": 3
               },
               "type": "object",
               "properties": {
@@ -742,10 +750,14 @@
                   "type": "string"
                 },
                 "bgmGain": {
-                  "description": "背景音乐增益(dB), 0=不变",
-                  "default": 14,
-                  "type": "number",
-                  "minimum": 0
+                  "description": "背景音乐增益(dB), 0=不变, 负值=衰减",
+                  "default": -6,
+                  "type": "number"
+                },
+                "dubGain": {
+                  "description": "配音增益(dB), 补偿合成语音偏小的听感差",
+                  "default": 3,
+                  "type": "number"
                 }
               },
               "additionalProperties": false

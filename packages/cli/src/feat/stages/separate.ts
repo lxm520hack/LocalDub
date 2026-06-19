@@ -9,7 +9,7 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../config/config.ts';
-import { emitLog, ffmpeg, nowISO,  } from './utils/utils.ts';
+import { emitLog, ffmpeg, nowISO, probeDuration } from './utils/utils.ts';
 import { Context, readCtx, setStage } from '../context/context.ts';
 
 export async function stageSeparate(
@@ -114,7 +114,7 @@ async function separateOrt(
 	const demucs = new Demucs(undefined, { executionProvider: ep, stems: targetStems });
 	await demucs.load();
 
-	const audioPath = join(sessionPath, 'tmp', 'audio_source.wav');
+	const audioPath = join(sessionPath, 'media', 'audio_source.wav');
 	mkdirSync(dirname(audioPath), { recursive: true });
 	ffmpeg([
 		'-i',
@@ -226,7 +226,7 @@ async function separateGgml(
 	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV
-	const audioPath = resolve(REPO_ROOT, sessionPath, 'tmp', 'audio_source.wav');
+	const audioPath = resolve(REPO_ROOT, sessionPath, 'media', 'audio_source.wav');
 	mkdirSync(dirname(audioPath), { recursive: true });
 	const ffmpegResult = spawnSync('ffmpeg', [
 		'-y', '-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath,
@@ -265,12 +265,7 @@ async function separateGgml(
 	// Cleanup tmp
 	rmSync(outDir, { recursive: true, force: true });
 
-	const durationS = (() => {
-		try {
-			const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', audioPath], { timeout: 10_000 });
-			return r.status === 0 ? parseFloat(r.stdout.toString().trim()) : 0;
-		} catch { return 0; }
-	})();
+	const durationS = probeDuration(audioPath);
 	if (durationS > 0) {
 		emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
 	}

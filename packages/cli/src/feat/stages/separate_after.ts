@@ -30,8 +30,8 @@ export async function stageSeparateAfter(ctx: Context) {
 			'-i', stems.drums,
 			'-i', stems.bass,
 			'-i', stems.other,
-			'-filter_complex', '[0:a][1:a][2:a]amix=inputs=3:duration=first:normalize=0[out]',
-			'-map', '[out]',
+			'-filter_complex', '[0:a][1:a][2:a]amix=inputs=3:duration=first:normalize=0[out];[out]dynaudnorm=peak=0.5[final]',
+			'-map', '[final]',
 			'-y', bgmDst,
 		]);
 	} else if (existsSync(bgmDst)) {

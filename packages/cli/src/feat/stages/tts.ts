@@ -124,15 +124,14 @@ export async function stageTts(
 	});
 	const ttsCfg = ctx.input?.stages?.tts!
 	const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-	const timingsFile = resolve(
-		REPO_ROOT,
+	const timingsFile = join(
 		sessionPath,
 		'metadata',
 		`timings.json`,
 	);
-	const vocalsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'vocals');
-	const ttsDir = resolve(REPO_ROOT, sessionPath, 'segments', 'tts');
-	const tmpDir = resolve(REPO_ROOT, sessionPath, 'tmp');
+	const vocalsDir = join(sessionPath, 'segments', 'vocals');
+	const ttsDir = join( sessionPath, 'segments', 'tts');
+	const tmpDir = join( sessionPath, 'tmp');
 
 	if (!existsSync(timingsFile))
 		throw new Error(`${timingsFile} not found`);
@@ -146,9 +145,8 @@ export async function stageTts(
 		const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
 		if (anyTts) {
 			for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
-			const sessionAbs = resolve(REPO_ROOT, sessionPath);
-			const dubbingFile = join(sessionAbs, 'tmp', 'audio_dubbing.wav');
-			const finalVideo = join(sessionAbs, 'media', `${taskId}_dub.mp4`);
+			const dubbingFile = join(sessionPath, 'media', 'audio_dubbing.wav');
+			const finalVideo = join(sessionPath, 'media', `${taskId}_dub.mp4`);
 			for (const f of [dubbingFile, finalVideo]) {
 				if (existsSync(f)) rmSync(f);
 			}

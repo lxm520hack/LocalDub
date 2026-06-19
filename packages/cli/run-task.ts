@@ -34,21 +34,23 @@ async function withDaemon<T>(
 ): Promise<T> {
 	const config = readConfig();
 	const DAEMON_PORT = config.daemonPort || 19109;
+	let daemon: MLDaemon | undefined;
 
 	const conn = await connectToDaemon(DAEMON_PORT);
 	if (conn) {
 		conn.end();
-		const daemon = new MLDaemon(DAEMON_PORT);
+		daemon = new MLDaemon(DAEMON_PORT);
 		await daemon.start();
 		console.log(`[Daemon] Using existing daemon on :${DAEMON_PORT}`);
-		return fn(daemon);
-	}
-	if (needsMLDaemon(config)) {
-		const daemon = new MLDaemon(DAEMON_PORT);
+	} else if (needsMLDaemon(config)) {
+		daemon = new MLDaemon(DAEMON_PORT);
 		await daemon.start();
-		return fn(daemon);
 	}
-	return fn(undefined);
+	try {
+		return await fn(daemon);
+	} finally {
+		if (daemon) await daemon.stop();
+	}
 }
 
 const config = readConfig();

@@ -11,6 +11,38 @@ export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
 }
 
+export function probeVideoResolution(videoPath: string): { width: number; height: number } {
+	const r = spawnSync('ffprobe', [
+		'-v', 'error',
+		'-select_streams', 'v:0',
+		'-show_entries', 'stream=width,height',
+		'-of', 'csv=p=0',
+		videoPath,
+	], { stdio: ['pipe', 'pipe', 'pipe'] });
+	const [w, h] = r.stdout.toString().trim().split(',').map(Number);
+	return { width: w, height: h };
+}
+
+export function probeSampleRate(audioPath: string): number {
+	const r = spawnSync('ffprobe', [
+		'-v', 'error',
+		'-show_entries', 'stream=sample_rate',
+		'-of', 'csv=p=0',
+		audioPath,
+	], { stdio: ['pipe', 'pipe', 'pipe'] });
+	return parseInt(r.stdout.toString().trim()) || 48000;
+}
+
+export function probeDuration(audioPath: string): number {
+	const r = spawnSync('ffprobe', [
+		'-v', 'error',
+		'-show_entries', 'format=duration',
+		'-of', 'csv=p=0',
+		audioPath,
+	], { stdio: ['pipe', 'pipe', 'pipe'] });
+	return parseFloat(r.stdout.toString().trim()) || 0;
+}
+
 function ffmpegInstallHint(): string {
 	switch (process.platform) {
 		case 'win32':

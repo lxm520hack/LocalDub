@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { readJson, writeFile, ensureDir, fileLog } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,6 +6,7 @@ import { alignmentToFfmpeg } from '../config/types.ts';
 import {
 	ffmpeg,
 	nowISO,
+	probeVideoResolution,
 	readTaskLanguages,
 	srtTime,
 	subtitleFilePath,
@@ -189,25 +189,7 @@ function probeStyle(
 		shadow?: number;
 	},
 ): string {
-	const probe = spawnSync(
-		'ffprobe',
-		[
-			'-v',
-			'error',
-			'-select_streams',
-			'v:0',
-			'-show_entries',
-			'stream=width,height',
-			'-of',
-			'csv=p=0',
-			videoFile,
-		],
-		{ stdio: ['pipe', 'pipe', 'pipe'] },
-	);
-	const sizeStr = probe.stdout.toString().trim();
-	const [wStr, hStr] = sizeStr.split(',');
-	const width = parseInt(wStr),
-		height = parseInt(hStr);
+	const { width, height } = probeVideoResolution(videoFile);
 	const isPortrait = height > width;
 	const fontSize =
 		overrides?.fontSize ??
@@ -305,7 +287,7 @@ export async function stageMergeVideo(ctx: Context) {
 			300_000,
 		);
 	} else {
-		const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
+		const dubbingFile = join(mediaDir, 'audio_dubbing.wav');
 		const ctxBgmPath = ctx.input?.stages?.merge_video?.bgmPath;
 		const bgmFile = ctxBgmPath ? ctxBgmPath : join(mediaDir, 'target_bgm.wav');
 		const timingsFile = join(metadataDir, 'timings.json');
@@ -321,7 +303,8 @@ export async function stageMergeVideo(ctx: Context) {
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
 		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
-		const bgmGain = ctx.input?.stages?.merge_video?.bgmGain ?? 14;
+		const bgmGain = ctx.input?.stages?.merge_video?.bgmGain ?? -6;
+		const dubGain = ctx.input?.stages?.merge_video?.dubGain ?? 3;
 		const mixedAudio = join(tmpDir, 'audio_mixed.m4a');
 		ffmpeg([
 			'-i',
@@ -329,7 +312,7 @@ export async function stageMergeVideo(ctx: Context) {
 			'-i',
 			bgmFile,
 			'-filter_complex',
-			`[1:a]volume=${bgmGain}dB[a1];[0:a][a1]amix=inputs=2:duration=longest:normalize=0,acompressor=threshold=-24dB:ratio=2:makeup=2dB,alimiter=limit=-1dB[aout]`,
+			`[0:a]volume=${dubGain}dB[adub];[1:a]volume=${bgmGain}dB[abgm];[adub]asplit[adub_mix][adub_key];[abgm][adub_key]sidechaincompress=threshold=-24dB:ratio=4:attack=5:release=300[abgm_sc];[adub_mix][abgm_sc]amix=inputs=2:duration=longest:normalize=0,acompressor=threshold=-24dB:ratio=2,alimiter=limit=-1dB[aout]`,
 			'-map',
 			'[aout]',
 			'-c:a',

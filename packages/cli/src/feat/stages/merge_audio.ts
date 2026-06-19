@@ -1,8 +1,7 @@
 import { readJson, writeJson, writeFile, ensureDir } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { readTaskLanguages, ffmpeg, nowISO,  } from './utils/utils.ts';
+import { readTaskLanguages, ffmpeg, nowISO, probeSampleRate, probeDuration } from './utils/utils.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
@@ -19,7 +18,7 @@ export async function stageMergeAudio(ctx: Context) {
   ensureDir(stretchedDir, ctx);
   ensureDir(metadataDir, ctx);
 
-  const dubbingFile = join(tmpDir, 'audio_dubbing.wav');
+  const dubbingFile = join(sessionPath, 'media', 'audio_dubbing.wav');
   const timingsFile = join(metadataDir, 'timings.json');
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
@@ -31,8 +30,7 @@ export async function stageMergeAudio(ctx: Context) {
     if (!existsSync(f)) throw new Error(`Missing TTS segment: ${f}`);
   }
 
-  const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', ttsFiles[0]], { stdio: ['pipe', 'pipe', 'pipe'] });
-  const sampleRate = parseInt(probe.stdout.toString().trim()) || 48000;
+  const sampleRate = probeSampleRate(ttsFiles[0]);
 
   const segmentInputs: string[] = [];
   let lastEndMs = 0;
@@ -49,8 +47,7 @@ export async function stageMergeAudio(ctx: Context) {
     const stretchedFile = join(stretchedDir, `${idx}.wav`);
 
     // Probe original TTS duration
-    const ttsDurProbe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', ttsFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-    const ttsSec = parseFloat(ttsDurProbe.stdout.toString().trim()) || 0;
+    const ttsSec = probeDuration(ttsFile);
 
     // Trim trailing silence only (areverse so internal pauses aren't mistaken for tail)
     const trimmedFile = join(stretchedDir, `${idx}_trimmed.wav`);
@@ -58,8 +55,7 @@ export async function stageMergeAudio(ctx: Context) {
       'areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_duration=0.05,areverse',
       trimmedFile]);
 
-    const durProbe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', trimmedFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-    const trimmedSec = parseFloat(durProbe.stdout.toString().trim()) || 0;
+    const trimmedSec = probeDuration(trimmedFile);
 
     // Determine advance — conservative for segments that already fit
     const originalSlotBaseSec = (segment.end_time - segment.start_time) / 1000;
@@ -88,9 +84,7 @@ export async function stageMergeAudio(ctx: Context) {
     if (realStartMs > lastEndMs) {
       const gapSec = (realStartMs - lastEndMs) / 1000;
       const silenceFile = join(tmpDir, `silence_${i}.wav`);
-      if (!existsSync(silenceFile)) {
-        ffmpeg(['-f', 'lavfi', '-i', `anullsrc=r=${sampleRate}:cl=mono`, '-t', String(gapSec), silenceFile]);
-      }
+      ffmpeg(['-f', 'lavfi', '-i', `anullsrc=r=${sampleRate}:cl=mono`, '-t', String(gapSec), silenceFile]);
       segmentInputs.push(silenceFile);
     }
 
