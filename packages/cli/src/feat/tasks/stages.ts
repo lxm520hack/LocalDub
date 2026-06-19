@@ -8,6 +8,7 @@ export interface StageSpec {
 export const DUB_STAGES: StageSpec[] = [
 	{ name: 'download', label: 'Download' },
 	{ name: 'separate', label: 'Demucs' },
+	{ name: 'separate_after', label: 'Mix BGM' },
 	{ name: 'asr', label: 'Whisper' },
 	{ name: 'asr_fix', label: 'Split sentences' },
 	{ name: 'translate', label: 'Translate' },
@@ -20,6 +21,7 @@ export const DUB_STAGES: StageSpec[] = [
 export const SUBTITLE_STAGES: StageSpec[] = [
 	{ name: 'download', label: 'Download' },
 	{ name: 'separate', label: 'Demucs' },
+	{ name: 'separate_after', label: 'Mix BGM' },
 	{ name: 'asr', label: 'Whisper' },
 	{ name: 'asr_fix', label: 'Split sentences' },
 	{ name: 'translate', label: 'Translate' },
@@ -52,6 +54,7 @@ function withAsrOcrStages(stages: StageSpec[], _pipeline?: string): StageSpec[] 
 		out.push(s);
 		if (s.name === 'asr') {
 			out.push({ name: 'asr_ocr', label: 'ASR+OCR' });
+			out.push({ name: 'asr_ocr_fix', label: 'Fix Overlap' });
 		}
 	}
 	return out;

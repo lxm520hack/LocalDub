@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ocrFrame } from '../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from './utils/utils.ts';
-import { FrameResult, mergeFrames, Segment, fixOverlap } from './utils/ocrMerge.ts';
+import { FrameResult, mergeFrames } from './utils/ocrMerge.ts';
 import { Context, setStage } from '../context/context.ts';
 
 export async function stageAsrOcr(ctx: Context) {
@@ -29,7 +29,7 @@ export async function stageAsrOcr(ctx: Context) {
 	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
 
 	const asrData = await readJson(asrFile, ctx);
-	const asrSegs: Segment[] = (asrData.result?.segments ?? []).map((s: any) => ({
+	const asrSegs: { text: string; start: number; end: number }[] = (asrData.result?.segments ?? []).map((s: any) => ({
 		text: s.text,
 		start: Math.round(s.start),
 		end: Math.round(s.end),
@@ -39,12 +39,20 @@ export async function stageAsrOcr(ctx: Context) {
 		throw new Error('No ASR segments found');
 	}
 
-	// Generate frame timestamps: end2fps strategy — 500ms intervals backwards from each segment end
+	// Generate frame timestamps: end2fps strategy
+	// First segment: 10fps (100ms steps) for precise first-subtitle detection
+	// Subsequent segments: 500ms steps backwards from end
 	const allTimestamps = new Set<number>();
 	for (let i = 0; i < asrSegs.length; i++) {
 		const seg = asrSegs[i];
-		for (let t = Math.round(seg.end); t >= seg.start; t -= 500) {
-			allTimestamps.add(Math.round(t));
+		if (i === 0) {
+			for (let t = Math.round(seg.start); t <= Math.round(seg.end); t += 100) {
+				allTimestamps.add(Math.round(t));
+			}
+		} else {
+			for (let t = Math.round(seg.end); t >= seg.start; t -= 500) {
+				allTimestamps.add(Math.round(t));
+			}
 		}
 	}
 	const sortedTs = [...allTimestamps].sort((a, b) => a - b);
@@ -108,7 +116,7 @@ export async function stageAsrOcr(ctx: Context) {
 		}
 	}
 
-	// Merge frames into OCR segments (for fixOverlap Pass 2)
+	// Merge frames into OCR segments
 	const ocrSegments = mergeFrames(frameResults);
 	const ocrText = ocrSegments.map(s => s.text).join(' ');
 	const audioDurMs = ocrSegments.length > 0 ? ocrSegments[ocrSegments.length - 1].end : 0;
@@ -119,17 +127,8 @@ export async function stageAsrOcr(ctx: Context) {
 	], { timeout: 15_000, encoding: 'utf-8' });
 	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
 
-	// Write asr_ocr.json
 	const metadataDir = resolve(sessionPath, 'metadata');
 	ensureDir(metadataDir, ctx);
-
-	const segmentsOut = asrSegs.map(s => ({
-		text: s.text,
-		start: s.start,
-		end: s.end,
-		start_fmt: srtTime(s.start),
-		end_fmt: srtTime(s.end),
-	}));
 
 	const ocrSegmentsOut = ocrSegments.map(s => ({
 		text: s.text,
@@ -139,21 +138,6 @@ export async function stageAsrOcr(ctx: Context) {
 		end_fmt: srtTime(s.end),
 		...(s.box_y ? { box_y: s.box_y } : {}),
 	}));
-
-	// Write asr_ocr.json — clean ASR-boundary segments (matching benchmark format)
-	writeJson(
-		join(metadataDir, 'asr_ocr.json'),
-		{
-			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
-			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrCount, asrSegs: asrSegs.length },
-			result: {
-				text: ocrText,
-				segments: segmentsOut,
-			},
-		},
-		ctx,
-	);
 
 	// Write ocr_frames.json — raw frame data for debugging/reproducibility
 	writeJson(
@@ -176,32 +160,7 @@ export async function stageAsrOcr(ctx: Context) {
 		ctx,
 	);
 
-	// Write asr_ocr_fix.json — fixOverlap fused result
-	const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
-	const fix = fixOverlap(asrSegs, frameResults, ocrSegments, maxAdvanceMs).filter(
-		s => s.end > s.start,
-	);
-	const fixText = fix.map(s => s.text).join(' ');
-	writeJson(
-		join(metadataDir, 'asr_ocr_fix.json'),
-		{
-			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrCount, asrSegs: asrSegs.length, fixSegs: fix.length },
-			result: {
-				text: fixText,
-				segments: fix.map(s => ({
-					text: s.text,
-					start: s.start,
-					end: s.end,
-					start_fmt: srtTime(s.start),
-					end_fmt: srtTime(s.end),
-				})),
-			},
-		},
-		ctx,
-	);
-
-	emitLog(sessionPath, `[ASR+OCR] ${ocrCount} OCR frames → ${ocrSegments.length} OCR segs, ${fix.length} fused segs`);
+	emitLog(sessionPath, `[ASR+OCR] ${ocrCount} OCR frames → ${ocrSegments.length} OCR segments`);
 
 	// Cleanup
 	spawnSync('rm', ['-rf', frameDir]);

@@ -40,6 +40,7 @@ export async function stageMergeAudio(ctx: Context) {
 
   const maxSpeed = ctx.input?.stages?.merge_audio?.maxSpeed ?? 1.05;
   const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
+  const maxDelayMs = ctx.input?.stages?.merge_audio?.maxDelayMs ?? 500;
 
   for (let i = 0; i < translation.length; i++) {
     const segment = translation[i];
@@ -79,6 +80,11 @@ export async function stageMergeAudio(ctx: Context) {
     advanceMs = Math.max(0, segment.start_time - realStartMs);
     const effectiveDrift = drift - advanceMs / 1000;
 
+    // Determine delay — borrow time from the next segment's gap
+    const nextStartMs = (i < translation.length - 1) ? translation[i + 1].start_time : segment.end_time;
+    const gapMs = Math.max(0, nextStartMs - segment.end_time);
+    const delayMs = Math.min(gapMs, maxDelayMs);
+
     if (realStartMs > lastEndMs) {
       const gapSec = (realStartMs - lastEndMs) / 1000;
       const silenceFile = join(tmpDir, `silence_${i}.wav`);
@@ -88,7 +94,7 @@ export async function stageMergeAudio(ctx: Context) {
       segmentInputs.push(silenceFile);
     }
 
-    const originalSlotSec = (segment.end_time - realStartMs) / 1000;
+    const originalSlotSec = (segment.end_time + delayMs - realStartMs) / 1000;
     // floor at 50ms so speed calc never goes negative
     const slotSec = Math.max(0.05, originalSlotSec + effectiveDrift);
 
@@ -118,6 +124,7 @@ export async function stageMergeAudio(ctx: Context) {
     segment.original_duration_ms = segment.end_time - segment.start_time;
     segment.drift_ms = Math.round(drift * 1000);
     segment.advance_ms = advanceMs;
+    segment.delay_ms = delayMs;
     segment.actual_start_time = Math.floor(realStartMs);
     segment.actual_end_time = realEndMs;
     segment.tts_duration_ms = Math.round(ttsSec * 1000);

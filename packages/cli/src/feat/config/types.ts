@@ -53,6 +53,7 @@ const stagesList = [
 	'ocr',
 	'ocr_fix',
 	'asr_ocr',
+	'asr_ocr_fix',
 	'translate',
 	'split_audio',
 	'tts',
@@ -355,10 +356,12 @@ const StagesSchema = z.object({
 	tts: TTSConfigSchema,
 	merge_audio: z.object({
 		maxSpeed: z.number().min(1).default(1.05).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
-		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间')
+		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间'),
+		maxDelayMs: z.number().min(0).default(500).optional().describe('字幕允许延迟显示的最大毫秒数, 借用后段留白'),
 	}).default({
-				maxSpeed: 1.05,
-				maxAdvanceMs: 500,
+		maxSpeed: 1.05,
+		maxAdvanceMs: 500,
+		maxDelayMs: 500,
 	}).optional(),
 	merge_video: MergeVideoSchema,
 });

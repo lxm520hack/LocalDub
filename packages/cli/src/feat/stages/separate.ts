@@ -145,12 +145,6 @@ async function separateOrt(
 			join(mediaDir, `target_${i}_${stemNames[i]}.wav`),
 		);
 	}
-
-	const bgm = new Float32Array(stems.drums.length);
-	for (let i = 0; i < bgm.length; i++) {
-		bgm[i] = stems.drums[i] + stems.bass[i] + stems.other[i];
-	}
-	demucs.writeWav(bgm, stems.sampleRate, join(mediaDir, 'target_bgm.wav'));
 }
 
 async function separatePytorch(
@@ -266,21 +260,6 @@ async function separateGgml(
 		} else {
 			emitLog(sessionPath, `[Separate] WARN: ${src} not found`);
 		}
-	}
-
-	// BGM = sum of drums+bass+other
-	const bgmSrc = join(outDir, 'target_bgm.wav');
-	const bgmDst = join(mediaDir, 'target_bgm.wav');
-	if (existsSync(bgmSrc)) {
-		copyFileSync(bgmSrc, bgmDst);
-	} else {
-		// Generate bgm via ffmpeg mix if not produced by GGML
-		const bgmInputs = stemNames.slice(0, 3).map(s => join(mediaDir, `target_${stemNames.indexOf(s)}_${s}.wav`));
-		const filter = `[0:a][1:a][2:a]amix=inputs=3:duration=first:normalize=0[out]`;
-		spawnSync('ffmpeg', [
-			'-i', bgmInputs[0], '-i', bgmInputs[1], '-i', bgmInputs[2],
-			'-filter_complex', filter, '-map', '[out]', '-y', bgmDst,
-		]);
 	}
 
 	// Cleanup tmp

@@ -44,7 +44,7 @@ function whisperToSegments(raw: any): Segment[] {
 
 const AUDIO_SOURCES: Record<string, string> = {
 	'ggml-s1-raw': resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'ref', 'media', 'video_source.mp4'),
-	'ggml-s1-sidechain': resolve(REPO_ROOT, 'workfolder', 'local', '12', 'media', 'target_3_vocals_mixed.wav'),
+	'ggml-s1-sidechain': resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1-sidechain', 'sc_t0.1_r20_a1_rel200_bgm-12', 'media', 'target_3_vocals_mixed.wav'),
 	'ggml-s1-vocals': resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1', 'media', 'target_3_vocals.wav'),
 };
 

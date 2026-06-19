@@ -71,63 +71,17 @@ export async function stageAsr(
 		);
 
 	if (ctx.input?.stages?.asr?.useSeparated) {
-		const asrCfg = ctx.input?.stages?.asr;
-		const mixMode = asrCfg?.mixMode ?? 'vocals';
-		const reduceBgm = asrCfg?.reduceBgm ?? -12;
-		const sc = asrCfg?.sidechainCompress!
-		console.log(`[ASR] mixMode=${mixMode} reduceBgm=${reduceBgm}dB sidechainCompress=${JSON.stringify(sc)}`);
-		const useGate = asrCfg?.useGate ?? false;
-		let sourcePath = audioVocal;
-		if (mixMode === 'raw-sum') {
-			const bgmPath = resolve(sessionPath, 'media', 'target_bgm.wav');
-			if (!existsSync(bgmPath)) {
-				emitLog(sessionPath, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
-			} else {
-				const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-				emitLog(sessionPath, `[ASR] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
-				ffmpeg([
-					'-i', sourcePath,
-					'-i', bgmPath,
-					'-filter_complex',
-					`[1:a]volume=${reduceBgm}dB[bgm_r];[0:a][bgm_r]amix=inputs=2:duration=first:weights=1 1[out]`,
-					'-map', '[out]',
-					'-y', mixedPath,
-				]);
-				sourcePath = mixedPath;
-			}
-		} else if (mixMode === 'sidechain') {
-			const bgmPath = resolve(sessionPath, 'media', 'target_bgm.wav');
-			if (!existsSync(bgmPath)) {
-				emitLog(sessionPath, `[ASR] target_bgm.wav not found, skipping BGM reduction`);
-			} else {
-				const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-				const scParams = `threshold=${sc.threshold ?? 0.1}:ratio=${sc.ratio ?? 20}:attack=${sc.attack ?? 1}:release=${sc.release ?? 200}`;
-				const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
-				emitLog(sessionPath, `[ASR] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
-				ffmpeg([
-					'-i', sourcePath,
-					'-i', bgmPath,
-					'-filter_complex',
-					`[0:a]asplit[v][v_key];[1:a][v_key]sidechaincompress=${scParams}[bgm_sc]${bgmVol ? `;${bgmVol}` : ''};[v][${bgmVol ? 'bgm_final' : 'bgm_sc'}]amix=inputs=2:duration=first:weights=1 1[out]`,
-					'-map', '[out]',
-					'-y', mixedPath,
-				]);
-				sourcePath = mixedPath;
-			}
+		const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
+		const gatedPath = resolve(sessionPath, 'media', 'target_3_vocals_gated.wav');
+		const mixedOrGated = existsSync(gatedPath) ? gatedPath
+			: existsSync(mixedPath) ? mixedPath
+			: null;
+		if (mixedOrGated) {
+			audioPath = mixedOrGated;
+			emitLog(sessionPath, `[ASR] Using pre-mixed audio: ${mixedOrGated}`);
+		} else {
+			emitLog(sessionPath, `[ASR] No mixed audio found, using vocals-only`);
 		}
-
-		if (useGate) {
-			const gatedPath = resolve(sessionPath, 'media', 'target_3_vocals_gated.wav');
-			emitLog(sessionPath, '[ASR] Applying silence gate...');
-			ffmpeg([
-				'-i', sourcePath,
-				'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
-				'-y', gatedPath,
-			]);
-			sourcePath = gatedPath;
-		}
-
-		audioPath = sourcePath;
 	}
 
 	const asrCfg = ctx.input?.stages?.asr;
