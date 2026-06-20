@@ -1,9 +1,9 @@
-param(
+﻿param(
   [switch]$Dev  # development mode (skip DB init)
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
 
 Write-Host "=== LocalDub 环境安装 (Windows) ==="
@@ -47,7 +47,7 @@ if (-not (Test-Path ".venv")) {
   Write-Host "[PY] 创建虚拟环境..."
   python -m venv .venv
 }
-$activate = Join-Path $RepoRoot ".venv" "Scripts" "Activate.ps1"
+$activate = Join-Path $RepoRoot ".venv\Scripts\Activate.ps1"
 . $activate
 Write-Host "[PY] 虚拟环境: $(Get-Command python).Source"
 
