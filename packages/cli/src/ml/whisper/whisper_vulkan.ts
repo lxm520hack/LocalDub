@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { defaultWhisperCppModelPath } from '../../feat/stages/utils/utils.ts';
 
 export interface WhisperWord {
 	start: number;  // seconds
@@ -24,9 +25,7 @@ export function transcribeWithWords(
 	const whisperCli = join(
 		import.meta.dirname, '..', '..', '..', '..', '..', 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan',
 	);
-	const model = process.env.WHISPER_MODEL || join(
-		process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin',
-	);
+	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
 
 	const t0 = performance.now();
 	const r = spawnSync(whisperCli, [

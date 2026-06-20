@@ -1,8 +1,25 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { env, LOG_DIR, REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { getStages } from '../../tasks/stages.ts';
+
+export function defaultWhisperCppModelPath(): string {
+	if (process.platform === 'win32') {
+		return join(homedir(), 'AppData', 'Local', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+	}
+	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+}
+
+export function defaultFont(dstLang: string): string {
+	if (dstLang !== 'zh') return 'Arial';
+	switch (process.platform) {
+		case 'win32': return 'Microsoft YaHei';
+		case 'darwin': return 'PingFang SC';
+		default: return 'Noto Sans CJK SC';
+	}
+}
 import type { SubtitleSource, TargetLang } from '../../config/types.ts';
 import {  readConfig } from '../../config/config.ts';
 import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';

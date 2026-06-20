@@ -6,6 +6,8 @@ import { REPO_ROOT } from "../../feat/config/config.ts";
 const BINARY_PATH = resolve(REPO_ROOT, "packages", "ocr-cpp", "build", "ocr_pipeline");
 const LD_PATH = resolve(REPO_ROOT, "packages", "ocr-cpp", "build");
 
+const LIB_PATH_KEY = process.platform === "win32" ? "PATH" : "LD_LIBRARY_PATH";
+
 export interface OCRLine {
 	text: string;
 	confidence: number;
@@ -31,7 +33,7 @@ export function ocrFrame(
 		encoding: "utf-8",
 		env: {
 			...process.env,
-			LD_LIBRARY_PATH: LD_PATH,
+			[LIB_PATH_KEY]: LD_PATH,
 		},
 	});
 

@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { copyFileSync, existsSync } from 'node:fs';
+import { delimiter, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
@@ -9,7 +9,7 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../config/config.ts';
-import { emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from './utils/utils.ts';
+import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from './utils/utils.ts';
 import { AsrOptions } from './asr/types.ts';
 import { parseAsrOutput } from './asr/utils.ts';
 import { Context, setCtx, setStage } from '../context/context.ts';
@@ -319,9 +319,7 @@ async function asrWhisperCpp(
 	const whisperCli = join(
 		REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan',
 	);
-	const model = process.env.WHISPER_MODEL || join(
-		process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin',
-	);
+	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
 
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
 
@@ -332,7 +330,7 @@ async function asrWhisperCpp(
 
 	// Copy/convert input to WAV
 	if (audioPath.endsWith('.wav')) {
-		spawnSync('cp', [audioPath, tmpAudio], { timeout: 10_000 });
+		copyFileSync(audioPath, tmpAudio);
 	} else {
 		spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
 			timeout: 30_000,
@@ -357,16 +355,17 @@ async function asrWhisperCpp(
 	});
 	if (asrCfg?.maxLen && asrCfg.maxLen > 0) whisperArgs.push('--max-len', String(asrCfg.maxLen));
 	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
+	const libPathKey = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
 	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
 		env: {
 			...process.env,
-			LD_LIBRARY_PATH: [
+			[libPathKey]: [
 				join(whisperCli, '..', '..', 'src'),
 				join(whisperCli, '..', '..', 'ggml', 'src'),
 				join(whisperCli, '..', '..', 'ggml', 'src', 'ggml-hip'),
-				process.env.LD_LIBRARY_PATH || '',
-			].filter(Boolean).join(':'),
+				process.env[libPathKey] || '',
+			].filter(Boolean).join(delimiter),
 		},
 	});
 	const elapsedSec = (performance.now() - t0) / 1000;

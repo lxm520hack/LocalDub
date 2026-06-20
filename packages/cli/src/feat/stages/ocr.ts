@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ocrFrame } from "../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "./utils/fileOps.ts";
@@ -139,7 +139,7 @@ export async function stageOcr(ctx: Context) {
 	emitLog(sessionPath, `[OCR] Written ${segments.length} segs to ocr.json`);
 
 	// 7. Cleanup frames
-	spawnSync("rm", ["-rf", frameDir]);
+	rmSync(frameDir, { recursive: true, force: true });
 
 	await setStage(sessionPath, "ocr", {
 		status: "succeeded",

@@ -138,34 +138,42 @@ export async function cmdCheck(opts: {
 		const cfg = readConfig();
 		const configuredFont = cfg.stages?.merge_video?.font ?? 'Noto Sans CJK SC';
 
-		const fcRaw = (cmd: string, args: string[]): string => {
-			const r = spawnSync(cmd, args, { timeout: 5000, encoding: 'utf-8' });
-			return r.status === 0 ? r.stdout.trim() : '';
-		};
-
-		const cjkRaw = fcRaw('fc-list', [':lang=zh', 'family']);
-		const cjkFonts = [...new Set(
-			cjkRaw.split('\n')
-				.map(l => l.trim())
-				.filter(Boolean)
-				.flatMap(l => l.split(',').map(s => s.trim())),
-		)].sort();
-
-		const matchRaw = fcRaw('fc-list', [`:family=${configuredFont}`]);
-		const available = matchRaw.length > 0;
-
 		const result: Record<string, unknown> = {
 			ok: true,
 			type: 'font',
 			configured: configuredFont,
-			available,
-			cjkFonts,
 		};
-		if (!available) {
-			result.suggestion = cjkFonts.length > 0
-				? `字体 "${configuredFont}" 未安装，可用 CJK 字体：${cjkFonts.join('、')}`
-				: `字体 "${configuredFont}" 未安装，可尝试：sudo apt install fonts-noto-cjk`;
+
+		if (process.platform === 'win32') {
+			result.available = true;
+			result.cjkFonts = ['Microsoft YaHei', 'SimHei', 'SimSun'];
+			result.note = 'Windows 字体检测暂不支持 fc-list，使用已知 CRT 字体列表';
+		} else {
+			const fcRaw = (cmd: string, args: string[]): string => {
+				const r = spawnSync(cmd, args, { timeout: 5000, encoding: 'utf-8' });
+				return r.status === 0 ? r.stdout.trim() : '';
+			};
+
+			const cjkRaw = fcRaw('fc-list', [':lang=zh', 'family']);
+			const cjkFonts = [...new Set(
+				cjkRaw.split('\n')
+					.map(l => l.trim())
+					.filter(Boolean)
+					.flatMap(l => l.split(',').map(s => s.trim())),
+			)].sort();
+
+			const matchRaw = fcRaw('fc-list', [`:family=${configuredFont}`]);
+			const available = matchRaw.length > 0;
+
+			result.available = available;
+			result.cjkFonts = cjkFonts;
+			if (!available) {
+				result.suggestion = cjkFonts.length > 0
+					? `字体 "${configuredFont}" 未安装，可用 CJK 字体：${cjkFonts.join('、')}`
+					: `字体 "${configuredFont}" 未安装，可尝试：sudo apt install fonts-noto-cjk`;
+			}
 		}
+
 		console.log(JSON.stringify(result, null, 2));
 		return;
 	}

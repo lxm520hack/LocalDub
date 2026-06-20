@@ -12,6 +12,7 @@ import {
 	subtitleFilePath,
 	finalVideoFilename,
 	translationFilePath,
+	defaultFont,
 } from './utils/utils.ts';
 
 function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
@@ -198,7 +199,7 @@ function probeStyle(
 	const alignment = overrides?.alignment ?? 2;
 	const outline = overrides?.outline ?? 0;
 	const shadow = overrides?.shadow ?? 1;
-	const font = overrides?.font ?? (dstLang === 'zh' ? 'Noto Sans CJK SC' : 'Arial');
+	const font = overrides?.font ?? defaultFont(dstLang);
 	return `FontName=${font},FontSize=${fontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=${outline > 0 ? 1 : 0},Outline=${outline},Shadow=${shadow},Alignment=${alignment},MarginV=${marginV}`;
 }
 
@@ -260,14 +261,13 @@ export async function stageMergeVideo(ctx: Context) {
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, ctx, subPath, !translateEnabled);
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
-		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
 		ffmpeg(
 			[
 				'-i',
 				video_file_path,
 				'-vf',
-				`subtitles='${escapedSub}':force_style='${style}'`,
+				`subtitles='${subPath}':force_style='${style}'`,
 				'-map',
 				'0:v:0',
 				'-map',
@@ -301,7 +301,6 @@ export async function stageMergeVideo(ctx: Context) {
 		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, ctx, subPath);
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
-		const escapedSub = subPath.replace(/'/g, "'\\\\''").replace(/'/g, "'\\''");
 
 		const bgmGain = ctx.input?.stages?.merge_video?.bgmGain ?? -6;
 		const dubGain = ctx.input?.stages?.merge_video?.dubGain ?? 3;
@@ -327,7 +326,7 @@ export async function stageMergeVideo(ctx: Context) {
 				'-i',
 				mixedAudio,
 				'-vf',
-				`subtitles='${escapedSub}':force_style='${style}'`,
+				`subtitles='${subPath}':force_style='${style}'`,
 				'-map',
 				'0:v:0',
 				'-map',
