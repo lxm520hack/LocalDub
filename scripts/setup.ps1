@@ -72,19 +72,6 @@ if (-not (Test-Path "node_modules")) {
   Write-Host "[JS] node_modules 已存在"
 }
 
-# ── DB ────────────────────────────────────────────
-if (-not $Dev) {
-  New-Item -ItemType Directory -Force -Path "data" | Out-Null
-  New-Item -ItemType Directory -Force -Path "data/logs" | Out-Null
-  Set-Location (Join-Path $RepoRoot "packages" "cli")
-  Write-Host "[DB] 初始化 SQLite..."
-  bun run db:push 2>$null
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "[WARN] db:push 失败（可能是 drizzle-kit 未安装）" -ForegroundColor Yellow
-  }
-  Set-Location $RepoRoot
-}
-
 # ── 工作目录 ────────────────────────────────────────
 $WorkfolderDir = if ($env:WORKFOLDER) { $env:WORKFOLDER } else { ".\workfolder" }
 New-Item -ItemType Directory -Force -Path $WorkfolderDir | Out-Null

@@ -3,6 +3,13 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
+    "setup": "node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\\\setup.ps1', { stdio: 'inherit' }) : require('child_process').execSync('bash scripts/setup.sh', { stdio: 'inherit' })\"",
+    "start": "cd packages/cli && bun run run-task.ts",
+    "run": "cd packages/cli && bun run run-task.ts",
+    "task": "cd packages/cli && bun run run-task.ts",
+    "resume": "cd packages/cli && bun run run-task.ts",
+    "check": "cd packages/cli && bun run run-task.ts",
+    "typecheck": "cd packages/cli && bun run typecheck"
   },
   "workspaces": [
     "packages/*"

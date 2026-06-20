@@ -47,7 +47,6 @@ Windows 用 PowerShell:
 2. 创建 Python 虚拟环境 `.venv`
 3. 安装 Python 依赖（含对应设备的 PyTorch）
 4. `bun install`
-5. 初始化 SQLite 数据库
 
 ### 手动安装
 
@@ -60,7 +59,6 @@ pip install -r requirements.txt      # setup.sh 会自动选 GPU 索引，手动
 # CUDA:     pip install -r requirements.txt   (默认)
 # ROCm:     pip install -r requirements.txt   (默认)
 bun install
-mkdir -p data && cd packages/cli && bun run db:push
 ```
 
 ```powershell
@@ -70,7 +68,6 @@ py -3.12 -m venv .venv
 pip install -U pip
 pip install -r requirements.txt
 bun install
-mkdir -p data; cd packages/cli; bun run db:push
 ```
 
 ### 配置
