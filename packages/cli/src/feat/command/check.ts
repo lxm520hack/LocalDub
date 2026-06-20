@@ -1,32 +1,22 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { eq } from 'drizzle-orm';
 import { REPO_ROOT, WORKFOLDER } from '@repo/config';
-import { db } from '../../db/index.ts';
 import { readConfig } from '../config/config.ts';
-import { tasks } from '../tasks/table.ts';
 
 export async function cmdCheck(opts: {
 	type: 'video' | 'asr' | 'font' | undefined;
-	taskId?: string;
+	sessionPath?: string;
 }) {
-	const { type, taskId } = opts;
+	const { type, sessionPath } = opts;
 
 	if (type === 'video') {
-		if (!taskId) {
-			console.log(JSON.stringify({ ok: false, error: 'check video requires taskId' }));
+		if (!sessionPath) {
+			console.log(JSON.stringify({ ok: false, error: 'check video requires sessionPath' }));
 			process.exit(1);
 		}
-		const rows = await db
-			.select({ session_path: tasks.session_path })
-			.from(tasks)
-			.where(eq(tasks.id, taskId))
-			.limit(1);
-		const sp = rows[0]?.session_path;
-		const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
 
-		const videoPath = join(basePath, 'media', 'video_source.mp4');
+		const videoPath = join(sessionPath, 'media', 'video_source.mp4');
 		if (!existsSync(videoPath)) {
 			console.log(JSON.stringify({ ok: false, error: 'video_source.mp4 not found' }));
 			process.exit(1);
@@ -44,20 +34,14 @@ export async function cmdCheck(opts: {
 	}
 
 	if (type === 'asr') {
-		if (!taskId) {
-			console.log(JSON.stringify({ ok: false, error: 'check asr requires taskId' }));
+		if (!sessionPath) {
+			console.log(JSON.stringify({ ok: false, error: 'check asr requires sessionPath' }));
 			process.exit(1);
 		}
-		const rows = await db
-			.select({ session_path: tasks.session_path })
-			.from(tasks)
-			.where(eq(tasks.id, taskId))
-			.limit(1);
-		const sp = rows[0]?.session_path;
-		const basePath = sp ? resolve(REPO_ROOT, sp) : join(WORKFOLDER, taskId);
 
-		const asrPath = join(basePath, 'metadata', 'asr_fix.json');
-		const asrRawPath = join(basePath, 'metadata', 'asr.json');
+
+		const asrPath = join(sessionPath, 'metadata', 'asr_fix.json');
+		const asrRawPath = join(sessionPath, 'metadata', 'asr.json');
 		let asrFile = asrPath;
 		if (!existsSync(asrPath) && existsSync(asrRawPath)) asrFile = asrRawPath;
 		if (!existsSync(asrFile)) {

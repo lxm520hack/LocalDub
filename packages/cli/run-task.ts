@@ -15,7 +15,6 @@ import {
 	resumePipeline,
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
-import { tasks } from './src/feat/tasks/table.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
 import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
@@ -70,7 +69,7 @@ switch (cmd) {
 	case 'check': {
 		const p = config.check;
 
-		await cmdCheck({ type: p?.type, taskId: p?.sessionPath ?? undefined });
+		await cmdCheck({ type: p?.type, sessionPath: p?.sessionPath ?? undefined });
 		break;
 	}
 

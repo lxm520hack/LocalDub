@@ -15,7 +15,7 @@ function envStrUndefined(key: string): string | undefined {
 
 export const env = {
   // DB
-  DB_FILE_NAME: resolve(REPO_ROOT, process.env.DB_FILE_NAME ?? 'data/youdub.sqlite'),
+  // DB_FILE_NAME: resolve(REPO_ROOT, process.env.DB_FILE_NAME ?? 'data/youdub.sqlite'),
 
   // Paths
   WORKFOLDER: resolve(REPO_ROOT, envStr('WORKFOLDER', 'workfolder')),
