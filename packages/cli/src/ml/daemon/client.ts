@@ -99,12 +99,20 @@ export class MLDaemon {
 	}
 
 	async stop(): Promise<void> {
+		this.reader?.close();
+		this.reader = null;
 		if (this.conn) {
-			if (this.proc) {
-				this.conn.write(JSON.stringify({ action: 'shutdown' }) + '\n');
+			if (this.proc && !this.conn.destroyed) {
+				try {
+					this.conn.write(JSON.stringify({ action: 'shutdown' }) + '\n');
+				} catch { /* socket already closed */ }
 			}
-			this.conn.end();
+			if (!this.conn.destroyed) this.conn.end();
 			this.conn = null;
+		}
+		if (this.proc) {
+			this.proc.stdout?.destroy();
+			this.proc.stderr?.destroy();
 		}
 		this._ready = false;
 	}
@@ -132,6 +140,9 @@ export class MLDaemon {
 	private _setupTCP(sock: Socket) {
 		this.reader = createInterface({ input: sock });
 		this.reader.on('line', (line: string) => this._handleMessage(line));
+		sock.on('error', (err) => {
+			console.error(`[Daemon] Socket error: ${err.message}`);
+		});
 		sock.on('close', () => {
 			this._ready = false;
 			for (const [, p] of this.pending)

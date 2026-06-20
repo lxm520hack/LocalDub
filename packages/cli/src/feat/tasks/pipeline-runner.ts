@@ -91,7 +91,7 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 				error_message: msg,
 				completed_at: nowISO(),
 			});
-			 setTask(sessionPath, { status: 'failed', error_message: msg });
+			await setTask(sessionPath, { status: 'failed', error_message: msg });
 			throw err;
 		}
 
@@ -246,7 +246,7 @@ export async function resumePipeline(
 				error_message: msg,
 				completed_at: nowISO(),
 			});
-			setTask(sessionPath, { status: 'failed', error_message: msg });
+			await setTask(sessionPath, { status: 'failed', error_message: msg });
 			throw err;
 		}
 
