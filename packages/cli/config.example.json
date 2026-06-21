@@ -17,13 +17,13 @@
   "subtitleSource": "asr_ocr",
   "stages": {
     "separate": {
-      "runtime": "ggml",
-      "device": "cpu",
+      "runtime": "pytorch",
+      "device": "cuda",
       "always": true
     },
     "asr": {
-      "runtime": "ggml",
-      "device": "vulkan",
+      "runtime": "pytorch",
+      "device": "cuda",
       "useSeparated": true,
       "mixMode": "sidechain",
       "vad": true,
@@ -48,7 +48,7 @@
     },
     "tts": {
       "runtime": "pytorch",
-      "device": "cpu"
+      "device": "cuda"
     },
     "merge_audio": {
       "maxSpeed": 1.35
