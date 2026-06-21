@@ -43,6 +43,7 @@ export class MLDaemon {
 	}
 
 	async start(timeoutMs = 60000): Promise<void> {
+		if (this._ready) return;
 		// 1) Try existing daemon via TCP
 		const sock = await connectToDaemon(this.port);
 		if (sock) {

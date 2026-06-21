@@ -77,6 +77,10 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 		});
 		await setTask(sessionPath, { current_stage: stage.name });
 
+		const stageCfg = ctx.input?.stages?.[stage.name] as { runtime?: string } | undefined;
+		if (stageCfg?.runtime === 'pytorch' && daemon && !daemon.ready) {
+			await daemon.start();
+		}
 		try {
 			await handler(taskId, sessionPath, task, daemon);
 			if (targetStage && stage.name === targetStage) {
@@ -232,6 +236,10 @@ export async function resumePipeline(
 		});
 		setTask(sessionPath, { current_stage: stage.name });
 
+		const stageCfg2 = ctx.input?.stages?.[stage.name] as { runtime?: string } | undefined;
+		if (stageCfg2?.runtime === 'pytorch' && daemon && !daemon.ready) {
+			await daemon.start();
+		}
 		try {
 			await handler(taskId, sessionPath, task, daemon);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
@@ -296,6 +304,10 @@ export async function rerunSingleStage(
 
 	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
+	const stageCfg3 = ctx.input?.stages?.[stageName] as { runtime?: string } | undefined;
+	if (stageCfg3?.runtime === 'pytorch' && daemon && !daemon.ready) {
+		await daemon.start();
+	}
 	try {
 		await handler(taskId, sessionPath, task, daemon);
 	} catch (err: any) {

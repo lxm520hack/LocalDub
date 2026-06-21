@@ -21,34 +21,18 @@ import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
 
-function needsMLDaemon(cfg: RawConfig): boolean {
-	const tts = cfg.stages?.tts;
-	const separate = cfg.stages?.separate;
-	return tts?.runtime === 'pytorch' || separate?.runtime === 'pytorch';
-}
-
 async function withDaemon<T>(
 	taskId: string,
 	fn: (daemon?: MLDaemon) => Promise<T>,
 ): Promise<T> {
 	const config = readConfig();
 	const DAEMON_PORT = config.daemonPort || 19109;
-	let daemon: MLDaemon | undefined;
-
-	const conn = await connectToDaemon(DAEMON_PORT);
-	if (conn) {
-		conn.end();
-		daemon = new MLDaemon(DAEMON_PORT);
-		await daemon.start();
-		console.log(`[Daemon] Using existing daemon on :${DAEMON_PORT}`);
-	} else if (needsMLDaemon(config)) {
-		daemon = new MLDaemon(DAEMON_PORT);
-		await daemon.start();
-	}
+	// 只创建实例，不 start——pipeline-runner 按需惰性连接
+	const daemon = new MLDaemon(DAEMON_PORT);
 	try {
 		return await fn(daemon);
 	} finally {
-		if (daemon) await daemon.stop();
+		await daemon.stop();
 	}
 }
 
