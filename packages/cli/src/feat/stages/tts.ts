@@ -48,6 +48,9 @@ async function runPytorchBatch(
 	const pyBin = pythonBin();
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
+	const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
+	spawnSync(pyBin, [ensureScript, 'OpenBMB__VoxCPM2', modelDir], { timeout: 300_000 });
+
 	return new Promise<void>((resolve, reject) => {
 		const args = [
 			scriptPath,
@@ -156,6 +159,8 @@ export async function stageTts(
 	if (ttsCfg.runtime === 'pytorch' && daemon?.ready) {
 		emitLog(sessionPath, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
+		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
+		spawnSync(pythonBin(), [ensureScript, 'OpenBMB__VoxCPM2', modelDir], { timeout: 300_000 });
 		const result = await daemon.runStage(
 			'tts',
 			taskId,

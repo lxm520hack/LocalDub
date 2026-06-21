@@ -74,12 +74,25 @@ def _load_whisper(device: str) -> None:
 
 
 def _load_voxcpm(model_dir: str, device: str) -> None:
-    global _VOXCPM
-    if _VOXCPM is not None:
-        return
-    from voxcpm import VoxCPM
+	global _VOXCPM
+	if _VOXCPM is not None:
+		return
 
-    _VOXCPM = VoxCPM.from_pretrained(model_dir, load_denoiser=False, device=device)
+	if not os.path.isdir(model_dir) or not os.listdir(model_dir):
+		sys.stderr.write(f"[Daemon] Model not found at {model_dir}, attempting download...\n")
+		sys.stderr.flush()
+		try:
+			from modelscope import snapshot_download
+			os.makedirs(model_dir, exist_ok=True)
+			snapshot_download("OpenBMB/VoxCPM2", local_dir=model_dir)
+			sys.stderr.write("[Daemon] Model downloaded via ModelScope\n")
+		except Exception as exc:
+			sys.stderr.write(f"[Daemon] ModelScope download failed ({exc}), VoxCPM.from_pretrained will try HuggingFace\n")
+		sys.stderr.flush()
+
+	from voxcpm import VoxCPM
+
+	_VOXCPM = VoxCPM.from_pretrained(model_dir, load_denoiser=False, device=device)
 
 
 def _load_demucs(device: str):
