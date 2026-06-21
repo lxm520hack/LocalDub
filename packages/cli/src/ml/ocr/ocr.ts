@@ -1,21 +1,14 @@
-import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { REPO_ROOT, pythonBin } from "../../feat/config/config.ts";
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { REPO_ROOT } from '../../feat/config/config.ts';
+import { ocrFrameCpp, existsOcrBinary, type OCRLine as OCRLineCpp } from './runtimes/ort-cpp.ts';
+import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions } from './runtimes/ort-node.ts';
+import { ocrFramePy } from './runtimes/ort-py.ts';
 
-const BUILD_DIR = resolve(REPO_ROOT, "packages", "subtitle-ocr", "subtitle-cpp", "build");
-const LD_PATH = BUILD_DIR;
+export { existsOcrBinary } from './runtimes/ort-cpp.ts';
+export type { NodeSessions } from './runtimes/ort-node.ts';
 
-function ocrBinaryPathInner(): string {
-	const name = "ocr_pipeline" + (process.platform === "win32" ? ".exe" : "");
-	const candidates = [
-		resolve(BUILD_DIR, "Release", name),
-		resolve(BUILD_DIR, name),
-	];
-	return candidates.find(c => existsSync(c)) || candidates[0];
-}
-
-const LIB_PATH_KEY = process.platform === "win32" ? "PATH" : "LD_LIBRARY_PATH";
+export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py';
 
 export interface OCRLine {
 	text: string;
@@ -23,101 +16,81 @@ export interface OCRLine {
 	box: number[][];
 }
 
-const OCR_KEYS_PATH = resolve(REPO_ROOT, "packages", "subtitle-ocr", "ppocr_keys.json");
-
-interface OcrEnv {
-	OCR_MODELS_DIR: string;
-	OCR_KEYS_PATH: string;
-}
-
-let _ocrEnv: OcrEnv | null = null;
-
-function resolveOcrEnv(): OcrEnv {
-	if (_ocrEnv) return _ocrEnv;
-
-	const keysPath = OCR_KEYS_PATH;
-	if (!existsSync(keysPath)) {
-		throw new Error(`OCR keys not found at ${keysPath}`);
-	}
-
-	const pyBin = pythonBin();
-	const r = spawnSync(pyBin, ["-c",
-		"import rapidocr_onnxruntime, os; print(os.path.join(os.path.dirname(rapidocr_onnxruntime.__file__), 'models'))",
-	], { timeout: 15_000, encoding: "utf-8" });
-	if (r.status !== 0) {
-		throw new Error(
-			`Failed to resolve OCR model path (is rapidocr-onnxruntime installed?): ${(r.stderr || "").slice(-200)}`,
-		);
-	}
-	const modelsDir = r.stdout.trim();
-	if (!existsSync(modelsDir)) {
-		throw new Error(`OCR models dir resolved but not found: ${modelsDir}`);
-	}
-
-	_ocrEnv = { OCR_MODELS_DIR: modelsDir, OCR_KEYS_PATH: keysPath };
-	return _ocrEnv;
-}
+const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
 
 export function ocrBinaryPath(): string {
-	return ocrBinaryPathInner();
-}
-
-export function existsOcrBinary(): boolean {
-	const name = "ocr_pipeline" + (process.platform === "win32" ? ".exe" : "");
-	return existsSync(resolve(BUILD_DIR, "Release", name)) || existsSync(resolve(BUILD_DIR, name));
+	const name = 'ocr_pipeline' + (process.platform === 'win32' ? '.exe' : '');
+	const candidates = [
+		resolve(BUILD_DIR, 'Release', name),
+		resolve(BUILD_DIR, name),
+	];
+	return candidates.find(c => existsSync(c)) || candidates[0];
 }
 
 export function ocrOrtDir(): string {
-	if (process.platform === "win32") {
-		return resolve(REPO_ROOT, "packages", "tmp", "onnxruntime-win-x64-1.26.0", "onnxruntime-win-x64-1.26.0");
+	if (process.platform === 'win32') {
+		return resolve(REPO_ROOT, 'packages', 'tmp', 'onnxruntime-win-x64-1.26.0', 'onnxruntime-win-x64-1.26.0');
 	}
-	return "/tmp/onnxruntime-linux-x64-1.24.4";
+	return '/tmp/onnxruntime-linux-x64-1.24.4';
 }
 
-export function ocrFrame(
+/**
+ * OCR engine that manages sessions for ort-node and dispatches per-frame calls.
+ */
+export class OCREngine {
+	private runtime: OCRRuntime;
+	private nodeSessions: NodeSessions | null = null;
+
+	constructor(runtime: OCRRuntime) {
+		this.runtime = runtime;
+	}
+
+	async init(): Promise<void> {
+		if (this.runtime === 'ort-node') {
+			this.nodeSessions = await createNodeSessions('cpu');
+		}
+	}
+
+	async ocrFrame(framePath: string, opts?: { textScore?: number; subtitleOnly?: boolean }): Promise<OCRLine[]> {
+		switch (this.runtime) {
+			case 'ort-cpp':
+				return ocrFrameCpp(framePath, opts);
+			case 'ort-node':
+				if (!this.nodeSessions) throw new Error('Node sessions not initialized');
+				return ocrFrameNode(framePath, this.nodeSessions, opts);
+			case 'ort-py':
+				return ocrFramePy(framePath, opts);
+			default:
+				throw new Error(`Unknown OCR runtime: ${this.runtime}`);
+		}
+	}
+
+	async release(): Promise<void> {
+		if (this.runtime === 'ort-node' && this.nodeSessions) {
+			await releaseNodeSessions(this.nodeSessions);
+			this.nodeSessions = null;
+		}
+	}
+
+	getRuntime(): OCRRuntime {
+		return this.runtime;
+	}
+}
+
+/**
+ * Convenience function: creates a one-off engine for a single frame.
+ * Prefer OCREngine for batch processing (avoids re-initialising node sessions.
+ */
+export async function ocrFrame(
 	framePath: string,
+	runtime: OCRRuntime = 'ort-cpp',
 	opts?: { textScore?: number; subtitleOnly?: boolean },
-): OCRLine[] {
-	if (!existsOcrBinary()) {
-		throw new Error(
-			`ocr_pipeline binary not found at ${ocrBinaryPath()}. Run 'npm run build:cpp' in packages/subtitle-ocr/`,
-		);
+): Promise<OCRLine[]> {
+	const engine = new OCREngine(runtime);
+	try {
+		await engine.init();
+		return await engine.ocrFrame(framePath, opts);
+	} finally {
+		await engine.release();
 	}
-
-	const env = resolveOcrEnv();
-
-	const args: string[] = [framePath];
-	if (opts?.textScore != null) args.push(String(opts.textScore));
-	if (opts?.subtitleOnly) args.push("--subtitle-only");
-
-	const r = spawnSync(ocrBinaryPath(), args, {
-		timeout: 60_000,
-		encoding: "utf-8",
-		env: {
-			...process.env,
-			...env,
-			[LIB_PATH_KEY]: `${LD_PATH}${process.platform === "win32" ? ";" : ":"}${process.env[LIB_PATH_KEY] || ""}`,
-		},
-	});
-
-	if (r.status !== 0) {
-		throw new Error(
-			`ocr_pipeline failed (exit ${r.status}): ${(r.stderr || "").slice(-300)}`,
-		);
-	}
-
-	const parsed = JSON.parse(r.stdout);
-
-	const lines: OCRLine[] = [];
-	for (const seg of parsed.segments || []) {
-		lines.push({
-			text: seg.text,
-			confidence: seg.confidence,
-			box: seg.box || [],
-		});
-	}
-	if (lines.length === 0 && parsed.text) {
-		lines.push({ text: parsed.text, confidence: 1, box: [] });
-	}
-	return lines;
 }

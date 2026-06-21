@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ocrFrame } from "../../ml/ocr/ocr.ts";
+import { OCREngine, type OCRRuntime } from "../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "./utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime,  } from "./utils/utils.ts";
 
@@ -25,6 +25,7 @@ export async function stageOcr(ctx: Context) {
 	const fps = ocrCfg?.fps ?? 2;
 	const textScore = ocrCfg?.textScore ?? 0.45;
 	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
+	const runtime = (ocrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
 
 	// 1. Extract frames
 	const frameDir = join(sessionPath, "tmp", "ocr-frames");
@@ -63,15 +64,18 @@ export async function stageOcr(ctx: Context) {
 
 	// 2. OCR each frame
 	await setStage(sessionPath, "ocr", {
-		last_message: `OCR'ing ${frameFiles.length} frames...`,
+		last_message: `OCR'ing ${frameFiles.length} frames (${runtime})...`,
 	});
+
+	const engine = new OCREngine(runtime);
+	await engine.init();
 
 	const frameResults: FrameResult[] = [];
 	for (let i = 0; i < frameFiles.length; i++) {
 		const framePath = join(frameDir, frameFiles[i]);
 		const timestampMs = Math.round((i * step / srcFps) * 1000);
 		try {
-			const lines = ocrFrame(framePath, { textScore, subtitleOnly });
+			const lines = await engine.ocrFrame(framePath, { textScore, subtitleOnly });
 			const best = lines.reduce(
 				(a, b) => (a.confidence > b.confidence ? a : b),
 				{ text: "", confidence: 0, box: [] },
@@ -90,6 +94,7 @@ export async function stageOcr(ctx: Context) {
 			emitLog(sessionPath, `[OCR] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
+	await engine.release();
 
 	// 3. Merge into segments
 	const segments = mergeFrames(frameResults);
@@ -127,7 +132,7 @@ export async function stageOcr(ctx: Context) {
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			result: { text, segments: segmentsOut },
-			_engine: "cpp-ocr",
+			_engine: runtime,
 			_fps: fps,
 			_textScore: textScore,
 			_source: "ocr",

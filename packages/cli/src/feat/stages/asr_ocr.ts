@@ -1,8 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { ocrFrame, existsOcrBinary, ocrBinaryPath } from '../../ml/ocr/ocr.ts';
-import { tryBuildOcr } from '../../ml/ocr/ocr-build.ts';
+import { OCREngine, type OCRRuntime } from '../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from './utils/utils.ts';
 import { FrameResult, mergeFrames } from './utils/ocrMerge.ts';
@@ -25,17 +24,10 @@ export async function stageAsrOcr(ctx: Context) {
 		throw new Error(`asr.json not found: ${asrFile}`);
 	}
 
-	if (!existsOcrBinary()) {
-		emitLog(sessionPath, `[ASR+OCR] OCR binary not found at ${ocrBinaryPath()}, attempting build...`);
-		const built = await tryBuildOcr(sessionPath);
-		if (!built) {
-			throw new Error(`OCR binary not found at ${ocrBinaryPath()} and build failed.`);
-		}
-	}
-
-	const ocrCfg = ctx.input?.stages?.ocr;
+	const ocrCfg = ctx.input?.stages?.asr_ocr;
 	const textScore = ocrCfg?.textScore ?? 0.45;
 	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
+	const runtime = (ocrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
 
 	const asrData = await readJson(asrFile, ctx);
 	const asrSegs: { text: string; start: number; end: number }[] = (asrData.result?.segments ?? []).map((s: any) => ({
@@ -93,10 +85,13 @@ export async function stageAsrOcr(ctx: Context) {
 	}
 
 	await setStage(sessionPath, 'asr_ocr', {
-		last_message: `OCR'ing ${ocrCount} frames...`,
+		last_message: `OCR'ing ${ocrCount} frames (${runtime})...`,
 	});
 
 	// OCR each frame
+	const engine = new OCREngine(runtime);
+	await engine.init();
+
 	const frameFiles = readdirSync(frameDir).filter(f => f.endsWith('.jpg')).sort();
 	const frameResults: FrameResult[] = [];
 
@@ -104,7 +99,7 @@ export async function stageAsrOcr(ctx: Context) {
 		const framePath = join(frameDir, frameFiles[i]);
 		const tsMatch = frameFiles[i].match(/frame_(\d+)\.jpg/);
 		const timestampMs = tsMatch ? parseInt(tsMatch[1]) : 0;
-		const lines = ocrFrame(framePath, { textScore, subtitleOnly });
+		const lines = await engine.ocrFrame(framePath, { textScore, subtitleOnly });
 		const best = lines.reduce(
 			(a, b) => (a.confidence > b.confidence ? a : b),
 			{ text: '', confidence: 0, box: [] },
@@ -120,6 +115,7 @@ export async function stageAsrOcr(ctx: Context) {
 			emitLog(sessionPath, `[ASR+OCR] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
+	await engine.release();
 
 	// Merge frames into OCR segments
 	const ocrSegments = mergeFrames(frameResults);

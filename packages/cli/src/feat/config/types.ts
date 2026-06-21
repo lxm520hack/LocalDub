@@ -63,23 +63,23 @@ const stagesList = [
 export type StageName = (typeof stagesList)[number];
 
 const SeparateConfigSchema = z.object({
-		runtime: z.enum(['ggml', 'ort', 'pytorch']),
-		device: z
-			.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
-			.default('cuda')
-			.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
-		always: z
-			.boolean()
-			.default(false)
-			.describe(
-				'效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量',
-			)
-			.optional(),
-		stems: z
-			.array(z.enum(['drums', 'bass', 'other', 'vocals']))
-			.default(['vocals'])
-			.describe('需分离的 stems; 默认只分离 vocals, 目前仅支持 ort').optional(),
-	})
+	runtime: z.enum(['ggml', 'ort', 'pytorch']),
+	device: z
+		.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
+		.default('cuda')
+		.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
+	always: z
+		.boolean()
+		.default(false)
+		.describe(
+			'效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量',
+		)
+		.optional(),
+	stems: z
+		.array(z.enum(['drums', 'bass', 'other', 'vocals']))
+		.default(['vocals'])
+		.describe('需分离的 stems; 默认只分离 vocals, 目前仅支持 ort').optional(),
+})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
@@ -94,7 +94,7 @@ export type SeparateConfig = z.infer<typeof SeparateConfigSchema>;
 
 const ASRConfigSchema = z
 	.looseObject({
-		runtime: z.enum(['ggml','faster-whisper', 'pytorch', ]).default('pytorch'),
+		runtime: z.enum(['ggml', 'faster-whisper', 'pytorch',]).default('pytorch'),
 		device: z.enum(['vulkan', 'cuda', 'cpu', 'mps']).default('cuda'),
 		useSeparated: z
 			.boolean()
@@ -163,6 +163,11 @@ const ASRConfigSchema = z
 export type ASRConfig = z.output<typeof ASRConfigSchema>;
 const OcrConfigSchema = z
 	.looseObject({
+		runtime: z
+			.enum(['ort-cpp', 'ort-node', 'ort-py'])
+			.default('ort-cpp')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
+			.optional(),
 		fps: z
 			.number()
 			.default(2)
@@ -179,9 +184,37 @@ const OcrConfigSchema = z
 			.describe('只识别字幕区域 (Y轴裁剪); 默认 true')
 			.optional(),
 	})
-	.default({ fps: 2, textScore: 0.45, subtitleOnly: true })
+	.default({ runtime: 'ort-cpp', fps: 2, textScore: 0.45, subtitleOnly: true })
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
+
+const AsrOcrConfigSchema = z
+	.looseObject({
+		runtime: z
+			.enum(['ort-cpp', 'ort-node', 'ort-py'])
+			.default('ort-cpp')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
+			.optional(),
+		fps: z
+			.number()
+			.default(2)
+			.describe('帧率 (fps), 越高时间戳越准但越慢; 默认 2')
+			.optional(),
+		textScore: z
+			.number()
+			.default(0.45)
+			.describe('OCR 识别置信度阈值, 默认 0.45')
+			.optional(),
+		subtitleOnly: z
+			.boolean()
+			.default(true)
+			.describe('只识别字幕区域 (Y轴裁剪); 默认 true')
+			.optional(),
+	})
+	.default({ runtime: 'ort-cpp', fps: 2, textScore: 0.45, subtitleOnly: true })
+	.optional();
+export type AsrOcrConfig = z.output<typeof AsrOcrConfigSchema>;
+
 const TranslateConfigSchema = z
 	.looseObject({
 		apiBase: z.string().optional(),
@@ -198,10 +231,10 @@ const TranslateConfigSchema = z
 	.optional();
 
 const TTSConfigSchema = z.object({
-		runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']).default('pytorch').optional(),
-		device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
-		skipExisting: z.boolean().default(true).optional(),
-	})
+	runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']).default('pytorch').optional(),
+	device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
+	skipExisting: z.boolean().default(true).optional(),
+})
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
@@ -330,6 +363,30 @@ const StagesSchema = z.object({
 		.optional(),
 
 	ocr: OcrConfigSchema,
+	asr_ocr: AsrOcrConfigSchema,
+	asr_ocr_fix: z
+		.looseObject({
+			llmFix: z
+				.boolean()
+				.default(false)
+				.describe('是否启用 LLM OCR 纠错').optional(),
+			llmModel: z
+				.string()
+				.default('gemma4:31b-cloud')
+				.optional()
+				.describe('LLM 模型名'),
+			llmApiBase: z
+				.string()
+				.default('http://localhost:11434/v1')
+				.optional()
+				.describe('LLM API 地址'),
+			domainHint: z
+				.string()
+				.optional()
+				.describe('领域提示'),
+		})
+		.default({ llmFix: false })
+		.optional(),
 	ocr_fix: z
 		.looseObject({
 			llmFix: z

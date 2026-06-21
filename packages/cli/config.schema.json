@@ -492,12 +492,23 @@
             },
             "ocr": {
               "default": {
+                "runtime": "ort-cpp",
                 "fps": 2,
                 "textScore": 0.45,
                 "subtitleOnly": true
               },
               "type": "object",
               "properties": {
+                "runtime": {
+                  "default": "ort-cpp",
+                  "description": "OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)",
+                  "type": "string",
+                  "enum": [
+                    "ort-cpp",
+                    "ort-node",
+                    "ort-py"
+                  ]
+                },
                 "fps": {
                   "default": 2,
                   "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
@@ -512,6 +523,71 @@
                   "default": true,
                   "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": {}
+            },
+            "asr_ocr": {
+              "default": {
+                "runtime": "ort-cpp",
+                "fps": 2,
+                "textScore": 0.45,
+                "subtitleOnly": true
+              },
+              "type": "object",
+              "properties": {
+                "runtime": {
+                  "default": "ort-cpp",
+                  "description": "OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)",
+                  "type": "string",
+                  "enum": [
+                    "ort-cpp",
+                    "ort-node",
+                    "ort-py"
+                  ]
+                },
+                "fps": {
+                  "default": 2,
+                  "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
+                  "type": "number"
+                },
+                "textScore": {
+                  "default": 0.45,
+                  "description": "OCR 识别置信度阈值, 默认 0.45",
+                  "type": "number"
+                },
+                "subtitleOnly": {
+                  "default": true,
+                  "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": {}
+            },
+            "asr_ocr_fix": {
+              "default": {
+                "llmFix": false
+              },
+              "type": "object",
+              "properties": {
+                "llmFix": {
+                  "default": false,
+                  "description": "是否启用 LLM OCR 纠错",
+                  "type": "boolean"
+                },
+                "llmModel": {
+                  "description": "LLM 模型名",
+                  "default": "gemma4:31b-cloud",
+                  "type": "string"
+                },
+                "llmApiBase": {
+                  "description": "LLM API 地址",
+                  "default": "http://localhost:11434/v1",
+                  "type": "string"
+                },
+                "domainHint": {
+                  "description": "领域提示",
+                  "type": "string"
                 }
               },
               "additionalProperties": {}
