@@ -49,7 +49,7 @@ async function runPytorchBatch(
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
 	const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
-	const procEnsure = spawn(pyBin, [ensureScript, 'OpenBMB__VoxCPM2', modelDir], { timeout: 1_800_000 });
+	const procEnsure = spawn(pyBin, [ensureScript, 'OpenBMB/VoxCPM2', modelDir], { timeout: 1_800_000 });
 	procEnsure.stderr?.pipe(process.stderr);
 	await new Promise<void>((resolve, reject) => {
 		procEnsure.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`ensure_voxcpm.py exited ${code}`)));
@@ -165,7 +165,7 @@ export async function stageTts(
 		emitLog(sessionPath, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
 		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
-		const procEnsure = spawn(pythonBin(), [ensureScript, 'OpenBMB__VoxCPM2', modelDir], { timeout: 1_800_000 });
+		const procEnsure = spawn(pythonBin(), [ensureScript, 'OpenBMB/VoxCPM2', modelDir], { timeout: 1_800_000 });
 		procEnsure.stderr?.pipe(process.stderr);
 		await new Promise<void>((resolve, reject) => {
 			procEnsure.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`ensure_voxcpm.py exited ${code}`)));

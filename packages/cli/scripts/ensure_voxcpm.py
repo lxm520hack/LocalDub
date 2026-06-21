@@ -26,7 +26,7 @@ def _try_modelscope(model_id: str, local_dir: str) -> bool:
 def _try_huggingface(model_id: str, local_dir: str) -> bool:
     try:
         from huggingface_hub import snapshot_download
-        snapshot_download(model_id.replace("__", "/"), local_dir=local_dir)
+        snapshot_download(model_id, local_dir=local_dir)
         return True
     except Exception as exc:
         print(f"[ensure_voxcpm] HuggingFace failed: {exc}", file=sys.stderr)
@@ -60,8 +60,7 @@ def main() -> None:
     if _try_modelscope(model_id, local_dir):
         sys.exit(0)
 
-    hf_model_id = model_id.replace("__", "/")
-    if _try_huggingface(hf_model_id, local_dir):
+    if _try_huggingface(model_id, local_dir):
         sys.exit(0)
 
     print(f"[ensure_voxcpm] Failed to download {model_id} from any source", file=sys.stderr)
