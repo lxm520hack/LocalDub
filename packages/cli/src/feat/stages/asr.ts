@@ -324,7 +324,7 @@ async function asrWhisperCpp(
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
-	const audioDir = join(REPO_ROOT, sessionPath, 'tmp');
+	const audioDir = join(sessionPath, 'tmp');
 	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
