@@ -7,6 +7,7 @@
 
 - `packages/cli/src/feat/` — pipeline 流程（stages、config、tasks）
 - `packages/cli/src/ml/` — 模型实现（whisper、demucs 等）
+- `packages/cli/src/ml/ocr/ocr.ts` — OCR 二进制调用，使用 `pythonBin()`（config.ts）而非内联 VIRTUAL_ENV
 - `packages/benchmark/` — 性能测试与参数对比
 - `packages/benchmark/ocr/compute/` — OCR 基准测试脚本
 - `submodule/whisper.cpp/` — whisper.cpp 官方仓库（GPU Vulkan 构建 → `build/bin/whisper-vulkan`）

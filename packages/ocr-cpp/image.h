@@ -24,17 +24,15 @@ static Image loadImage(const char* path) {
     unsigned char* pixels = nullptr;
 
 #ifdef _WIN32
-    int wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, nullptr, 0);
-    if (wlen <= 0) {
-        throw std::runtime_error(std::string("Failed to convert path to wide (err=") + std::to_string(GetLastError()) + "): " + path);
-    }
-    std::wstring wpath(wlen, L'\0');
-    MultiByteToWideChar(CP_ACP, 0, path, -1, &wpath[0], wlen);
-    FILE* f = _wfopen(wpath.c_str(), L"rb");
+    FILE* f = fopen(path, "rb");
     if (!f) {
         DWORD err = GetLastError();
-        // Fallback: try ANSI fopen
-        f = fopen(path, "rb");
+        int wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, nullptr, 0);
+        if (wlen > 0) {
+            std::wstring wpath(wlen, L'\0');
+            MultiByteToWideChar(CP_ACP, 0, path, -1, &wpath[0], wlen);
+            f = _wfopen(wpath.c_str(), L"rb");
+        }
         if (!f) {
             throw std::runtime_error(std::string("Failed to open file (err=") + std::to_string(err) + "): " + path);
         }
@@ -45,7 +43,13 @@ static Image loadImage(const char* path) {
     pixels = stbi_load(path, &img.w, &img.h, &n, 3);
 #endif
 
-    if (!pixels) throw std::runtime_error("Failed to load image");
+    if (!pixels) {
+        std::string reason = stbi_failure_reason() ? stbi_failure_reason() : "unknown";
+        throw std::runtime_error("Failed to load image: " + reason);
+    }
+    if (img.w <= 0 || img.h <= 0) {
+        throw std::runtime_error("Invalid image dimensions: " + std::to_string(img.w) + "x" + std::to_string(img.h));
+    }
     img.c = 3;
     img.data.assign(pixels, pixels + img.w * img.h * 3);
     stbi_image_free(pixels);

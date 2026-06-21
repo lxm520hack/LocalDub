@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { REPO_ROOT } from "../../feat/config/config.ts";
+import { REPO_ROOT, pythonBin } from "../../feat/config/config.ts";
 
 const BUILD_DIR = resolve(REPO_ROOT, "packages", "ocr-cpp", "build");
 const LD_PATH = BUILD_DIR;
@@ -40,9 +40,7 @@ function resolveOcrEnv(): OcrEnv {
 		throw new Error(`OCR keys not found at ${keysPath}`);
 	}
 
-	const pyBin = process.env.VIRTUAL_ENV
-		? join(process.env.VIRTUAL_ENV, "Scripts", "python.exe")
-		: "python";
+	const pyBin = pythonBin();
 	const r = spawnSync(pyBin, ["-c",
 		"import rapidocr_onnxruntime, os; print(os.path.join(os.path.dirname(rapidocr_onnxruntime.__file__), 'models'))",
 	], { timeout: 15_000, encoding: "utf-8" });
