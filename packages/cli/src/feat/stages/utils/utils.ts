@@ -217,7 +217,7 @@ export function ffmpeg(args: string[], timeout = 120_000) {
 	}
 	if (r.status !== 0)
 		throw new Error(
-			`ffmpeg exit ${r.status}: ${r.stderr.toString().slice(0, 300)}`,
+			`ffmpeg exit ${r.status}: ${r.stderr.toString().slice(-2000)}`,
 		);
 }
 
