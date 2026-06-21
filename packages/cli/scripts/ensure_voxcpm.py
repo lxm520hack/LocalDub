@@ -42,9 +42,17 @@ def main() -> None:
     local_dir = os.path.abspath(sys.argv[2])
     cached = Path(local_dir)
 
-    if cached.is_dir() and any(cached.iterdir()):
-        print(f"[ensure_voxcpm] Model already cached at {local_dir}")
-        sys.exit(0)
+    # Check actual model weights exist, not just partial files
+    if cached.is_dir():
+        if (cached / "model.safetensors").exists() or (cached / "pytorch_model.bin").exists():
+            print(f"[ensure_voxcpm] Model already cached at {local_dir}")
+            sys.exit(0)
+        partial_dirs = [cached / ".cache", cached / "._____temp"]
+        for d in partial_dirs:
+            if d.is_dir():
+                import shutil
+                shutil.rmtree(d)
+                print(f"[ensure_voxcpm] Cleaned partial download: {d}")
 
     print(f"[ensure_voxcpm] Downloading {model_id} to {local_dir}...")
     os.makedirs(local_dir, exist_ok=True)
