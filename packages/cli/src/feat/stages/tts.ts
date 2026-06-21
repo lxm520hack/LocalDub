@@ -161,7 +161,8 @@ export async function stageTts(
 		}
 	}
 
-	if (ttsCfg.runtime === 'pytorch' && daemon?.ready) {
+	if (ttsCfg.runtime === 'pytorch' && daemon) {
+		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
 		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');

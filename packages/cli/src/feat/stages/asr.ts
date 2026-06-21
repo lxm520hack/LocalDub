@@ -92,7 +92,8 @@ export async function stageAsr(
 	const pyBin = pythonBin();
 	const { asrLanguage } = readTaskLanguages(ctx);
 
-	if (runtime === 'pytorch' && daemon?.ready) {
+	if (runtime === 'pytorch' && daemon) {
+		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[ASR] Using Python daemon (device=${device})`);
 		const result = await daemon.runStage('asr', taskId, {
 			vocals_path: audioPath,

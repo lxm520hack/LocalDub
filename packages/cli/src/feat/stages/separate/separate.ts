@@ -47,7 +47,8 @@ export async function stageSeparate(
 	const runtime = sepCfg?.runtime ?? 'pytorch';
 	const device = sepCfg?.device ?? 'cuda';
 
-	if (runtime === 'pytorch' && daemon?.ready) {
+	if (runtime === 'pytorch' && daemon) {
+		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[Separate] Using Python daemon (device=${device})`);
 		const absVideo = resolve(
 			REPO_ROOT,
