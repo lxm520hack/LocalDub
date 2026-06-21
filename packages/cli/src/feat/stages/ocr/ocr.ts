@@ -1,12 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { OCREngine, type OCRRuntime } from "../../ml/ocr/ocr.ts";
-import { ensureDir, writeJson } from "./utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime,  } from "./utils/utils.ts";
+import { OCREngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
+import { ensureDir, writeJson } from "../utils/fileOps.ts";
+import { emitLog, ffmpeg, nowISO, srtTime,  } from "../utils/utils.ts";
 
-import { FrameResult, mergeFrames } from "./utils/ocrMerge.ts";
-import { Context, setStage } from "../context/context.ts";
+import { FrameResult, mergeFrames } from "../utils/ocrMerge.ts";
+import { Context, setStage } from "../../context/context.ts";
 
 export async function stageOcr(ctx: Context) {
 		const taskId = ctx.task.id;

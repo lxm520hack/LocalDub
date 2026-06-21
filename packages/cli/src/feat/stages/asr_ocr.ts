@@ -24,10 +24,10 @@ export async function stageAsrOcr(ctx: Context) {
 		throw new Error(`asr.json not found: ${asrFile}`);
 	}
 
-	const ocrCfg = ctx.input?.stages?.asr_ocr;
-	const textScore = ocrCfg?.textScore ?? 0.45;
-	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
-	const runtime = (ocrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
+	const asrOcrCfg = ctx.input?.stages?.asr_ocr;
+	const textScore = asrOcrCfg?.textScore ?? 0.45;
+	const subtitleOnly = asrOcrCfg?.subtitleOnly ?? true;
+	const runtime = (asrOcrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
 
 	const asrData = await readJson(asrFile, ctx);
 	const asrSegs: { text: string; start: number; end: number }[] = (asrData.result?.segments ?? []).map((s: any) => ({
@@ -36,9 +36,7 @@ export async function stageAsrOcr(ctx: Context) {
 		end: Math.round(s.end),
 	}));
 
-	if (!asrSegs.length) {
-		throw new Error('No ASR segments found');
-	}
+	if (!asrSegs.length) throw new Error('No ASR segments found');
 
 	// Generate frame timestamps: end2fps strategy
 	// First segment: 10fps (100ms steps) for precise first-subtitle detection
