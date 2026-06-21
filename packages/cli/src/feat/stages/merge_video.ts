@@ -15,6 +15,11 @@ import {
 	defaultFont,
 } from './utils/utils.ts';
 
+function filterSubPath(subPath: string): string {
+	if (process.platform !== 'win32') return subPath;
+	return subPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+}
+
 function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
 	const CLOSING_QUOTES = new Set([
 		'"',
@@ -267,7 +272,7 @@ export async function stageMergeVideo(ctx: Context) {
 				'-i',
 				video_file_path,
 				'-vf',
-				`subtitles='${subPath}':force_style='${style}'`,
+				`subtitles='${filterSubPath(subPath)}':force_style='${style}'`,
 				'-map',
 				'0:v:0',
 				'-map',
@@ -326,7 +331,7 @@ export async function stageMergeVideo(ctx: Context) {
 				'-i',
 				mixedAudio,
 				'-vf',
-				`subtitles='${subPath}':force_style='${style}'`,
+				`subtitles='${filterSubPath(subPath)}':force_style='${style}'`,
 				'-map',
 				'0:v:0',
 				'-map',
