@@ -204,7 +204,7 @@ function setupSubmodules(config: CliConfig, venv: string) {
 
 	// VoxCPM 依赖
 	if (ttsRuntime === 'pytorch') {
-		const voxcpmReq = join(repoRoot, 'submodule', 'VoxCPM', 'requirements.txt');
+		const voxcpmReq = join(repoRoot, 'requirements-voxcpm.txt');
 		if (existsSync(voxcpmReq)) {
 			log('安装 VoxCPM 依赖...', 'yellow');
 			run([pip, 'install', '-r', voxcpmReq, '--quiet'], { cwd: repoRoot });
