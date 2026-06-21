@@ -1,8 +1,8 @@
-import * as ort from '/home/aa/repos/env_ls/LocalDub/packages/cli/node_modules/onnxruntime-node';
+import * as ort from 'onnxruntime-node';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import sharp from '/home/aa/repos/env_ls/LocalDub/node_modules/.bun/node_modules/sharp';
+import sharp from 'sharp';
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const MODEL_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
@@ -15,7 +15,13 @@ const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
 const CLS_PATH = join(MODEL_DIR, 'ch_ppocr_mobile_v2.0_cls_infer.onnx');
 const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
 
-const CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
+// 对齐 Python rapidocr 的字符表：
+// - index 0 = blank (CTC blank，解码时跳过)
+// - 1..6623 = 原 ppocr_keys.json 中 1..end 的 6623 个字符
+// - 6624 = ' ' (space)
+// 共 6625 个 token，与 rec 模型输出维度 (N, T, 6625) 一致
+const RAW_CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
+const CHAR_LIST: string[] = ['', ...RAW_CHAR_LIST.slice(1), ' '];
 
 interface OCRBox { box: number[][]; score: number }
 
@@ -42,7 +48,8 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 		if (idx === 0) { prev = -1; continue; }
 		if (idx !== prev) {
 			const ch = CHAR_LIST[idx] ?? '';
-			if (ch) { chars.push(ch); confs.push(totalConf[i]); }
+			// index 6624 是空格 token，为有效值；仅 index 0(blank) 已在前面跳过
+			if (ch !== '') { chars.push(ch); confs.push(totalConf[i]); }
 		}
 		prev = idx;
 	}
@@ -219,7 +226,7 @@ export async function ocrFrameWithSessions(
 	], { timeout: 30_000, encoding: 'utf-8' });
 	const ppMs = performance.now() - t0;
 
-	try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	try { rmSync(tmpDir, { recursive: true, force: true }); } catch { }
 
 	if (pp.status !== 0 || !pp.stdout) {
 		throw new Error(`Post-process failed: ${pp.stderr?.slice(-200) || 'no output'}`);
