@@ -7,9 +7,11 @@
 
 - `packages/cli/src/feat/` — pipeline 流程（stages、config、tasks）
 - `packages/cli/src/ml/` — 模型实现（whisper、demucs 等）
-- `packages/cli/src/ml/ocr/ocr.ts` — OCR 二进制调用，使用 `pythonBin()`（config.ts）而非内联 VIRTUAL_ENV
+- `packages/cli/src/ml/ocr/ocr.ts` — OCR 二进制调用（subtitle-cpp），使用 `pythonBin()`（config.ts）而非内联 VIRTUAL_ENV
+- `packages/subtitle-ocr/` — 字幕专用 OCR 包（subtitle-cpp、subtitle-node.ts、subtitle-py.py）
 - `packages/benchmark/` — 性能测试与参数对比
 - `packages/benchmark/ocr/compute/` — OCR 基准测试脚本
+- `packages/benchmark/ocr/compute/postprocess_det.py` — 引用了 `packages/subtitle-ocr/ppocr_keys.json`
 - `submodule/whisper.cpp/` — whisper.cpp 官方仓库（GPU Vulkan 构建 → `build/bin/whisper-vulkan`）
 - `.agents/hardware.md` — 硬件兼容性 & 已知失败路径
 - `.agents/model-strategy.md` — 各模型设备分配详情
@@ -98,7 +100,7 @@ Key: `temp-*` params are extremely sensitive to BGM interference; sidechain is r
 | Node.js (onnxruntime-node) | 1fps, so | 3.58% | 74 | -119ms | — | 0 | 0.263 |
 | C++ ORT | 0.5fps, so | 20.75% | 54 | -639ms | — | 0 | 0.092 |
 
-C++ ORT 方差全来自 ORT 多线程 run-to-run 非确定性（~0.89-5.37%），**ts 参数在 subtitleOnly 下影响被波动淹没**（27 次运行 FP=0）。所有引擎的 `subtitleOnly` → `textScore=0.3` override 已移除（C++ `ocr_pipeline.cpp:331`、Python `ocr_frame.py:29-30`、Node `ocr_node.ts:171`），`subtitleOnly` 现在只做 Y 轴裁剪。
+C++ ORT 方差全来自 ORT 多线程 run-to-run 非确定性（~0.89-5.37%），**ts 参数在 subtitleOnly 下影响被波动淹没**（27 次运行 FP=0）。所有引擎的 `subtitleOnly` → `textScore=0.3` override 已移除（C++ `ocr_pipeline.cpp:331`、Python `subtitle-py.py:29-30`、Node `subtitle-node.ts:171`），`subtitleOnly` 现在只做 Y 轴裁剪。
 
 **Cover 指标**：仅是描述性数据，标识检测到的段覆盖了多少时间线比例，**并非越高越好**。自然的口播字幕之间有空白间隙，100% cover 意味着段完全连续无间隙，只是反映结果的时间特性。
 

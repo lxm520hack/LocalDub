@@ -53,7 +53,7 @@ def ocr_frame(
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2:
-		print(json.dumps({"error": "Usage: python ocr_frame.py <image_path> [--full-frame] [--text-score <float>] [--subtitle-only]"}))
+		print(json.dumps({"error": "Usage: python subtitle-py.py <image_path> [--full-frame] [--text-score <float>] [--subtitle-only]"}))
 		sys.exit(1)
 
 	image_path = sys.argv[1]

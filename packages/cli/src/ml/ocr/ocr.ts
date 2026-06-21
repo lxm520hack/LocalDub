@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { REPO_ROOT, pythonBin } from "../../feat/config/config.ts";
 
-const BUILD_DIR = resolve(REPO_ROOT, "packages", "ocr-cpp", "build");
+const BUILD_DIR = resolve(REPO_ROOT, "packages", "subtitle-ocr", "subtitle-cpp", "build");
 const LD_PATH = BUILD_DIR;
 
 function ocrBinaryPathInner(): string {
@@ -23,7 +23,7 @@ export interface OCRLine {
 	box: number[][];
 }
 
-const OCR_KEYS_PATH = resolve(REPO_ROOT, "packages", "benchmark", "ocr", "compute", "ppocr_keys.json");
+const OCR_KEYS_PATH = resolve(REPO_ROOT, "packages", "subtitle-ocr", "ppocr_keys.json");
 
 interface OcrEnv {
 	OCR_MODELS_DIR: string;
@@ -80,7 +80,7 @@ export function ocrFrame(
 ): OCRLine[] {
 	if (!existsOcrBinary()) {
 		throw new Error(
-			`ocr_pipeline binary not found at ${ocrBinaryPath()}. Run 'npm run build' in packages/ocr-cpp/`,
+			`ocr_pipeline binary not found at ${ocrBinaryPath()}. Run 'npm run build:cpp' in packages/subtitle-ocr/`,
 		);
 	}
 

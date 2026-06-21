@@ -1,15 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { createSessions, ocrFrameWithSessions, releaseSessions } from './ocr_node.ts';
+import { createSessions, ocrFrameWithSessions, releaseSessions } from '../../../subtitle-ocr/subtitle-node.ts';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');
 const VIDEO_PATH = join(VIDEOS_PATH, 'video_source.mp4');
-const CPP_BIN = resolve(REPO_ROOT, 'packages', 'ocr-cpp', 'build', 'ocr_pipeline');
-const CPP_LD_PATH = resolve(REPO_ROOT, 'packages', 'ocr-cpp', 'build');
+const CPP_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build', 'ocr_pipeline');
+const CPP_LD_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
-const OCR_PY = resolve(__dirname, 'ocr_frame.py');
+const OCR_PY = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py');
 const WER_PY = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'compute', 'wer.py');
 const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
 const RESULTS_BASE = resolve(__dirname, '..', 'results');
@@ -392,7 +392,7 @@ function runOCRBenchmarkCpp(label: string, fps: number, textScore?: number, subt
 	const asrOutput = {
 		audio_info: { duration: audioDurMs },
 		result: { text, segments: preciseSegments },
-		_engine: 'ocr-cpp',
+		_engine: 'subtitle-cpp',
 		_source: 'video_hardsub',
 		_fps: fps,
 		_textScore: textScore ?? 0.5,

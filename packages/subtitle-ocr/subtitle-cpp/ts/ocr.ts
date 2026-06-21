@@ -19,7 +19,7 @@ export function ocrFrame(
 ): OCRLine[] {
 	if (!existsSync(BINARY_PATH)) {
 		throw new Error(
-			`ocr_pipeline binary not found at ${BINARY_PATH}. Run 'npm run build' in packages/ocr-cpp/`,
+			`ocr_pipeline binary not found at ${BINARY_PATH}. Run 'npm run build:cpp' in packages/subtitle-ocr/`,
 		);
 	}
 

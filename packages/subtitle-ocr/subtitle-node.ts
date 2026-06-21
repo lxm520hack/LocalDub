@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
 import sharp from '/home/aa/repos/env_ls/LocalDub/node_modules/.bun/node_modules/sharp';
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
+const REPO_ROOT = resolve(__dirname, '..', '..');
 const MODEL_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const POSTPROCESS_PY = resolve(__dirname, 'postprocess_det.py');
@@ -286,7 +286,7 @@ if (require.main === module) {
 	(async () => {
 		const imagePath = process.argv[2];
 		if (!imagePath) {
-			console.error('Usage: bun run compute/ocr_node.ts <image_path> [detEp=cpu|webgpu]');
+			console.error('Usage: bun run subtitle-node.ts <image_path> [detEp=cpu|webgpu]');
 			process.exit(1);
 		}
 		const detEp = process.argv[3] || 'cpu';
