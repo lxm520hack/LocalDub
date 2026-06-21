@@ -78,7 +78,7 @@ export async function stageSeparate(
 			emitLog(sessionPath, `[Separate] Processed in ${sr.process_time_s}s`);
 		if (sr.audio_duration_s)
 			emitLog(
-				taskId,
+				sessionPath,
 				`[Separate] Audio duration ${sr.audio_duration_s.toFixed(1)}s`,
 			);
 		if (sr.rtf) emitLog(sessionPath, `[Separate] RTF ${sr.rtf}`);
@@ -108,7 +108,7 @@ async function separateOrt(
 	const sepCfg = readConfig().stages?.separate;
 	const targetStems: Stem[] = sepCfg && 'stems' in sepCfg ? (sepCfg as { stems?: Stem[] }).stems ?? ['vocals'] : ['vocals'];
 	emitLog(
-		taskId,
+		sessionPath,
 		`[Separate] runtime=ort device=${device} stems=${targetStems.join(',')} → ONNX session(${ep})`,
 	);
 
