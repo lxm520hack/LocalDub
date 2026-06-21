@@ -12,17 +12,18 @@ import { REPO_ROOT } from '@repo/config';
  */
 function findRapidOCRModelsDir(): string {
 	const venvBase = resolve(REPO_ROOT, '.venv');
-	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
-	if (!existsSync(sitePackagesBase)) {
-		throw new Error(`site-packages not found: ${sitePackagesBase}`);
-	}
-	let spDir = sitePackagesBase;
-	if (process.platform !== 'win32') {
-		const entries = readdirSync(spDir, { withFileTypes: true });
+	const libDir = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib');
+	let spDir: string;
+	if (process.platform === 'win32') {
+		spDir = join(libDir, 'site-packages');
+	} else {
+		// Linux/macOS: lib/pythonX.Y/site-packages
+		const entries = existsSync(libDir) ? readdirSync(libDir, { withFileTypes: true }) : [];
 		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
-		if (pyDir) {
-			spDir = join(spDir, pyDir.name);
-		}
+		spDir = pyDir ? join(libDir, pyDir.name, 'site-packages') : join(libDir, 'site-packages');
+	}
+	if (!existsSync(spDir)) {
+		throw new Error(`site-packages not found: ${spDir}`);
 	}
 	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
 	if (!existsSync(modelsDir)) {
