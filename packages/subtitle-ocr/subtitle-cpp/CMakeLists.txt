@@ -40,6 +40,7 @@ if(WIN32)
         COMMENT "Copying ORT DLLs"
     )
 else()
+    find_library(ONNXRUNTIME_LIB onnxruntime PATHS "${ORT_LIB_DIR}" NO_DEFAULT_PATH)
     target_link_libraries(ocr_pipeline PRIVATE ${ONNXRUNTIME_LIB} pthread)
     add_custom_command(TARGET ocr_pipeline POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

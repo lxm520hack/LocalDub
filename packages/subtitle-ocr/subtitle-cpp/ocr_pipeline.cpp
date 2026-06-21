@@ -59,18 +59,19 @@ struct OCRResult {
 };
 
 // --- Load char list from JSON ---
+// ppocr_keys.json: 6624 个元素 [ "", "'", "疗", ... ] ，第一个是占位
+// 解码用字符表：index 0 = blank (CTC 跳过), 1..6623 = 6623 个字符, 6624 = ' ' (space)
+// 共 6625 个 token，与 rec 模型输出维度 (N, T, 6625) 一致
 static std::vector<std::string> loadCharList(const std::string& path) {
     std::ifstream f(path);
     if (!f) return {};
     std::string json((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     std::vector<std::string> chars;
-    // Simple JSON array parser for ["", "char1", "char2", ...]
     size_t pos = 0;
     while (pos < json.size() && json[pos] != '[') pos++;
     if (pos >= json.size()) return chars;
     pos++; // skip '['
     while (pos < json.size() && json[pos] != ']') {
-        // Skip whitespace/comma
         while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\n' || json[pos] == '\r' || json[pos] == '\t' || json[pos] == ','))
             pos++;
         if (pos >= json.size() || json[pos] == ']') break;
@@ -82,7 +83,6 @@ static std::vector<std::string> loadCharList(const std::string& path) {
                     pos++;
                     if (pos < json.size()) {
                         if (json[pos] == 'u') {
-                            // Unicode escape \uXXXX - simplified
                             ch += '?';
                             for (int k = 0; k < 5 && pos < json.size(); k++) pos++;
                         } else {
@@ -97,7 +97,15 @@ static std::vector<std::string> loadCharList(const std::string& path) {
             chars.push_back(ch);
         } else break;
     }
-    return chars;
+    // chars 现在是原始 6624 元素，首个是空串
+    // 转换为 [blank, chars[1..end], space]
+    if (chars.empty()) return {};
+    std::vector<std::string> table;
+    table.reserve(chars.size() + 1); // 6624 + 1 = 6625
+    table.push_back(""); // index 0: blank (CTC 跳过)
+    for (size_t i = 1; i < chars.size(); ++i) table.push_back(chars[i]);
+    table.push_back(" "); // last index: space
+    return table;
 }
 
 // --- CTC decode ---
@@ -132,26 +140,37 @@ static CTCResult ctcDecode(const float* logits, int timesteps, int numClasses, c
 struct DetPreproc {
     std::vector<float> tensor; // NCHW
     int origH, origW, resizedH, resizedW;
+    int yOffset; // for bottom_only: pixels cropped from top before det
 };
 
-static DetPreproc preprocessDet(const uint8_t* rgb, int H, int W) {
+static DetPreproc preprocessDet(const uint8_t* rgb, int H, int W, bool bottomOnly) {
     DetPreproc out;
-    out.origH = H; out.origW = W;
+    out.yOffset = 0;
+    int roiH = H;
+    const uint8_t* roiPtr = rgb;
+
+    if (bottomOnly) {
+        // 裁剪到底部 40%，跟 Python subtitle-py.py 一致
+        out.yOffset = (int)(H * 0.6f);
+        roiH = H - out.yOffset;
+        roiPtr = rgb + out.yOffset * W * 3;
+    }
+    out.origH = roiH; out.origW = W;
 
     int newW, newH;
-    if (H <= W) {
+    if (roiH <= W) {
         newH = DET_LIMIT_SIDE;
-        newW = (int)std::round((float)W * DET_LIMIT_SIDE / H);
+        newW = (int)std::round((float)W * DET_LIMIT_SIDE / roiH);
     } else {
         newW = DET_LIMIT_SIDE;
-        newH = (int)std::round((float)H * DET_LIMIT_SIDE / W);
+        newH = (int)std::round((float)roiH * DET_LIMIT_SIDE / W);
     }
     newW = ((newW + 31) / 32) * 32;
     newH = ((newH + 31) / 32) * 32;
     out.resizedW = newW; out.resizedH = newH;
 
     std::vector<uint8_t> resized(newW * newH * 3);
-    resizeBilinear(rgb, W, H, resized.data(), newW, newH);
+    resizeBilinear(roiPtr, W, roiH, resized.data(), newW, newH);
 
     out.tensor.resize(3 * newH * newW);
     const float mean[3] = {0.485f, 0.456f, 0.406f};
@@ -191,12 +210,11 @@ struct RecPreproc {
 };
 
 static RecPreproc preprocessRec(const uint8_t* rgb, int H, int W) {
-    (void)H;
-    float whRatio = (float)W / REC_H;
+    float whRatio = (float)W / (float)H;
     int imgW = std::min(REC_MAX_W, std::max(32, (int)std::round(REC_H * whRatio)));
 
     std::vector<uint8_t> resized(imgW * REC_H * 3);
-    resizeBilinear(rgb, W, REC_H, resized.data(), imgW, REC_H);
+    resizeBilinear(rgb, W, H, resized.data(), imgW, REC_H);
 
     RecPreproc out;
     out.width = imgW;
@@ -332,6 +350,139 @@ static Image rotate180(const Image& img) {
     return out;
 }
 
+// --- Order points clockwise (top-left, top-right, bottom-right, bottom-left) ---
+static Polygon orderPointsClockwise(const Polygon& pts) {
+    std::vector<int> idx(pts.size());
+    for (size_t i = 0; i < pts.size(); ++i) idx[i] = (int)i;
+    std::sort(idx.begin(), idx.end(), [&](int a, int b) { return pts[a].x < pts[b].x; });
+
+    std::vector<int> leftIdx = {idx[0], idx[1]};
+    std::sort(leftIdx.begin(), leftIdx.end(), [&](int a, int b) { return pts[a].y < pts[b].y; });
+    int tl = leftIdx[0], bl = leftIdx[1];
+
+    std::vector<int> rightIdx = {idx[2], idx[3]};
+    std::sort(rightIdx.begin(), rightIdx.end(), [&](int a, int b) { return pts[a].y < pts[b].y; });
+    int tr = rightIdx[0], br = rightIdx[1];
+
+    Polygon out;
+    out.push_back(pts[tl]);
+    out.push_back(pts[tr]);
+    out.push_back(pts[br]);
+    out.push_back(pts[bl]);
+    return out;
+}
+
+// --- Perspective warp crop (Python rapidocr: get_rotate_crop_image) ---
+static Image warpPerspectiveCrop(const Image& img, const Polygon& pts) {
+    float x0 = pts[0].x, y0 = pts[0].y;
+    float x1 = pts[1].x, y1 = pts[1].y;
+    float x2 = pts[2].x, y2 = pts[2].y;
+    float x3 = pts[3].x, y3 = pts[3].y;
+
+    float w1 = std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+    float w2 = std::sqrt((x2 - x3) * (x2 - x3) + (y2 - y3) * (y2 - y3));
+    float h1 = std::sqrt((x3 - x0) * (x3 - x0) + (y3 - y0) * (y3 - y0));
+    float h2 = std::sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+
+    int dstW = std::max(4, (int)std::round(std::max(w1, w2)));
+    int dstH = std::max(4, (int)std::round(std::max(h1, h2)));
+
+    bool rotate90 = (float)dstH / (float)dstW >= 1.5f;
+    int outW = rotate90 ? dstH : dstW;
+    int outH = rotate90 ? dstW : dstH;
+
+    // Solve perspective transform: src pts -> dst rect corners
+    float u0 = 0, v0 = 0;
+    float u1 = (float)(dstW - 1), v1 = 0;
+    float u2 = (float)(dstW - 1), v2 = (float)(dstH - 1);
+    float u3 = 0, v3 = (float)(dstH - 1);
+
+    double mat[8][9] = {
+        {u0, v0, 1,  0,  0, 0, -u0 * x0, -v0 * x0, x0},
+        {u1, v1, 1,  0,  0, 0, -u1 * x1, -v1 * x1, x1},
+        {u2, v2, 1,  0,  0, 0, -u2 * x2, -v2 * x2, x2},
+        {u3, v3, 1,  0,  0, 0, -u3 * x3, -v3 * x3, x3},
+        { 0,  0, 0, u0, v0, 1, -u0 * y0, -v0 * y0, y0},
+        { 0,  0, 0, u1, v1, 1, -u1 * y1, -v1 * y1, y1},
+        { 0,  0, 0, u2, v2, 1, -u2 * y2, -v2 * y2, y2},
+        { 0,  0, 0, u3, v3, 1, -u3 * y3, -v3 * y3, y3},
+    };
+
+    // Gaussian elimination with partial pivoting
+    for (int i = 0; i < 8; ++i) {
+        int maxRow = i;
+        double maxVal = std::abs(mat[i][i]);
+        for (int k = i + 1; k < 8; ++k) {
+            double v = std::abs(mat[k][i]);
+            if (v > maxVal) { maxVal = v; maxRow = k; }
+        }
+        if (maxRow != i) {
+            for (int j = 0; j < 9; ++j) std::swap(mat[i][j], mat[maxRow][j]);
+        }
+        double pivot = mat[i][i];
+        if (std::abs(pivot) < 1e-10) {
+            // fallback: axis-aligned crop
+            int axMin = (int)std::floor(std::min({x0, x1, x2, x3}));
+            int axMax = (int)std::ceil(std::max({x0, x1, x2, x3}));
+            int ayMin = (int)std::floor(std::min({y0, y1, y2, y3}));
+            int ayMax = (int)std::ceil(std::max({y0, y1, y2, y3}));
+            axMin = std::max(0, axMin); axMax = std::min(img.w, axMax);
+            ayMin = std::max(0, ayMin); ayMax = std::min(img.h, ayMax);
+            Image fb;
+            fb.w = std::max(1, axMax - axMin);
+            fb.h = std::max(1, ayMax - ayMin);
+            fb.c = 3;
+            fb.data.resize(fb.w * fb.h * 3);
+            for (int y = 0; y < fb.h; ++y) {
+                for (int x = 0; x < fb.w; ++x) {
+                    int si = ((y + ayMin) * img.w + (x + axMin)) * 3;
+                    int di = (y * fb.w + x) * 3;
+                    fb.data[di] = img.data[si];
+                    fb.data[di+1] = img.data[si+1];
+                    fb.data[di+2] = img.data[si+2];
+                }
+            }
+            return fb;
+        }
+        for (int j = i; j < 9; ++j) mat[i][j] /= pivot;
+        for (int k = 0; k < 8; ++k) {
+            if (k != i && std::abs(mat[k][i]) > 1e-10) {
+                double factor = mat[k][i];
+                for (int j = i; j < 9; ++j) mat[k][j] -= factor * mat[i][j];
+            }
+        }
+    }
+
+    double a = mat[0][8], b = mat[1][8], c = mat[2][8];
+    double d = mat[3][8], e = mat[4][8], f = mat[5][8];
+    double g = mat[6][8], h = mat[7][8];
+
+    Image out;
+    out.w = outW; out.h = outH; out.c = 3;
+    out.data.resize(outW * outH * 3, 0);
+
+    for (int dy = 0; dy < outH; ++dy) {
+        for (int dx = 0; dx < outW; ++dx) {
+            float u, v;
+            if (rotate90) {
+                u = (float)(dstW - 1 - dy);
+                v = (float)dx;
+            } else {
+                u = (float)dx;
+                v = (float)dy;
+            }
+            double denom = g * u + h * v + 1.0;
+            float sx = (float)((a * u + b * v + c) / denom);
+            float sy = (float)((d * u + e * v + f) / denom);
+            int di = (dy * outW + dx) * 3;
+            for (int ch = 0; ch < 3; ++ch) {
+                out.data[di + ch] = (uint8_t)std::round(sampleBilinear(img, sx, sy, ch));
+            }
+        }
+    }
+    return out;
+}
+
 // --- Run full OCR pipeline ---
 static OCRResult runOcr(
     const std::string& imagePath,
@@ -357,7 +508,7 @@ static OCRResult runOcr(
     // --- Detection ---
     auto t0 = clock::now();
     std::cerr << "[OCR] preprocess det..." << std::endl;
-    auto detPrep = preprocessDet(img.data.data(), img.h, img.w);
+    auto detPrep = preprocessDet(img.data.data(), img.h, img.w, subtitleOnly);
 
     // Det inference
     std::cerr << "[OCR] det inference " << detPrep.resizedH << "x" << detPrep.resizedW << "..." << std::endl;
@@ -380,83 +531,79 @@ static OCRResult runOcr(
     result.detMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
     // --- DB post-process ---
-    std::cerr << "[OCR] dbPostprocess " << outH << "x" << outW << "..." << std::endl;
-    auto boxesPts = dbPostprocess(heatmapData, outH, outW, img.h, img.w,
+    // 关键：坐标先映射到 ROI 空间 (detPrep.origH x detPrep.origW)，
+    // 然后在下面的 for 循环中 + yOffset 映射回原图（跟 Node.js 一致）
+    std::cerr << "[OCR] dbPostprocess " << outH << "x" << outW << " (orig " << detPrep.origH << "x" << detPrep.origW << ")..." << std::endl;
+    auto boxesPts = dbPostprocess(heatmapData, outH, outW, detPrep.origH, detPrep.origW,
                                   DET_THRESH, textScore, UNCLIP_RATIO, MAX_CANDIDATES);
 
     auto t2 = clock::now();
     result.postMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
 
     // --- Recognition for each box ---
-    std::cerr << "[OCR] " << boxesPts.size() << " boxes" << std::endl;
     int boxIdx = 0;
     for (auto& [boxPts, score] : boxesPts) {
         (void)score;
-        if (boxPts.size() < 4) { std::cerr << "[OCR] box " << boxIdx << " skip <4 pts" << std::endl; continue; }
+        if (boxPts.size() < 4) continue;
+
+        // box 坐标现在是 ROI 内部的坐标。如果开启了 bottom_only，先加回 yOffset 以便在原图做裁剪
+        if (detPrep.yOffset > 0) {
+            for (auto& p : boxPts) p.y += (float)detPrep.yOffset;
+        }
 
         // Y-position filter for subtitle only
         if (subtitleOnly) {
-            float ymin = boxPts[0].y, ymax = boxPts[0].y;
+            float yMinCk = boxPts[0].y, yMaxCk = boxPts[0].y;
             for (auto& p : boxPts) {
-                ymin = std::min(ymin, p.y);
-                ymax = std::max(ymax, p.y);
+                yMinCk = std::min(yMinCk, p.y);
+                yMaxCk = std::max(yMaxCk, p.y);
             }
-            float yCenter = (ymin + ymax) / 2;
-            std::cerr << "[OCR] box " << boxIdx << " yCenter=" << yCenter << std::endl;
-            if (yCenter < 620 || yCenter > 700) { std::cerr << "[OCR] box " << boxIdx << " skip yCenter" << std::endl; continue; }
+            float yCenter = (yMinCk + yMaxCk) / 2;
+            if (yCenter < (float)(img.h * 0.6f) || yCenter > (float)img.h) continue;
         }
 
-        std::cerr << "[OCR] box " << boxIdx << " minAreaRect..." << std::endl;
-        auto rotRect = minAreaRect(boxPts);
-        std::cerr << "[OCR] box " << boxIdx << " rect " << rotRect.width << "x" << rotRect.height << std::endl;
-        std::cerr << "[OCR] box " << boxIdx << " warpRotatedCrop..." << std::endl;
-        Image crop = warpRotatedCrop(img, rotRect);
-        std::cerr << "[OCR] box " << boxIdx << " crop " << crop.w << "x" << crop.h << std::endl;
-        if (crop.w < 4 || crop.h < 4) { std::cerr << "[OCR] box " << boxIdx << " skip small crop" << std::endl; continue; }
+        // 对齐 Python rapidocr: orderPointsClockwise 排序 + warpPerspective 裁剪
+        Polygon orderedPts = orderPointsClockwise(boxPts);
+        for (auto& p : orderedPts) {
+            p.x = std::max(0.0f, std::min((float)img.w - 1.0f, p.x));
+            p.y = std::max(0.0f, std::min((float)img.h - 1.0f, p.y));
+        }
+        Image crop = warpPerspectiveCrop(img, orderedPts);
+        if (crop.w < 4 || crop.h < 4) continue;
+        boxPts = orderedPts;
 
         // Cls inference
-        std::cerr << "[OCR] box " << boxIdx << " cls preproc..." << std::endl;
         auto clsTensor = preprocessCls(crop.data.data(), crop.h, crop.w);
         std::vector<int64_t> clsShape = {1, 3, CLS_H, CLS_W};
-        std::cerr << "[OCR] box " << boxIdx << " cls CreateTensor..." << std::endl;
         Ort::Value clsInputVal = Ort::Value::CreateTensor<float>(
             memInfo, clsTensor.data(), clsTensor.size(), clsShape.data(), clsShape.size());
 
-        std::cerr << "[OCR] box " << boxIdx << " cls GetInputNames..." << std::endl;
         auto clsInNames = clsSession.GetInputNames();
         auto clsOutNames = clsSession.GetOutputNames();
         std::vector<const char*> clsInputNames = {clsInNames[0].c_str()};
         std::vector<const char*> clsOutputNames = {clsOutNames[0].c_str()};
 
-        std::cerr << "[OCR] box " << boxIdx << " cls Run..." << std::endl;
         auto clsOut = clsSession.Run(Ort::RunOptions{nullptr}, clsInputNames.data(), &clsInputVal, 1,
                                      clsOutputNames.data(), 1);
-        std::cerr << "[OCR] box " << boxIdx << " cls done" << std::endl;
         float* clsData = clsOut[0].GetTensorMutableData<float>();
         bool rotate = clsData[0] < clsData[1];
 
         // Rotate if needed
         Image recCrop = rotate ? rotate180(crop) : crop;
-        std::cerr << "[OCR] box " << boxIdx << " rotate=" << rotate << std::endl;
 
         // Rec inference
-        std::cerr << "[OCR] box " << boxIdx << " rec preproc..." << std::endl;
         auto recPrep = preprocessRec(recCrop.data.data(), recCrop.h, recCrop.w);
-        std::cerr << "[OCR] box " << boxIdx << " rec width=" << recPrep.width << std::endl;
 
         auto t3 = clock::now();
         std::vector<int64_t> recShape = {1, 3, REC_H, recPrep.width};
-        std::cerr << "[OCR] box " << boxIdx << " rec CreateTensor..." << std::endl;
         Ort::Value recInputVal = Ort::Value::CreateTensor<float>(
             memInfo, recPrep.tensor.data(), recPrep.tensor.size(), recShape.data(), recShape.size());
 
-        std::cerr << "[OCR] box " << boxIdx << " rec GetInputNames..." << std::endl;
         auto recInNames = recSession.GetInputNames();
         auto recOutNames = recSession.GetOutputNames();
         std::vector<const char*> recInputNames = {recInNames[0].c_str()};
         std::vector<const char*> recOutputNames = {recOutNames[0].c_str()};
 
-        std::cerr << "[OCR] box " << boxIdx << " rec Run..." << std::endl;
         auto recOut = recSession.Run(Ort::RunOptions{nullptr}, recInputNames.data(), &recInputVal, 1,
                                      recOutputNames.data(), 1);
 
@@ -468,9 +615,9 @@ static OCRResult runOcr(
         int timesteps = (int)recShapeOut[1];
         int numClasses = (int)recShapeOut[2];
 
-        std::cerr << "[OCR] box " << boxIdx << " ctcDecode " << timesteps << "x" << numClasses << "..." << std::endl;
         auto [text, conf] = ctcDecode(recData, timesteps, numClasses, charList);
-        if (text.empty()) { std::cerr << "[OCR] box " << boxIdx << " skip empty text" << std::endl; continue; }
+        if (text.empty()) continue;
+        if (conf < textScore) continue;
 
         // Convert box to integer coordinates for output
         std::vector<std::vector<int>> boxOut;
