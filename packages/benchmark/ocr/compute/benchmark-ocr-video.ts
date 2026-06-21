@@ -8,10 +8,12 @@ const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');
 const VIDEO_PATH = join(VIDEOS_PATH, 'video_source.mp4');
 const CPP_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build', 'ocr_pipeline');
 const CPP_LD_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
+const OCR_MODELS_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
+const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const OCR_PY = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py');
 const WER_PY = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'compute', 'wer.py');
-const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
+const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'ocr_manual.json');
 const RESULTS_BASE = resolve(__dirname, '..', 'results');
 const TMP = resolve(REPO_ROOT, 'packages', 'tmp', 'ocr-bench');
 
@@ -77,7 +79,7 @@ function ocrFrameCpp(framePath: string, textScore?: number, subtitleOnly?: boole
 	const r = spawnSync(CPP_BIN, args, {
 		timeout: 60_000,
 		encoding: 'utf-8',
-		env: { ...process.env, LD_LIBRARY_PATH: CPP_LD_PATH },
+		env: { ...process.env, LD_LIBRARY_PATH: CPP_LD_PATH, OCR_MODELS_DIR: OCR_MODELS_DIR, OCR_KEYS_PATH: OCR_KEYS_PATH },
 	});
 	if (r.status !== 0) {
 		console.error(`  C++ OCR error: ${r.stderr?.slice(-200) || `exit ${r.status}`}`);
@@ -457,7 +459,9 @@ function runOCRBenchmarkCpp(label: string, fps: number, textScore?: number, subt
 // ---
 if (require.main === module) {
 	const engine = process.argv.includes('--engine') ? process.argv[process.argv.indexOf('--engine') + 1] : 'python';
-	console.log(`Engine: ${engine}`);
+	const onlyLabel = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
+	const runs = process.argv.includes('--runs') ? parseInt(process.argv[process.argv.indexOf('--runs') + 1], 10) : 1;
+	console.log(`Engine: ${engine}  Only: ${onlyLabel ?? 'all'}  Runs: ${runs}`);
 
 	async function main() {
 		const fpsOptions: { fps: number; textScore?: number; subtitleOnly?: boolean }[] = [
@@ -468,22 +472,27 @@ if (require.main === module) {
 		const results: any[] = [];
 
 		for (const opt of fpsOptions) {
-			const label = `ocr-${engine}-fps${opt.fps}${opt.subtitleOnly ? '-so' : ''}`;
-			const summaryPath = join(RESULTS_BASE, label, 'metadata', 'summary.json');
-			if (existsSync(summaryPath)) {
-				console.log(`[skip] ${label} already done`);
-				results.push(JSON.parse(readFileSync(summaryPath, 'utf-8')));
-				continue;
+			const baseLabel = `ocr-${engine}-fps${opt.fps}${opt.subtitleOnly ? '-so' : ''}`;
+			if (onlyLabel && baseLabel !== onlyLabel) continue;
+
+			for (let run = 0; run < runs; run++) {
+				const label = runs > 1 ? `${baseLabel}-r${run}` : baseLabel;
+				const summaryPath = join(RESULTS_BASE, label, 'metadata', 'summary.json');
+				if (existsSync(summaryPath)) {
+					console.log(`[skip] ${label} already done`);
+					results.push(JSON.parse(readFileSync(summaryPath, 'utf-8')));
+					continue;
+				}
+				let r: any;
+				if (engine === 'node') {
+					r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);
+				} else if (engine === 'cpp') {
+					r = runOCRBenchmarkCpp(label, opt.fps, opt.textScore, opt.subtitleOnly);
+				} else {
+					r = runOCRBenchmarkPython(label, opt.fps, opt.textScore, opt.subtitleOnly);
+				}
+				results.push(r);
 			}
-			let r: any;
-			if (engine === 'node') {
-				r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);
-			} else if (engine === 'cpp') {
-				r = runOCRBenchmarkCpp(label, opt.fps, opt.textScore, opt.subtitleOnly);
-			} else {
-				r = runOCRBenchmarkPython(label, opt.fps, opt.textScore, opt.subtitleOnly);
-			}
-			results.push(r);
 		}
 
 		console.log('\n======= OCR BENCHMARK SUMMARY =======');

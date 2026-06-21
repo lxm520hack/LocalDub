@@ -1,0 +1,8 @@
+[test]
+pathIgnorePatterns = [
+  "submodule/**",
+  "scripts/**",
+  "packages/benchmark/**",
+  "packages/tmp/**",
+  "**/*.build.test.ts",
+]

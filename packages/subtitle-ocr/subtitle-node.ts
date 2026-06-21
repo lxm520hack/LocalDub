@@ -1,7 +1,7 @@
 import * as ort from '/home/aa/repos/env_ls/LocalDub/packages/cli/node_modules/onnxruntime-node';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import sharp from '/home/aa/repos/env_ls/LocalDub/node_modules/.bun/node_modules/sharp';
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -53,11 +53,27 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 
 async function preprocessDet(
 	imgBuf: Buffer,
-	limitSideLen = 736,
-): Promise<{ tensor: Float32Array; origH: number; origW: number; resizedH: number; resizedW: number }> {
+	opts?: { limitSideLen?: number; bottomOnly?: boolean; },
+): Promise<{
+	tensor: Float32Array; origH: number; origW: number;
+	resizedH: number; resizedW: number; yOffset: number; roiBuf: Buffer;
+}> {
+	const limitSideLen = opts?.limitSideLen ?? 736;
+	const bottomOnly = opts?.bottomOnly ?? false;
+
 	const meta = await sharp(imgBuf).metadata();
-	const origH = meta.height!;
+	const fullH = meta.height!;
 	const origW = meta.width!;
+
+	// Python rapidocr 默认先 bottom_only 裁剪到画面底部 40%
+	let yOffset = 0;
+	let origH = fullH;
+	let roiBuf = imgBuf;
+	if (bottomOnly) {
+		yOffset = Math.floor(fullH * 0.6);
+		origH = fullH - yOffset;
+		roiBuf = await sharp(imgBuf).extract({ left: 0, top: yOffset, width: origW, height: origH }).toBuffer();
+	}
 
 	let newW: number, newH: number;
 	if (origH <= origW) {
@@ -67,10 +83,10 @@ async function preprocessDet(
 		newW = limitSideLen;
 		newH = Math.round(origH * limitSideLen / origW);
 	}
-	newW = Math.ceil(newW / 32) * 32;
-	newH = Math.ceil(newH / 32) * 32;
+	newW = Math.round(newW / 32) * 32;
+	newH = Math.round(newH / 32) * 32;
 
-	const resized = await sharp(imgBuf)
+	const resized = await sharp(roiBuf)
 		.resize(newW, newH, { fit: 'fill' })
 		.raw()
 		.toBuffer();
@@ -87,7 +103,7 @@ async function preprocessDet(
 		}
 	}
 
-	return { tensor: data, origH, origW, resizedH: newH, resizedW: newW };
+	return { tensor: data, origH, origW, resizedH: newH, resizedW: newW, yOffset, roiBuf };
 }
 
 async function preprocessCls(imgBuf: Buffer): Promise<Float32Array> {
@@ -171,7 +187,9 @@ export async function ocrFrameWithSessions(
 
 	const imgBuf = readFileSync(imagePath);
 
-	const { tensor: detInput, origH, origW, resizedH, resizedW } = await preprocessDet(imgBuf);
+	// bottom_only 预裁剪（跟 Python 对齐：ROI = 底部 40%）
+	const { tensor: detInput, origH, origW, resizedH, resizedW, yOffset } =
+		await preprocessDet(imgBuf, { bottomOnly: true });
 
 	let t0 = performance.now();
 	const detFeed: Record<string, ort.Tensor> = {};
@@ -187,6 +205,7 @@ export async function ocrFrameWithSessions(
 	writeFileSync(heatmapPath, Buffer.from(heatmapData.buffer, heatmapData.byteOffset, heatmapData.byteLength));
 
 	t0 = performance.now();
+	// 与 Python rapidocr 默认值对齐：thresh=0.3, box_thresh=textScore, unclip_ratio=1.6
 	const pp = spawnSync(PYTHON_BIN, [
 		POSTPROCESS_PY,
 		heatmapPath,
@@ -196,11 +215,11 @@ export async function ocrFrameWithSessions(
 		String(origW),
 		String(0.3),
 		String(textScore),
+		String(1.6),
 	], { timeout: 30_000, encoding: 'utf-8' });
 	const ppMs = performance.now() - t0;
 
-	try { unlinkSync(heatmapPath); } catch {}
-	try { unlinkSync(join(tmpDir, '')); } catch {}
+	try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
 
 	if (pp.status !== 0 || !pp.stdout) {
 		throw new Error(`Post-process failed: ${pp.stderr?.slice(-200) || 'no output'}`);
@@ -218,11 +237,11 @@ export async function ocrFrameWithSessions(
 		if (!pts || pts.length < 4) continue;
 
 		const xs = pts.map((p: number[]) => p[0]);
-		const ys = pts.map((p: number[]) => p[1]);
+		const ys = pts.map((p: number[]) => p[1] + yOffset); // postprocess 返回 ROI 内部坐标，加上 yOffset 映射回原图
 		const xMin = Math.max(0, Math.floor(Math.min(...xs)));
 		const xMax = Math.min(origW, Math.ceil(Math.max(...xs)));
 		const yMin = Math.max(0, Math.floor(Math.min(...ys)));
-		const yMax = Math.min(origH, Math.ceil(Math.max(...ys)));
+		const yMax = Math.min(origH + yOffset, Math.ceil(Math.max(...ys)));
 
 		if (xMax - xMin < 4 || yMax - yMin < 4) continue;
 
@@ -250,6 +269,7 @@ export async function ocrFrameWithSessions(
 		const { text, confidence } = ctcDecode(recTensor.data as Float32Array, recTensor.dims as number[]);
 
 		if (!text) continue;
+		if (confidence < textScore) continue;
 
 		// Y-position filter for subtitle-only mode
 		if (subtitleOnly) {
@@ -257,7 +277,9 @@ export async function ocrFrameWithSessions(
 			if (yCenter < 620 || yCenter > 700) continue;
 		}
 
-		segments.push({ text, confidence, box: pts });
+		// box 存回原图坐标（pts 是 ROI 内部坐标，加上 yOffset）
+		const absBox = pts.map((p: number[]) => [p[0], p[1] + yOffset]);
+		segments.push({ text, confidence, box: absBox });
 	}
 
 	// Sort top-to-bottom, left-to-right
@@ -291,7 +313,7 @@ if (require.main === module) {
 		}
 		const detEp = process.argv[3] || 'cpu';
 		const sessions = await createSessions(detEp);
-		const result = await ocrFrameWithSessions(imagePath, sessions, { textScore: 0.3 });
+		const result = await ocrFrameWithSessions(imagePath, sessions, { textScore: 0.5, subtitleOnly: true });
 		await releaseSessions(sessions);
 		console.log(JSON.stringify(result, null, 2));
 	})().catch(console.error);
