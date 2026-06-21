@@ -28,6 +28,8 @@ export async function stageAsrOcr(ctx: Context) {
 	const textScore = asrOcrCfg?.textScore ?? 0.45;
 	const subtitleOnly = asrOcrCfg?.subtitleOnly ?? true;
 	const runtime = (asrOcrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
+	const device = (asrOcrCfg?.device ?? 'cpu') as 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
+	const cleanupFrames = asrOcrCfg?.cleanupFrames ?? false;
 
 	const asrData = await readJson(asrFile, ctx);
 	const asrSegs: { text: string; start: number; end: number }[] = (asrData.result?.segments ?? []).map((s: any) => ({
@@ -56,7 +58,7 @@ export async function stageAsrOcr(ctx: Context) {
 	}
 	const sortedTs = [...allTimestamps].sort((a, b) => a - b);
 
-	emitLog(sessionPath, `[ASR+OCR] ${asrSegs.length} ASR segs → ${sortedTs.length} frame positions`);
+	emitLog(sessionPath, `[asr_ocr] ${asrSegs.length} ASR segs → ${sortedTs.length} frame positions`);
 
 	// Extract frames
 	const frameDir = join(sessionPath, 'tmp', 'asr-ocr-frames');
@@ -74,7 +76,7 @@ export async function stageAsrOcr(ctx: Context) {
 		ocrCount++;
 
 		if ((i + 1) % 50 === 0 || i === sortedTs.length - 1) {
-			emitLog(sessionPath, `[ASR+OCR] Extracted ${i + 1}/${sortedTs.length} frames`);
+			emitLog(sessionPath, `[asr_ocr] Extracted ${i + 1}/${sortedTs.length} frames`);
 		}
 	}
 
@@ -87,7 +89,7 @@ export async function stageAsrOcr(ctx: Context) {
 	});
 
 	// OCR each frame
-	const engine = new OCREngine(runtime);
+	const engine = new OCREngine(runtime, device);
 	await engine.init();
 
 	const frameFiles = readdirSync(frameDir).filter(f => f.endsWith('.jpg')).sort();
@@ -110,7 +112,7 @@ export async function stageAsrOcr(ctx: Context) {
 		});
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
-			emitLog(sessionPath, `[ASR+OCR] ${i + 1}/${frameFiles.length} frames`);
+			emitLog(sessionPath, `[asr_ocr] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
 	await engine.release();
@@ -135,6 +137,7 @@ export async function stageAsrOcr(ctx: Context) {
 		end: s.end,
 		start_fmt: srtTime(s.start),
 		end_fmt: srtTime(s.end),
+		confidence: s.confidence,
 		...(s.box_y ? { box_y: s.box_y } : {}),
 	}));
 
@@ -154,15 +157,22 @@ export async function stageAsrOcr(ctx: Context) {
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			_source: 'asr_ocr',
+			_engine: runtime,
+			_device: device,
 			result: { text: ocrText, segments: ocrSegmentsOut },
 		},
 		ctx,
 	);
 
-	emitLog(sessionPath, `[ASR+OCR] ${ocrCount} OCR frames → ${ocrSegments.length} OCR segments`);
+	emitLog(sessionPath, `[asr_ocr] ${ocrCount} OCR frames → ${ocrSegments.length} OCR segments`);
 
-	// Cleanup
-	rmSync(frameDir, { recursive: true, force: true });
+	// Cleanup frames (optional)
+	if (cleanupFrames) {
+		rmSync(frameDir, { recursive: true, force: true });
+		emitLog(sessionPath, `[asr_ocr] Frames cleaned up`);
+	} else {
+		emitLog(sessionPath, `[asr_ocr] Frames kept at ${frameDir}`);
+	}
 
 	await setStage(sessionPath, 'asr_ocr', {
 		status: 'succeeded',

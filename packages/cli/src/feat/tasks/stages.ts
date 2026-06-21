@@ -53,7 +53,7 @@ function withAsrOcrStages(stages: StageSpec[], _pipeline?: string): StageSpec[] 
 		if (s.name === 'asr_fix' || s.name === 'ocr' || s.name === 'ocr_fix') continue;
 		out.push(s);
 		if (s.name === 'asr') {
-			out.push({ name: 'asr_ocr', label: 'ASR+OCR' });
+			out.push({ name: 'asr_ocr', label: 'asr_ocr' });
 			out.push({ name: 'asr_ocr_fix', label: 'Fix Overlap' });
 		}
 	}

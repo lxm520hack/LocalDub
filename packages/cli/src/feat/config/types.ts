@@ -168,6 +168,11 @@ const OcrConfigSchema = z
 			.default('ort-cpp')
 			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
 			.optional(),
+		device: z
+			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
+			.default('cpu')
+			.describe('OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)')
+			.optional(),
 		fps: z
 			.number()
 			.default(2)
@@ -183,8 +188,13 @@ const OcrConfigSchema = z
 			.default(true)
 			.describe('只识别字幕区域 (Y轴裁剪); 默认 true')
 			.optional(),
+		cleanupFrames: z
+			.boolean()
+			.default(false)
+			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
+			.optional(),
 	})
-	.default({ runtime: 'ort-cpp', fps: 2, textScore: 0.45, subtitleOnly: true })
+	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
 
@@ -195,6 +205,11 @@ const AsrOcrConfigSchema = z
 			.default('ort-cpp')
 			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
 			.optional(),
+		device: z
+			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
+			.default('cpu')
+			.describe('OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)')
+			.optional(),
 		fps: z
 			.number()
 			.default(2)
@@ -210,8 +225,13 @@ const AsrOcrConfigSchema = z
 			.default(true)
 			.describe('只识别字幕区域 (Y轴裁剪); 默认 true')
 			.optional(),
+		cleanupFrames: z
+			.boolean()
+			.default(false)
+			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
+			.optional(),
 	})
-	.default({ runtime: 'ort-cpp', fps: 2, textScore: 0.45, subtitleOnly: true })
+	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
 	.optional();
 export type AsrOcrConfig = z.output<typeof AsrOcrConfigSchema>;
 
@@ -366,6 +386,11 @@ const StagesSchema = z.object({
 	asr_ocr: AsrOcrConfigSchema,
 	asr_ocr_fix: z
 		.looseObject({
+			textScore: z
+				.number()
+				.default(0.5)
+				.optional()
+				.describe('OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃'),
 			llmFix: z
 				.boolean()
 				.default(false)
@@ -385,7 +410,7 @@ const StagesSchema = z.object({
 				.optional()
 				.describe('领域提示'),
 		})
-		.default({ llmFix: false })
+		.default({ llmFix: false, textScore: 0.5 })
 		.optional(),
 	ocr_fix: z
 		.looseObject({

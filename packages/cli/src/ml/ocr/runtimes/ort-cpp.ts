@@ -29,11 +29,14 @@ export function existsOcrBinary(): boolean {
 
 export async function ocrFrameCpp(
 	framePath: string,
-	opts?: { textScore?: number; subtitleOnly?: boolean },
+	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
 	const args: string[] = [framePath];
 	if (opts?.textScore != null) args.push(String(opts.textScore));
 	if (opts?.subtitleOnly) args.push('--subtitle-only');
+	if (opts?.device && opts.device !== 'cpu') {
+		args.push('--device', opts.device);
+	}
 
 	const r = spawnSync(ocrBinaryPath(), args, {
 		timeout: 60_000,

@@ -13,7 +13,7 @@ const PY_SCRIPT = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py
 
 export async function ocrFramePy(
 	framePath: string,
-	opts?: { textScore?: number; subtitleOnly?: boolean },
+	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
 	if (!existsSync(PY_SCRIPT)) {
 		throw new Error(`Python OCR script not found: ${PY_SCRIPT}`);
@@ -26,6 +26,9 @@ export async function ocrFramePy(
 	}
 	if (opts?.subtitleOnly) {
 		args.push('--subtitle-only');
+	}
+	if (opts?.device && opts.device !== 'cpu') {
+		args.push('--device', opts.device);
 	}
 
 	const r = spawnSync(pyBin, args, {

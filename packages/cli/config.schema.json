@@ -493,9 +493,11 @@
             "ocr": {
               "default": {
                 "runtime": "ort-cpp",
+                "device": "cpu",
                 "fps": 2,
                 "textScore": 0.45,
-                "subtitleOnly": true
+                "subtitleOnly": true,
+                "cleanupFrames": false
               },
               "type": "object",
               "properties": {
@@ -507,6 +509,19 @@
                     "ort-cpp",
                     "ort-node",
                     "ort-py"
+                  ]
+                },
+                "device": {
+                  "default": "cpu",
+                  "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
+                  "type": "string",
+                  "enum": [
+                    "cpu",
+                    "cuda",
+                    "directml",
+                    "coreml",
+                    "rocm",
+                    "mps"
                   ]
                 },
                 "fps": {
@@ -522,6 +537,11 @@
                 "subtitleOnly": {
                   "default": true,
                   "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
+                  "type": "boolean"
+                },
+                "cleanupFrames": {
+                  "default": false,
+                  "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
                   "type": "boolean"
                 }
               },
@@ -530,9 +550,11 @@
             "asr_ocr": {
               "default": {
                 "runtime": "ort-cpp",
+                "device": "cpu",
                 "fps": 2,
                 "textScore": 0.45,
-                "subtitleOnly": true
+                "subtitleOnly": true,
+                "cleanupFrames": false
               },
               "type": "object",
               "properties": {
@@ -544,6 +566,19 @@
                     "ort-cpp",
                     "ort-node",
                     "ort-py"
+                  ]
+                },
+                "device": {
+                  "default": "cpu",
+                  "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
+                  "type": "string",
+                  "enum": [
+                    "cpu",
+                    "cuda",
+                    "directml",
+                    "coreml",
+                    "rocm",
+                    "mps"
                   ]
                 },
                 "fps": {
@@ -560,16 +595,27 @@
                   "default": true,
                   "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
                   "type": "boolean"
+                },
+                "cleanupFrames": {
+                  "default": false,
+                  "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
+                  "type": "boolean"
                 }
               },
               "additionalProperties": {}
             },
             "asr_ocr_fix": {
               "default": {
-                "llmFix": false
+                "llmFix": false,
+                "textScore": 0.45
               },
               "type": "object",
               "properties": {
+                "textScore": {
+                  "description": "OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃",
+                  "default": 0.45,
+                  "type": "number"
+                },
                 "llmFix": {
                   "default": false,
                   "description": "是否启用 LLM OCR 纠错",

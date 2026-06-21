@@ -10,6 +10,7 @@ export interface Segment {
 	start: number;
 	end: number;
 	box_y?: [number, number];
+	confidence?: number;
 }
 
 export function levenshtein(a: string, b: string): number {
@@ -39,12 +40,23 @@ function isSubstringOf(a: string, b: string): boolean {
 	return a.length < b.length ? b.includes(a) : a.includes(b);
 }
 
+function avgConfidence(confidences: number[]): number | undefined {
+	return confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : undefined;
+}
+
+function mergeConfidence(a?: number, b?: number): number | undefined {
+	if (a === undefined) return b;
+	if (b === undefined) return a;
+	return (a + b) / 2;
+}
+
 export function mergeFrames(frames: FrameResult[]): Segment[] {
 	const segments: Segment[] = [];
 	let currentText = "";
 	let currentStart = 0;
 	let currentBox: number[][] | undefined;
 	let gapStart = 0;
+	let currentConfidences: number[] = [];
 
 	for (const f of frames) {
 		if (!f.text) {
@@ -54,10 +66,11 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		if (gapStart > 0) {
 			const gapMs = f.timestamp - gapStart;
 			if (gapMs <= 1500 && levenshtein(f.text, currentText) <= 2) {
+				currentConfidences.push(f.confidence);
 				gapStart = 0; continue;
 			}
-			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: boxY(currentBox) });
-			currentText = ""; currentStart = 0; currentBox = undefined; gapStart = 0;
+			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: boxY(currentBox), confidence: avgConfidence(currentConfidences) });
+			currentText = ""; currentStart = 0; currentBox = undefined; gapStart = 0; currentConfidences = [];
 		}
 		if (!currentText || levenshtein(f.text, currentText) > 2) {
 			if (currentText) {
@@ -66,16 +79,20 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 					start: currentStart,
 					end: f.timestamp,
 					box_y: boxY(currentBox),
+					confidence: avgConfidence(currentConfidences),
 				});
 			}
 			currentText = f.text;
 			currentStart = f.timestamp;
 			currentBox = f.box;
+			currentConfidences = [f.confidence];
+		} else {
+			currentConfidences.push(f.confidence);
 		}
 	}
 	if (currentText) {
 		const lastTs = gapStart > 0 ? gapStart : frames[frames.length - 1]?.timestamp ?? currentStart;
-		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: boxY(currentBox) });
+		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: boxY(currentBox), confidence: avgConfidence(currentConfidences) });
 	}
 
 	// second pass: merge adjacent segments where text is a substring of the other
@@ -84,7 +101,7 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		const prev = segments[i - 1];
 		const cur = segments[i];
 		if (overlap(prev.box_y, cur.box_y) && isSubstringOf(prev.text, cur.text)) {
-			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y };
+			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence) };
 			segments.splice(i, 1);
 		}
 	}
@@ -100,7 +117,8 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 			const isShort = durB <= 1000;
 			const isSingleChar = b.text.length <= 2;
 			if (isShort && isSingleChar) {
-				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y };
+				const mergedConf = [a.confidence, b.confidence, c.confidence].filter((v): v is number => v !== undefined);
+				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf) };
 				segments.splice(i + 1, 2);
 				i--; // re-check from this position
 			}
@@ -127,6 +145,7 @@ export function dedupOverlap(segments: Segment[]): Segment[] {
 					start: Math.min(a.start, b.start),
 					end: Math.max(a.end, b.end),
 					box_y: a.box_y,
+					confidence: mergeConfidence(a.confidence, b.confidence),
 				};
 				segments.splice(j, 1);
 				j--;
@@ -174,4 +193,26 @@ export function fixOverlap(asrSegs: Segment[], rawFrames: FrameResult[], ocrSegs
 	}
 
 	return fix;
+}
+
+/**
+ * 从 ocr.json 的 segments 出发，按 segment confidence 过滤，生成 ocr_filtered.json 的结果。
+ * 不需要重新跑 mergeFrames，直接在 segment 级别过滤低 confidence 的片段。
+ *
+ * @param segments 来自 ocr.json.result.segments（mergeFrames 结果）
+ * @param textScore confidence 阈值，低于此值的 segment 会被丢弃。0 表示不过滤。
+ * @returns 过滤后的 segments，以及被丢弃的数量
+ */
+export function toOcrFiltered(
+	segments: Segment[],
+	textScore: number,
+): { segments: Segment[]; dropped: number } {
+	if (!textScore || textScore <= 0) {
+		return { segments: segments.map(s => ({ ...s })), dropped: 0 };
+	}
+	const filtered = segments.filter(s => s.confidence === undefined || s.confidence >= textScore);
+	return {
+		segments: filtered,
+		dropped: segments.length - filtered.length,
+	};
 }

@@ -29,11 +29,21 @@ export interface NodeSessions {
 	rec: ort.InferenceSession;
 }
 
-export async function createNodeSessions(detEp: string = 'cpu'): Promise<NodeSessions> {
+export type OCRDevice = 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
+
+function deviceToEp(device: OCRDevice): string {
+	switch (device) {
+		case 'directml': return 'dml';
+		default: return device;
+	}
+}
+
+export async function createNodeSessions(device: OCRDevice = 'cpu'): Promise<NodeSessions> {
+	const ep = deviceToEp(device);
 	const [det, cls, rec] = await Promise.all([
-		ort.InferenceSession.create(DET_PATH, { executionProviders: [detEp] }),
-		ort.InferenceSession.create(CLS_PATH, { executionProviders: ['cpu'] }),
-		ort.InferenceSession.create(REC_PATH, { executionProviders: ['cpu'] }),
+		ort.InferenceSession.create(DET_PATH, { executionProviders: [ep] }),
+		ort.InferenceSession.create(CLS_PATH, { executionProviders: [ep] }),
+		ort.InferenceSession.create(REC_PATH, { executionProviders: [ep] }),
 	]);
 	return { det, cls, rec };
 }

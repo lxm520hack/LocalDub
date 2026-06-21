@@ -8,6 +8,7 @@ def ocr_frame(
 	bottom_only: bool = True,
 	text_score: float | None = None,
 	subtitle_only: bool = False,
+	providers: list | None = None,
 ) -> tuple[list, float]:
 	if not os.path.isfile(image_path):
 		raise FileNotFoundError(image_path)
@@ -29,6 +30,8 @@ def ocr_frame(
 	kwargs = {}
 	if text_score is not None:
 		kwargs["text_score"] = text_score
+	if providers is not None:
+		kwargs["providers"] = providers
 	t0 = time.perf_counter()
 	result, elapse = engine(roi, **kwargs)
 	inference_ms = (time.perf_counter() - t0) * 1000
@@ -53,19 +56,36 @@ def ocr_frame(
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2:
-		print(json.dumps({"error": "Usage: python subtitle-py.py <image_path> [--full-frame] [--text-score <float>] [--subtitle-only]"}))
+		print(json.dumps({"error": "Usage: python subtitle-py.py <image_path> [--full-frame] [--text-score <float>] [--subtitle-only] [--device cpu|cuda|dml|coreml]"}))
 		sys.exit(1)
 
 	image_path = sys.argv[1]
 	bottom_only = "--full-frame" not in sys.argv
 	text_score = None
 	subtitle_only = "--subtitle-only" in sys.argv
+	device = "cpu"
 	if "--text-score" in sys.argv:
 		idx = sys.argv.index("--text-score")
 		if idx + 1 < len(sys.argv):
 			text_score = float(sys.argv[idx + 1])
+	if "--device" in sys.argv:
+		idx = sys.argv.index("--device")
+		if idx + 1 < len(sys.argv):
+			device = sys.argv[idx + 1]
+
+	provider_map = {
+		"cuda": ["CUDAExecutionProvider"],
+		"dml": ["DmlExecutionProvider"],
+		"directml": ["DmlExecutionProvider"],
+		"coreml": ["CoreMLExecutionProvider"],
+		"rocm": ["ROCMExecutionProvider"],
+		"mps": ["CoreMLExecutionProvider"],
+		"cpu": ["CPUExecutionProvider"],
+	}
+	providers = provider_map.get(device, ["CPUExecutionProvider"])
+
 	try:
-		lines, inference_ms = ocr_frame(image_path, bottom_only=bottom_only, text_score=text_score, subtitle_only=subtitle_only)
+		lines, inference_ms = ocr_frame(image_path, bottom_only=bottom_only, text_score=text_score, subtitle_only=subtitle_only, providers=providers)
 		print(json.dumps({"lines": lines, "inference_ms": round(inference_ms, 2)}, ensure_ascii=False))
 	except Exception as e:
 		print(json.dumps({"error": str(e)}, ensure_ascii=False))

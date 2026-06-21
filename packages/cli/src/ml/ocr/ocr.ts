@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { REPO_ROOT } from '../../feat/config/config.ts';
 import { ocrFrameCpp, existsOcrBinary, type OCRLine as OCRLineCpp } from './runtimes/ort-cpp.ts';
-import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions } from './runtimes/ort-node.ts';
+import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions, type OCRDevice } from './runtimes/ort-node.ts';
 import { ocrFramePy } from './runtimes/ort-py.ts';
 
 export { existsOcrBinary } from './runtimes/ort-cpp.ts';
@@ -39,27 +39,29 @@ export function ocrOrtDir(): string {
  */
 export class OCREngine {
 	private runtime: OCRRuntime;
+	private device: OCRDevice;
 	private nodeSessions: NodeSessions | null = null;
 
-	constructor(runtime: OCRRuntime) {
+	constructor(runtime: OCRRuntime, device: OCRDevice = 'cpu') {
 		this.runtime = runtime;
+		this.device = device;
 	}
 
 	async init(): Promise<void> {
 		if (this.runtime === 'ort-node') {
-			this.nodeSessions = await createNodeSessions('cpu');
+			this.nodeSessions = await createNodeSessions(this.device);
 		}
 	}
 
 	async ocrFrame(framePath: string, opts?: { textScore?: number; subtitleOnly?: boolean }): Promise<OCRLine[]> {
 		switch (this.runtime) {
 			case 'ort-cpp':
-				return ocrFrameCpp(framePath, opts);
+				return ocrFrameCpp(framePath, { ...opts, device: this.device });
 			case 'ort-node':
 				if (!this.nodeSessions) throw new Error('Node sessions not initialized');
 				return ocrFrameNode(framePath, this.nodeSessions, opts);
 			case 'ort-py':
-				return ocrFramePy(framePath, opts);
+				return ocrFramePy(framePath, { ...opts, device: this.device });
 			default:
 				throw new Error(`Unknown OCR runtime: ${this.runtime}`);
 		}
@@ -84,9 +86,9 @@ export class OCREngine {
 export async function ocrFrame(
 	framePath: string,
 	runtime: OCRRuntime = 'ort-cpp',
-	opts?: { textScore?: number; subtitleOnly?: boolean },
+	opts?: { textScore?: number; subtitleOnly?: boolean; device?: OCRDevice },
 ): Promise<OCRLine[]> {
-	const engine = new OCREngine(runtime);
+	const engine = new OCREngine(runtime, opts?.device ?? 'cpu');
 	try {
 		await engine.init();
 		return await engine.ocrFrame(framePath, opts);

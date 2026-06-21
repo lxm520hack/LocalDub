@@ -26,6 +26,8 @@ export async function stageOcr(ctx: Context) {
 	const textScore = ocrCfg?.textScore ?? 0.45;
 	const subtitleOnly = ocrCfg?.subtitleOnly ?? true;
 	const runtime = (ocrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
+	const device = (ocrCfg?.device ?? 'cpu') as 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
+	const cleanupFrames = ocrCfg?.cleanupFrames ?? false;
 
 	// 1. Extract frames
 	const frameDir = join(sessionPath, "tmp", "ocr-frames");
@@ -67,7 +69,7 @@ export async function stageOcr(ctx: Context) {
 		last_message: `OCR'ing ${frameFiles.length} frames (${runtime})...`,
 	});
 
-	const engine = new OCREngine(runtime);
+	const engine = new OCREngine(runtime, device);
 	await engine.init();
 
 	const frameResults: FrameResult[] = [];
@@ -126,13 +128,14 @@ export async function stageOcr(ctx: Context) {
 	// 6. Write ocr.json (same format as asr_fix)
 	const metadataDir = resolve(sessionPath, "metadata");
 	ensureDir(metadataDir, ctx);
-	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), ...(s.box_y ? { box_y: s.box_y } : {}) }));
+	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) }));
 	writeJson(
 		join(metadataDir, "ocr.json"),
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			result: { text, segments: segmentsOut },
 			_engine: runtime,
+			_device: device,
 			_fps: fps,
 			_textScore: textScore,
 			_source: "ocr",
@@ -143,8 +146,13 @@ export async function stageOcr(ctx: Context) {
 
 	emitLog(sessionPath, `[OCR] Written ${segments.length} segs to ocr.json`);
 
-	// 7. Cleanup frames
-	rmSync(frameDir, { recursive: true, force: true });
+	// 7. Cleanup frames (optional)
+	if (cleanupFrames) {
+		rmSync(frameDir, { recursive: true, force: true });
+		emitLog(sessionPath, `[OCR] Frames cleaned up`);
+	} else {
+		emitLog(sessionPath, `[OCR] Frames kept at ${frameDir}`);
+	}
 
 	await setStage(sessionPath, "ocr", {
 		status: "succeeded",

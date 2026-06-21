@@ -2,26 +2,11 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from './utils/utils.ts';
-import { FrameResult, Segment, mergeFrames, fixOverlap, dedupOverlap } from './utils/ocrMerge.ts';
+import { FrameResult, Segment, fixOverlap, toOcrFiltered } from './utils/ocrMerge.ts';
 import { Context, setStage } from '../context/context.ts';
-
-function mergeSegments(segs: Segment[], sameTextGapMs = 1000): Segment[] {
-	const merged: Segment[] = [];
-	for (const s of segs) {
-		if (!s.text) continue;
-		const last = merged[merged.length - 1];
-		if (last && last.text === s.text && s.start - last.end <= sameTextGapMs) {
-			last.end = Math.max(last.end, s.end);
-		} else {
-			merged.push({ ...s });
-		}
-	}
-	return dedupOverlap(merged);
-}
 
 export async function stageAsrOcrFix(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
-	const taskId = ctx.task.id;
 
 	await setStage(sessionPath, 'asr_ocr_fix', {
 		last_message: 'Fusing ASR + OCR...',
@@ -49,84 +34,96 @@ export async function stageAsrOcrFix(ctx: Context) {
 		end: Math.round(s.end),
 	}));
 
-	const frameResults: FrameResult[] = (ocrFramesData._frames_raw ?? []);
-
-	if (!asrSegs.length) throw new Error('No ASR segments found');
-	if (!frameResults.length) throw new Error('No OCR frames found (empty ocr_frames.json)');
-
-	// ASR-guided boundaries: assign each OCR frame to its parent ASR segment
-	const asrResults: { text: string; start: number; end: number }[] = [];
-	for (const f of frameResults) {
-		if (!f.text) continue;
-		const parent = asrSegs.find(s => f.timestamp >= s.start && f.timestamp <= s.end);
-		if (!parent) continue;
-		const isFirstSeg = parent === asrSegs[0];
-		asrResults.push({
-			text: f.text,
-			start: isFirstSeg ? Math.max(0, f.timestamp - 90) : parent.start,
-			end: parent.end,
-		});
-	}
-
-	// Simple dedup: adjacent same text, gap ≤ 1s → merge
-	const deduped: { text: string; start: number; end: number }[] = [];
-	for (const r of asrResults) {
-		const last = deduped[deduped.length - 1];
-		if (last && last.text === r.text && r.start <= last.end + 1000) {
-			last.start = Math.min(last.start, r.start);
-			last.end = Math.max(last.end, r.end);
-		} else {
-			deduped.push({ text: r.text, start: r.start, end: r.end });
-		}
-	}
-	const asrSegsMerged = mergeSegments(
-		deduped.map(s => ({ text: s.text, start: s.start, end: s.end })),
-		1000,
-	);
-	const asrOcrText = asrSegsMerged.map(s => s.text).join(' ');
-
-	const segmentsOut = asrSegsMerged.map(s => ({
+	const ocrSegs: Segment[] = (ocrData.result?.segments ?? []).map((s: any) => ({
 		text: s.text,
-		start: s.start,
-		end: s.end,
-		start_fmt: srtTime(s.start),
-		end_fmt: srtTime(s.end),
+		start: Math.round(s.start),
+		end: Math.round(s.end),
+		confidence: s.confidence,
+		box_y: s.box_y,
 	}));
 
-	// Write asr_ocr_merged.json — ASR-guided boundaries with merged OCR text
-	writeJson(
-		join(metadataDir, 'asr_ocr_merged.json'),
-		{
-			audio_info: { duration: asrSegsMerged.length > 0 ? asrSegsMerged[asrSegsMerged.length - 1].end : 0 },
-			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', ocrCalls: frameResults.length, asrSegs: asrSegs.length },
-			result: {
-				text: asrOcrText,
-				segments: segmentsOut,
-			},
-		},
-		ctx,
-	);
+	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
+	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
 
-	// Pure OCR boundaries (from mergeFrames, matching benchmark ocr.json)
-	const ocrSegsMerged = mergeFrames(frameResults).map(s => ({ text: s.text, start: s.start, end: s.end }));
+	const textScore = ctx.input?.stages?.asr_ocr_fix?.textScore ?? 0.45;
+
+	if (!asrSegs.length) throw new Error('No ASR segments found');
+	if (!ocrSegs.length) throw new Error('No OCR segments found (empty ocr.json)');
+
+	// ========== ocr_filtered.json：以 ocr.json 的 segments 为输入，按 segment confidence 过滤 ==========
+	const { segments: ocrSegsMerged, dropped } = toOcrFiltered(ocrSegs, textScore);
+
 	writeJson(
-		join(metadataDir, 'ocr_merged.json'),
+		join(metadataDir, 'ocr_filtered.json'),
 		{
 			audio_info: { duration: ocrSegsMerged.length > 0 ? ocrSegsMerged[ocrSegsMerged.length - 1].end : 0 },
 			_boundary: 'ocr',
-			_fusion_params: { strategy: 'end2fps', ocrCalls: frameResults.length },
+			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, textScore, dropped },
 			result: {
 				text: ocrSegsMerged.map(s => s.text).join(' '),
-				segments: ocrSegsMerged.map(s => ({ text: s.text, start: s.start, end: s.end })),
+				segments: ocrSegsMerged.map(s => ({
+					text: s.text,
+					start: s.start,
+					end: s.end,
+					start_fmt: srtTime(s.start),
+					end_fmt: srtTime(s.end),
+					confidence: s.confidence,
+					box_y: s.box_y,
+				})),
 			},
 		},
 		ctx,
 	);
 
-	// Write asr_ocr_fused.json — fixOverlap fused result (uses ASR-guided input, matching benchmark)
+	// ========== asr_ocr_merged.json：复用 ocr_filtered.json 的 segments，时间边界对齐到 ASR ==========
+	// 对每个 OCR segment，找到时间上最重叠的 ASR segment，用 ASR 的 start/end 作为新边界
+	const asrOcrSegs: Segment[] = ocrSegsMerged.map(seg => {
+		let bestAsr: Segment | undefined = undefined;
+		let bestOverlap = 0;
+		for (const asr of asrSegs) {
+			const overlapStart = Math.max(seg.start, asr.start);
+			const overlapEnd = Math.min(seg.end, asr.end);
+			const overlap = Math.max(0, overlapEnd - overlapStart);
+			if (overlap > bestOverlap) {
+				bestOverlap = overlap;
+				bestAsr = asr;
+			}
+		}
+		return {
+			text: seg.text,
+			start: bestAsr ? bestAsr.start : seg.start,
+			end: bestAsr ? bestAsr.end : seg.end,
+			confidence: seg.confidence,
+			box_y: seg.box_y,
+		};
+	});
+
+	const asrOcrText = asrOcrSegs.map(s => s.text).join(' ');
+
+	writeJson(
+		join(metadataDir, 'asr_ocr_merged.json'),
+		{
+			audio_info: { duration: asrOcrSegs.length > 0 ? asrOcrSegs[asrOcrSegs.length - 1].end : 0 },
+			_engine: 'asr_ocr',
+			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, asrSegs: asrSegs.length, textScore, dropped },
+			result: {
+				text: asrOcrText,
+				segments: asrOcrSegs.map(s => ({
+					text: s.text,
+					start: s.start,
+					end: s.end,
+					start_fmt: srtTime(s.start),
+					end_fmt: srtTime(s.end),
+					confidence: s.confidence,
+				})),
+			},
+		},
+		ctx,
+	);
+
+	// Write asr_ocr_fused.json — fixOverlap fused result
 	const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
-	const fix = fixOverlap(asrSegsMerged, frameResults, ocrSegsMerged, maxAdvanceMs).filter(
+	const fix = fixOverlap(asrOcrSegs, rawFrames, ocrSegsMerged, maxAdvanceMs).filter(
 		s => s.end > s.start,
 	);
 	const fixText = fix.map(s => s.text).join(' ');
@@ -134,7 +131,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		join(metadataDir, 'asr_ocr_fused.json'),
 		{
 			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: frameResults.length, asrSegs: asrSegs.length, fixSegs: fix.length },
+			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegs.length, fixSegs: fix.length, textScore, dropped },
 			result: {
 				text: fixText,
 				segments: fix.map(s => ({
@@ -143,13 +140,14 @@ export async function stageAsrOcrFix(ctx: Context) {
 					end: s.end,
 					start_fmt: srtTime(s.start),
 					end_fmt: srtTime(s.end),
+					confidence: s.confidence,
 				})),
 			},
 		},
 		ctx,
 	);
 
-	emitLog(sessionPath, `[ASR+OCR-FIX] ${frameResults.length} OCR frames → ${asrSegsMerged.length} ASR-boundary segs, ${fix.length} fused segs`);
+	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrOcrSegs.length} ASR-boundary segs, ${fix.length} fused segs`);
 
 	await setStage(sessionPath, 'asr_ocr_fix', {
 		status: 'succeeded',
