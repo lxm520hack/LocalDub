@@ -17,6 +17,8 @@ import os
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 import torch
 import torch.nn.functional as F
 
