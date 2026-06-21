@@ -350,13 +350,17 @@ static OCRResult runOcr(
     result.detMs = result.postMs = result.recMs = 0;
 
     // Load image
+    std::cerr << "[OCR] loading image..." << std::endl;
     auto img = loadImage(imagePath.c_str());
+    std::cerr << "[OCR] image " << img.w << "x" << img.h << std::endl;
 
     // --- Detection ---
     auto t0 = clock::now();
+    std::cerr << "[OCR] preprocess det..." << std::endl;
     auto detPrep = preprocessDet(img.data.data(), img.h, img.w);
 
     // Det inference
+    std::cerr << "[OCR] det inference " << detPrep.resizedH << "x" << detPrep.resizedW << "..." << std::endl;
     std::vector<int64_t> detShape = {1, 3, detPrep.resizedH, detPrep.resizedW};
     Ort::Value detInput = Ort::Value::CreateTensor<float>(
         memInfo, detPrep.tensor.data(), detPrep.tensor.size(), detShape.data(), detShape.size());
@@ -376,6 +380,7 @@ static OCRResult runOcr(
     result.detMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
 
     // --- DB post-process ---
+    std::cerr << "[OCR] dbPostprocess " << outH << "x" << outW << "..." << std::endl;
     auto boxesPts = dbPostprocess(heatmapData, outH, outW, img.h, img.w,
                                   DET_THRESH, textScore, UNCLIP_RATIO, MAX_CANDIDATES);
 
@@ -383,9 +388,11 @@ static OCRResult runOcr(
     result.postMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
 
     // --- Recognition for each box ---
+    std::cerr << "[OCR] " << boxesPts.size() << " boxes" << std::endl;
+    int boxIdx = 0;
     for (auto& [boxPts, score] : boxesPts) {
         (void)score;
-        if (boxPts.size() < 4) continue;
+        if (boxPts.size() < 4) { std::cerr << "[OCR] box " << boxIdx << " skip <4 pts" << std::endl; continue; }
 
         // Y-position filter for subtitle only
         if (subtitleOnly) {
@@ -395,46 +402,61 @@ static OCRResult runOcr(
                 ymax = std::max(ymax, p.y);
             }
             float yCenter = (ymin + ymax) / 2;
-            if (yCenter < 620 || yCenter > 700) continue;
+            std::cerr << "[OCR] box " << boxIdx << " yCenter=" << yCenter << std::endl;
+            if (yCenter < 620 || yCenter > 700) { std::cerr << "[OCR] box " << boxIdx << " skip yCenter" << std::endl; continue; }
         }
 
-        // Determine orientation from minAreaRect
+        std::cerr << "[OCR] box " << boxIdx << " minAreaRect..." << std::endl;
         auto rotRect = minAreaRect(boxPts);
+        std::cerr << "[OCR] box " << boxIdx << " rect " << rotRect.width << "x" << rotRect.height << std::endl;
+        std::cerr << "[OCR] box " << boxIdx << " warpRotatedCrop..." << std::endl;
         Image crop = warpRotatedCrop(img, rotRect);
-        if (crop.w < 4 || crop.h < 4) continue;
+        std::cerr << "[OCR] box " << boxIdx << " crop " << crop.w << "x" << crop.h << std::endl;
+        if (crop.w < 4 || crop.h < 4) { std::cerr << "[OCR] box " << boxIdx << " skip small crop" << std::endl; continue; }
 
         // Cls inference
+        std::cerr << "[OCR] box " << boxIdx << " cls preproc..." << std::endl;
         auto clsTensor = preprocessCls(crop.data.data(), crop.h, crop.w);
         std::vector<int64_t> clsShape = {1, 3, CLS_H, CLS_W};
+        std::cerr << "[OCR] box " << boxIdx << " cls CreateTensor..." << std::endl;
         Ort::Value clsInputVal = Ort::Value::CreateTensor<float>(
             memInfo, clsTensor.data(), clsTensor.size(), clsShape.data(), clsShape.size());
 
+        std::cerr << "[OCR] box " << boxIdx << " cls GetInputNames..." << std::endl;
         auto clsInNames = clsSession.GetInputNames();
         auto clsOutNames = clsSession.GetOutputNames();
         std::vector<const char*> clsInputNames = {clsInNames[0].c_str()};
         std::vector<const char*> clsOutputNames = {clsOutNames[0].c_str()};
 
+        std::cerr << "[OCR] box " << boxIdx << " cls Run..." << std::endl;
         auto clsOut = clsSession.Run(Ort::RunOptions{nullptr}, clsInputNames.data(), &clsInputVal, 1,
                                      clsOutputNames.data(), 1);
+        std::cerr << "[OCR] box " << boxIdx << " cls done" << std::endl;
         float* clsData = clsOut[0].GetTensorMutableData<float>();
-        bool rotate = clsData[0] < clsData[1]; // clsData[0] = "0°" prob, clsData[1] = "180°" prob
+        bool rotate = clsData[0] < clsData[1];
 
         // Rotate if needed
         Image recCrop = rotate ? rotate180(crop) : crop;
+        std::cerr << "[OCR] box " << boxIdx << " rotate=" << rotate << std::endl;
 
         // Rec inference
+        std::cerr << "[OCR] box " << boxIdx << " rec preproc..." << std::endl;
         auto recPrep = preprocessRec(recCrop.data.data(), recCrop.h, recCrop.w);
-        auto t3 = clock::now();
+        std::cerr << "[OCR] box " << boxIdx << " rec width=" << recPrep.width << std::endl;
 
+        auto t3 = clock::now();
         std::vector<int64_t> recShape = {1, 3, REC_H, recPrep.width};
+        std::cerr << "[OCR] box " << boxIdx << " rec CreateTensor..." << std::endl;
         Ort::Value recInputVal = Ort::Value::CreateTensor<float>(
             memInfo, recPrep.tensor.data(), recPrep.tensor.size(), recShape.data(), recShape.size());
 
+        std::cerr << "[OCR] box " << boxIdx << " rec GetInputNames..." << std::endl;
         auto recInNames = recSession.GetInputNames();
         auto recOutNames = recSession.GetOutputNames();
         std::vector<const char*> recInputNames = {recInNames[0].c_str()};
         std::vector<const char*> recOutputNames = {recOutNames[0].c_str()};
 
+        std::cerr << "[OCR] box " << boxIdx << " rec Run..." << std::endl;
         auto recOut = recSession.Run(Ort::RunOptions{nullptr}, recInputNames.data(), &recInputVal, 1,
                                      recOutputNames.data(), 1);
 
@@ -446,9 +468,9 @@ static OCRResult runOcr(
         int timesteps = (int)recShapeOut[1];
         int numClasses = (int)recShapeOut[2];
 
+        std::cerr << "[OCR] box " << boxIdx << " ctcDecode " << timesteps << "x" << numClasses << "..." << std::endl;
         auto [text, conf] = ctcDecode(recData, timesteps, numClasses, charList);
-        if (text.empty()) continue;
-        if (text.empty()) continue;
+        if (text.empty()) { std::cerr << "[OCR] box " << boxIdx << " skip empty text" << std::endl; continue; }
 
         // Convert box to integer coordinates for output
         std::vector<std::vector<int>> boxOut;
@@ -457,6 +479,7 @@ static OCRResult runOcr(
         }
 
         result.segments.push_back({text, conf, std::move(boxOut)});
+        boxIdx++;
     }
 
     // Sort top-to-bottom, left-to-right
