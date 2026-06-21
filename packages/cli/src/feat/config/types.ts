@@ -164,9 +164,9 @@ export type ASRConfig = z.output<typeof ASRConfigSchema>;
 const OcrConfigSchema = z
 	.looseObject({
 		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py'])
+			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
 			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
 			.optional(),
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
@@ -201,9 +201,9 @@ export type OcrConfig = z.output<typeof OcrConfigSchema>;
 const AsrOcrConfigSchema = z
 	.looseObject({
 		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py'])
+			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
 			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr)')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
 			.optional(),
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])

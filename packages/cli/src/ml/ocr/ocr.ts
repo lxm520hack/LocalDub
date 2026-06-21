@@ -4,11 +4,12 @@ import { REPO_ROOT } from '../../feat/config/config.ts';
 import { ocrFrameCpp, existsOcrBinary, type OCRLine as OCRLineCpp } from './runtimes/ort-cpp.ts';
 import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions, type OCRDevice } from './runtimes/ort-node.ts';
 import { ocrFramePy } from './runtimes/ort-py.ts';
+import { runOcrFrame as runOcrFrameRust } from '../../../../subtitle-rust/ts/ocr.ts';
 
 export { existsOcrBinary } from './runtimes/ort-cpp.ts';
 export type { NodeSessions } from './runtimes/ort-node.ts';
 
-export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py';
+export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py' | 'ort-rust';
 
 export interface OCRLine {
 	text: string;
@@ -62,6 +63,8 @@ export class OCREngine {
 				return ocrFrameNode(framePath, this.nodeSessions, opts);
 			case 'ort-py':
 				return ocrFramePy(framePath, { ...opts, device: this.device });
+			case 'ort-rust':
+				return runOcrFrameRust(framePath, { ...opts, device: this.device }).segments;
 			default:
 				throw new Error(`Unknown OCR runtime: ${this.runtime}`);
 		}
