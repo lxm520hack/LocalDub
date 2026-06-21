@@ -2,7 +2,9 @@ import * as ort from 'onnxruntime-node';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { readFileSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import sharp from 'sharp';
+import { Transformer, ResizeFit } from '@napi-rs/image';
+// @ts-ignore - no types published
+import { PNG } from 'pngjs';
 
 const REPO_ROOT = resolve(__dirname, '..', '..');
 const MODEL_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
@@ -19,11 +21,63 @@ const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
 // - index 0 = blank (CTC blank，解码时跳过)
 // - 1..6623 = 原 ppocr_keys.json 中 1..end 的 6623 个字符
 // - 6624 = ' ' (space)
-// 共 6625 个 token，与 rec 模型输出维度 (N, T, 6625) 一致
 const RAW_CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
 const CHAR_LIST: string[] = ['', ...RAW_CHAR_LIST.slice(1), ' '];
 
 interface OCRBox { box: number[][]; score: number }
+
+// ---------- Image processing (replaces sharp, Windows-friendly) ----------
+
+async function imgSize(buf: Buffer): Promise<{ width: number; height: number }> {
+	const meta = await new Transformer(buf).metadata();
+	return { width: meta.width, height: meta.height };
+}
+
+async function imgCrop(
+	buf: Buffer,
+	rect: { left: number; top: number; width: number; height: number },
+): Promise<Buffer> {
+	return new Transformer(buf).crop(rect.left, rect.top, rect.width, rect.height).png();
+}
+
+async function imgResizeToRgb(
+	buf: Buffer,
+	w: number,
+	h: number,
+): Promise<Buffer> {
+	const pngBuf = await new Transformer(buf).resize(w, h, undefined, ResizeFit.Fill).png();
+	const png = PNG.sync.read(pngBuf, { filterType: -1 });
+	const rgb = Buffer.alloc(w * h * 3);
+	const data = png.data;
+	for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
+		rgb[j] = data[i];
+		rgb[j + 1] = data[i + 1];
+		rgb[j + 2] = data[i + 2];
+	}
+	return rgb;
+}
+
+async function imgRotate180(buf: Buffer): Promise<Buffer> {
+	const pngBuf = await new Transformer(buf).png();
+	const png = PNG.sync.read(pngBuf, { filterType: -1 });
+	const { width, height, data } = png;
+	const flipped = Buffer.alloc(data.length);
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const srcIdx = ((height - 1 - y) * width + (width - 1 - x)) * 4;
+			const dstIdx = (y * width + x) * 4;
+			flipped[dstIdx] = data[srcIdx];
+			flipped[dstIdx + 1] = data[srcIdx + 1];
+			flipped[dstIdx + 2] = data[srcIdx + 2];
+			flipped[dstIdx + 3] = data[srcIdx + 3];
+		}
+	}
+	const out = new PNG({ width, height });
+	out.data = flipped;
+	return PNG.sync.write(out, { deflateLevel: 9 });
+}
+
+// ---------- CTC decode ----------
 
 function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confidence: number } {
 	const [batch, timesteps, numClasses] = shape;
@@ -48,7 +102,6 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 		if (idx === 0) { prev = -1; continue; }
 		if (idx !== prev) {
 			const ch = CHAR_LIST[idx] ?? '';
-			// index 6624 是空格 token，为有效值；仅 index 0(blank) 已在前面跳过
 			if (ch !== '') { chars.push(ch); confs.push(totalConf[i]); }
 		}
 		prev = idx;
@@ -58,28 +111,27 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 	return { text: chars.join(''), confidence: avgConf };
 }
 
+// ---------- Preprocessing ----------
+
 async function preprocessDet(
 	imgBuf: Buffer,
 	opts?: { limitSideLen?: number; bottomOnly?: boolean; },
 ): Promise<{
 	tensor: Float32Array; origH: number; origW: number;
-	resizedH: number; resizedW: number; yOffset: number; roiBuf: Buffer;
+	resizedH: number; resizedW: number; yOffset: number;
 }> {
 	const limitSideLen = opts?.limitSideLen ?? 736;
 	const bottomOnly = opts?.bottomOnly ?? false;
 
-	const meta = await sharp(imgBuf).metadata();
-	const fullH = meta.height!;
-	const origW = meta.width!;
+	const { width: origW, height: fullH } = await imgSize(imgBuf);
 
-	// Python rapidocr 默认先 bottom_only 裁剪到画面底部 40%
 	let yOffset = 0;
 	let origH = fullH;
 	let roiBuf = imgBuf;
 	if (bottomOnly) {
 		yOffset = Math.floor(fullH * 0.6);
 		origH = fullH - yOffset;
-		roiBuf = await sharp(imgBuf).extract({ left: 0, top: yOffset, width: origW, height: origH }).toBuffer();
+		roiBuf = await imgCrop(imgBuf, { left: 0, top: yOffset, width: origW, height: origH });
 	}
 
 	let newW: number, newH: number;
@@ -93,10 +145,7 @@ async function preprocessDet(
 	newW = Math.round(newW / 32) * 32;
 	newH = Math.round(newH / 32) * 32;
 
-	const resized = await sharp(roiBuf)
-		.resize(newW, newH, { fit: 'fill' })
-		.raw()
-		.toBuffer();
+	const resized = await imgResizeToRgb(roiBuf, newW, newH);
 
 	const mean = [0.485, 0.456, 0.406];
 	const std = [0.229, 0.224, 0.225];
@@ -110,14 +159,11 @@ async function preprocessDet(
 		}
 	}
 
-	return { tensor: data, origH, origW, resizedH: newH, resizedW: newW, yOffset, roiBuf };
+	return { tensor: data, origH, origW, resizedH: newH, resizedW: newW, yOffset };
 }
 
 async function preprocessCls(imgBuf: Buffer): Promise<Float32Array> {
-	const resized = await sharp(imgBuf)
-		.resize(192, 48, { fit: 'fill' })
-		.raw()
-		.toBuffer();
+	const resized = await imgResizeToRgb(imgBuf, 192, 48);
 	const data = new Float32Array(3 * 48 * 192);
 	for (let y = 0; y < 48; y++) {
 		for (let x = 0; x < 192; x++) {
@@ -132,16 +178,11 @@ async function preprocessCls(imgBuf: Buffer): Promise<Float32Array> {
 
 async function preprocessRec(imgBuf: Buffer): Promise<{ tensor: Float32Array; width: number }> {
 	const H = 48;
-	const meta = await sharp(imgBuf).metadata();
-	const origH = meta.height!;
-	const origW = meta.width!;
+	const { width: origW, height: origH } = await imgSize(imgBuf);
 	const whRatio = origW / origH;
 	const imgW = Math.min(320, Math.max(32, Math.round(H * whRatio)));
 
-	const resized = await sharp(imgBuf)
-		.resize(imgW, H, { fit: 'fill' })
-		.raw()
-		.toBuffer();
+	const resized = await imgResizeToRgb(imgBuf, imgW, H);
 
 	const data = new Float32Array(3 * H * imgW);
 	for (let y = 0; y < H; y++) {
@@ -193,8 +234,8 @@ export async function ocrFrameWithSessions(
 	const subtitleOnly = opts?.subtitleOnly ?? false;
 
 	const imgBuf = readFileSync(imagePath);
+	const { width: fullW, height: fullH } = await imgSize(imgBuf);
 
-	// bottom_only 预裁剪（跟 Python 对齐：ROI = 底部 40%）
 	const { tensor: detInput, origH, origW, resizedH, resizedW, yOffset } =
 		await preprocessDet(imgBuf, { bottomOnly: true });
 
@@ -212,7 +253,6 @@ export async function ocrFrameWithSessions(
 	writeFileSync(heatmapPath, Buffer.from(heatmapData.buffer, heatmapData.byteOffset, heatmapData.byteLength));
 
 	t0 = performance.now();
-	// 与 Python rapidocr 默认值对齐：thresh=0.3, box_thresh=textScore, unclip_ratio=1.6
 	const pp = spawnSync(PYTHON_BIN, [
 		POSTPROCESS_PY,
 		heatmapPath,
@@ -244,17 +284,15 @@ export async function ocrFrameWithSessions(
 		if (!pts || pts.length < 4) continue;
 
 		const xs = pts.map((p: number[]) => p[0]);
-		const ys = pts.map((p: number[]) => p[1] + yOffset); // postprocess 返回 ROI 内部坐标，加上 yOffset 映射回原图
+		const ys = pts.map((p: number[]) => p[1] + yOffset);
 		const xMin = Math.max(0, Math.floor(Math.min(...xs)));
-		const xMax = Math.min(origW, Math.ceil(Math.max(...xs)));
+		const xMax = Math.min(fullW, Math.ceil(Math.max(...xs)));
 		const yMin = Math.max(0, Math.floor(Math.min(...ys)));
-		const yMax = Math.min(origH + yOffset, Math.ceil(Math.max(...ys)));
+		const yMax = Math.min(fullH, Math.ceil(Math.max(...ys)));
 
 		if (xMax - xMin < 4 || yMax - yMin < 4) continue;
 
-		const crop = await sharp(imgBuf)
-			.extract({ left: xMin, top: yMin, width: xMax - xMin, height: yMax - yMin })
-			.toBuffer();
+		const crop = await imgCrop(imgBuf, { left: xMin, top: yMin, width: xMax - xMin, height: yMax - yMin });
 
 		const clsInput = await preprocessCls(crop);
 		const clsFeed: Record<string, ort.Tensor> = {};
@@ -264,7 +302,7 @@ export async function ocrFrameWithSessions(
 		const rotate = clsData[0] < clsData[1];
 
 		let recCrop = crop;
-		if (rotate) recCrop = await sharp(crop).rotate(180).toBuffer();
+		if (rotate) recCrop = await imgRotate180(crop);
 
 		const { tensor: recInput, width: recW } = await preprocessRec(recCrop);
 		t0 = performance.now();
@@ -278,13 +316,11 @@ export async function ocrFrameWithSessions(
 		if (!text) continue;
 		if (confidence < textScore) continue;
 
-		// Y-position filter for subtitle-only mode
 		if (subtitleOnly) {
 			const yCenter = (Math.min(...ys) + Math.max(...ys)) / 2;
 			if (yCenter < 620 || yCenter > 700) continue;
 		}
 
-		// box 存回原图坐标（pts 是 ROI 内部坐标，加上 yOffset）
 		const absBox = pts.map((p: number[]) => [p[0], p[1] + yOffset]);
 		segments.push({ text, confidence, box: absBox });
 	}

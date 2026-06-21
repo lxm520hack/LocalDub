@@ -12,7 +12,8 @@
     "postinstall": "cmake -B subtitle-cpp/build && cmake --build subtitle-cpp/build --parallel 2>/dev/null || echo 'subtitle-cpp: cmake build failed (install cmake + onnxruntime)'"
   },
   "dependencies": {
+    "@napi-rs/image": "^1.12.0",
     "onnxruntime-node": "^1.26.0",
-    "sharp": "^0.35.2"
+    "pngjs": "^7.0.0"
   }
 }

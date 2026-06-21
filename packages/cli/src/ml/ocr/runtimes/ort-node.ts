@@ -1,7 +1,9 @@
 import * as ort from 'onnxruntime-node';
 import { readFileSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import sharp from 'sharp';
+import { Transformer, ResizeFit } from '@napi-rs/image';
+// @ts-ignore - no types published
+import { PNG } from 'pngjs';
 import { spawnSync } from 'node:child_process';
 import { REPO_ROOT, pythonBin } from '../../../feat/config/config.ts';
 
@@ -84,6 +86,60 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 	return { text: chars.join(''), confidence: avgConf };
 }
 
+// ---------- Image processing (replaces sharp, Windows-friendly) ----------
+
+async function imgSize(buf: Buffer): Promise<{ width: number; height: number }> {
+	const meta = await new Transformer(buf).metadata();
+	return { width: meta.width, height: meta.height };
+}
+
+async function imgCrop(
+	buf: Buffer,
+	rect: { left: number; top: number; width: number; height: number },
+): Promise<Buffer> {
+	return new Transformer(buf).crop(rect.left, rect.top, rect.width, rect.height).png();
+}
+
+async function imgResizeToRgb(
+	buf: Buffer,
+	w: number,
+	h: number,
+): Promise<Buffer> {
+	// Bilinear resize → PNG (lossless) → decode → RGBA → RGB
+	const pngBuf = await new Transformer(buf).resize(w, h, undefined, ResizeFit.Fill).png();
+	const png = PNG.sync.read(pngBuf, { filterType: -1 });
+	const rgb = Buffer.alloc(w * h * 3);
+	const data = png.data;
+	for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
+		rgb[j] = data[i];
+		rgb[j + 1] = data[i + 1];
+		rgb[j + 2] = data[i + 2];
+	}
+	return rgb;
+}
+
+async function imgRotate180(buf: Buffer): Promise<Buffer> {
+	const pngBuf = await new Transformer(buf).png();
+	const png = PNG.sync.read(pngBuf, { filterType: -1 });
+	const { width, height, data } = png;
+	const flipped = Buffer.alloc(data.length);
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const srcIdx = ((height - 1 - y) * width + (width - 1 - x)) * 4;
+			const dstIdx = (y * width + x) * 4;
+			flipped[dstIdx] = data[srcIdx];
+			flipped[dstIdx + 1] = data[srcIdx + 1];
+			flipped[dstIdx + 2] = data[srcIdx + 2];
+			flipped[dstIdx + 3] = data[srcIdx + 3];
+		}
+	}
+	const out = new PNG({ width, height });
+	out.data = flipped;
+	return PNG.sync.write(out, { deflateLevel: 9 });
+}
+
+// ---------- Preprocessing ----------
+
 async function preprocessDet(
 	imgBuf: Buffer,
 	opts?: { limitSideLen?: number; bottomOnly?: boolean },
@@ -91,16 +147,14 @@ async function preprocessDet(
 	const limitSideLen = opts?.limitSideLen ?? 736;
 	const bottomOnly = opts?.bottomOnly ?? false;
 
-	const meta = await sharp(imgBuf).metadata();
-	const fullH = meta.height!;
-	const origW = meta.width!;
+	const { width: origW, height: fullH } = await imgSize(imgBuf);
 
 	let inputBuf = imgBuf;
 	let origH = fullH;
 	if (bottomOnly) {
 		const yOffset = Math.floor(fullH * 0.6);
 		origH = fullH - yOffset;
-		inputBuf = await sharp(imgBuf).extract({ left: 0, top: yOffset, width: origW, height: origH }).toBuffer();
+		inputBuf = await imgCrop(imgBuf, { left: 0, top: yOffset, width: origW, height: origH });
 	}
 
 	let newW: number, newH: number;
@@ -114,7 +168,7 @@ async function preprocessDet(
 	newW = Math.round(newW / 32) * 32;
 	newH = Math.round(newH / 32) * 32;
 
-	const resized = await sharp(inputBuf).resize(newW, newH, { fit: 'fill' }).raw().toBuffer();
+	const resized = await imgResizeToRgb(inputBuf, newW, newH);
 
 	const mean = [0.485, 0.456, 0.406];
 	const std = [0.229, 0.224, 0.225];
@@ -132,7 +186,7 @@ async function preprocessDet(
 }
 
 async function preprocessCls(imgBuf: Buffer): Promise<Float32Array> {
-	const resized = await sharp(imgBuf).resize(192, 48, { fit: 'fill' }).raw().toBuffer();
+	const resized = await imgResizeToRgb(imgBuf, 192, 48);
 	const data = new Float32Array(3 * 48 * 192);
 	for (let y = 0; y < 48; y++) {
 		for (let x = 0; x < 192; x++) {
@@ -147,13 +201,11 @@ async function preprocessCls(imgBuf: Buffer): Promise<Float32Array> {
 
 async function preprocessRec(imgBuf: Buffer): Promise<{ tensor: Float32Array; width: number }> {
 	const H = 48;
-	const meta = await sharp(imgBuf).metadata();
-	const origH = meta.height!;
-	const origW = meta.width!;
+	const { width: origW, height: origH } = await imgSize(imgBuf);
 	const whRatio = origW / origH;
 	const imgW = Math.min(320, Math.max(32, Math.round(H * whRatio)));
 
-	const resized = await sharp(imgBuf).resize(imgW, H, { fit: 'fill' }).raw().toBuffer();
+	const resized = await imgResizeToRgb(imgBuf, imgW, H);
 
 	const data = new Float32Array(3 * H * imgW);
 	for (let y = 0; y < H; y++) {
@@ -175,6 +227,8 @@ export async function ocrFrameNode(
 	const textScore = opts?.textScore ?? 0.5;
 	const subtitleOnly = opts?.subtitleOnly ?? false;
 	const imgBuf = readFileSync(imagePath);
+
+	const { width: fullW, height: fullH } = await imgSize(imgBuf);
 
 	const { tensor: detInput, origH, origW, resizedH, resizedW } = await preprocessDet(imgBuf, { bottomOnly: true });
 
@@ -213,7 +267,7 @@ export async function ocrFrameNode(
 	const boxes: { box: number[][]; score: number }[] = ppResult.boxes ?? [];
 
 	// yOffset = origH*0.6 用于在 ROI 坐标
-	const yOffset = Math.floor((await sharp(imgBuf).metadata()).height! * 0.6);
+	const yOffset = Math.floor(fullH * 0.6);
 
 	const segments: OCRLine[] = [];
 	for (const b of boxes) {
@@ -224,13 +278,13 @@ export async function ocrFrameNode(
 		const xs = pts.map(p => p[0]);
 		const ys = pts.map(p => p[1] + yOffset);
 		const xMin = Math.max(0, Math.floor(Math.min(...xs)));
-		const xMax = Math.min(origW, Math.ceil(Math.max(...xs)));
+		const xMax = Math.min(fullW, Math.ceil(Math.max(...xs)));
 		const yMin = Math.max(0, Math.floor(Math.min(...ys)));
-		const yMax = Math.min((await sharp(imgBuf).metadata()).height!, Math.ceil(Math.max(...ys)));
+		const yMax = Math.min(fullH, Math.ceil(Math.max(...ys)));
 
 		if (xMax - xMin < 4 || yMax - yMin < 4) continue;
 
-		const crop = await sharp(imgBuf).extract({ left: xMin, top: yMin, width: xMax - xMin, height: yMax - yMin }).toBuffer();
+		const crop = await imgCrop(imgBuf, { left: xMin, top: yMin, width: xMax - xMin, height: yMax - yMin });
 
 		const clsInput = await preprocessCls(crop);
 		const clsFeed: Record<string, ort.Tensor> = {};
@@ -240,7 +294,7 @@ export async function ocrFrameNode(
 		const rotate = clsData[0] < clsData[1];
 
 		let recCrop = crop;
-		if (rotate) recCrop = await sharp(crop).rotate(180).toBuffer();
+		if (rotate) recCrop = await imgRotate180(crop);
 
 		const { tensor: recInput, width: recW } = await preprocessRec(recCrop);
 		const recFeed: Record<string, ort.Tensor> = {};
@@ -254,8 +308,7 @@ export async function ocrFrameNode(
 
 		if (subtitleOnly) {
 			const yCenter = (Math.min(...ys) + Math.max(...ys)) / 2;
-			const imgH = (await sharp(imgBuf).metadata()).height!;
-			if (yCenter < imgH * 0.55) continue;
+			if (yCenter < fullH * 0.55) continue;
 		}
 
 		const absBox = pts.map(p => [p[0], p[1] + yOffset]);
