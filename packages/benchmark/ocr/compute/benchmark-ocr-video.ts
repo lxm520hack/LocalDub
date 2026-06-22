@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { main as evalOcrMain } from '../../ref/compute/eval-ocr.ts';
 import { createSessions, ocrFrameWithSessions, releaseSessions } from '../../../subtitle-ocr/subtitle-node.ts';
+import { FrameResult, Segment, mergeFrames } from '../../../cli/src/feat/stages/utils/ocrMerge.ts';
+import { REPO_ROOT } from '@repo/config';
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');
 const VIDEO_PATH = join(VIDEOS_PATH, 'video_source.mp4');
 // 系统 PATH 可能包含极简版 ffmpeg（无 mjpeg 编码器），优先使用系统完整 ffmpeg
@@ -22,7 +24,6 @@ const OCR_MODELS_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-pa
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const OCR_PY = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py');
-const WER_PY = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'compute', 'wer.py');
 const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'ocr_manual.json');
 const RESULTS_BASE = resolve(__dirname, '..', 'results');
 const TMP = resolve(REPO_ROOT, 'packages', 'tmp', 'ocr-bench');
@@ -37,10 +38,14 @@ interface OCRResult {
 	inferenceMs: number;
 }
 
-interface Segment {
-	text: string;
-	start: number;
-	end: number;
+function runEvalOCR(ocrPath: string, label: string): { wer: number; cer: number; hyp_chars: number; ref_chars: number; } {
+	const result = evalOcrMain({ gtPath: GROUND_TRUTH, hypPath: ocrPath, label, hypScaleMs: 1 });
+	return {
+		wer: result.normalized.cer / 100,
+		cer: result.normalized.cer / 100,
+		hyp_chars: result.normalized.hypChars,
+		ref_chars: result.normalized.refChars,
+	};
 }
 
 function framesDir(label: string): string {
@@ -76,6 +81,7 @@ function ocrFramePython(framePath: string, textScore?: number, fullFrame?: boole
 
 interface CppFrameTiming {
 	text: string;
+	confidence: number;
 	totalMs: number;
 	detMs: number;
 	postMs: number;
@@ -93,11 +99,17 @@ function ocrFrameCpp(framePath: string, textScore?: number, subtitleOnly?: boole
 	});
 	if (r.status !== 0) {
 		console.error(`  C++ OCR error: ${r.stderr?.slice(-200) || `exit ${r.status}`}`);
-		return { text: '', totalMs: 0, detMs: 0, postMs: 0, recMs: 0 };
+		return { text: '', confidence: 0, totalMs: 0, detMs: 0, postMs: 0, recMs: 0 };
 	}
 	const parsed = JSON.parse(r.stdout);
+	const segs: { text: string; confidence: number }[] = parsed.segments || [];
+	const best = segs.reduce(
+		(a, b) => (a.confidence > b.confidence ? a : b),
+		{ text: '', confidence: 0 }
+	);
 	return {
-		text: parsed.text || '',
+		text: best.text || '',
+		confidence: best.confidence || 0,
 		totalMs: parsed.totalMs ?? 0,
 		detMs: parsed.detInferenceMs ?? 0,
 		postMs: parsed.postprocessMs ?? 0,
@@ -105,7 +117,7 @@ function ocrFrameCpp(framePath: string, textScore?: number, subtitleOnly?: boole
 	};
 }
 
-function extractFrames(videoPath: string, outDir: string, fps: number = 1): number {
+function extractFrames(videoPath: string, outDir: string, fps: number = 1): { durationS: number; step: number; srcFps: number } {
 	mkdirSync(outDir, { recursive: true });
 	const probe = spawnSync(FFPROBE_BIN, [
 		'-v', 'error', '-show_entries', 'format=duration',
@@ -114,9 +126,18 @@ function extractFrames(videoPath: string, outDir: string, fps: number = 1): numb
 	const duration = parseFloat(probe.stdout?.trim() || '0');
 	if (!duration) throw new Error('Could not probe video duration');
 
+	const frProbe = spawnSync(FFPROBE_BIN, [
+		'-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate',
+		'-of', 'csv=p=0', videoPath,
+	], { timeout: 10_000, encoding: 'utf-8' });
+	const frParts = (frProbe.stdout?.trim() || '30/1').split('/');
+	const srcFps = parseInt(frParts[0]) / parseInt(frParts[1]);
+	const step = Math.round(srcFps / fps);
+
 	const r = spawnSync(FFMPEG_BIN, [
 		'-y', '-i', videoPath,
-		'-vf', `fps=${fps}`,
+		'-vf', `select='not(mod(n,${step}))'`,
+		'-vsync', 'vfr',
 		'-qscale:v', '2',
 		join(outDir, 'frame_%05d.jpg'),
 	], { timeout: 300_000 });
@@ -124,37 +145,7 @@ function extractFrames(videoPath: string, outDir: string, fps: number = 1): numb
 		throw new Error(`ffmpeg frame extraction failed (exit ${r.status}): ${r.stderr?.toString().slice(-300) || ''}`);
 	}
 
-	return Math.ceil(duration);
-}
-
-function mergeFrames(frames: { text: string; timestamp: number; confidence: number }[]): Segment[] {
-	const segments: Segment[] = [];
-	let currentText = '';
-	let currentStart = 0;
-
-	for (const f of frames) {
-		if (!f.text) continue;
-		if (f.text !== currentText) {
-			if (currentText) {
-				segments.push({
-					text: currentText,
-					start: currentStart,
-					end: f.timestamp,
-				});
-			}
-			currentText = f.text;
-			currentStart = f.timestamp;
-		}
-	}
-	if (currentText) {
-		segments.push({
-			text: currentText,
-			start: currentStart,
-			end: frames[frames.length - 1].timestamp,
-		});
-	}
-
-	return segments.filter(s => s.end - s.start >= 500);
+	return { durationS: duration, step, srcFps };
 }
 
 function runOCRBenchmarkPython(label: string, fps: number, textScore?: number, subtitleOnly?: boolean) {
@@ -168,20 +159,20 @@ function runOCRBenchmarkPython(label: string, fps: number, textScore?: number, s
 	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=python) ===`);
 
 	console.log(`  extracting frames at ${fps}fps...`);
-	const durationS = extractFrames(VIDEO_PATH, frameDir, fps);
+	const { durationS, step, srcFps } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing frames (${durationS}s @ ${fps}fps ≈ ${Math.ceil(durationS * fps)} frames)...`);
+	console.log(`  OCR'ing frames (${durationS.toFixed(1)}s @ ${fps}fps ≈ ${Math.ceil(durationS * fps)} frames)...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
 		.sort();
 
-	const frameResults: { text: string; timestamp: number; confidence: number }[] = [];
+	const frameResults: FrameResult[] = [];
 	let ocrInferenceS = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
 		const f = frameFiles[i];
 		const framePath = join(frameDir, f);
-		const timestampMs = Math.round((i / fps) * 1000);
+		const timestampMs = Math.round((i * step / srcFps) * 1000);
 		const ocrResult = ocrFramePython(framePath, textScore, undefined, subtitleOnly);
 		ocrInferenceS += ocrResult.inferenceMs / 1000;
 		const best = ocrResult.lines.reduce((a, b) => a.confidence > b.confidence ? a : b, { text: '', confidence: 0 });
@@ -199,27 +190,19 @@ function runOCRBenchmarkPython(label: string, fps: number, textScore?: number, s
 	const text = segments.map(s => s.text).join('');
 	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : Math.round(durationS * 1000);
 
-	const asrOutput = {
+	const ocrOutput = {
 		audio_info: { duration: audioDurMs },
-		result: { text, segments },
+		result: { text, segments: segments.map(s => ({ text: s.text, start: s.start, end: s.end, confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) })) },
 		_engine: 'rapidocr-onnxruntime',
 		_source: 'video_hardsub',
 		_fps: fps,
-		_textScore: textScore ?? 0.5,
+		_textScore: textScore ?? 0.45,
 		_subtitleOnly: subtitleOnly ?? false,
 	};
-	const asrPath = join(metadataDir, 'asr.json');
-	writeFileSync(asrPath, JSON.stringify(asrOutput, null, 2));
+	const ocrPath = join(metadataDir, 'ocr.json');
+	writeFileSync(ocrPath, JSON.stringify(ocrOutput, null, 2));
 
-	const cerResult = spawnSync(PYTHON_BIN, [WER_PY, GROUND_TRUTH, asrPath], {
-		timeout: 30_000,
-		encoding: 'utf-8',
-		env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-	});
-	let cerData: any = {};
-	if (cerResult.status === 0) {
-		cerData = JSON.parse(cerResult.stdout);
-	}
+	const cerData = runEvalOCR(ocrPath, label);
 
 	const summary = {
 		label,
@@ -234,7 +217,7 @@ function runOCRBenchmarkPython(label: string, fps: number, textScore?: number, s
 		cer: cerData.cer ?? 0,
 		hyp_chars: cerData.hyp_chars ?? text.length,
 		ref_chars: cerData.ref_chars ?? 0,
-		textScore: textScore ?? 0.5,
+		textScore: textScore ?? 0.45,
 		subtitleOnly: subtitleOnly ?? false,
 	};
 	writeFileSync(join(metadataDir, 'summary.json'), JSON.stringify(summary, null, 2));
@@ -260,9 +243,9 @@ async function runOCRBenchmarkNode(label: string, fps: number, textScore?: numbe
 	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=node) ===`);
 
 	console.log(`  extracting frames at ${fps}fps...`);
-	const durationS = extractFrames(VIDEO_PATH, frameDir, fps);
+	const { durationS: durationSNode, step: stepNode, srcFps: srcFpsNode } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing frames (${durationS}s @ ${fps}fps ≈ ${Math.ceil(durationS * fps)} frames)...`);
+	console.log(`  OCR'ing frames (${durationSNode.toFixed(1)}s @ ${fps}fps ≈ ${Math.ceil(durationSNode * fps)} frames)...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
@@ -272,18 +255,18 @@ async function runOCRBenchmarkNode(label: string, fps: number, textScore?: numbe
 	console.log('  creating ORT sessions...');
 	const sessions = await createSessions('cpu');
 
-	const frameResults: { text: string; timestamp: number; confidence: number }[] = [];
+	const frameResultsNode: FrameResult[] = [];
 	let ocrInferenceS = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
 		const f = frameFiles[i];
 		const framePath = join(frameDir, f);
-		const timestampMs = Math.round((i / fps) * 1000);
+		const timestampMs = Math.round((i * stepNode / srcFpsNode) * 1000);
 		const result = await ocrFrameWithSessions(framePath, sessions, { textScore, subtitleOnly });
 		ocrInferenceS += result.totalMs / 1000;
 		const best = result.segments.length > 0
 			? result.segments.reduce((a, b) => a.confidence > b.confidence ? a : b)
 			: { text: '', confidence: 0 };
-		frameResults.push({
+		frameResultsNode.push({
 			text: result.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence,
@@ -293,53 +276,45 @@ async function runOCRBenchmarkNode(label: string, fps: number, textScore?: numbe
 
 	await releaseSessions(sessions);
 
-	const segments = mergeFrames(frameResults);
-	console.log(`  merged ${frameResults.length} frames → ${segments.length} segments`);
+	const segmentsNode = mergeFrames(frameResultsNode);
+	console.log(`  merged ${frameResultsNode.length} frames → ${segmentsNode.length} segments`);
 
-	const text = segments.map(s => s.text).join('');
-	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : Math.round(durationS * 1000);
+	const textNode = segmentsNode.map(s => s.text).join('');
+	const audioDurMs = segmentsNode.length > 0 ? segmentsNode[segmentsNode.length - 1].end : Math.round(durationSNode * 1000);
 
-	const asrOutput = {
+	const ocrOutput = {
 		audio_info: { duration: audioDurMs },
-		result: { text, segments },
+		result: { text: textNode, segments: segmentsNode.map(s => ({ text: s.text, start: s.start, end: s.end, confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) })) },
 		_engine: 'ocr-node',
 		_source: 'video_hardsub',
 		_fps: fps,
-		_textScore: textScore ?? 0.5,
+		_textScore: textScore ?? 0.45,
 		_subtitleOnly: subtitleOnly ?? false,
 	};
-	const asrPath = join(metadataDir, 'asr.json');
-	writeFileSync(asrPath, JSON.stringify(asrOutput, null, 2));
+	const ocrPath = join(metadataDir, 'ocr.json');
+	writeFileSync(ocrPath, JSON.stringify(ocrOutput, null, 2));
 
-	const cerResult = spawnSync(PYTHON_BIN, [WER_PY, GROUND_TRUTH, asrPath], {
-		timeout: 30_000,
-		encoding: 'utf-8',
-		env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-	});
-	let cerData: any = {};
-	if (cerResult.status === 0) {
-		cerData = JSON.parse(cerResult.stdout);
-	}
+	const cerData = runEvalOCR(ocrPath, label);
 
 	const summary = {
 		label,
 		fps,
 		engine: 'node',
-		frames: frameResults.length,
-		segments: segments.length,
+		frames: frameResultsNode.length,
+		segments: segmentsNode.length,
 		audio_duration_s: parseFloat((audioDurMs / 1000).toFixed(1)),
 		ocr_inference_s: parseFloat(ocrInferenceS.toFixed(3)),
 		ocr_rtf: parseFloat((ocrInferenceS / (audioDurMs / 1000)).toFixed(4)),
 		wer: cerData.wer ?? 0,
 		cer: cerData.cer ?? 0,
-		hyp_chars: cerData.hyp_chars ?? text.length,
+		hyp_chars: cerData.hyp_chars ?? textNode.length,
 		ref_chars: cerData.ref_chars ?? 0,
-		textScore: textScore ?? 0.5,
+		textScore: textScore ?? 0.45,
 		subtitleOnly: subtitleOnly ?? false,
 	};
 	writeFileSync(join(metadataDir, 'summary.json'), JSON.stringify(summary, null, 2));
 
-	console.log(`  segs=${segments.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
+	console.log(`  segs=${segmentsNode.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
 	console.log(`  OCR inf=${ocrInferenceS.toFixed(1)}s RTF=${(ocrInferenceS / (audioDurMs / 1000)).toFixed(4)}`);
 	console.log(`  WER=${(cerData.wer * 100).toFixed(2)}% CER=${(cerData.cer * 100).toFixed(2)}%`);
 	console.log(`  hyp_chars=${cerData.hyp_chars} ref_chars=${cerData.ref_chars}`);
@@ -360,104 +335,89 @@ function runOCRBenchmarkCpp(label: string, fps: number, textScore?: number, subt
 	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=cpp) ===`);
 
 	console.log('  extracting frames...');
-	const durationS = extractFrames(VIDEO_PATH, frameDir, fps);
+	const { durationS: durationSCpp, step: stepCpp, srcFps: srcFpsCpp } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing ${Math.ceil(durationS * fps)} frames...`);
+	console.log(`  OCR'ing ${Math.ceil(durationSCpp * fps)} frames...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
 		.sort();
 
-	const frameResults: { text: string; timestamp: number; confidence: number }[] = [];
+	const frameResultsCpp: FrameResult[] = [];
 	let totalMs = 0, totalDetMs = 0, totalPostMs = 0, totalRecMs = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
 		const f = frameFiles[i];
 		const framePath = join(frameDir, f);
-		const timestampMs = Math.round((i / fps) * 1000);
+		const timestampMs = Math.round((i * stepCpp / srcFpsCpp) * 1000);
 		const result = ocrFrameCpp(framePath, textScore, subtitleOnly);
 		totalMs += result.totalMs;
 		totalDetMs += result.detMs;
 		totalPostMs += result.postMs;
 		totalRecMs += result.recMs;
-		frameResults.push({
+		frameResultsCpp.push({
 			text: result.text || '',
 			timestamp: timestampMs,
-			confidence: 1,
+			confidence: result.confidence || 0,
 		});
 		if ((i + 1) % 50 === 0) console.log(`  OCR: ${i + 1}/${frameFiles.length}`);
 	}
 
-	const segments = mergeFrames(frameResults);
-	console.log(`  merged ${frameFiles.length} frames → ${segments.length} segments`);
+	const segmentsCpp = mergeFrames(frameResultsCpp);
+	console.log(`  merged ${frameFiles.length} frames → ${segmentsCpp.length} segments`);
 
-	const text = segments.map(s => s.text).join('');
-	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : Math.round(durationS * 1000);
+	const textCpp = segmentsCpp.map(s => s.text).join('');
+	const audioDurMs = segmentsCpp.length > 0 ? segmentsCpp[segmentsCpp.length - 1].end : Math.round(durationSCpp * 1000);
 	const inferenceS = totalMs / 1000;
 
-	// Store segments with ms-precision timestamps
-	const preciseSegments = segments.map(s => ({
-		text: s.text,
-		start: s.start,
-		end: s.end,
-	}));
-
-	const asrOutput = {
+	const ocrOutput = {
 		audio_info: { duration: audioDurMs },
-		result: { text, segments: preciseSegments },
+		result: { text: textCpp, segments: segmentsCpp.map(s => ({ text: s.text, start: s.start, end: s.end, confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) })) },
 		_engine: 'subtitle-cpp',
 		_source: 'video_hardsub',
 		_fps: fps,
-		_textScore: textScore ?? 0.5,
+		_textScore: textScore ?? 0.45,
 		_subtitleOnly: subtitleOnly ?? false,
 		_timingsMs: {
 			total: Math.round(totalMs),
-			averagePerFrame: Math.round(totalMs / frameResults.length),
+			averagePerFrame: Math.round(totalMs / frameResultsCpp.length),
 			det: Math.round(totalDetMs),
 			post: Math.round(totalPostMs),
 			rec: Math.round(totalRecMs),
 		},
 	};
-	const asrPath = join(metadataDir, 'asr.json');
-	writeFileSync(asrPath, JSON.stringify(asrOutput, null, 2));
+	const ocrPath = join(metadataDir, 'ocr.json');
+	writeFileSync(ocrPath, JSON.stringify(ocrOutput, null, 2));
 
-	const cerResult = spawnSync(PYTHON_BIN, [WER_PY, GROUND_TRUTH, asrPath], {
-		timeout: 30_000,
-		encoding: 'utf-8',
-		env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-	});
-	let cerData: any = {};
-	if (cerResult.status === 0) {
-		cerData = JSON.parse(cerResult.stdout);
-	}
+	const cerData = runEvalOCR(ocrPath, label);
 
 	const summary = {
 		label,
 		fps,
 		engine: 'cpp',
-		frames: frameResults.length,
-		segments: segments.length,
+		frames: frameResultsCpp.length,
+		segments: segmentsCpp.length,
 		audio_duration_s: parseFloat((audioDurMs / 1000).toFixed(1)),
 		ocr_inference_s: parseFloat(inferenceS.toFixed(3)),
 		ocr_rtf: parseFloat((inferenceS / (audioDurMs / 1000)).toFixed(4)),
 		ocr_timings_ms: {
 			total: Math.round(totalMs),
-			avgPerFrame: Math.round(totalMs / frameResults.length),
+			avgPerFrame: Math.round(totalMs / frameResultsCpp.length),
 			det: Math.round(totalDetMs),
 			post: Math.round(totalPostMs),
 			rec: Math.round(totalRecMs),
 		},
 		wer: cerData.wer ?? 0,
 		cer: cerData.cer ?? 0,
-		hyp_chars: cerData.hyp_chars ?? text.length,
+		hyp_chars: cerData.hyp_chars ?? textCpp.length,
 		ref_chars: cerData.ref_chars ?? 0,
-		textScore: textScore ?? 0.5,
+		textScore: textScore ?? 0.45,
 		subtitleOnly: subtitleOnly ?? false,
 	};
 	writeFileSync(join(metadataDir, 'summary.json'), JSON.stringify(summary, null, 2));
 
-	console.log(`  segs=${segments.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
+	console.log(`  segs=${segmentsCpp.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
 	console.log(`  det=${Math.round(totalDetMs)}ms post=${Math.round(totalPostMs)}ms rec=${Math.round(totalRecMs)}ms total=${Math.round(totalMs)}ms`);
-	console.log(`  avg/frame=${Math.round(totalMs / frameResults.length)}ms  inference=${inferenceS.toFixed(3)}s RTF=${(inferenceS / (audioDurMs / 1000)).toFixed(4)}`);
+	console.log(`  avg/frame=${Math.round(totalMs / frameResultsCpp.length)}ms  inference=${inferenceS.toFixed(3)}s RTF=${(inferenceS / (audioDurMs / 1000)).toFixed(4)}`);
 	console.log(`  WER=${(cerData.wer * 100).toFixed(2)}% CER=${(cerData.cer * 100).toFixed(2)}%`);
 	console.log(`  hyp_chars=${cerData.hyp_chars} ref_chars=${cerData.ref_chars}`);
 
@@ -478,20 +438,20 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=rust) ===`);
 
 	console.log('  extracting frames...');
-	const durationS = extractFrames(VIDEO_PATH, frameDir, fps);
+	const { durationS: durationSRust, step: stepRust, srcFps: srcFpsRust } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing ${Math.ceil(durationS * fps)} frames...`);
+	console.log(`  OCR'ing ${Math.ceil(durationSRust * fps)} frames...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
 		.sort();
 
-	const frameResults: { text: string; timestamp: number; confidence: number }[] = [];
+	const frameResultsRust: FrameResult[] = [];
 	let totalMs = 0, totalDetMs = 0, totalPostMs = 0, totalRecMs = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
 		const f = frameFiles[i];
 		const framePath = join(frameDir, f);
-		const timestampMs = Math.round((i / fps) * 1000);
+		const timestampMs = Math.round((i * stepRust / srcFpsRust) * 1000);
 		const args = [framePath];
 		if (textScore != null) args.push(String(textScore));
 		if (subtitleOnly) args.push('--subtitle-only');
@@ -502,7 +462,7 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 		});
 		if (r.status !== 0) {
 			console.error(`  Rust OCR error (${r.status}): ${(r.stderr || '').slice(-300)}`);
-			frameResults.push({ text: '', timestamp: timestampMs, confidence: 0 });
+			frameResultsRust.push({ text: '', timestamp: timestampMs, confidence: 0 });
 			continue;
 		}
 		let data: any;
@@ -510,7 +470,7 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 			data = JSON.parse(r.stdout);
 		} catch {
 			console.error(`  Rust JSON parse failed: ${(r.stdout || '').slice(-200)}`);
-			frameResults.push({ text: '', timestamp: timestampMs, confidence: 0 });
+			frameResultsRust.push({ text: '', timestamp: timestampMs, confidence: 0 });
 			continue;
 		}
 		const totalF = (data.det_inference_ms || 0) + (data.postprocess_ms || 0) + (data.rec_inference_ms || 0);
@@ -520,7 +480,7 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 		totalRecMs += data.rec_inference_ms || 0;
 		const segs = data.segments || [];
 		const best = segs.length > 0 ? segs.reduce((a: any, b: any) => a.confidence > b.confidence ? a : b) : { text: '', confidence: 0 };
-		frameResults.push({
+		frameResultsRust.push({
 			text: data.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence || 0,
@@ -528,72 +488,62 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 		if ((i + 1) % 50 === 0) console.log(`  OCR: ${i + 1}/${frameFiles.length}`);
 	}
 
-	const segments = mergeFrames(frameResults);
-	console.log(`  merged ${frameFiles.length} frames → ${segments.length} segments`);
+	const segmentsRust = mergeFrames(frameResultsRust);
+	console.log(`  merged ${frameFiles.length} frames → ${segmentsRust.length} segments`);
 
-	const text = segments.map(s => s.text).join('');
-	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : Math.round(durationS * 1000);
+	const textRust = segmentsRust.map(s => s.text).join('');
+	const audioDurMs = segmentsRust.length > 0 ? segmentsRust[segmentsRust.length - 1].end : Math.round(durationSRust * 1000);
 	const inferenceS = totalMs / 1000;
 
-	const preciseSegments = segments.map(s => ({ text: s.text, start: s.start, end: s.end }));
-
-	const asrOutput = {
+	const ocrOutput = {
 		audio_info: { duration: audioDurMs },
-		result: { text, segments: preciseSegments },
+		result: { text: textRust, segments: segmentsRust.map(s => ({ text: s.text, start: s.start, end: s.end, confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) })) },
 		_engine: 'subtitle-rust',
 		_source: 'video_hardsub',
 		_fps: fps,
-		_textScore: textScore ?? 0.5,
+		_textScore: textScore ?? 0.45,
 		_subtitleOnly: subtitleOnly ?? false,
 		_timingsMs: {
 			total: Math.round(totalMs),
-			averagePerFrame: Math.round(totalMs / frameResults.length),
+			averagePerFrame: Math.round(totalMs / frameResultsRust.length),
 			det: Math.round(totalDetMs),
 			post: Math.round(totalPostMs),
 			rec: Math.round(totalRecMs),
 		},
 	};
-	const asrPath = join(metadataDir, 'asr.json');
-	writeFileSync(asrPath, JSON.stringify(asrOutput, null, 2));
+	const ocrPath = join(metadataDir, 'ocr.json');
+	writeFileSync(ocrPath, JSON.stringify(ocrOutput, null, 2));
 
-	const cerResult = spawnSync(PYTHON_BIN, [WER_PY, GROUND_TRUTH, asrPath], {
-		timeout: 30_000,
-		encoding: 'utf-8',
-		env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-	});
-	let cerData: any = {};
-	if (cerResult.status === 0) {
-		cerData = JSON.parse(cerResult.stdout);
-	}
+	const cerData = runEvalOCR(ocrPath, label);
 
 	const summary = {
 		label,
 		fps,
 		engine: 'rust',
-		frames: frameResults.length,
-		segments: segments.length,
+		frames: frameResultsRust.length,
+		segments: segmentsRust.length,
 		audio_duration_s: parseFloat((audioDurMs / 1000).toFixed(1)),
 		ocr_inference_s: parseFloat(inferenceS.toFixed(3)),
 		ocr_rtf: parseFloat((inferenceS / (audioDurMs / 1000)).toFixed(4)),
 		ocr_timings_ms: {
 			total: Math.round(totalMs),
-			avgPerFrame: Math.round(totalMs / frameResults.length),
+			avgPerFrame: Math.round(totalMs / frameResultsRust.length),
 			det: Math.round(totalDetMs),
 			post: Math.round(totalPostMs),
 			rec: Math.round(totalRecMs),
 		},
 		wer: cerData.wer ?? 0,
 		cer: cerData.cer ?? 0,
-		hyp_chars: cerData.hyp_chars ?? text.length,
+		hyp_chars: cerData.hyp_chars ?? textRust.length,
 		ref_chars: cerData.ref_chars ?? 0,
-		textScore: textScore ?? 0.5,
+		textScore: textScore ?? 0.45,
 		subtitleOnly: subtitleOnly ?? false,
 	};
 	writeFileSync(join(metadataDir, 'summary.json'), JSON.stringify(summary, null, 2));
 
-	console.log(`  segs=${segments.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
+	console.log(`  segs=${segmentsRust.length} dur=${(audioDurMs / 1000).toFixed(1)}s`);
 	console.log(`  det=${Math.round(totalDetMs)}ms post=${Math.round(totalPostMs)}ms rec=${Math.round(totalRecMs)}ms total=${Math.round(totalMs)}ms`);
-	console.log(`  avg/frame=${Math.round(totalMs / frameResults.length)}ms  inference=${inferenceS.toFixed(3)}s RTF=${(inferenceS / (audioDurMs / 1000)).toFixed(4)}`);
+	console.log(`  avg/frame=${Math.round(totalMs / frameResultsRust.length)}ms  inference=${inferenceS.toFixed(3)}s RTF=${(inferenceS / (audioDurMs / 1000)).toFixed(4)}`);
 	console.log(`  WER=${(cerData.wer * 100).toFixed(2)}% CER=${(cerData.cer * 100).toFixed(2)}%`);
 	console.log(`  hyp_chars=${cerData.hyp_chars} ref_chars=${cerData.ref_chars}`);
 
@@ -611,24 +561,22 @@ if (require.main === module) {
 
 	async function main() {
 		const fpsOptions: { fps: number; textScore?: number; subtitleOnly?: boolean }[] = [
-			{ fps: 1, subtitleOnly: true },
-			{ fps: 1 },
-			{ fps: 0.5, subtitleOnly: true },
+			{ fps: 1, textScore: 0.3, subtitleOnly: true },
+			{ fps: 1, textScore: 0.4, subtitleOnly: true },
+			{ fps: 1, textScore: 0.45, subtitleOnly: true },
+			{ fps: 1, textScore: 0.5, subtitleOnly: true },
+			{ fps: 1, textScore: 0.45 },
+			{ fps: 0.5, textScore: 0.45, subtitleOnly: true },
 		];
 		const results: any[] = [];
 
 		for (const opt of fpsOptions) {
-			const baseLabel = `ocr-${engine}-fps${opt.fps}${opt.subtitleOnly ? '-so' : ''}`;
+			const tsLabel = opt.textScore != null ? `-ts${opt.textScore}` : '';
+			const baseLabel = `ocr-${engine}-fps${opt.fps}${opt.subtitleOnly ? '-so' : ''}${tsLabel}`;
 			if (onlyLabel && baseLabel !== onlyLabel) continue;
 
 			for (let run = 0; run < runs; run++) {
 				const label = runs > 1 ? `${baseLabel}-r${run}` : baseLabel;
-				const summaryPath = join(RESULTS_BASE, label, 'metadata', 'summary.json');
-				if (existsSync(summaryPath)) {
-					console.log(`[skip] ${label} already done`);
-					results.push(JSON.parse(readFileSync(summaryPath, 'utf-8')));
-					continue;
-				}
 				let r: any;
 				if (engine === 'node') {
 					r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);

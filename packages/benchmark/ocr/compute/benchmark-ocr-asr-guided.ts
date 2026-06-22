@@ -160,7 +160,7 @@ function run(label: string, ocrSegs: Segment[], asrSegs: Segment[], rawFrames: F
   // summary.json — lightweight bench stats
   writeFileSync(join(resultDir, 'metadata', 'summary.json'), JSON.stringify({ label, desc, ocrSegments: ocrSegs.length, asrSegments: asrSegs.length, fixSegments: fixSegs.length, ocrHypChars: ocrText.length, asrHypChars: asrText.length, fixHypChars: fixText.length, ocrCalls: ocrCallCount ?? 0, elapsedSec: elapsedSec ?? 0 }, null, 2));
 
-  // ocr.json — pure OCR boundaries (for eval-asr.ts --ms)
+  // ocr.json — pure OCR boundaries (for eval-ocr.ts --ms)
   writeFileSync(join(resultDir, 'metadata', 'ocr.json'), JSON.stringify({
     audio_info: { duration: ocrSegs.length > 0 ? ocrSegs[ocrSegs.length - 1].end : 0 },
     _boundary: 'ocr',
@@ -268,6 +268,6 @@ if (require.main === module) {
 
   spawnSync('rm', ['-rf', TMP_DIR]);
   console.log(`\nResults: ${join(RESULTS_BASE, LABEL)}`);
-  console.log(`Eval: bun run packages/benchmark/ref/compute/eval-asr.ts packages/benchmark/ocr/results/${LABEL}/metadata/ocr.json --label ${LABEL} --ms
+  console.log(`Eval: bun run packages/benchmark/ref/compute/eval-ocr.ts packages/benchmark/ocr/results/${LABEL}/metadata/ocr.json --label ${LABEL} --ms
   (or: --write to save ocr_summary.json)`);
 }

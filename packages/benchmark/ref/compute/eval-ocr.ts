@@ -10,7 +10,7 @@ interface Segment {
   end: number;
 }
 
-function loadSegments(path: string, scaleMs = 1): Segment[] {
+export function loadSegments(path: string, scaleMs = 1): Segment[] {
   const d = JSON.parse(readFileSync(path, 'utf-8'));
   return d.result.segments.map((s: any) => ({
     text: s.text.trim(),
@@ -19,7 +19,7 @@ function loadSegments(path: string, scaleMs = 1): Segment[] {
   }));
 }
 
-function normalizeForCER(s: string): string {
+export function normalizeForCER(s: string): string {
   let t = s;
   t = t.replace(/师父/g, '师傅');
   t = t.replace(/\s+/g, '');
@@ -39,7 +39,7 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-function computeCER(ref: string, hyp: string): number {
+export function computeCER(ref: string, hyp: string): number {
   if (!ref && !hyp) return 0;
   return levenshtein(ref, hyp) / Math.max(ref.length, 1);
 }
@@ -71,7 +71,7 @@ function computeGaps(segs: Segment[]) {
   };
 }
 
-function analyzeOffsets(gt: Segment[], hyp: Segment[]) {
+export function analyzeOffsets(gt: Segment[], hyp: Segment[]) {
   const offsetsStart: number[] = [];
   const offsetsEnd: number[] = [];
   const matchedHyp = new Set<number>();
@@ -150,7 +150,7 @@ interface Options {
   outPath?: string;
 }
 
-function main(opts: Options & { hypScaleMs?: number }) {
+export function main(opts: Options & { hypScaleMs?: number }) {
   const gt = loadSegments(opts.gtPath, 1);
   const hyp = loadSegments(opts.hypPath, opts.hypScaleMs ?? 1000);
 
@@ -317,8 +317,8 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   if (args.length < 1 || args[0] === '--help') {
     console.error('Usage:');
-    console.error('  bun eval-asr.ts <hyp.json> [gt.json] [--label <label>]');
-    console.error('  bun eval-asr.ts --batch <results_dir> [gt.json]');
+    console.error('  bun eval-ocr.ts <hyp.json> [gt.json] [--label <label>]');
+    console.error('  bun eval-ocr.ts --batch <results_dir> [gt.json]');
     console.error(`  Default GT: ${DEFAULT_GT}`);
     process.exit(1);
   }

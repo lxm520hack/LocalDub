@@ -1,0 +1,343 @@
+{
+  "description": "RapidOCR (subtitle-py) repeat benchmark: 5 runs on 10 frames from frames-pre-2fps, text_score=0.5, subtitle_only=True",
+  "args": {
+    "runs": 5,
+    "text_score": 0.5,
+    "subtitle_only": true,
+    "frames_dir": "/home/aa/repos/env_ls/LocalDub/packages/benchmark/ocr/results/frames-pre-2fps",
+    "max_frames": 10,
+    "out": "packages/subtitle-ocr/docs/rapidocr-py-repeat-results.json"
+  },
+  "frames_dir": "/home/aa/repos/env_ls/LocalDub/packages/benchmark/ocr/results/frames-pre-2fps",
+  "frames_total": 10,
+  "wall_clock_total_ms": 42677.87,
+  "summary": {
+    "runs": 5,
+    "total_ms_avg": 8535.48,
+    "total_ms_stddev": 965.4,
+    "total_ms_min": 7570.18,
+    "total_ms_max": 10378.3,
+    "per_frame_ms_avg": 853.546,
+    "per_frame_ms_stddev": 96.54,
+    "segments_count_avg": 4,
+    "segments_count_stddev": 0.0,
+    "segments_count_min": 4,
+    "segments_count_max": 4,
+    "unique_texts_total": 4,
+    "unique_texts_common_all_runs": 4,
+    "texts_missing_in_some_runs": 0,
+    "_missing_texts_examples": [],
+    "per_segment": {
+      "不行我得出手了": {
+        "present_in_runs": 5,
+        "confidence_avg": 0.8324,
+        "confidence_stddev": 0.0,
+        "confidence_min": 0.8324,
+        "confidence_max": 0.8324
+      },
+      "弱者": {
+        "present_in_runs": 5,
+        "confidence_avg": 0.6646,
+        "confidence_stddev": 0.0,
+        "confidence_min": 0.6646,
+        "confidence_max": 0.6646
+      },
+      "这可是剑仙啊": {
+        "present_in_runs": 5,
+        "confidence_avg": 0.8369,
+        "confidence_stddev": 0.0,
+        "confidence_min": 0.8369,
+        "confidence_max": 0.8369
+      },
+      "这小子也真是敢说": {
+        "present_in_runs": 5,
+        "confidence_avg": 0.8783,
+        "confidence_stddev": 0.0,
+        "confidence_min": 0.8783,
+        "confidence_max": 0.8783
+      }
+    },
+    "pooled_per_frame_ms_count": 50,
+    "pooled_per_frame_ms_avg": 853.546,
+    "pooled_per_frame_ms_stddev": 108.037,
+    "pooled_per_frame_ms_p50": 823.863,
+    "pooled_per_frame_ms_p95": 1092.376
+  },
+  "per_run": [
+    {
+      "run": 1,
+      "total_ms": 10378.3,
+      "avg_per_frame_ms": 1037.827,
+      "segments": [
+        {
+          "frame_range": [
+            1,
+            1
+          ],
+          "text": "弱者",
+          "avg_confidence": 0.6646,
+          "frame_count": 1
+        },
+        {
+          "frame_range": [
+            2,
+            4
+          ],
+          "text": "这小子也真是敢说",
+          "avg_confidence": 0.8783,
+          "frame_count": 3
+        },
+        {
+          "frame_range": [
+            5,
+            6
+          ],
+          "text": "这可是剑仙啊",
+          "avg_confidence": 0.8369,
+          "frame_count": 2
+        },
+        {
+          "frame_range": [
+            8,
+            9
+          ],
+          "text": "不行我得出手了",
+          "avg_confidence": 0.8324,
+          "frame_count": 2
+        }
+      ],
+      "per_frame_ms": [
+        1100.072,
+        1091.435,
+        1092.376,
+        1202.213,
+        1087.37,
+        1014.995,
+        964.115,
+        959.049,
+        970.885,
+        895.764
+      ]
+    },
+    {
+      "run": 2,
+      "total_ms": 8399.12,
+      "avg_per_frame_ms": 839.909,
+      "segments": [
+        {
+          "frame_range": [
+            1,
+            1
+          ],
+          "text": "弱者",
+          "avg_confidence": 0.6646,
+          "frame_count": 1
+        },
+        {
+          "frame_range": [
+            2,
+            4
+          ],
+          "text": "这小子也真是敢说",
+          "avg_confidence": 0.8783,
+          "frame_count": 3
+        },
+        {
+          "frame_range": [
+            5,
+            6
+          ],
+          "text": "这可是剑仙啊",
+          "avg_confidence": 0.8369,
+          "frame_count": 2
+        },
+        {
+          "frame_range": [
+            8,
+            9
+          ],
+          "text": "不行我得出手了",
+          "avg_confidence": 0.8324,
+          "frame_count": 2
+        }
+      ],
+      "per_frame_ms": [
+        832.792,
+        902.147,
+        859.435,
+        859.402,
+        830.097,
+        864.029,
+        843.713,
+        808.053,
+        821.048,
+        778.372
+      ]
+    },
+    {
+      "run": 3,
+      "total_ms": 8304.52,
+      "avg_per_frame_ms": 830.45,
+      "segments": [
+        {
+          "frame_range": [
+            1,
+            1
+          ],
+          "text": "弱者",
+          "avg_confidence": 0.6646,
+          "frame_count": 1
+        },
+        {
+          "frame_range": [
+            2,
+            4
+          ],
+          "text": "这小子也真是敢说",
+          "avg_confidence": 0.8783,
+          "frame_count": 3
+        },
+        {
+          "frame_range": [
+            5,
+            6
+          ],
+          "text": "这可是剑仙啊",
+          "avg_confidence": 0.8369,
+          "frame_count": 2
+        },
+        {
+          "frame_range": [
+            8,
+            9
+          ],
+          "text": "不行我得出手了",
+          "avg_confidence": 0.8324,
+          "frame_count": 2
+        }
+      ],
+      "per_frame_ms": [
+        792.663,
+        867.619,
+        822.82,
+        841.258,
+        845.633,
+        887.129,
+        851.661,
+        796.792,
+        791.638,
+        807.283
+      ]
+    },
+    {
+      "run": 4,
+      "total_ms": 8025.29,
+      "avg_per_frame_ms": 802.527,
+      "segments": [
+        {
+          "frame_range": [
+            1,
+            1
+          ],
+          "text": "弱者",
+          "avg_confidence": 0.6646,
+          "frame_count": 1
+        },
+        {
+          "frame_range": [
+            2,
+            4
+          ],
+          "text": "这小子也真是敢说",
+          "avg_confidence": 0.8783,
+          "frame_count": 3
+        },
+        {
+          "frame_range": [
+            5,
+            6
+          ],
+          "text": "这可是剑仙啊",
+          "avg_confidence": 0.8369,
+          "frame_count": 2
+        },
+        {
+          "frame_range": [
+            8,
+            9
+          ],
+          "text": "不行我得出手了",
+          "avg_confidence": 0.8324,
+          "frame_count": 2
+        }
+      ],
+      "per_frame_ms": [
+        745.591,
+        761.247,
+        809.742,
+        786.919,
+        820.011,
+        799.706,
+        764.936,
+        831.684,
+        824.906,
+        880.531
+      ]
+    },
+    {
+      "run": 5,
+      "total_ms": 7570.18,
+      "avg_per_frame_ms": 757.016,
+      "segments": [
+        {
+          "frame_range": [
+            1,
+            1
+          ],
+          "text": "弱者",
+          "avg_confidence": 0.6646,
+          "frame_count": 1
+        },
+        {
+          "frame_range": [
+            2,
+            4
+          ],
+          "text": "这小子也真是敢说",
+          "avg_confidence": 0.8783,
+          "frame_count": 3
+        },
+        {
+          "frame_range": [
+            5,
+            6
+          ],
+          "text": "这可是剑仙啊",
+          "avg_confidence": 0.8369,
+          "frame_count": 2
+        },
+        {
+          "frame_range": [
+            8,
+            9
+          ],
+          "text": "不行我得出手了",
+          "avg_confidence": 0.8324,
+          "frame_count": 2
+        }
+      ],
+      "per_frame_ms": [
+        784.126,
+        745.754,
+        748.012,
+        728.141,
+        798.715,
+        719.131,
+        767.893,
+        762.544,
+        730.722,
+        785.126
+      ]
+    }
+  ]
+}

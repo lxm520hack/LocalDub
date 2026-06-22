@@ -17,6 +17,9 @@
     "packages/benchmark": {
       "name": "@repo/benchmark",
       "dependencies": {
+        "@repo/cli": "workspace:*",
+        "@repo/config": "workspace:*",
+        "@repo/subtitle-ocr": "workspace:*",
         "@repo/voxlab": "workspace:*",
       },
     },

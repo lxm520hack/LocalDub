@@ -207,6 +207,7 @@ pretrained_models/
 
 **/results/**/*.wav
 **/results/**/*.m4a
+**/results/**/*.jpg
 **/results/**/*.json
 
 packages/cli/config.json 

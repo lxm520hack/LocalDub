@@ -40,9 +40,10 @@ constexpr int DET_LIMIT_SIDE = 736;
 constexpr int CLS_H = 48;
 constexpr int CLS_W = 192;
 constexpr int REC_H = 48;
-constexpr int REC_MAX_W = 320;
+constexpr int REC_MAX_W = 2000;
 
 constexpr float DET_THRESH = 0.3f;
+constexpr float BOX_THRESH = 0.5f;
 
 constexpr float UNCLIP_RATIO = 1.6f;
 constexpr int MAX_CANDIDATES = 1000;
@@ -188,14 +189,25 @@ static DetPreproc preprocessDet(const uint8_t* rgb, int H, int W, bool bottomOnl
 
 // --- Preprocess for classification ---
 static std::vector<float> preprocessCls(const uint8_t* rgb, int H, int W) {
-    std::vector<uint8_t> resized(CLS_W * CLS_H * 3);
-    resizeBilinear(rgb, W, H, resized.data(), CLS_W, CLS_H);
+    // 与 Python TextClassifier.resize_norm_img 对齐：等比 resize + zero padding
+    float ratio = (float)W / (float)H;
+    int resizedW;
+    if (std::ceil((float)CLS_H * ratio) > CLS_W) {
+        resizedW = CLS_W;
+    } else {
+        resizedW = (int)std::ceil((float)CLS_H * ratio);
+    }
+    resizedW = std::max(1, resizedW);
 
-    std::vector<float> tensor(3 * CLS_H * CLS_W);
+    std::vector<uint8_t> resized(resizedW * CLS_H * 3);
+    resizeBilinear(rgb, W, H, resized.data(), resizedW, CLS_H);
+
+    // zero padding to CLS_W x CLS_H (left-aligned)
+    std::vector<float> tensor(3 * CLS_H * CLS_W, 0.0f);
     for (int y = 0; y < CLS_H; ++y) {
-        for (int x = 0; x < CLS_W; ++x) {
+        for (int x = 0; x < resizedW; ++x) {
             for (int c = 0; c < 3; ++c) {
-                float pixel = resized[(y * CLS_W + x) * 3 + c] / 255.0f;
+                float pixel = resized[(y * resizedW + x) * 3 + c] / 255.0f;
                 tensor[c * CLS_H * CLS_W + y * CLS_W + x] = (pixel - 0.5f) / 0.5f;
             }
         }
@@ -210,19 +222,29 @@ struct RecPreproc {
 };
 
 static RecPreproc preprocessRec(const uint8_t* rgb, int H, int W) {
+    // 与 Python TextRecognizer.resize_norm_img 对齐：等比 resize + zero padding
     float whRatio = (float)W / (float)H;
-    int imgW = std::min(REC_MAX_W, std::max(32, (int)std::round(REC_H * whRatio)));
+    int imgW = std::max(32, (int)(REC_H * whRatio));
+    imgW = std::min(REC_MAX_W, imgW);
 
-    std::vector<uint8_t> resized(imgW * REC_H * 3);
-    resizeBilinear(rgb, W, H, resized.data(), imgW, REC_H);
+    int resizedW;
+    if (std::ceil((float)REC_H * whRatio) > imgW) {
+        resizedW = imgW;
+    } else {
+        resizedW = (int)std::ceil((float)REC_H * whRatio);
+    }
+    resizedW = std::max(1, resizedW);
+
+    std::vector<uint8_t> resized(resizedW * REC_H * 3);
+    resizeBilinear(rgb, W, H, resized.data(), resizedW, REC_H);
 
     RecPreproc out;
     out.width = imgW;
-    out.tensor.resize(3 * REC_H * imgW);
+    out.tensor.resize(3 * REC_H * imgW, 0.0f);
     for (int y = 0; y < REC_H; ++y) {
-        for (int x = 0; x < imgW; ++x) {
+        for (int x = 0; x < resizedW; ++x) {
             for (int c = 0; c < 3; ++c) {
-                float pixel = resized[(y * imgW + x) * 3 + c] / 255.0f;
+                float pixel = resized[(y * resizedW + x) * 3 + c] / 255.0f;
                 out.tensor[c * REC_H * imgW + y * imgW + x] = (pixel - 0.5f) / 0.5f;
             }
         }
@@ -327,7 +349,7 @@ static Image warpRotatedCrop(const Image& img, const RotatedRect& rect) {
             float sx = proj * cosA - perp * sinA + cx;
             float sy = proj * sinA + perp * cosA + cy;
             for (int c = 0; c < img.c; ++c)
-                out.data[(dy * dstW + dx) * img.c + c] = (uint8_t)std::round(sampleBilinear(img, sx, sy, c));
+                out.data[(dy * dstW + dx) * img.c + c] = (uint8_t)std::round(sampleBicubic(img, sx, sy, c));
         }
     }
     return out;
@@ -476,7 +498,7 @@ static Image warpPerspectiveCrop(const Image& img, const Polygon& pts) {
             float sy = (float)((d * u + e * v + f) / denom);
             int di = (dy * outW + dx) * 3;
             for (int ch = 0; ch < 3; ++ch) {
-                out.data[di + ch] = (uint8_t)std::round(sampleBilinear(img, sx, sy, ch));
+                out.data[di + ch] = (uint8_t)std::round(sampleBicubic(img, sx, sy, ch));
             }
         }
     }
@@ -535,7 +557,52 @@ static OCRResult runOcr(
     // 然后在下面的 for 循环中 + yOffset 映射回原图（跟 Node.js 一致）
     std::cerr << "[OCR] dbPostprocess " << outH << "x" << outW << " (orig " << detPrep.origH << "x" << detPrep.origW << ")..." << std::endl;
     auto boxesPts = dbPostprocess(heatmapData, outH, outW, detPrep.origH, detPrep.origW,
-                                  DET_THRESH, textScore, UNCLIP_RATIO, MAX_CANDIDATES);
+                                  DET_THRESH, BOX_THRESH, UNCLIP_RATIO, MAX_CANDIDATES);
+
+    // NMS-like overlapping box filter — prevent one line being split into
+    // multiple detection boxes (common cause of "主慧天" + "徒" + "王慧天..." etc.)
+    if (boxesPts.size() > 1) {
+        struct BBox { int idx; float xMin, yMin, xMax, yMax, area, score; };
+        std::vector<BBox> bboxes;
+        bboxes.reserve(boxesPts.size());
+        for (size_t i = 0; i < boxesPts.size(); ++i) {
+            const auto& poly = boxesPts[i].first;
+            if (poly.size() < 4) continue;
+            float xMin = poly[0].x, xMax = poly[0].x, yMin = poly[0].y, yMax = poly[0].y;
+            for (const auto& p : poly) {
+                xMin = std::min(xMin, p.x); xMax = std::max(xMax, p.x);
+                yMin = std::min(yMin, p.y); yMax = std::max(yMax, p.y);
+            }
+            float area = std::max(1.0f, (xMax - xMin)) * std::max(1.0f, (yMax - yMin));
+            bboxes.push_back({(int)i, xMin, yMin, xMax, yMax, area, boxesPts[i].second});
+        }
+        // Sort by area desc — keep larger boxes
+        std::sort(bboxes.begin(), bboxes.end(), [](const BBox& a, const BBox& b) { return a.area > b.area; });
+        std::vector<bool> keep(boxesPts.size(), true);
+        for (size_t i = 0; i < bboxes.size(); ++i) {
+            if (!keep[bboxes[i].idx]) continue;
+            const BBox& a = bboxes[i];
+            for (size_t j = i + 1; j < bboxes.size(); ++j) {
+                if (!keep[bboxes[j].idx]) continue;
+                const BBox& b = bboxes[j];
+                float iXMin = std::max(a.xMin, b.xMin);
+                float iYMin = std::max(a.yMin, b.yMin);
+                float iXMax = std::min(a.xMax, b.xMax);
+                float iYMax = std::min(a.yMax, b.yMax);
+                if (iXMax <= iXMin || iYMax <= iYMin) continue;
+                float iArea = (iXMax - iXMin) * (iYMax - iYMin);
+                // If b's bbox is mostly inside a's bbox, drop b
+                // Also remove if significant Y overlap + X overlap (>70% of b's area)
+                if (iArea / b.area > 0.7f) keep[bboxes[j].idx] = false;
+            }
+        }
+        decltype(boxesPts) filtered;
+        filtered.reserve(boxesPts.size());
+        for (size_t i = 0; i < boxesPts.size(); ++i) {
+            if (keep[i]) filtered.push_back(std::move(boxesPts[i]));
+        }
+        boxesPts = std::move(filtered);
+    }
 
     auto t2 = clock::now();
     result.postMs = std::chrono::duration<double, std::milli>(t2 - t1).count();
@@ -551,7 +618,8 @@ static OCRResult runOcr(
             for (auto& p : boxPts) p.y += (float)detPrep.yOffset;
         }
 
-        // Y-position filter for subtitle only
+        // Y-position filter for subtitle only — align with Python rapidocr
+        // Python: 620 <= y_center <= 700 on 720p frames → ratio 0.86-0.97
         if (subtitleOnly) {
             float yMinCk = boxPts[0].y, yMaxCk = boxPts[0].y;
             for (auto& p : boxPts) {
@@ -559,7 +627,9 @@ static OCRResult runOcr(
                 yMaxCk = std::max(yMaxCk, p.y);
             }
             float yCenter = (yMinCk + yMaxCk) / 2;
-            if (yCenter < (float)(img.h * 0.6f) || yCenter > (float)img.h) continue;
+            float yMinRatio = 0.85f;  // 620/720 ≈ 0.86
+            float yMaxRatio = 0.99f;  // 700/720 ≈ 0.97, with margin
+            if (yCenter < (float)(img.h * yMinRatio) || yCenter > (float)(img.h * yMaxRatio)) continue;
         }
 
         // 对齐 Python rapidocr: orderPointsClockwise 排序 + warpPerspective 裁剪

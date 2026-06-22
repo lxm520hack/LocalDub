@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@repo/voxlab": "workspace:*"
+    "@repo/voxlab": "workspace:*",
+    "@repo/cli": "workspace:*",
+    "@repo/subtitle-ocr": "workspace:*",
+    "@repo/config": "workspace:*"
   }
 }

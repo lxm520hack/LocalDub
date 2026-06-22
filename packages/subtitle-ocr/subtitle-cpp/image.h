@@ -53,11 +53,22 @@ static Image loadImage(const char* path) {
     img.c = 3;
     img.data.assign(pixels, pixels + img.w * img.h * 3);
     stbi_image_free(pixels);
+
+    // stbi_load returns RGB order, but PaddleOCR/RapidOCR models were trained
+    // with cv2.imread (BGR order). Convert RGB -> BGR to match model training.
+    for (int i = 0; i < img.w * img.h; ++i) {
+        std::swap(img.data[i * 3 + 0], img.data[i * 3 + 2]);
+    }
     return img;
 }
 
 static float sampleBilinear(const Image& img, float x, float y, int c) {
-    if (x < 0 || x >= img.w || y < 0 || y >= img.h) return 0;
+    // BORDER_REPLICATE: 采样点在图像外时用最近的边缘像素（而非 0）
+    // 与 Python cv2.warpPerspective(..., borderMode=BORDER_REPLICATE) 对齐
+    if (x < 0) x = 0;
+    if (x >= img.w) x = (float)(img.w - 1);
+    if (y < 0) y = 0;
+    if (y >= img.h) y = (float)(img.h - 1);
     int x0 = std::max(0, std::min((int)x, img.w - 2));
     int y0 = std::max(0, std::min((int)y, img.h - 2));
     int x1 = std::min(x0 + 1, img.w - 1);
@@ -68,6 +79,57 @@ static float sampleBilinear(const Image& img, float x, float y, int c) {
     };
     return (1-fy)*(1-fx)*px(x0,y0) + (1-fy)*fx*px(x1,y0)
          + fy*(1-fx)*px(x0,y1) + fy*fx*px(x1,y1);
+}
+
+// Bicubic interpolation (Catmull-Rom spline, a = -0.5)
+// Matches OpenCV INTER_CUBIC behavior for warpPerspective
+static float cubicWeight(float t) {
+    // Standard bicubic kernel (Keys)
+    float tt = t * t;
+    float ttt = tt * t;
+    // a = -0.5
+    if (t < 1.0f)
+        return 1.5f * ttt - 2.5f * tt + 1.0f;
+    if (t < 2.0f)
+        return -0.5f * ttt + 2.5f * tt - 4.0f * t + 2.0f;
+    return 0.0f;
+}
+
+static float sampleBicubic(const Image& img, float x, float y, int c) {
+    // BORDER_REPLICATE: replicate edge pixels
+    int xi = (int)x;
+    int yi = (int)y;
+    float dx = x - xi;
+    float dy = y - yi;
+
+    float sum = 0.0f;
+    float wsum = 0.0f;
+
+    for (int j = -1; j <= 2; ++j) {
+        float wy = cubicWeight(std::fabs((float)j - dy));
+        if (wy == 0.0f) continue;
+        int sy = yi + j;
+        if (sy < 0) sy = 0;
+        if (sy >= img.h) sy = img.h - 1;
+
+        for (int i = -1; i <= 2; ++i) {
+            float wx = cubicWeight(std::fabs((float)i - dx));
+            if (wx == 0.0f) continue;
+            int sx = xi + i;
+            if (sx < 0) sx = 0;
+            if (sx >= img.w) sx = img.w - 1;
+
+            float pixel = img.data[(sy * img.w + sx) * img.c + c];
+            sum += wy * wx * pixel;
+            wsum += wy * wx;
+        }
+    }
+
+    if (wsum == 0.0f) return 0.0f;
+    float val = sum / wsum;
+    if (val < 0.0f) val = 0.0f;
+    if (val > 255.0f) val = 255.0f;
+    return val;
 }
 
 static void resizeBilinear(const uint8_t* src, int sw, int sh, uint8_t* dst, int dw, int dh) {

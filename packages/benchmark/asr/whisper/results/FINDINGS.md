@@ -186,11 +186,11 @@ No config achieves viable detection of "啊"+"哈哈哈" without VAD or segmenta
 bun run packages/benchmark/asr/whisper/compute/benchmark-asr-params.ts
 
 # Batch evaluation with ms timestamps
-bun packages/benchmark/ref/compute/eval-asr.ts --batch results/ggml-s1-sidechain ref/metadata/asr_manual.json --hyp-file asr.json --ms
+bun packages/benchmark/ref/compute/eval-ocr.ts --batch results/ggml-s1-sidechain ref/metadata/asr_manual.json --hyp-file asr.json --ms
 
 # Single run eval
-bun packages/benchmark/ref/compute/eval-asr.ts results/ggml-s1-sidechain/temp-02/metadata/asr.json ref/metadata/asr_manual.json --ms
+bun packages/benchmark/ref/compute/eval-ocr.ts results/ggml-s1-sidechain/temp-02/metadata/asr.json ref/metadata/asr_manual.json --ms
 ```
 
 **Files**: `results/{source}/{param-label}/metadata/{asr,whisper_raw,summary}.json`
-**Scripts**: `packages/benchmark/asr/whisper/compute/benchmark-asr-params.ts`, `packages/benchmark/ref/compute/eval-asr.ts`
+**Scripts**: `packages/benchmark/asr/whisper/compute/benchmark-asr-params.ts`, `packages/benchmark/ref/compute/eval-ocr.ts`

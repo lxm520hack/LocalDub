@@ -67,4 +67,4 @@ console.log(`Written: ${join(OUT, 'metadata', 'ocr.json')} (${filtered.length} s
 spawnSync('rm', ['-rf', TMP]);
 
 const rel = join('packages', 'benchmark', 'ocr', 'results', 'subtitle-cpp-2fps-so-ts0.45', 'metadata', 'ocr.json');
-console.log(`\nEval: bun run packages/benchmark/ref/compute/eval-asr.ts ${rel} --label subtitle-cpp-2fps-so-ts0.45 --ms`);
+console.log(`\nEval: bun run packages/benchmark/ref/compute/eval-ocr.ts ${rel} --label subtitle-cpp-2fps-so-ts0.45 --ms`);
