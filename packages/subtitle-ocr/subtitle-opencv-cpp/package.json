@@ -1,0 +1,8 @@
+{
+  "name": "@repo/subtitle-ocr-cpp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cmake -B build && cmake --build build --parallel"
+  }
+}

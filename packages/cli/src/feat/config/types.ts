@@ -449,6 +449,7 @@ const StagesSchema = z.object({
 	}).optional(),
 	merge_video: MergeVideoSchema,
 });
+
 type StagesConfigInput = z.input<typeof StagesSchema>;
 export type StagesConfig = z.output<typeof StagesSchema>;
 

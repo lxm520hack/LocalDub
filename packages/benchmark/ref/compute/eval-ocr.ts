@@ -346,7 +346,7 @@ if (require.main === module) {
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--label') label = args[++i];
     else if (args[i] === '--ms') hypInMs = true;
-    else if (args[i] === '--write') outPath = join(dirname(hypPath), 'asr_summary.json');
+    else if (args[i] === '--write') outPath = join(dirname(hypPath), 'ocr_summary.json');
     else if (!args[i].startsWith('--')) gtPath = resolve(args[i]);
   }
 

@@ -3,6 +3,10 @@ project(ocr_pipeline CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 # ORT path — override with -DORT_DIR=<path>
 set(ORT_DIR "" CACHE PATH "Path to onnxruntime installation (containing include/ and lib/)")
@@ -11,7 +15,11 @@ if(NOT ORT_DIR)
     if(WIN32)
         set(ORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tmp/onnxruntime-win-x64-1.26.0/onnxruntime-win-x64-1.26.0")
     else()
-        set(ORT_DIR "/tmp/onnxruntime-linux-x64-1.24.4")
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../tmp/onnxruntime-linux-x64-1.24.4")
+            set(ORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../tmp/onnxruntime-linux-x64-1.24.4")
+        elseif(EXISTS "/tmp/onnxruntime-linux-x64-1.24.4")
+            set(ORT_DIR "/tmp/onnxruntime-linux-x64-1.24.4")
+        endif()
     endif()
 endif()
 
