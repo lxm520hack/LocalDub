@@ -632,7 +632,8 @@ static OCRResult runOcr(
     Ort::Session& recSession,
     Ort::MemoryInfo& memInfo,
     float textScore = 0.5f,
-    bool subtitleOnly = false)
+    bool subtitleOnly = false,
+    bool useNms = true)
 {
     using clock = std::chrono::high_resolution_clock;
     auto tStart = clock::now();
@@ -677,10 +678,9 @@ static OCRResult runOcr(
     auto boxesPts = dbPostprocess(heatmapData, outH, outW, detPrep.origH, detPrep.origW,
                                   DET_THRESH, BOX_THRESH, UNCLIP_RATIO, MAX_CANDIDATES);
 
-    // NMS-like overlapping box filter — 这不是 Python 的一部分，但能减少 FP，
-    // 是准确率提升的逻辑，保留。如果 bbox 的 overlap > 70%（较小框被较大框
-    // 覆盖），则丢弃较小框。
-    if (boxesPts.size() > 1) {
+    // NMS-like overlapping box filter — 非 Python 步骤，但能减少 FP。
+    // 用 --no-nms 参数关闭以与 Python 行为完全一致。
+    if (useNms && boxesPts.size() > 1) {
         struct BBox { int idx; float xMin, yMin, xMax, yMax, area, score; };
         std::vector<BBox> bboxes;
         bboxes.reserve(boxesPts.size());
@@ -734,8 +734,8 @@ static OCRResult runOcr(
             for (auto& p : boxPts) p.y += (float)detPrep.yOffset;
         }
 
-        // Y-position filter for subtitle only — align with Python rapidocr
-        // Python: 620 <= y_center <= 700 on 720p frames → ratio 0.86-0.97
+        // Y-position filter for subtitle only — 对齐 Python rapidocr 绝对值
+        // Python: 620 <= y_center <= 700 on 720p frames
         if (subtitleOnly) {
             float yMinCk = boxPts[0].y, yMaxCk = boxPts[0].y;
             for (auto& p : boxPts) {
@@ -743,9 +743,7 @@ static OCRResult runOcr(
                 yMaxCk = std::max(yMaxCk, p.y);
             }
             float yCenter = (yMinCk + yMaxCk) / 2;
-            float yMinRatio = 0.85f;  // 620/720 ≈ 0.86
-            float yMaxRatio = 0.99f;  // 700/720 ≈ 0.97, with margin
-            if (yCenter < (float)(img.h * yMinRatio) || yCenter > (float)(img.h * yMaxRatio)) continue;
+            if (yCenter < 620.0f || yCenter > 700.0f) continue;
         }
 
         // 对齐 Python rapidocr: orderPointsClockwise 排序 + warpPerspective 裁剪
@@ -874,16 +872,18 @@ static std::string toJson(const OCRResult& r) {
 
 static int runMain(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <image_path> [text_score] [--subtitle-only] [--device cpu|cuda|dml|coreml|rocm]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <image_path> [text_score] [--subtitle-only] [--no-nms] [--device cpu|cuda|dml|coreml|rocm]" << std::endl;
         return 1;
     }
 
     std::string imagePath = argv[1];
     float textScore = 0.5f;
     bool subtitleOnly = false;
+    bool useNms = true;
     std::string device = "cpu";
     for (int i = 2; i < argc; ++i) {
         if (strcmp(argv[i], "--subtitle-only") == 0) subtitleOnly = true;
+        else if (strcmp(argv[i], "--no-nms") == 0) useNms = false;
         else if (strcmp(argv[i], "--device") == 0 && i + 1 < argc) { device = argv[++i]; }
         else if (argv[i][0] != '-') textScore = std::stof(argv[i]);
     }
@@ -950,7 +950,7 @@ static int runMain(int argc, char* argv[]) {
 
         // Run OCR
         auto result = runOcr(imagePath, charList, detSession, clsSession, recSession, memInfo,
-                             textScore, subtitleOnly);
+                             textScore, subtitleOnly, useNms);
 
         // Output JSON
         std::cout << toJson(result);

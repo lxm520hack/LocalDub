@@ -91,10 +91,11 @@ interface CppFrameTiming {
 	recMs: number;
 }
 
-function ocrFrameCpp(framePath: string, textScore?: number, subtitleOnly?: boolean, customBin?: string, customLdPath?: string): CppFrameTiming {
+function ocrFrameCpp(framePath: string, textScore?: number, subtitleOnly?: boolean, customBin?: string, customLdPath?: string, noNms?: boolean): CppFrameTiming {
 	const args: string[] = [framePath];
 	if (textScore != null) args.push(String(textScore));
 	if (subtitleOnly) args.push('--subtitle-only');
+	if (noNms) args.push('--no-nms');
 	const bin = customBin || CPP_BIN;
 	const ldPath = customLdPath || CPP_LD_PATH;
 	const r = spawnSync(bin, args, {
@@ -433,7 +434,7 @@ function runOCRBenchmarkCpp(label: string, fps: number, textScore?: number, subt
 	return summary;
 }
 
-function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number, subtitleOnly?: boolean) {
+function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number, subtitleOnly?: boolean, noNms?: boolean) {
 	const outDir = join(RESULTS_BASE, label);
 	const metadataDir = join(outDir, 'metadata');
 	mkdirSync(metadataDir, { recursive: true });
@@ -441,7 +442,7 @@ function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number
 
 	if (!existsSync(VIDEO_PATH)) throw new Error(`Video not found: ${VIDEO_PATH}`);
 
-	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=cpp-opencv) ===`);
+	console.log(`\n=== OCR Benchmark: ${label} (fps=${fps}, engine=cpp-opencv, noNms=${noNms ?? false}) ===`);
 
 	console.log('  extracting frames...');
 	const { durationS: durationSCpp, step: stepCpp, srcFps: srcFpsCpp } = extractFrames(VIDEO_PATH, frameDir, fps);
@@ -458,7 +459,7 @@ function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number
 		const f = frameFiles[i];
 		const framePath = join(frameDir, f);
 		const timestampMs = Math.round((i * stepCpp / srcFpsCpp) * 1000);
-		const result = ocrFrameCpp(framePath, textScore, subtitleOnly, CPP_OPENCV_BIN, CPP_OPENCV_LD_PATH);
+		const result = ocrFrameCpp(framePath, textScore, subtitleOnly, CPP_OPENCV_BIN, CPP_OPENCV_LD_PATH, noNms);
 		totalMs += result.totalMs;
 		totalDetMs += result.detMs;
 		totalPostMs += result.postMs;
@@ -668,7 +669,8 @@ if (require.main === module) {
 	const runs = process.argv.includes('--runs') ? parseInt(process.argv[process.argv.indexOf('--runs') + 1], 10) : 1;
 	globalLabelSuffix = process.argv.includes('--label-suffix') ? process.argv[process.argv.indexOf('--label-suffix') + 1] : null;
 	const labelOverride = process.argv.includes('--label-override') ? process.argv[process.argv.indexOf('--label-override') + 1] : null;
-	console.log(`Engine: ${engine}  Only: ${onlyLabel ?? 'all'}  Runs: ${runs}${globalLabelSuffix ? `  LabelSuffix: ${globalLabelSuffix}` : ''}${labelOverride ? `  LabelOverride: ${labelOverride}` : ''}`);
+	const noNms = process.argv.includes('--no-nms');
+	console.log(`Engine: ${engine}  Only: ${onlyLabel ?? 'all'}  Runs: ${runs}${globalLabelSuffix ? `  LabelSuffix: ${globalLabelSuffix}` : ''}${labelOverride ? `  LabelOverride: ${labelOverride}` : ''}${noNms ? `  NMS=OFF` : ''}`);
 
 	async function main() {
 		const fpsOptions: { fps: number; textScore?: number; subtitleOnly?: boolean }[] = [
@@ -693,7 +695,7 @@ if (require.main === module) {
 				if (engine === 'node') {
 					r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);
 				} else if (engine === 'cpp-opencv') {
-					r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly);
+					r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly, noNms);
 				} else if (engine === 'cpp') {
 					r = runOCRBenchmarkCpp(label, opt.fps, opt.textScore, opt.subtitleOnly);
 				} else if (engine === 'rust') {
@@ -709,7 +711,7 @@ if (require.main === module) {
 				if (engine === 'node') {
 					r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);
 				} else if (engine === 'cpp-opencv') {
-					r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly);
+					r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly, noNms);
 				} else if (engine === 'cpp') {
 					r = runOCRBenchmarkCpp(label, opt.fps, opt.textScore, opt.subtitleOnly);
 				} else if (engine === 'rust') {
@@ -725,7 +727,7 @@ if (require.main === module) {
 					if (engine === 'node') {
 						r = await runOCRBenchmarkNode(label, opt.fps, opt.textScore, opt.subtitleOnly);
 					} else if (engine === 'cpp-opencv') {
-						r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly);
+						r = runOCRBenchmarkCppOpencv(label, opt.fps, opt.textScore, opt.subtitleOnly, noNms);
 					} else if (engine === 'cpp') {
 						r = runOCRBenchmarkCpp(label, opt.fps, opt.textScore, opt.subtitleOnly);
 					} else if (engine === 'rust') {
