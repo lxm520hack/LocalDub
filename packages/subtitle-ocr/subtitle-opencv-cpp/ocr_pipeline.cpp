@@ -160,14 +160,18 @@ static DetPreproc preprocessDet(const uint8_t* rgb, int H, int W, bool bottomOnl
     }
     out.origH = roiH; out.origW = W;
 
-    int newW, newH;
-    if (roiH <= W) {
-        newH = DET_LIMIT_SIDE;
-        newW = (int)std::round((float)W * DET_LIMIT_SIDE / roiH);
+    // 对齐 Python rapidocr limit_type='min':
+    //   if min(h, w) < limit_side_len: scale so shorter side becomes 736
+    //   else: keep original size (ratio = 1.0)
+    float ratio;
+    if (std::min(roiH, W) < DET_LIMIT_SIDE) {
+        if (roiH < W) ratio = (float)DET_LIMIT_SIDE / (float)roiH;
+        else          ratio = (float)DET_LIMIT_SIDE / (float)W;
     } else {
-        newW = DET_LIMIT_SIDE;
-        newH = (int)std::round((float)roiH * DET_LIMIT_SIDE / W);
+        ratio = 1.0f;
     }
+    int newW = (int)(W * ratio);
+    int newH = (int)(roiH * ratio);
     newW = ((newW + 31) / 32) * 32;
     newH = ((newH + 31) / 32) * 32;
     out.resizedW = newW; out.resizedH = newH;
@@ -394,13 +398,15 @@ static std::vector<std::pair<Polygon, float>> dbPostprocess(
         if (score < boxThresh) continue;
 
         // ---------------- unclip(orderedPts, distance) ------------
-        // Python: Polygon(pts).area * unclip_ratio / Polygon(pts).length
-        // then PyclipperOffset(JT_ROUND, ET_CLOSEDPOLYGON).Execute(distance)
+        // Python rapidocr:
+        //   distance = polygon_area * unclip_ratio / polygon_length
+        //   expanded = PyclipperOffset(JT_ROUND, ET_CLOSEDPOLYGON).Execute(poly, distance)
         //
-        // For *rectilinear* 4-point polygons, pyclipper's result is still a
-        // (larger) 4-point polygon with the same angle. We implement this
-        // via `offsetPolygon` (vertex-normal approach) for now; Clipper
-        // C++ library integration is planned for arbitrary polygons.
+        // OpenCV-based replacement (no external Clipper needed):
+        //   1. Rasterize polygon to a small binary mask
+        //   2. Dilate by `distance` pixels (equivalent to outward offset)
+        //   3. Find the outer contour of the dilated mask
+        //   4. Feed to cv::minAreaRect — same pipeline as Python
         {
             float area = 0, len = 0;
             for (int k = 0; k < 4; ++k) {
@@ -412,15 +418,58 @@ static std::vector<std::pair<Polygon, float>> dbPostprocess(
             float dist = len > 0 ? area * unclipRatio / len : 0;
             dist = std::max(3.0f, dist);
 
-            // Convert our ordered cv::Point2f into C++ Polygon for offset
-            Polygon tmpPoly;
-            for (auto& p : orderedCV) tmpPoly.push_back({p.x, p.y});
-            Polygon expanded = offsetPolygon(tmpPoly, dist);
-            if (expanded.size() < 3) continue;
+            // ---- Rasterize + dilate approach (OpenCV-only polygon offset) ----
+            float xmin = orderedCV[0].x, xmax = orderedCV[0].x;
+            float ymin = orderedCV[0].y, ymax = orderedCV[0].y;
+            for (auto& p : orderedCV) {
+                xmin = std::min(xmin, p.x); xmax = std::max(xmax, p.x);
+                ymin = std::min(ymin, p.y); ymax = std::max(ymax, p.y);
+            }
+            int margin = (int)std::ceil(dist) + 2;
+            int maskW = (int)std::ceil(xmax - xmin) + 2 * margin;
+            int maskH = (int)std::ceil(ymax - ymin) + 2 * margin;
+            if (maskW <= 0 || maskH <= 0) continue;
+
+            cv::Mat mask = cv::Mat::zeros(maskH, maskW, CV_8UC1);
+            std::vector<cv::Point> pts_poly;
+            pts_poly.reserve(4);
+            for (auto& p : orderedCV) {
+                pts_poly.push_back(cv::Point((int)std::round(p.x - xmin) + margin,
+                                             (int)std::round(p.y - ymin) + margin));
+            }
+            std::vector<std::vector<cv::Point>> fillList{pts_poly};
+            cv::fillPoly(mask, fillList, cv::Scalar(255));
+
+            // Dilate by `distance` — equivalent to outward offset for all points
+            int kernelSize = std::max(1, (int)(2 * dist + 1));
+            cv::Mat dilKernel = cv::getStructuringElement(cv::MORPH_RECT,
+                                                          cv::Size(kernelSize, kernelSize));
+            cv::Mat dilated;
+            cv::dilate(mask, dilated, dilKernel);
+
+            // Find outer contour of the dilated mask
+            std::vector<std::vector<cv::Point>> dilContours;
+            std::vector<cv::Vec4i> dilHier;
+            cv::findContours(dilated, dilContours, dilHier, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            if (dilContours.empty()) continue;
+
+            // Find largest contour (in case of noise)
+            size_t largestIdx = 0;
+            double largestArea = 0;
+            for (size_t ci = 0; ci < dilContours.size(); ++ci) {
+                double a = cv::contourArea(dilContours[ci]);
+                if (a > largestArea) { largestArea = a; largestIdx = ci; }
+            }
+
+            // Map contour back to original coordinate space
+            std::vector<cv::Point2f> cv_expanded;
+            cv_expanded.reserve(dilContours[largestIdx].size());
+            for (auto& pt : dilContours[largestIdx]) {
+                cv_expanded.push_back(cv::Point2f((float)(pt.x - margin) + xmin,
+                                                  (float)(pt.y - margin) + ymin));
+            }
 
             // ---------------- get_mini_boxes(expanded) ------------
-            std::vector<cv::Point2f> cv_expanded;
-            for (auto& p : expanded) cv_expanded.push_back({p.x, p.y});
             cv::RotatedRect finalRect = cv::minAreaRect(cv_expanded);
             cv::Mat finalPtsMat;
             cv::boxPoints(finalRect, finalPtsMat);
@@ -669,51 +718,6 @@ static OCRResult runOcr(
     std::cerr << "[OCR] dbPostprocess " << outH << "x" << outW << " (orig " << detPrep.origH << "x" << detPrep.origW << ")..." << std::endl;
     auto boxesPts = dbPostprocess(heatmapData, outH, outW, detPrep.origH, detPrep.origW,
                                   DET_THRESH, BOX_THRESH, UNCLIP_RATIO, MAX_CANDIDATES);
-
-    // NMS-like overlapping box filter — prevent one line being split into
-    // multiple detection boxes (common cause of "主慧天" + "徒" + "王慧天..." etc.)
-    if (boxesPts.size() > 1) {
-        struct BBox { int idx; float xMin, yMin, xMax, yMax, area, score; };
-        std::vector<BBox> bboxes;
-        bboxes.reserve(boxesPts.size());
-        for (size_t i = 0; i < boxesPts.size(); ++i) {
-            const auto& poly = boxesPts[i].first;
-            if (poly.size() < 4) continue;
-            float xMin = poly[0].x, xMax = poly[0].x, yMin = poly[0].y, yMax = poly[0].y;
-            for (const auto& p : poly) {
-                xMin = std::min(xMin, p.x); xMax = std::max(xMax, p.x);
-                yMin = std::min(yMin, p.y); yMax = std::max(yMax, p.y);
-            }
-            float area = std::max(1.0f, (xMax - xMin)) * std::max(1.0f, (yMax - yMin));
-            bboxes.push_back({(int)i, xMin, yMin, xMax, yMax, area, boxesPts[i].second});
-        }
-        // Sort by area desc — keep larger boxes
-        std::sort(bboxes.begin(), bboxes.end(), [](const BBox& a, const BBox& b) { return a.area > b.area; });
-        std::vector<bool> keep(boxesPts.size(), true);
-        for (size_t i = 0; i < bboxes.size(); ++i) {
-            if (!keep[bboxes[i].idx]) continue;
-            const BBox& a = bboxes[i];
-            for (size_t j = i + 1; j < bboxes.size(); ++j) {
-                if (!keep[bboxes[j].idx]) continue;
-                const BBox& b = bboxes[j];
-                float iXMin = std::max(a.xMin, b.xMin);
-                float iYMin = std::max(a.yMin, b.yMin);
-                float iXMax = std::min(a.xMax, b.xMax);
-                float iYMax = std::min(a.yMax, b.yMax);
-                if (iXMax <= iXMin || iYMax <= iYMin) continue;
-                float iArea = (iXMax - iXMin) * (iYMax - iYMin);
-                // If b's bbox is mostly inside a's bbox, drop b
-                // Also remove if significant Y overlap + X overlap (>70% of b's area)
-                if (iArea / b.area > 0.7f) keep[bboxes[j].idx] = false;
-            }
-        }
-        decltype(boxesPts) filtered;
-        filtered.reserve(boxesPts.size());
-        for (size_t i = 0; i < boxesPts.size(); ++i) {
-            if (keep[i]) filtered.push_back(std::move(boxesPts[i]));
-        }
-        boxesPts = std::move(filtered);
-    }
 
     auto t2 = clock::now();
     result.postMs = std::chrono::duration<double, std::milli>(t2 - t1).count();

@@ -5,9 +5,8 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <cstring>
+#include <opencv2/opencv.hpp>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -19,45 +18,40 @@ struct Image {
 };
 
 static Image loadImage(const char* path) {
-    Image img;
-    int n = 0;
-    unsigned char* pixels = nullptr;
-
+    // Use cv::imread directly — it produces BGR output which matches
+    // what PaddleOCR/RapidOCR models were trained with. cv::imread also
+    // uses libjpeg-turbo internally for faster and more consistent
+    // JPEG decoding than stb_image.
+    cv::Mat mat;
 #ifdef _WIN32
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        DWORD err = GetLastError();
-        int wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, nullptr, 0);
-        if (wlen > 0) {
-            std::wstring wpath(wlen, L'\0');
-            MultiByteToWideChar(CP_ACP, 0, path, -1, &wpath[0], wlen);
-            f = _wfopen(wpath.c_str(), L"rb");
-        }
-        if (!f) {
-            throw std::runtime_error(std::string("Failed to open file (err=") + std::to_string(err) + "): " + path);
-        }
+    int wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, nullptr, 0);
+    if (wlen > 0) {
+        std::wstring wpath(wlen, L'\0');
+        MultiByteToWideChar(CP_ACP, 0, path, -1, &wpath[0], wlen);
+        mat = cv::imread(wpath, cv::IMREAD_COLOR);
+    } else {
+        mat = cv::imread(path, cv::IMREAD_COLOR);
     }
-    pixels = stbi_load_from_file(f, &img.w, &img.h, &n, 3);
-    fclose(f);
 #else
-    pixels = stbi_load(path, &img.w, &img.h, &n, 3);
+    mat = cv::imread(path, cv::IMREAD_COLOR);
 #endif
 
-    if (!pixels) {
-        std::string reason = stbi_failure_reason() ? stbi_failure_reason() : "unknown";
-        throw std::runtime_error("Failed to load image: " + reason);
+    if (mat.empty()) {
+        throw std::runtime_error("Failed to load image: " + std::string(path));
     }
-    if (img.w <= 0 || img.h <= 0) {
-        throw std::runtime_error("Invalid image dimensions: " + std::to_string(img.w) + "x" + std::to_string(img.h));
-    }
-    img.c = 3;
-    img.data.assign(pixels, pixels + img.w * img.h * 3);
-    stbi_image_free(pixels);
 
-    // stbi_load returns RGB order, but PaddleOCR/RapidOCR models were trained
-    // with cv2.imread (BGR order). Convert RGB -> BGR to match model training.
-    for (int i = 0; i < img.w * img.h; ++i) {
-        std::swap(img.data[i * 3 + 0], img.data[i * 3 + 2]);
+    Image img;
+    img.w = mat.cols;
+    img.h = mat.rows;
+    img.c = 3;
+    img.data.resize((size_t)img.w * img.h * 3);
+
+    if (mat.isContinuous()) {
+        std::memcpy(img.data.data(), mat.data, (size_t)img.w * img.h * 3);
+    } else {
+        for (int y = 0; y < img.h; ++y) {
+            std::memcpy(img.data.data() + (size_t)y * img.w * 3, mat.ptr(y), (size_t)img.w * 3);
+        }
     }
     return img;
 }
