@@ -62,7 +62,7 @@ pub fn run_ocr(
     // --- POST ---
     let t0 = Instant::now();
     let mut boxes: Vec<DetBox> =
-        db_postprocess(&heatmap, hm_w, hm_h, det_prep.orig_w, det_prep.orig_h, text_score);
+        db_postprocess(&heatmap, hm_w, hm_h, det_prep.orig_w, det_prep.orig_h, 0.5);
     if det_prep.y_offset > 0 {
         let off = det_prep.y_offset as f32;
         for b in &mut boxes { for p in &mut b.polygon { p.y += off; } }
@@ -75,7 +75,7 @@ pub fn run_ocr(
     for b in &boxes {
         if subtitle_only {
             let cy = b.polygon.iter().map(|p| p.y).sum::<f32>() / 4.0;
-            if cy < (full_h as f32) * 0.55 { continue; }
+            if cy < 620.0 || cy > 700.0 { continue; }
         }
 
         let ordered = order_points_clockwise(&b.polygon);
