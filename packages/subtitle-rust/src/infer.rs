@@ -18,8 +18,14 @@ fn load_model(models_dir: &std::path::Path, filename: &str) -> Result<Session> {
     if !path.exists() {
         return Err(format!("model not found: {}", path.display()));
     }
+    // 与 C++ 对齐：限制 intra-op 线程数为 4，减少多核上的线程争用。
+    // 在 16 核 CPU 上 batch-1 推理：过多线程反而会因为 cache 竞争 + 线程切换
+    // 开销导致更高方差和更慢的平均速度。
     Session::builder()
-        .and_then(|mut b| b.commit_from_file(&path))
+        .map_err(|e| format!("ORT builder: {}", e))?
+        .with_intra_threads(4)
+        .map_err(|e| format!("ORT intra threads: {}", e))?
+        .commit_from_file(&path)
         .map_err(|e| format!("failed to load {}: {}", filename, e))
 }
 
