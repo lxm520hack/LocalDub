@@ -439,11 +439,11 @@ const StagesSchema = z.object({
 	split_audio: SplitAudioConfigSchema,
 	tts: TTSConfigSchema,
 	merge_audio: z.object({
-		maxSpeed: z.number().min(1).default(1.05).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
+		maxSpeed: z.number().min(1).default(1.35).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
 		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间'),
 		maxDelayMs: z.number().min(0).default(500).optional().describe('字幕允许延迟显示的最大毫秒数, 借用后段留白'),
 	}).default({
-		maxSpeed: 1.05,
+		maxSpeed: 1.35,
 		maxAdvanceMs: 500,
 		maxDelayMs: 500,
 	}).optional(),

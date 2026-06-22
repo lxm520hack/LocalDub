@@ -36,7 +36,7 @@ export async function stageMergeAudio(ctx: Context) {
   let lastEndMs = 0;
   let drift = 0;
 
-  const maxSpeed = ctx.input?.stages?.merge_audio?.maxSpeed ?? 1.05;
+  const maxSpeed = ctx.input?.stages?.merge_audio?.maxSpeed ?? 1.35;
   const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
   const maxDelayMs = ctx.input?.stages?.merge_audio?.maxDelayMs ?? 500;
 
