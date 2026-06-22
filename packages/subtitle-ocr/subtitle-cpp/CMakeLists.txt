@@ -31,6 +31,7 @@ add_executable(ocr_pipeline ocr_pipeline.cpp)
 target_include_directories(ocr_pipeline PRIVATE
     "${ORT_INCLUDE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}"
+    "C:/msys64/mingw64/include"
 )
 
 target_link_directories(ocr_pipeline PRIVATE "${ORT_LIB_DIR}")
@@ -38,6 +39,8 @@ target_link_directories(ocr_pipeline PRIVATE "${ORT_LIB_DIR}")
 if(WIN32)
     find_library(ONNXRUNTIME_LIB onnxruntime PATHS "${ORT_LIB_DIR}" NO_DEFAULT_PATH)
     target_link_libraries(ocr_pipeline PRIVATE ${ONNXRUNTIME_LIB})
+
+    # Copy ORT DLLs
     add_custom_command(TARGET ocr_pipeline POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${ORT_LIB_DIR}/onnxruntime.dll"
@@ -46,6 +49,20 @@ if(WIN32)
             "${ORT_LIB_DIR}/onnxruntime_providers_shared.dll"
             "$<TARGET_FILE_DIR:ocr_pipeline>/"
         COMMENT "Copying ORT DLLs"
+    )
+
+    # Copy MinGW CRT DLLs required at runtime
+    add_custom_command(TARGET ocr_pipeline POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "C:/msys64/mingw64/bin/libstdc++-6.dll"
+            "$<TARGET_FILE_DIR:ocr_pipeline>/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "C:/msys64/mingw64/bin/libgcc_s_seh-1.dll"
+            "$<TARGET_FILE_DIR:ocr_pipeline>/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "C:/msys64/mingw64/bin/libwinpthread-1.dll"
+            "$<TARGET_FILE_DIR:ocr_pipeline>/"
+        COMMENT "Copying MinGW CRT DLLs"
     )
 else()
     find_library(ONNXRUNTIME_LIB onnxruntime PATHS "${ORT_LIB_DIR}" NO_DEFAULT_PATH)

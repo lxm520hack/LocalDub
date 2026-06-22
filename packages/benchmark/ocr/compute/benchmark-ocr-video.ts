@@ -1,10 +1,33 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { main as evalOcrMain } from '../../ref/compute/eval-ocr.ts';
 import { createSessions, ocrFrameWithSessions, releaseSessions } from '../../../subtitle-ocr/subtitle-node.ts';
 import { FrameResult, Segment, mergeFrames } from '../../../cli/src/feat/stages/utils/ocrMerge.ts';
 import { REPO_ROOT } from '@repo/config';
+
+
+/** Find rapidocr model directory dynamically. */
+function findRapidOCRModelsDir(): string {
+	const venvBase = resolve(REPO_ROOT, '.venv');
+	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
+	if (!existsSync(sitePackagesBase)) {
+		throw new Error(`site-packages not found: ${sitePackagesBase}`);
+	}
+	let spDir = sitePackagesBase;
+	if (process.platform !== 'win32') {
+		const entries = readdirSync(spDir, { withFileTypes: true });
+		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
+		if (pyDir) {
+			spDir = join(spDir, pyDir.name);
+		}
+	}
+	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
+	if (!existsSync(modelsDir)) {
+		throw new Error(`rapidocr models not found: ${modelsDir}`);
+	}
+	return modelsDir;
+}
 
 const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');
 const VIDEO_PATH = join(VIDEOS_PATH, 'video_source.mp4');
@@ -22,7 +45,7 @@ const CPP_OPENCV_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-
 const CPP_OPENCV_LD_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-opencv-cpp', 'build');
 const RUST_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-rust', 'target', 'release', 'ocr_pipeline_rs');
 const RUST_INFER_PY = resolve(REPO_ROOT, 'packages', 'subtitle-rust', 'infer_onnx.py');
-const OCR_MODELS_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
+const OCR_MODELS_DIR = findRapidOCRModelsDir();
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const OCR_PY = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py');
