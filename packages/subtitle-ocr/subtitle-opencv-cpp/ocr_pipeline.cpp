@@ -42,7 +42,7 @@ constexpr int DET_LIMIT_SIDE = 736;
 constexpr int CLS_H = 48;
 constexpr int CLS_W = 192;
 constexpr int REC_H = 48;
-constexpr int REC_MAX_W = 2000;
+// 注意：Python rapidocr 的 rec resize 无硬上限/下限（img_width = int(48 * ratio)）
 
 constexpr float DET_THRESH = 0.3f;
 constexpr float BOX_THRESH = 0.5f;
@@ -237,13 +237,15 @@ struct RecPreproc {
 };
 
 static RecPreproc preprocessRec(const uint8_t* rgb, int H, int W) {
-    // 与 Python TextRecognizer.resize_norm_img 对齐：等比 resize + zero padding
+    // 与 Python TextRecognizer.resize_norm_img 精确对齐：
+    //   img_width = int(img_height * max_wh_ratio)
+    //   （int 截断 = 向下取整；无上下限）
+    //   resized_w = img_width（当 48*ratio 不是整数时，占绝大多数情况）
     float whRatio = (float)W / (float)H;
-    int imgW = std::max(32, (int)(REC_H * whRatio));
-    imgW = std::min(REC_MAX_W, imgW);
+    int imgW = (int)(REC_H * whRatio);  // int 截断 = floor（正数值），与 Python 的 int() 一致
 
     int resizedW;
-    if (std::ceil((float)REC_H * whRatio) > imgW) {
+    if (std::ceil((float)REC_H * whRatio) > (float)imgW) {
         resizedW = imgW;
     } else {
         resizedW = (int)std::ceil((float)REC_H * whRatio);

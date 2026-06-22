@@ -1,11 +1,9 @@
 //! Pre-processing for Det / Cls / Rec model inputs.
 //!
-//! Matches the normalization and resize strategies used in the C++ pipeline:
-//! - Det: bottom 40% crop (when `bottom_only`), scale such that the longest
-//!   side is 736px, round to 32px grid, then ImageNet mean/std normalization.
-//! - Cls: resize to 48×192, then `(x/255 - 0.5) / 0.5`.
-//! - Rec: fixed height 48, keep aspect ratio, clamp width to [32, 320],
-//!   then the same `(x/255 - 0.5) / 0.5`.
+//! 精确对齐 Python rapidocr：
+//! - Det: scale so shortest side is 736px, round to 32px grid (同 C++/Python)
+//! - Cls: resize to 48×192, (x/255 - 0.5) / 0.5
+//! - Rec: 固定高度 48, 保持纵横比, `img_width = int(48 * ratio)`（无上下限，int 截断）
 
 use crate::image::{resize_bilinear, Image};
 
@@ -13,7 +11,7 @@ pub const DET_LIMIT_SIDE: usize = 736;
 pub const CLS_W: usize = 192;
 pub const CLS_H: usize = 48;
 pub const REC_H: usize = 48;
-pub const REC_MAX_W: usize = 2000;
+// 注意：Python 无 REC_MAX_W，此处也不设置
 
 pub struct DetPreproc {
     pub tensor: Vec<f32>, // NCHW, 1 * 3 * resized_h * resized_w
@@ -42,19 +40,20 @@ pub fn preprocess_det(full: &Image, bottom_only: bool) -> DetPreproc {
     };
 
     let (orig_w, orig_h) = (roi.w, roi.h);
-    let (new_w, new_h) = if orig_h <= orig_w {
+    let (new_w_f, new_h_f) = if orig_h <= orig_w {
         (
-            ((orig_w as f32) * (DET_LIMIT_SIDE as f32) / (orig_h as f32)).round() as usize,
-            DET_LIMIT_SIDE,
+            (orig_w as f32) * (DET_LIMIT_SIDE as f32) / (orig_h as f32),
+            DET_LIMIT_SIDE as f32,
         )
     } else {
         (
-            DET_LIMIT_SIDE,
-            ((orig_h as f32) * (DET_LIMIT_SIDE as f32) / (orig_w as f32)).round() as usize,
+            DET_LIMIT_SIDE as f32,
+            (orig_h as f32) * (DET_LIMIT_SIDE as f32) / (orig_w as f32),
         )
     };
-    let new_w = (new_w as f32 / 32.0).round() as usize * 32;
-    let new_h = (new_h as f32 / 32.0).round() as usize * 32;
+    // 先 int 截断（与 C++ 的 int(W*ratio)、Python 的 int() 一致），再 32 对齐
+    let new_w = (new_w_f as usize as f32 / 32.0).round() as usize * 32;
+    let new_h = (new_h_f as usize as f32 / 32.0).round() as usize * 32;
 
     let mut resized = vec![0u8; new_w * new_h * 3];
     resize_bilinear(&roi.data, roi.w, roi.h, &mut resized, new_w, new_h);
@@ -97,7 +96,10 @@ pub struct RecPreproc {
 pub fn preprocess_rec(img: &Image) -> RecPreproc {
     let (orig_w, orig_h) = (img.w as f32, img.h as f32);
     let ratio = orig_w / orig_h;
-    let img_w = REC_MAX_W.min(32.max((REC_H as f32 * ratio).round() as usize));
+    // 精确对齐 Python: int(img_height * max_wh_ratio)
+    // 在 Rust 中 `as usize` 对正数等同于 int() 截断（向下取整）
+    // 注意：Python 没有 min/max 上下限
+    let img_w = (REC_H as f32 * ratio) as usize;
 
     let mut resized = vec![0u8; img_w * REC_H * 3];
     resize_bilinear(&img.data, img.w, img.h, &mut resized, img_w, REC_H);
