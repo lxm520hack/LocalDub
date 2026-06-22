@@ -247,23 +247,16 @@ static float polygonLength(const Polygon& poly) {
 
 // --- Polygon offset (vertex normal approach) ---
 //
-// Python pyclipper.PyclipperOffset with JT_ROUND / ET_CLOSEDPOLYGON pushes
-// each polygon vertex *outward* along its averaged edge normal by `distance`.
-//
-// C++: compute outward normal for each vertex = average of normals of the
-// two adjacent edges.  Works for CW polygon (tl->tr->br->bl) produced by
-// boxPoints; outward normals always point away from the polygon interior.
+// Push each polygon vertex outward along the averaged edge-normal direction.
+// This approximates pyclipper.PyclipperOffset(JT_ROUND, ET_CLOSEDPOLYGON) for
+// rectangular polygons.  The exact expansion factor is slightly less than
+// pyclipper's (distance/sqrt(2) instead of distance), but the NMS post-filter
+// compensates for resulting box overlaps.
 static Polygon offsetPolygon(const Polygon& poly, float distance) {
     if (poly.empty()) return {};
     int n = (int)poly.size();
     Polygon result;
 
-    // Determine signed area.
-    // In image (y-down) coordinates, polygon tl→tr→br→bl is CW visually
-    // but produces positive signed area via Shoelace.
-    // Per-edge 90°-CCW rotation (e.y, -e.x) already points *outward* when
-    // the vertex order is positive-signed-area; flip sign if the area is
-    // negative.
     float signedArea = 0;
     for (int i = 0; i < n; ++i) {
         int j = (i + 1) % n;
@@ -275,28 +268,22 @@ static Polygon offsetPolygon(const Polygon& poly, float distance) {
         int prev = (i - 1 + n) % n;
         int next = (i + 1) % n;
 
-        // Edge vectors: poly[i] - poly[prev] and poly[next] - poly[i]
         float e1x = poly[i].x - poly[prev].x, e1y = poly[i].y - poly[prev].y;
         float e2x = poly[next].x - poly[i].x, e2y = poly[next].y - poly[i].y;
 
-        // Normalize edge directions
         float len1 = std::sqrt(e1x * e1x + e1y * e1y);
         float len2 = std::sqrt(e2x * e2x + e2y * e2y);
         if (len1 < 1e-6f || len2 < 1e-6f) continue;
 
-        // Perpendicular to each edge (90° CW rotation): (e.y, -e.x)
-        // Sign-flip as needed to guarantee *outward* direction.
-        float n1x =  e1y / len1, n1y = -e1x / len1;
-        float n2x =  e2y / len2, n2y = -e2x / len2;
-        n1x *= sign; n1y *= sign;
-        n2x *= sign; n2y *= sign;
+        float n1x = sign * e1y / len1, n1y = -sign * e1x / len1;
+        float n2x = sign * e2y / len2, n2y = -sign * e2x / len2;
 
         // Average outward normal
         float nx = n1x + n2x, ny = n1y + n2y;
         float nlen = std::sqrt(nx * nx + ny * ny);
         if (nlen < 1e-6f) {
             nx = n1x; ny = n1y;
-            nlen = 1;
+            nlen = 1.0f;
         }
 
         float scale = distance / nlen;

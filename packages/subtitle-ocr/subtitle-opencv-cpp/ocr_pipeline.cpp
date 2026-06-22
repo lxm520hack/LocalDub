@@ -172,8 +172,11 @@ static DetPreproc preprocessDet(const uint8_t* rgb, int H, int W, bool bottomOnl
     }
     int newW = (int)(W * ratio);
     int newH = (int)(roiH * ratio);
-    newW = ((newW + 31) / 32) * 32;
-    newH = ((newH + 31) / 32) * 32;
+    // 对齐 Python: round(resize_h / 32) * 32 (就近取整而非向上取整)
+    newW = (int)std::round((float)newW / 32.0f) * 32;
+    newH = (int)std::round((float)newH / 32.0f) * 32;
+    newW = std::max(32, newW);
+    newH = std::max(32, newH);
     out.resizedW = newW; out.resizedH = newH;
 
     // cv:: 版本：用 OpenCV SIMD bilinear resize 替代手写三重循环
@@ -583,10 +586,10 @@ static Image warpPerspectiveCrop(const Image& img, const Polygon& pts) {
     };
     // Destination rectangle corners (tl, tr, br, bl)
     cv::Point2f dstPts[4] = {
-        cv::Point2f(0, 0),
-        cv::Point2f((float)(dstW - 1), 0),
+        cv::Point2f(0.0f, 0.0f),
+        cv::Point2f((float)(dstW - 1), 0.0f),
         cv::Point2f((float)(dstW - 1), (float)(dstH - 1)),
-        cv::Point2f(0, (float)(dstH - 1))
+        cv::Point2f(0.0f, (float)(dstH - 1))
     };
 
     cv::Mat M = cv::getPerspectiveTransform(srcPts, dstPts);
