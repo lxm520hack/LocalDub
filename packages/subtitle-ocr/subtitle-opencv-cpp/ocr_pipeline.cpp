@@ -846,15 +846,15 @@ static OCRResult runOcr(
 }
 
 // --- JSON output ---
-static std::string toJson(const OCRResult& r) {
+static std::string toJson(const OCRResult& r, const std::string& filename = "") {
     std::ostringstream ss;
     ss << std::fixed << std::setprecision(2);
-    ss << "{\n";
-    ss << "  \"text\": " << std::quoted(r.text) << ",\n";
-    ss << "  \"segments\": [\n";
+    ss << "{\"text\": " << std::quoted(r.text);
+    if (!filename.empty()) ss << ", \"file\": " << std::quoted(filename);
+    ss << ", \"segments\": [";
     for (size_t i = 0; i < r.segments.size(); ++i) {
         auto& seg = r.segments[i];
-        ss << "    {\"text\": " << std::quoted(seg.text)
+        ss << "{\"text\": " << std::quoted(seg.text)
            << ", \"confidence\": " << seg.confidence
            << ", \"box\": [";
         for (size_t j = 0; j < seg.box.size(); ++j) {
@@ -863,36 +863,65 @@ static std::string toJson(const OCRResult& r) {
         }
         ss << "]}";
         if (i + 1 < r.segments.size()) ss << ",";
-        ss << "\n";
     }
-    ss << "  ],\n";
-    ss << "  \"charListLoadMs\": " << r.charListLoadMs << ",\n";
-    ss << "  \"imageLoadMs\": " << r.imageLoadMs << ",\n";
-    ss << "  \"modelLoadMs\": " << r.modelLoadMs << ",\n";
-    ss << "  \"detInferenceMs\": " << r.detMs << ",\n";
-    ss << "  \"postprocessMs\": " << r.postMs << ",\n";
-    ss << "  \"recInferenceMs\": " << r.recMs << ",\n";
-    ss << "  \"totalMs\": " << r.totalMs << "\n";
-    ss << "}\n";
+    ss << "]";
+    ss << ", \"charListLoadMs\": " << r.charListLoadMs
+       << ", \"imageLoadMs\": " << r.imageLoadMs
+       << ", \"modelLoadMs\": " << r.modelLoadMs
+       << ", \"detInferenceMs\": " << r.detMs
+       << ", \"postprocessMs\": " << r.postMs
+       << ", \"recInferenceMs\": " << r.recMs
+       << ", \"totalMs\": " << r.totalMs;
+    ss << "}";
     return ss.str();
 }
 
-static int runMain(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <image_path> [text_score] [--subtitle-only] [--no-nms] [--device cpu|cuda|dml|coreml|rocm]" << std::endl;
-        return 1;
-    }
+#include <filesystem>
+namespace fs = std::filesystem;
 
-    std::string imagePath = argv[1];
+static std::vector<std::string> listFrames(const std::string& dir) {
+    std::vector<std::string> files;
+    for (const auto& entry : fs::directory_iterator(dir)) {
+        if (!entry.is_regular_file()) continue;
+        auto path = entry.path().string();
+        auto ext = entry.path().extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp") {
+            files.push_back(path);
+        }
+    }
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+static std::string extractFilename(const std::string& path) {
+    return fs::path(path).filename().string();
+}
+
+static int runMain(int argc, char* argv[]) {
+    std::string target;
     float textScore = 0.5f;
     bool subtitleOnly = false;
     bool useNms = true;
     std::string device = "cpu";
-    for (int i = 2; i < argc; ++i) {
+    bool dirMode = false;
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <image_path|--dir <directory>> [text_score] [--subtitle-only] [--no-nms] [--device cpu|cuda|dml|coreml|rocm]" << std::endl;
+        return 1;
+    }
+    for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--subtitle-only") == 0) subtitleOnly = true;
         else if (strcmp(argv[i], "--no-nms") == 0) useNms = false;
         else if (strcmp(argv[i], "--device") == 0 && i + 1 < argc) { device = argv[++i]; }
-        else if (argv[i][0] != '-') textScore = std::stof(argv[i]);
+        else if (strcmp(argv[i], "--dir") == 0 && i + 1 < argc) { target = argv[++i]; dirMode = true; }
+        else if (argv[i][0] != '-') {
+            if (target.empty()) target = argv[i];
+            else textScore = std::stof(argv[i]);
+        }
+    }
+    if (target.empty()) {
+        std::cerr << "Error: no image path or --dir given" << std::endl;
+        return 1;
     }
 
     try {
@@ -929,11 +958,8 @@ static int runMain(int argc, char* argv[]) {
         Ort::SessionOptions sessionOptions;
         sessionOptions.SetIntraOpNumThreads(4);
         sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-
-        // Increase session timeout for model loading
         sessionOptions.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
 
-        // Configure execution provider based on device
         if (device == "cuda") {
             try {
                 OrtCUDAProviderOptions cudaOpts{};
@@ -942,15 +968,13 @@ static int runMain(int argc, char* argv[]) {
             } catch (const std::exception& e) {
                 std::cerr << "[OCR] CUDA EP unavailable (" << e.what() << "), falling back to CPU" << std::endl;
             }
-        // Note: DML/CoreML/ROCm providers not available in official onnxruntime build
-        // These would require building onnxruntime from source with respective options
         } else {
             std::cerr << "[OCR] Using CPU execution provider" << std::endl;
         }
 
         auto memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-        // Load models
+        // Load models once
         t0 = clock::now();
         auto detPath = modelDir + "/ch_PP-OCRv3_det_infer.onnx";
         auto clsPath = modelDir + "/ch_ppocr_mobile_v2.0_cls_infer.onnx";
@@ -961,16 +985,28 @@ static int runMain(int argc, char* argv[]) {
         Ort::Session recSession(env, ORT_PATH(recPath), sessionOptions);
         double modelLoadMs = std::chrono::duration<double, std::milli>(clock::now() - t0).count();
 
-        // Run OCR
-        auto result = runOcr(imagePath, charList, detSession, clsSession, recSession, memInfo,
-                             textScore, subtitleOnly, useNms);
-        result.charListLoadMs = charListLoadMs;
-        result.modelLoadMs = modelLoadMs;
-        result.totalMs = result.charListLoadMs + result.imageLoadMs + result.modelLoadMs +
-                         result.detMs + result.postMs + result.recMs;
+        // Build frame list
+        std::vector<std::string> framePaths;
+        if (dirMode) {
+            framePaths = listFrames(target);
+        } else {
+            framePaths.push_back(target);
+        }
 
-        // Output JSON
-        std::cout << toJson(result);
+        // Output: JSON array, one element per frame
+        std::cout << "[";
+        for (size_t fi = 0; fi < framePaths.size(); ++fi) {
+            if (fi > 0) std::cout << ",";
+            const auto& fp = framePaths[fi];
+            auto result = runOcr(fp, charList, detSession, clsSession, recSession, memInfo,
+                                 textScore, subtitleOnly, useNms);
+            result.charListLoadMs = charListLoadMs;
+            result.modelLoadMs = modelLoadMs;
+            result.totalMs = result.charListLoadMs + result.imageLoadMs + result.modelLoadMs +
+                             result.detMs + result.postMs + result.recMs;
+            std::cout << "\n  " << toJson(result, extractFilename(fp));
+        }
+        std::cout << "\n]\n";
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
