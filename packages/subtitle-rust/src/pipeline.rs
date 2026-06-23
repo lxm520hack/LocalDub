@@ -62,7 +62,7 @@ pub fn run_ocr(
     // --- POST ---
     let t0 = Instant::now();
     let mut boxes: Vec<DetBox> =
-        db_postprocess(&heatmap, hm_w, hm_h, det_prep.orig_w, det_prep.orig_h, 0.5);
+        db_postprocess(&heatmap, hm_w, hm_h, det_prep.orig_w, det_prep.orig_h, text_score);
     if det_prep.y_offset > 0 {
         let off = det_prep.y_offset as f32;
         for b in &mut boxes { for p in &mut b.polygon { p.y += off; } }
