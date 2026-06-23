@@ -134,7 +134,7 @@ pub fn run_ocr(
     })
 }
 
-fn infer_rec_shape(rec_out: &[f32], width: usize) -> Vec<usize> {
+fn infer_rec_shape(rec_out: &[f32], _width: usize) -> Vec<usize> {
     // PP-OCRv3_rec downsamples by ~8 along the time axis. The number of
     // classes (6625) is fixed for the bundled model; derive timesteps from
     // the total output size.

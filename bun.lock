@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "youdub-webui-fullstack",
+      "name": "local-dub-root",
       "dependencies": {
         "agnostic-query": "^1.10.5",
       },

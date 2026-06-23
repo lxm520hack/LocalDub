@@ -15,9 +15,9 @@ use std::ffi::c_void;
 
 use crate::image::Point;
 
-use opencv::core::{Mat, Point as CvPoint, Point2f, Size, CV_8UC1, Vec2b};
+use opencv::core::{Mat, Point as CvPoint, Point2f, Size, Vector};
 use opencv::imgproc;
-use opencv::types::VectorOfPoint;
+use opencv::prelude::DataType;
 
 const DET_THRESH: f32 = 0.3;
 const UNCLIP_RATIO: f32 = 1.6;
@@ -36,7 +36,6 @@ pub fn db_postprocess(
     orig_h: usize,
     box_thresh: f32,
 ) -> Vec<DetBox> {
-    // 1. sigmoid (if values are logits)
     let sigmoid = heatmap.iter().any(|&v| v > 1.0);
     let prob: Vec<f32> = if sigmoid {
         heatmap.iter().map(|&v| 1.0 / (1.0 + (-v).exp())).collect()
@@ -44,13 +43,11 @@ pub fn db_postprocess(
         heatmap.to_vec()
     };
 
-    // 2. bitmap: Vec<u8> with 255 for foreground (needed by OpenCV)
     let mut bitmap_data = vec![0u8; hm_w * hm_h];
     for i in 0..hm_w * hm_h {
         if prob[i] > DET_THRESH { bitmap_data[i] = 255; }
     }
 
-    // 3/4. OpenCV: create Mat, dilate, findContours, minAreaRect.
     let bitmap_mat = unsafe {
         Mat::new_rows_cols_with_data_unsafe_def(
             hm_h as i32, hm_w as i32,
@@ -59,7 +56,6 @@ pub fn db_postprocess(
         ).expect("cv::Mat")
     };
 
-    // 2x2 dilate
     let mut dilated = Mat::default();
     let kernel = imgproc::get_structuring_element_def(
         imgproc::MORPH_RECT,
@@ -67,8 +63,7 @@ pub fn db_postprocess(
     ).expect("cv::kernel");
     imgproc::dilate_def(&bitmap_mat, &mut dilated, &kernel).expect("cv::dilate");
 
-    // findContours
-    let mut contours = VectorOfPoint::new();
+    let mut contours: Vector<Vector<CvPoint>> = Vector::new();
     imgproc::find_contours_def(
         &dilated,
         &mut contours,
@@ -76,26 +71,22 @@ pub fn db_postprocess(
         imgproc::CHAIN_APPROX_SIMPLE,
     ).expect("cv::findContours");
 
-    // 5. For each contour: cv::minAreaRect → unclip → score
     let mut out: Vec<DetBox> = Vec::new();
     let n_contours = contours.len();
     for ci in 0..n_contours {
         let pts_vec = contours.get(ci).expect("contour");
-        let pts_vec: &VectorOfPoint = &pts_vec;
         if pts_vec.len() < 3 { continue; }
 
-        // Convert to float points for minAreaRect.
-        let pts_2f: Vec<Point2f> = pts_vec.iter()
+        let pts_2f_vec: Vector<Point2f> = pts_vec.iter()
             .map(|p| Point2f::new(p.x as f32, p.y as f32))
             .collect();
 
-        let rect = imgproc::min_area_rect(&pts_2f).expect("cv::minAreaRect");
+        let rect = imgproc::min_area_rect(&pts_2f_vec).expect("cv::minAreaRect");
         let width = rect.size.width;
         let height = rect.size.height;
         let short = width.min(height);
         if short < 3.0 { continue; }
 
-        // Score: average prob inside rotated rectangle
         let score = {
             let (cx, cy) = (rect.center.x, rect.center.y);
             let angle_rad = rect.angle.to_radians();
@@ -103,7 +94,6 @@ pub fn db_postprocess(
             let hw = width * 0.5;
             let hh = height * 0.5;
 
-            // bounding box for scanning
             let pts_corners = cv_box_points_f32(&rect);
             let xmin = pts_corners.iter().map(|p| p.0).fold(f32::INFINITY, f32::min).floor() as i32;
             let xmax = pts_corners.iter().map(|p| p.0).fold(f32::NEG_INFINITY, f32::max).ceil() as i32;
@@ -129,32 +119,18 @@ pub fn db_postprocess(
         };
         if score < box_thresh { continue; }
 
-        // Unclip
         let dist = (width * height * UNCLIP_RATIO) / (2.0 * (width + height));
         let dist = dist.max(3.0);
         let unclip_w = width + 2.0 * dist;
         let unclip_h = height + 2.0 * dist;
-
-        // Remap to original image coordinates.
         let sx = orig_w as f32 / hm_w as f32;
         let sy = orig_h as f32 / hm_h as f32;
-
-        // 4 corner points — follow cv::boxPoints() convention.
         let a = rect.angle.to_radians();
         let (cos_a, sin_a) = (a.cos(), a.sin());
         let hw2 = unclip_w * 0.5;
         let hh2 = unclip_h * 0.5;
         let (bcx, bcy) = (rect.center.x, rect.center.y);
-
-        // cv::boxPoints: corners in order [BL, TL, TR, BR]
-        // The angle is in degrees, counted clockwise from the horizontal axis
-        // when y increases downward (image coordinates).
-        let local = [
-            (-hw2, -hh2),
-            ( hw2, -hh2),
-            ( hw2,  hh2),
-            (-hw2,  hh2),
-        ];
+        let local = [(-hw2, -hh2), (hw2, -hh2), (hw2, hh2), (-hw2, hh2)];
         let mut pts = [Point { x: 0.0, y: 0.0 }; 4];
         for i in 0..4 {
             let (lx, ly) = local[i];
@@ -167,7 +143,6 @@ pub fn db_postprocess(
         }
         out.push(DetBox { polygon: pts, score });
     }
-
     out.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     out.truncate(MAX_CANDIDATES);
     out
@@ -179,7 +154,6 @@ fn cv_box_points_f32(rect: &opencv::core::RotatedRect) -> Vec<(f32, f32)> {
     let hw = rect.size.width * 0.5;
     let hh = rect.size.height * 0.5;
     let (cx, cy) = (rect.center.x, rect.center.y);
-    // Same computation as OpenCV's boxPoints
     vec![
         (cx + (-hw) * cos_a - (-hh) * sin_a, cy + (-hw) * sin_a + (-hh) * cos_a),
         (cx + hw * cos_a - (-hh) * sin_a, cy + hw * sin_a + (-hh) * cos_a),
@@ -187,7 +161,3 @@ fn cv_box_points_f32(rect: &opencv::core::RotatedRect) -> Vec<(f32, f32)> {
         (cx + (-hw) * cos_a - hh * sin_a, cy + (-hw) * sin_a + hh * cos_a),
     ]
 }
-
-// Suppress "unused" warnings for Vec2b import (kept for potential future use).
-#[allow(dead_code)]
-fn _unused(_v: Vec2b) {}
