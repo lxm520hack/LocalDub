@@ -1,28 +1,17 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { readJson, writeFile, ensureDir, removeFile } from './utils/fileOps.ts';
+import { readJson, writeFile, ensureDir } from './utils/fileOps.ts';
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import {
-	VoxCPMCloud,
-	VoxCPMNodeONNX,
-	VoxCPMPython,
 	writeWav,
 } from '@repo/voxlab';
+import { VoxCPMEngine } from '../../ml/voxcpm/voxcpm.ts';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
-
-function createTTSBackend(cfg: TTSConfig) {
-	if (!cfg) throw new Error('TTS config not found');
-	if (cfg.runtime === 'cloud') return new VoxCPMCloud();
-	if (cfg.runtime === 'pytorch') return new VoxCPMPython();
-	const device =
-		'device' in cfg ? (cfg.device === 'webgpu' ? 'webgpu' : 'cpu') : 'cpu';
-	return new VoxCPMNodeONNX({ executionProvider: device });
-}
 
 async function runPytorchBatch(
 	ctx: Context,
@@ -152,12 +141,8 @@ export async function stageTts(
 	if (!ttsCfg.skipExisting) {
 		const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
 		if (anyTts) {
-			for (const f of readdirSync(ttsDir)) rmSync(join(ttsDir, f));
-			const dubbingFile = join(sessionPath, 'media', 'audio_dubbing.wav');
-			const finalVideo = join(sessionPath, 'media', `${taskId}_dub.mp4`);
-			for (const f of [dubbingFile, finalVideo]) {
-				if (existsSync(f)) rmSync(f);
-			}
+			emitLog(sessionPath, `[TTS] Existing TTS segments found; will overwrite without deleting files`);
+			// Do not remove existing files — generation and ffmpeg will overwrite outputs as needed
 		}
 	}
 
@@ -234,8 +219,8 @@ export async function stageTts(
 			}
 		}
 
-		const voxcpm = createTTSBackend(ttsCfg);
-		await voxcpm.load();
+		const engine = new VoxCPMEngine(ttsCfg);
+		await engine.load();
 
 		const t0 = performance.now();
 		let genMs = 0;
@@ -243,7 +228,16 @@ export async function stageTts(
 			const item = translation[i];
 			const idx = String(i + 1).padStart(4, '0');
 			const outPath = resolve(ttsDir, `${idx}.wav`);
-			if (ttsCfg.skipExisting && existsSync(outPath)) continue;
+
+			let refWav = resolve(vocalsDir, `${idx}.wav`);
+			if (!existsSync(refWav) || statSync(refWav).size < 1200 * 16 * 2) {
+				refWav = fallbackRef;
+			}
+			const refMtime = refWav && existsSync(refWav) ? statSync(refWav).mtimeMs : 0;
+
+			if (ttsCfg.skipExisting && existsSync(outPath) && statSync(outPath).mtimeMs > refMtime) {
+				continue;
+			}
 
 			const text = item.dst || '';
 			if (!text.trim()) {
@@ -251,10 +245,6 @@ export async function stageTts(
 				continue;
 			}
 
-			let refWav = resolve(vocalsDir, `${idx}.wav`);
-			if (!existsSync(refWav) || statSync(refWav).size < 1200 * 16 * 2) {
-				refWav = fallbackRef;
-			}
 			if (!refWav || !existsSync(refWav)) {
 				emitLog(
 					sessionPath,
@@ -285,16 +275,12 @@ export async function stageTts(
 			});
 
 			const t1 = performance.now();
-			const { samples: audio } = await voxcpm.generate({
-				text,
-				referenceWavPath: refWav,
-				promptText: item.src,
-			});
+			const audio = await engine.synthesize(text, refWav, item.src);
 			genMs += performance.now() - t1;
 			writeWav(audio, outPath, 48000);
 		}
 
-		await voxcpm.dispose();
+		await engine.release();
 
 		const genSec = genMs / 1000;
 		const audioSec = translation.reduce((s, t) => s + (t.end_time - t.start_time), 0) / 1000;
