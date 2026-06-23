@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath } from './utils/utils.ts';
+import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, videoSourcePath, vocalsPath } from './utils/utils.ts';
 import { env } from '@repo/config';
 import { Context, setStage } from '../context/context.ts';
 
@@ -108,7 +108,7 @@ export async function stageSplitAudio({
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
   const srtFilePath = subtitleFilePath(sessionPath, ctx.input?.subtitleSource);
-  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? join(sessionPath, 'media', 'video_source.mp4');
+  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(sessionPath);
   const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const metadataDir = join(sessionPath, 'metadata');
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
@@ -116,7 +116,7 @@ export async function stageSplitAudio({
 	const segmentsDir = join(sessionPath, 'segments', 'vocals');
 
 	if (!existsSync(srtFilePath)) throw new Error(`subtitle file not found: ${srtFilePath}`);
-  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? join(sessionPath, 'media', 'target_3_vocals.wav')
+  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? vocalsPath(sessionPath)
 	const hasVocals = vocalsFilePath ? existsSync(vocalsFilePath) : false
 	const sourceAudio = hasVocals ? vocalsFilePath! : sourceFilePath;
 

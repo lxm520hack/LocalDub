@@ -13,6 +13,7 @@ import {
 	finalVideoFilename,
 	translationFilePath,
 	defaultFont,
+	videoSourcePath,
 } from './utils/utils.ts';
 
 function filterSubPath(subPath: string): string {
@@ -211,7 +212,7 @@ function probeStyle(
 export async function stageMergeVideo(ctx: Context) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
-	const video_file_path = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4')
+	const video_file_path = ctx.video_file_path ?? videoSourcePath(sessionPath)
 	await setTask(sessionPath, { current_stage: 'merge_video' });
 	const mediaDir = join(sessionPath, 'media');
 	ensureDir(mediaDir, ctx);

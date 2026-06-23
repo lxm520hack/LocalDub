@@ -9,7 +9,7 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { emitLog, ffmpeg, nowISO, probeDuration } from '../utils/utils.ts';
+import { emitLog, ffmpeg, nowISO, probeDuration, videoSourcePath, separateDir } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { tryBuildGgml, ensureGgmlModel } from './separate-build.ts';
 
@@ -41,7 +41,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'download', 'video_source.mp4');
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
 	const runtime = sepCfg?.runtime ?? 'pytorch';
@@ -116,7 +116,7 @@ async function separateOrt(
 	const demucs = new Demucs(undefined, { executionProvider: ep, stems: targetStems });
 	await demucs.load();
 
-	const audioPath = join(sessionPath, 'separate', 'audio_source.wav');
+	const audioPath = join(separateDir(sessionPath), 'audio_source.wav');
 	mkdirSync(dirname(audioPath), { recursive: true });
 	ffmpeg([
 		'-i',
@@ -138,7 +138,7 @@ async function separateOrt(
 	const audioDurationS = stems.vocals.length / 88200;
 	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
-	const sepDir = join(sessionPath, 'separate');
+	const sepDir = separateDir(sessionPath);
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		demucs.writeWav(

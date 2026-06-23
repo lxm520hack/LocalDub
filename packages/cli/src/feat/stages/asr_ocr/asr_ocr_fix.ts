@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime, probeVideoResolution } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
 import { FrameResult, Segment, fixOverlap, toOcrFiltered } from '../utils/ocrMerge.ts';
 import { computeBoxYStats, computeSegmentAdjustments } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
@@ -70,7 +70,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	// ========== ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） ==========
 	const yStats = computeBoxYStats(rawFrames);
-	const { height: videoHeight } = probeVideoResolution(join(sessionPath, 'media', 'video_source.mp4'));
+	const { height: videoHeight } = probeVideoResolution(videoSourcePath(sessionPath));
 	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
 	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
 	const adjustIsoWeight = asrOcrFixCfg?.adjustIsoWeight ?? 0.2;

@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
 import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
@@ -55,7 +55,7 @@ export async function stageAsrOcr(ctx: Context) {
 
 	// probe video duration fallback
 	const probe = spawnSync('ffprobe', [
-		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(sessionPath, 'media', 'video_source.mp4'),
+		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoSourcePath(sessionPath),
 	], { timeout: 15_000, encoding: 'utf-8' });
 	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
 

@@ -9,7 +9,7 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from '../utils/utils.ts';
+import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, separateAfterDir } from '../utils/utils.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
@@ -59,8 +59,8 @@ export async function stageAsr(
 		last_message: 'Transcribing...',
 		progress: 0,
 	});
-	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? join(sessionPath, 'media', 'target_3_vocals.wav');
-	const videoSource = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4');
+	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? vocalsPath(sessionPath);
+	const videoSource = ctx.video_file_path ?? videoSourcePath(sessionPath);
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal
@@ -71,8 +71,8 @@ export async function stageAsr(
 		);
 
 	if (ctx.input?.stages?.asr?.useSeparated) {
-		const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-		const gatedPath = resolve(sessionPath, 'media', 'target_3_vocals_gated.wav');
+		const mixedPath = join(separateAfterDir(sessionPath), 'target_3_vocals_mixed.wav');
+		const gatedPath = join(separateAfterDir(sessionPath), 'target_3_vocals_gated.wav');
 		const mixedOrGated = existsSync(gatedPath) ? gatedPath
 			: existsSync(mixedPath) ? mixedPath
 			: null;

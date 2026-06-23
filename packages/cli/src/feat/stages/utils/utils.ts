@@ -12,6 +12,36 @@ export function defaultWhisperCppModelPath(): string {
 	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
 }
 
+/** Get the downloaded video source path for a session. */
+export function videoSourcePath(sessionPath: string): string {
+	return join(sessionPath, 'download', 'video_source.mp4');
+}
+
+/** Get the vocals stem path from separate stage. */
+export function vocalsPath(sessionPath: string): string {
+	return join(sessionPath, 'separate', 'target_3_vocals.wav');
+}
+
+/** Get the BGM stem path from separate stage. */
+export function bgmPath(sessionPath: string): string {
+	return join(sessionPath, 'separate', 'target_bgm.wav');
+}
+
+/** Get the separate stage output directory. */
+export function separateDir(sessionPath: string): string {
+	return join(sessionPath, 'separate');
+}
+
+/** Get the ASR output directory. */
+export function asrDir(sessionPath: string): string {
+	return join(sessionPath, 'asr');
+}
+
+/** Get the separate_after output directory. */
+export function separateAfterDir(sessionPath: string): string {
+	return join(sessionPath, 'separate_after');
+}
+
 export function defaultFont(dstLang: string): string {
 	if (dstLang !== 'zh') return 'Arial';
 	switch (process.platform) {

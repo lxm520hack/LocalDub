@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { OCREngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "../utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution } from "../utils/utils.ts";
+import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "../utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "../utils/ocrMerge.ts";
 import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
@@ -17,7 +17,7 @@ export async function stageOcr(ctx: Context) {
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, "media", "video_source.mp4");
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) {
 		throw new Error(`OCR input not found: ${videoPath}`);
 	}
