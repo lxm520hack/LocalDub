@@ -41,7 +41,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'media', 'video_source.mp4');
+	const videoPath = join(sessionPath, 'download', 'video_source.mp4');
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
 	const runtime = sepCfg?.runtime ?? 'pytorch';
@@ -53,7 +53,7 @@ export async function stageSeparate(
 		const absVideo = resolve(
 			REPO_ROOT,
 			sessionPath,
-			'media',
+			'download',
 			'video_source.mp4',
 		);
 		const result = await daemon.runStage(
@@ -116,7 +116,7 @@ async function separateOrt(
 	const demucs = new Demucs(undefined, { executionProvider: ep, stems: targetStems });
 	await demucs.load();
 
-	const audioPath = join(sessionPath, 'media', 'audio_source.wav');
+	const audioPath = join(sessionPath, 'separate', 'audio_source.wav');
 	mkdirSync(dirname(audioPath), { recursive: true });
 	ffmpeg([
 		'-i',
@@ -138,13 +138,13 @@ async function separateOrt(
 	const audioDurationS = stems.vocals.length / 88200;
 	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
-	const mediaDir = join(sessionPath, 'media');
+	const sepDir = join(sessionPath, 'separate');
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		demucs.writeWav(
 			stems[stemNames[i]],
 			stems.sampleRate,
-			join(mediaDir, `target_${i}_${stemNames[i]}.wav`),
+			join(sepDir, `target_${i}_${stemNames[i]}.wav`),
 		);
 	}
 }
@@ -159,8 +159,9 @@ async function separatePytorch(
 		REPO_ROOT,
 		'packages',
 		'cli',
-		'scripts',
-		'separate',
+		'src',
+		'ml',
+		'demucs',
 		'run.py',
 	);
 	const pyBin = pythonBin();
@@ -228,7 +229,7 @@ async function separateGgml(
 	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV
-	const audioPath = resolve(REPO_ROOT, sessionPath, 'media', 'audio_source.wav');
+	const audioPath = resolve(REPO_ROOT, sessionPath, 'separate', 'audio_source.wav');
 	mkdirSync(dirname(audioPath), { recursive: true });
 	const ffmpegResult = spawnSync('ffmpeg', [
 		'-y', '-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath,
@@ -276,13 +277,13 @@ async function separateGgml(
 
 	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
-	// Copy output WAVs to media/
-	const mediaDir = resolve(REPO_ROOT, sessionPath, 'media');
-	mkdirSync(mediaDir, { recursive: true });
+	// Output already in separate/
+	const sepDir = resolve(REPO_ROOT, sessionPath, 'separate');
+	mkdirSync(sepDir, { recursive: true });
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		const src = join(outDir, `target_${i}_${stemNames[i]}.wav`);
-		const dst = join(mediaDir, `target_${i}_${stemNames[i]}.wav`);
+		const dst = join(sepDir, `target_${i}_${stemNames[i]}.wav`);
 		if (existsSync(src)) {
 			copyFileSync(src, dst);
 		} else {
