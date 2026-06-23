@@ -14,7 +14,7 @@ const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp',
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const LIB_PATH_KEY = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
 
-function ocrBinaryPath(): string {
+function ocrCppBinaryPath(): string {
 	const name = 'ocr_pipeline' + (process.platform === 'win32' ? '.exe' : '');
 	const candidates = [
 		resolve(BUILD_DIR, 'Release', name),
@@ -23,8 +23,8 @@ function ocrBinaryPath(): string {
 	return candidates.find(c => existsSync(c)) || candidates[0];
 }
 
-export function existsOcrBinary(): boolean {
-	return existsSync(ocrBinaryPath());
+export function existsOcrCppBinary(): boolean {
+	return existsSync(ocrCppBinaryPath());
 }
 
 export async function ocrFrameCpp(
@@ -38,7 +38,7 @@ export async function ocrFrameCpp(
 		args.push('--device', opts.device);
 	}
 
-	const r = spawnSync(ocrBinaryPath(), args, {
+	const r = spawnSync(ocrCppBinaryPath(), args, {
 		timeout: 60_000,
 		encoding: 'utf-8',
 		env: {

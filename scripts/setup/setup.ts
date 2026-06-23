@@ -147,12 +147,14 @@ interface CliConfig {
 	stages?: {
 		separate?: { runtime?: string };
 		tts?: { runtime?: string };
+		asr_ocr?: { runtime?: string };
 	};
 }
 
 function setupSubmodules(config: CliConfig, venv: string) {
 	const sepRuntime = config.stages?.separate?.runtime;
 	const ttsRuntime = config.stages?.tts?.runtime;
+	const ocrRuntime = config.stages?.asr_ocr?.runtime;
 
 	const needed: string[] = [];
 	if (sepRuntime === 'pytorch' || sepRuntime === 'ggml') {
@@ -230,16 +232,21 @@ function checkCommand(cmd: string): boolean {
 	return Bun.which(cmd) !== null;
 }
 
-function setupOcrCpp() {
+/**
+ * 编译 OCR C++ 二进制
+ * @param project - 'subtitle-cpp' (ort-cpp) 或 'subtitle-opencv-cpp' (ort-opencv-cpp)
+ * @param binaryName - 'ocr_pipeline' 或 'ocr_pipeline_opencv'
+ */
+function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName: 'ocr_pipeline' | 'ocr_pipeline_opencv') {
 	// onnxruntime zip 解压后嵌套一层同名目录: .../onnxruntime-win-x64-1.26.0/onnxruntime-win-x64-1.26.0/
 	const ortBase = join(repoRoot, 'packages', 'tmp', isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
 	const ortExtDir = join(ortBase, isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
-	const cppBuildDir = join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
-	const ocrBinary = join(cppBuildDir, 'Release', isWindows ? 'ocr_pipeline.exe' : 'ocr_pipeline');
+	const cppBuildDir = join(repoRoot, 'packages', 'subtitle-ocr', project, 'build');
+	const ocrBinary = join(cppBuildDir, 'Release', isWindows ? `${binaryName}.exe` : binaryName);
 
 	// 若二进制已存在，跳过
 	if (existsSync(ocrBinary)) {
-		log('ocr_pipeline 已编译', 'gray');
+		log(`${binaryName} 已编译`, 'gray');
 		return;
 	}
 
@@ -283,7 +290,7 @@ function setupOcrCpp() {
 
 	// 检查 cmake
 	if (!checkCommand('cmake')) {
-		log('cmake 未找到，跳过 ocr_pipeline 编译', 'yellow');
+		log(`cmake 未找到，跳过 ${binaryName} 编译`, 'yellow');
 		return;
 	}
 
@@ -297,11 +304,11 @@ function setupOcrCpp() {
 	};
 
 	// 编译
-	log('编译 ocr_pipeline...', 'yellow');
+	log(`编译 ${binaryName}...`, 'yellow');
 	const cmakeOpts = isWindows
-		? ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp'),
+		? ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', project),
 			`-DORT_DIR=${ortExtDir}`, '-G', 'MinGW Makefiles']
-		: ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp'),
+		: ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', project),
 			`-DORT_DIR=${ortExtDir}`];
 
 	const cmakeCode = run(cmakeOpts, { cwd: repoRoot, env: buildEnv });
@@ -315,12 +322,12 @@ function setupOcrCpp() {
 		{ cwd: repoRoot, env: buildEnv }
 	);
 	if (buildCode !== 0) {
-		log(`ocr_pipeline 编译失败 (exit ${buildCode})`, 'red');
+		log(`${binaryName} 编译失败 (exit ${buildCode})`, 'red');
 		return;
 	}
 
 	if (existsSync(ocrBinary)) {
-		log('ocr_pipeline 编译成功', 'green');
+		log(`${binaryName} 编译成功`, 'green');
 	} else {
 		log(`编译完成但 binary 未找到: ${ocrBinary}`, 'yellow');
 	}
@@ -368,7 +375,7 @@ function main() {
 	if (existsSync(configPath)) {
 		try {
 			config = JSON.parse(readFileSync(configPath, 'utf-8'));
-			log(`separate.runtime=${config.stages?.separate?.runtime}, tts.runtime=${config.stages?.tts?.runtime}`, 'cyan');
+			log(`separate.runtime=${config.stages?.separate?.runtime}, tts.runtime=${config.stages?.tts?.runtime}, asr_ocr.runtime=${config.stages?.asr_ocr?.runtime}`, 'cyan');
 		} catch {
 			log('config.json 解析失败', 'yellow');
 		}
@@ -390,10 +397,19 @@ function main() {
 
 	setupSubmodules(config, venv);
 
+	// OCR C++ 编译：根据 runtime 选择编译目标
+	const ocrRuntime = config.stages?.asr_ocr?.runtime;
+
 	if (!skipOcr) {
-		setupOcrCpp();
+		if (ocrRuntime === 'ort-cpp') {
+			setupOcrCpp('subtitle-cpp', 'ocr_pipeline');
+		} else if (ocrRuntime === 'ort-opencv-cpp') {
+			setupOcrCpp('subtitle-opencv-cpp', 'ocr_pipeline_opencv');
+		} else {
+			log(`asr_ocr.runtime=${ocrRuntime}，跳过 OCR C++ 编译`, 'gray');
+		}
 	} else {
-		log('跳过 OCR 编译', 'gray');
+		log('跳过 OCR 编译 (--skip-ocr)', 'gray');
 	}
 
 	const envWorkfolder = process.env['WORKFOLDER'];

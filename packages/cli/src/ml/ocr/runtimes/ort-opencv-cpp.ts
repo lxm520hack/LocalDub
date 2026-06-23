@@ -14,7 +14,7 @@ const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-openc
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const LIB_PATH_KEY = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
 
-function ocrBinaryPath(): string {
+function ocrOpenCvCppBinaryPath(): string {
 	const name = 'ocr_pipeline_opencv' + (process.platform === 'win32' ? '.exe' : '');
 	const candidates = [
 		resolve(BUILD_DIR, 'Release', name),
@@ -23,15 +23,15 @@ function ocrBinaryPath(): string {
 	return candidates.find(c => existsSync(c)) || candidates[0];
 }
 
-export function existsOcrBinary(): boolean {
-	return existsSync(ocrBinaryPath());
+export function existsOcrOpenCvCppBinary(): boolean {
+	return existsSync(ocrOpenCvCppBinaryPath());
 }
 
 export async function ocrFrameOpenCvCpp(
 	framePath: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
-	const r = spawnSync(ocrBinaryPath(), [
+	const r = spawnSync(ocrOpenCvCppBinaryPath(), [
 		framePath,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
 		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),
@@ -55,7 +55,7 @@ export async function ocrFramesOpenCvCpp(
 	frameDir: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<Map<string, OCRLine[]>> {
-	const r = spawnSync(ocrBinaryPath(), [
+	const r = spawnSync(ocrOpenCvCppBinaryPath(), [
 		'--dir', frameDir,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
 		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),

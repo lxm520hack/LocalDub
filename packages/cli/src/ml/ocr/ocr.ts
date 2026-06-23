@@ -1,14 +1,13 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { REPO_ROOT } from '../../feat/config/config.ts';
-import { ocrFrameCpp, existsOcrBinary, type OCRLine as OCRLineCpp } from './runtimes/ort-cpp.ts';
+import { ocrFrameCpp,  } from './runtimes/ort-cpp.ts';
 import { ocrFrameOpenCvCpp, ocrFramesOpenCvCpp } from './runtimes/ort-opencv-cpp.ts';
 import { join } from 'node:path';
 import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions, type OCRDevice } from './runtimes/ort-node.ts';
 import { ocrFramePy } from './runtimes/ort-py.ts';
 import { runOcrFrame as runOcrFrameRust } from '../../../../subtitle-rust/ts/ocr.ts';
 
-export { existsOcrBinary } from './runtimes/ort-cpp.ts';
 export type { NodeSessions } from './runtimes/ort-node.ts';
 
 export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py' | 'ort-rust' | 'ort-opencv-cpp';
