@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { to } from '@repo/shared/lib/utils/try';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, '..');
@@ -39,7 +40,7 @@ function findRapidOCRModelsDir(): string {
 	return modelsDir;
 }
 
-try {
+const main = () => {
 	const OCR_MODELS_DIR = findRapidOCRModelsDir();
 	console.log('[TEST] OCR_MODELS_DIR:', OCR_MODELS_DIR);
 
@@ -74,6 +75,9 @@ try {
 
 	console.log('[TEST] OCR exit code:', result.status);
 	console.log('[TEST] OCR stderr:', result.stderr?.substring(0, 500));
-} catch (e) {
-	console.error('[ERROR]', e.message);
 }
+const [_, err] = to(main)
+if (err) {
+		console.error('[ERROR]', err.message);
+}
+

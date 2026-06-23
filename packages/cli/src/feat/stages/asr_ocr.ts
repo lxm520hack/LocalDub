@@ -151,9 +151,9 @@ export async function stageAsrOcr(ctx: Context) {
 		ctx,
 	);
 
-	// Write ocr.json — pure OCR-boundary segments (from mergeFrames)
+	// Write asr_ocr.json — pure OCR-boundary segments (from mergeFrames)
 	writeJson(
-		join(metadataDir, 'ocr.json'),
+		join(metadataDir, 'asr_ocr.json'),
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			_source: 'asr_ocr',

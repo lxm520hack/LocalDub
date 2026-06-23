@@ -261,7 +261,12 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
         idx = f"{index:04d}"
         out_path = tts_dir / f"{idx}.wav"
 
-        if skip_existing and out_path.exists():
+        ref_path = vocals_dir / f"{idx}.wav"
+        if not ref_path.exists() or ref_path.stat().st_size < min_bytes:
+            ref_path = Path(fallback) if fallback else None
+        ref_mtime = ref_path.stat().st_mtime_ns if ref_path and ref_path.exists() else 0
+
+        if skip_existing and out_path.exists() and out_path.stat().st_mtime_ns > ref_mtime:
             skipped += 1
             _emit_progress("tts", task_id, index, total, emit=emit)
             continue
@@ -273,9 +278,6 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
             _emit_progress("tts", task_id, index, total, emit=emit)
             continue
 
-        ref_path = vocals_dir / f"{idx}.wav"
-        if not ref_path.exists() or ref_path.stat().st_size < min_bytes:
-            ref_path = Path(fallback) if fallback else None
         if ref_path is None or not ref_path.exists():
             _write_empty_wav(str(out_path))
             skipped += 1

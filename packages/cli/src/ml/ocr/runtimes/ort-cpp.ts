@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '../../../feat/config/config.ts';
 
 export interface OCRLine {
@@ -12,35 +13,6 @@ export interface OCRLine {
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const LIB_PATH_KEY = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
-
-/**
- * Dynamically locate rapidocr model directory.
- * On Windows: .venv/Lib/site-packages/rapidocr_onnxruntime/models
- * On Linux:   .venv/lib/python3.x/site-packages/rapidocr_onnxruntime/models
- */
-function findRapidOCRModelsDir(): string {
-	const venvBase = resolve(REPO_ROOT, '.venv');
-	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
-	if (!existsSync(sitePackagesBase)) {
-		throw new Error(`site-packages not found: ${sitePackagesBase}`);
-	}
-	// Find pythonX.X directory on Linux
-	let spDir = sitePackagesBase;
-	if (process.platform !== 'win32') {
-		const entries = readdirSync(spDir, { withFileTypes: true });
-		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
-		if (pyDir) {
-			spDir = join(spDir, pyDir.name);
-		}
-	}
-	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
-	if (!existsSync(modelsDir)) {
-		throw new Error(`rapidocr models not found: ${modelsDir}`);
-	}
-	return modelsDir;
-}
-
-const OCR_MODELS_DIR = findRapidOCRModelsDir();
 
 function ocrBinaryPath(): string {
 	const name = 'ocr_pipeline' + (process.platform === 'win32' ? '.exe' : '');
@@ -72,7 +44,7 @@ export async function ocrFrameCpp(
 		env: {
 			...process.env,
 			[LIB_PATH_KEY]: `${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
-		OCR_MODELS_DIR,
+		OCR_MODELS_DIR: getRapidOCRModelsDir(),
 		OCR_KEYS_PATH,
 		},
 	});

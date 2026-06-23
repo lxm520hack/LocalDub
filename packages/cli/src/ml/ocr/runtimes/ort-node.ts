@@ -39,13 +39,9 @@ function findRapidOCRModelsDir(): string {
 	return modelsDir;
 }
 
-const MODEL_DIR = findRapidOCRModelsDir();
 const POSTPROCESS_PY = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'postprocess_det.py');
 const TMP_DIR = join(REPO_ROOT, 'packages', 'tmp');
 
-const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
-const CLS_PATH = join(MODEL_DIR, 'ch_ppocr_mobile_v2.0_cls_infer.onnx');
-const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
 
 const KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const RAW_CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
@@ -67,6 +63,11 @@ function deviceToEp(device: OCRDevice): string {
 }
 
 export async function createNodeSessions(device: OCRDevice = 'cpu'): Promise<NodeSessions> {
+	const MODEL_DIR = findRapidOCRModelsDir();
+	const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
+const CLS_PATH = join(MODEL_DIR, 'ch_ppocr_mobile_v2.0_cls_infer.onnx');
+const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
+
 	const ep = deviceToEp(device);
 	const [det, cls, rec] = await Promise.all([
 		ort.InferenceSession.create(DET_PATH, { executionProviders: [ep] }),

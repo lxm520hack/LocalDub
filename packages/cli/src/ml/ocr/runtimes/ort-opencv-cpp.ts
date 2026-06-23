@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { resolve, basename } from 'node:path';
+import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '../../../feat/config/config.ts';
 
 export interface OCRLine {
@@ -12,29 +13,6 @@ export interface OCRLine {
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-opencv-cpp', 'build');
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const LIB_PATH_KEY = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
-
-function findRapidOCRModelsDir(): string {
-	const venvBase = resolve(REPO_ROOT, '.venv');
-	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
-	if (!existsSync(sitePackagesBase)) {
-		throw new Error(`site-packages not found: ${sitePackagesBase}`);
-	}
-	let spDir = sitePackagesBase;
-	if (process.platform !== 'win32') {
-		const entries = readdirSync(spDir, { withFileTypes: true });
-		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
-		if (pyDir) {
-			spDir = join(spDir, pyDir.name);
-		}
-	}
-	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
-	if (!existsSync(modelsDir)) {
-		throw new Error(`rapidocr models not found: ${modelsDir}`);
-	}
-	return modelsDir;
-}
-
-const OCR_MODELS_DIR = findRapidOCRModelsDir();
 
 function ocrBinaryPath(): string {
 	const name = 'ocr_pipeline_opencv' + (process.platform === 'win32' ? '.exe' : '');
@@ -68,7 +46,9 @@ export async function ocrFrameOpenCvCpp(
 		throw new Error(`ocr_pipeline_opencv failed (exit ${r.status}): ${(r.stderr || '').slice(-300)}`);
 	}
 
-	return parseOcrOutput(r.stdout);
+	const parsed = parseBatchOutput(r.stdout);
+	const filename = basename(framePath);
+	return parsed.get(filename) || [];
 }
 
 export async function ocrFramesOpenCvCpp(
@@ -90,43 +70,34 @@ export async function ocrFramesOpenCvCpp(
 		throw new Error(`ocr_pipeline_opencv --dir failed (exit ${r.status}): ${(r.stderr || '').slice(-300)}`);
 	}
 
-	const result = new Map<string, OCRLine[]>();
-	for (const line of r.stdout.trim().split('\n')) {
-		const trimmed = line.trim();
-		if (!trimmed) continue;
-		const item = JSON.parse(trimmed);
-		const lines = parseJsonItem(item);
-		const filename = item.file || '';
-		result.set(filename, lines);
-	}
-	return result;
+	return parseBatchOutput(r.stdout);
 }
 
-function ocrEnv(): Record<string, string> {
+function ocrEnv(): Record<string, string | undefined> {
 	return {
 		...process.env,
 		[LIB_PATH_KEY]: `${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
-		OCR_MODELS_DIR,
+		OCR_MODELS_DIR: getRapidOCRModelsDir(),
 		OCR_KEYS_PATH,
 	};
 }
 
-function parseOcrOutput(stdout: string): OCRLine[] {
-	const parsed = JSON.parse(stdout);
-	return parseJsonItem(parsed);
-}
-
-function parseJsonItem(item: any): OCRLine[] {
-	const lines: OCRLine[] = [];
-	for (const seg of item.segments || []) {
-		lines.push({
-			text: seg.text,
-			confidence: seg.confidence,
-			box: seg.box || [],
-		});
+function parseBatchOutput(stdout: string): Map<string, OCRLine[]> {
+	const items: any[] = JSON.parse(stdout);
+	const result = new Map<string, OCRLine[]>();
+	for (const item of items) {
+		const lines: OCRLine[] = [];
+		for (const seg of item.segments || []) {
+			lines.push({
+				text: seg.text,
+				confidence: seg.confidence,
+				box: seg.box || [],
+			});
+		}
+		if (lines.length === 0 && item.text) {
+			lines.push({ text: item.text, confidence: 1, box: [] });
+		}
+		result.set(item.file || '', lines);
 	}
-	if (lines.length === 0 && item.text) {
-		lines.push({ text: item.text, confidence: 1, box: [] });
-	}
-	return lines;
+	return result;
 }

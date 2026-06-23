@@ -253,7 +253,7 @@ const TranslateConfigSchema = z
 const TTSConfigSchema = z.object({
 	runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']).default('pytorch').optional(),
 	device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
-	skipExisting: z.boolean().default(true).optional(),
+	skipExisting: z.boolean().default(false).optional(),
 })
 	.default({
 		runtime: 'pytorch',
