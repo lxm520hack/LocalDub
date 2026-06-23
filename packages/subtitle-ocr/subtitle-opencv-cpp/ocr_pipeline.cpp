@@ -839,8 +839,8 @@ static OCRResult runOcr(
     for (auto& seg : result.segments)
         result.text += seg.text;
 
-    auto tEnd = clock::now();
-    result.totalMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+    result.totalMs = result.charListLoadMs + result.imageLoadMs + result.modelLoadMs +
+                     result.detMs + result.postMs + result.recMs;
 
     return result;
 }
@@ -896,6 +896,8 @@ static int runMain(int argc, char* argv[]) {
     }
 
     try {
+        using clock = std::chrono::high_resolution_clock;
+
         // Find model directory (set by TypeScript wrapper via OCR_MODELS_DIR)
         std::string modelDir;
         const char* envModels = std::getenv("OCR_MODELS_DIR");
@@ -914,7 +916,9 @@ static int runMain(int argc, char* argv[]) {
         }
         keysPath = envKeys;
 
+        auto t0 = clock::now();
         auto charList = loadCharList(keysPath);
+        double charListLoadMs = std::chrono::duration<double, std::milli>(clock::now() - t0).count();
         if (charList.empty()) {
             std::cerr << "Failed to load char list from " << keysPath << std::endl;
             return 1;
@@ -947,6 +951,7 @@ static int runMain(int argc, char* argv[]) {
         auto memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
         // Load models
+        t0 = clock::now();
         auto detPath = modelDir + "/ch_PP-OCRv3_det_infer.onnx";
         auto clsPath = modelDir + "/ch_ppocr_mobile_v2.0_cls_infer.onnx";
         auto recPath = modelDir + "/ch_PP-OCRv3_rec_infer.onnx";
@@ -954,10 +959,15 @@ static int runMain(int argc, char* argv[]) {
         Ort::Session detSession(env, ORT_PATH(detPath), sessionOptions);
         Ort::Session clsSession(env, ORT_PATH(clsPath), sessionOptions);
         Ort::Session recSession(env, ORT_PATH(recPath), sessionOptions);
+        double modelLoadMs = std::chrono::duration<double, std::milli>(clock::now() - t0).count();
 
         // Run OCR
         auto result = runOcr(imagePath, charList, detSession, clsSession, recSession, memInfo,
                              textScore, subtitleOnly, useNms);
+        result.charListLoadMs = charListLoadMs;
+        result.modelLoadMs = modelLoadMs;
+        result.totalMs = result.charListLoadMs + result.imageLoadMs + result.modelLoadMs +
+                         result.detMs + result.postMs + result.recMs;
 
         // Output JSON
         std::cout << toJson(result);
