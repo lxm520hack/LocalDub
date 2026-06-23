@@ -9,7 +9,7 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[5]
 
 
 def _device() -> str:
@@ -80,15 +80,15 @@ def separate_audio(
 
     from demucs.api import Separator, save_audio
 
-    media_dir = session / "media"
-    media_dir.mkdir(parents=True, exist_ok=True)
+    sep_dir = session / "separate"
+    sep_dir.mkdir(parents=True, exist_ok=True)
     files = {
-        "drums": media_dir / "target_0_drums.wav",
-        "bass": media_dir / "target_1_bass.wav",
-        "other": media_dir / "target_2_other.wav",
-        "vocals": media_dir / "target_3_vocals.wav",
+        "drums": sep_dir / "target_0_drums.wav",
+        "bass": sep_dir / "target_1_bass.wav",
+        "other": sep_dir / "target_2_other.wav",
+        "vocals": sep_dir / "target_3_vocals.wav",
     }
-    bgm_file = media_dir / "target_bgm.wav"
+    bgm_file = sep_dir / "target_bgm.wav"
     if all(f.exists() for f in files.values()) and bgm_file.exists():
         return files["vocals"], bgm_file
 

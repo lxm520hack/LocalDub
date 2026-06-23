@@ -2,12 +2,12 @@
 CLI wrapper for Demucs PyTorch separation, callable from TypeScript via spawnSync.
 
 Usage:
-    .venv/bin/python packages/cli/scripts/separate/run.py <video_path> <session_path> [--device cpu|cuda]
-    .venv/bin/python packages/cli/scripts/separate/run.py --benchmark-load [--device cpu|cuda]
+    .venv/bin/python packages/cli/src/ml/demucs/run.py <video_path> <session_path> [--device cpu|cuda]
+    .venv/bin/python packages/cli/src/ml/demucs/run.py --benchmark-load [--device cpu|cuda]
 
 Sets DEMUCS_DEVICE env var before loading the backend, so resolve_device() picks it up.
 
-Writes target_{0,1,2,3}_{drums,bass,other,vocals}.wav and target_bgm.wav to <session_path>/media/.
+Writes target_{0,1,2,3}_{drums,bass,other,vocals}.wav and target_bgm.wav to <session_path>/separate/.
 Prints progress lines: [PROGRESS] <percent>
 Prints on success: <vocals_path>\n<bgm_path>
 """
