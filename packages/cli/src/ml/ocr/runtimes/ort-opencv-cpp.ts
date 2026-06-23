@@ -53,40 +53,80 @@ export async function ocrFrameOpenCvCpp(
 	framePath: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
-	const args: string[] = [framePath];
-	if (opts?.textScore != null) args.push(String(opts.textScore));
-	if (opts?.subtitleOnly) args.push('--subtitle-only');
-	if (opts?.device && opts.device !== 'cpu') {
-		args.push('--device', opts.device);
-	}
-
-	const r = spawnSync(ocrBinaryPath(), args, {
+	const r = spawnSync(ocrBinaryPath(), [
+		framePath,
+		...(opts?.textScore != null ? [String(opts.textScore)] : []),
+		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),
+		...(opts?.device && opts.device !== 'cpu' ? ['--device', opts.device] : []),
+	], {
 		timeout: 60_000,
 		encoding: 'utf-8',
-		env: {
-			...process.env,
-			[LIB_PATH_KEY]: `${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
-		OCR_MODELS_DIR,
-		OCR_KEYS_PATH,
-		},
+		env: ocrEnv(),
 	});
 
 	if (r.status !== 0) {
 		throw new Error(`ocr_pipeline_opencv failed (exit ${r.status}): ${(r.stderr || '').slice(-300)}`);
 	}
 
-	const parsed = JSON.parse(r.stdout);
+	return parseOcrOutput(r.stdout);
+}
 
+export async function ocrFramesOpenCvCpp(
+	frameDir: string,
+	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
+): Promise<Map<string, OCRLine[]>> {
+	const r = spawnSync(ocrBinaryPath(), [
+		'--dir', frameDir,
+		...(opts?.textScore != null ? [String(opts.textScore)] : []),
+		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),
+		...(opts?.device && opts.device !== 'cpu' ? ['--device', opts.device] : []),
+	], {
+		timeout: 120_000,
+		encoding: 'utf-8',
+		env: ocrEnv(),
+	});
+
+	if (r.status !== 0) {
+		throw new Error(`ocr_pipeline_opencv --dir failed (exit ${r.status}): ${(r.stderr || '').slice(-300)}`);
+	}
+
+	const result = new Map<string, OCRLine[]>();
+	for (const line of r.stdout.trim().split('\n')) {
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		const item = JSON.parse(trimmed);
+		const lines = parseJsonItem(item);
+		const filename = item.file || '';
+		result.set(filename, lines);
+	}
+	return result;
+}
+
+function ocrEnv(): Record<string, string> {
+	return {
+		...process.env,
+		[LIB_PATH_KEY]: `${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
+		OCR_MODELS_DIR,
+		OCR_KEYS_PATH,
+	};
+}
+
+function parseOcrOutput(stdout: string): OCRLine[] {
+	const parsed = JSON.parse(stdout);
+	return parseJsonItem(parsed);
+}
+
+function parseJsonItem(item: any): OCRLine[] {
 	const lines: OCRLine[] = [];
-	for (const seg of parsed.segments || []) {
+	for (const seg of item.segments || []) {
 		lines.push({
 			text: seg.text,
 			confidence: seg.confidence,
 			box: seg.box || [],
 		});
 	}
-	if (lines.length === 0 && parsed.text) {
-		lines.push({ text: parsed.text, confidence: 1, box: [] });
+	if (lines.length === 0 && item.text) {
+		lines.push({ text: item.text, confidence: 1, box: [] });
 	}
 	return lines;
 }

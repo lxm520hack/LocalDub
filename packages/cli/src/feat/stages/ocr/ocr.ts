@@ -72,12 +72,12 @@ export async function stageOcr(ctx: Context) {
 	const engine = new OCREngine(runtime, device);
 	await engine.init();
 
+	const linesArr = await engine.ocrFrames(frameDir, frameFiles, { textScore, subtitleOnly });
 	const frameResults: FrameResult[] = [];
 	for (let i = 0; i < frameFiles.length; i++) {
-		const framePath = join(frameDir, frameFiles[i]);
 		const timestampMs = Math.round((i * step / srcFps) * 1000);
 		try {
-			const lines = await engine.ocrFrame(framePath, { textScore, subtitleOnly });
+			const lines = linesArr[i];
 			const best = lines.reduce(
 				(a, b) => (a.confidence > b.confidence ? a : b),
 				{ text: "", confidence: 0, box: [] },

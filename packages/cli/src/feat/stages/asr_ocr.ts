@@ -93,13 +93,13 @@ export async function stageAsrOcr(ctx: Context) {
 	await engine.init();
 
 	const frameFiles = readdirSync(frameDir).filter(f => f.endsWith('.jpg')).sort();
+	const linesArr = await engine.ocrFrames(frameDir, frameFiles, { textScore, subtitleOnly });
 	const frameResults: FrameResult[] = [];
 
 	for (let i = 0; i < frameFiles.length; i++) {
-		const framePath = join(frameDir, frameFiles[i]);
 		const tsMatch = frameFiles[i].match(/frame_(\d+)\.jpg/);
 		const timestampMs = tsMatch ? parseInt(tsMatch[1]) : 0;
-		const lines = await engine.ocrFrame(framePath, { textScore, subtitleOnly });
+		const lines = linesArr[i];
 		const best = lines.reduce(
 			(a, b) => (a.confidence > b.confidence ? a : b),
 			{ text: '', confidence: 0, box: [] },
