@@ -58,7 +58,7 @@ struct OCRResult {
         std::vector<std::vector<int>> box; // 4x2
     };
     std::vector<Segment> segments;
-    double detMs, postMs, recMs, totalMs;
+    double charListLoadMs, imageLoadMs, modelLoadMs, detMs, postMs, recMs, totalMs;
 };
 
 // --- Load char list from JSON ---
@@ -638,14 +638,16 @@ static OCRResult runOcr(
     bool useNms = true)
 {
     using clock = std::chrono::high_resolution_clock;
-    auto tStart = clock::now();
 
     OCRResult result;
+    result.charListLoadMs = result.imageLoadMs = result.modelLoadMs = 0;
     result.detMs = result.postMs = result.recMs = 0;
 
     // Load image
     std::cerr << "[OCR] loading image..." << std::endl;
+    auto tImg = clock::now();
     auto img = loadImage(imagePath.c_str());
+    result.imageLoadMs = std::chrono::duration<double, std::milli>(clock::now() - tImg).count();
     std::cerr << "[OCR] image " << img.w << "x" << img.h << std::endl;
 
     // --- Detection ---
@@ -864,6 +866,9 @@ static std::string toJson(const OCRResult& r) {
         ss << "\n";
     }
     ss << "  ],\n";
+    ss << "  \"charListLoadMs\": " << r.charListLoadMs << ",\n";
+    ss << "  \"imageLoadMs\": " << r.imageLoadMs << ",\n";
+    ss << "  \"modelLoadMs\": " << r.modelLoadMs << ",\n";
     ss << "  \"detInferenceMs\": " << r.detMs << ",\n";
     ss << "  \"postprocessMs\": " << r.postMs << ",\n";
     ss << "  \"recInferenceMs\": " << r.recMs << ",\n";
