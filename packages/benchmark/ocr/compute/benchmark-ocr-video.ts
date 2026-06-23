@@ -7,26 +7,49 @@ import { FrameResult, Segment, mergeFrames } from '../../../cli/src/feat/stages/
 import { REPO_ROOT } from '@repo/config';
 
 
-/** Find rapidocr model directory dynamically. */
+/** Find rapidocr model directory dynamically.
+ *  Supports multiple venv layouts (Windows/Linux standard venv and custom layouts).
+ *  Use OCR_MODELS_DIR env var to override.
+ */
 function findRapidOCRModelsDir(): string {
-	const venvBase = resolve(REPO_ROOT, '.venv');
-	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
-	if (!existsSync(sitePackagesBase)) {
-		throw new Error(`site-packages not found: ${sitePackagesBase}`);
+	if (process.env.OCR_MODELS_DIR && existsSync(process.env.OCR_MODELS_DIR)) {
+		return process.env.OCR_MODELS_DIR;
 	}
-	let spDir = sitePackagesBase;
-	if (process.platform !== 'win32') {
-		const entries = readdirSync(spDir, { withFileTypes: true });
-		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
-		if (pyDir) {
-			spDir = join(spDir, pyDir.name);
+	const venvBase = resolve(REPO_ROOT, '.venv');
+	const modelsSub = join('rapidocr_onnxruntime', 'models');
+	const candidates: string[] = [];
+	if (process.platform === 'win32') {
+		candidates.push(resolve(venvBase, 'Lib', 'site-packages', modelsSub));
+	} else {
+		const libDir = resolve(venvBase, 'lib');
+		if (existsSync(libDir)) {
+			const entries = readdirSync(libDir, { withFileTypes: true });
+			const pyDirs = entries.filter(e =>
+				e.isDirectory() && /^python\d+\.\d+$/.test(e.name)
+			).map(e => e.name).sort().reverse();
+			for (const pyDir of pyDirs) {
+				candidates.push(resolve(libDir, pyDir, 'site-packages', modelsSub));
+			}
+			const sitePackagesLegacy = resolve(libDir, 'site-packages');
+			if (existsSync(sitePackagesLegacy)) {
+				const spEntries = readdirSync(sitePackagesLegacy, { withFileTypes: true });
+				const spPyDirs = spEntries.filter(e =>
+					e.isDirectory() && /^python\d+\.\d+$/.test(e.name)
+				).map(e => e.name).sort().reverse();
+				for (const pyDir of spPyDirs) {
+					candidates.push(resolve(sitePackagesLegacy, pyDir, modelsSub));
+				}
+				candidates.push(resolve(sitePackagesLegacy, modelsSub));
+			}
 		}
 	}
-	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
-	if (!existsSync(modelsDir)) {
-		throw new Error(`rapidocr models not found: ${modelsDir}`);
+	for (const c of candidates) {
+		if (existsSync(c)) return c;
 	}
-	return modelsDir;
+	throw new Error(
+		`rapidocr models not found. Searched: ${candidates.join(', ')}\n` +
+		`Hint: pip install rapidocr-onnxruntime in .venv, or set OCR_MODELS_DIR env var.`
+	);
 }
 
 const VIDEOS_PATH = join(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media');

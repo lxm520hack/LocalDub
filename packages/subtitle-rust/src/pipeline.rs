@@ -30,6 +30,9 @@ pub struct Segment {
 pub struct OcrOutput {
     pub text: String,
     pub segments: Vec<Segment>,
+    pub char_list_load_ms: f32,
+    pub image_load_ms: f32,
+    pub model_load_ms: f32,
     pub det_inference_ms: f32,
     pub postprocess_ms: f32,
     pub rec_inference_ms: f32,
@@ -45,11 +48,18 @@ pub fn run_ocr(
 ) -> Result<OcrOutput> {
     let t_start = Instant::now();
 
+    let t0 = Instant::now();
     let char_list = load_char_list(keys_path)?;
+    let char_list_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
+
+    let t0 = Instant::now();
     let img = Image::load(image_path)?;
     let (full_w, full_h) = (img.w, img.h);
+    let image_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
 
+    let t0 = Instant::now();
     let mut sessions = load_sessions(models_dir)?;
+    let model_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
 
     // --- DET ---
     let t0 = Instant::now();
@@ -126,6 +136,9 @@ pub fn run_ocr(
     Ok(OcrOutput {
         text: full_text,
         segments: segs,
+        char_list_load_ms,
+        image_load_ms,
+        model_load_ms,
         det_inference_ms: det_ms,
         postprocess_ms: post_ms,
         rec_inference_ms: rec_ms,

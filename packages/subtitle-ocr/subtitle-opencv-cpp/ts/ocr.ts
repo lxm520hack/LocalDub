@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = resolve(fileURLToPath(import.meta.url), "..", "..");
-const BINARY_PATH = resolve(__dirname, "build", "ocr_pipeline");
+const BINARY_PATH = resolve(__dirname, "build", "ocr_pipeline_opencv");
 const LD_PATH = resolve(__dirname, "build");
 
 export interface OCRLine {

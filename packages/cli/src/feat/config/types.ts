@@ -164,9 +164,9 @@ export type ASRConfig = z.output<typeof ASRConfigSchema>;
 const OcrConfigSchema = z
 	.looseObject({
 		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
-			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
+			.enum(['ort-cpp', 'ort-opencv-cpp', 'ort-node', 'ort-py', 'ort-rust'])
+			.default('ort-opencv-cpp')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-opencv-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
 			.optional(),
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
@@ -194,16 +194,16 @@ const OcrConfigSchema = z
 			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
 			.optional(),
 	})
-	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
+	.default({ runtime: 'ort-opencv-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
 
 const AsrOcrConfigSchema = z
 	.looseObject({
 		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
-			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
+			.enum(['ort-cpp', 'ort-opencv-cpp', 'ort-node', 'ort-py', 'ort-rust'])
+			.default('ort-opencv-cpp')
+			.describe('OCR 推理运行时: ort-cpp (C++ 二进制), ort-opencv-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
 			.optional(),
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
@@ -231,7 +231,7 @@ const AsrOcrConfigSchema = z
 			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
 			.optional(),
 	})
-	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
+	.default({ runtime: 'ort-opencv-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
 	.optional();
 export type AsrOcrConfig = z.output<typeof AsrOcrConfigSchema>;
 
