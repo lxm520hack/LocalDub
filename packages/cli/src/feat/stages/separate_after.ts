@@ -54,33 +54,33 @@ export async function stageSeparateAfter(ctx: Context) {
 		const vocalsPath = stems.vocals;
 		const bgmPath = bgmDst;
 		if (!existsSync(vocalsPath)) {
-			emitLog(sessionPath, `[SeparateAfter] vocals not found, skipping mix`);
-		} else if (!existsSync(bgmPath)) {
-			emitLog(sessionPath, `[SeparateAfter] BGM not found, skipping mix`);
-		} else {
-			if (mixMode === 'raw-sum') {
-				emitLog(sessionPath, `[SeparateAfter] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
-				ffmpeg([
-					'-i', vocalsPath,
-					'-i', bgmPath,
-					'-filter_complex',
-					`[1:a]volume=${reduceBgm}dB[bgm_r];[0:a][bgm_r]amix=inputs=2:duration=first:weights=1 1[out]`,
-					'-map', '[out]',
-					'-y', mixedDst,
-				]);
-			} else if (mixMode === 'sidechain') {
-				const scParams = `threshold=${sc?.threshold ?? 0.1}:ratio=${sc?.ratio ?? 20}:attack=${sc?.attack ?? 1}:release=${sc?.release ?? 200}`;
-				const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
-				emitLog(sessionPath, `[SeparateAfter] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
-				ffmpeg([
-					'-i', vocalsPath,
-					'-i', bgmPath,
-					'-filter_complex',
-					`[0:a]asplit[v][v_key];[1:a][v_key]sidechaincompress=${scParams}[bgm_sc]${bgmVol ? `;${bgmVol}` : ''};[v][${bgmVol ? 'bgm_final' : 'bgm_sc'}]amix=inputs=2:duration=first:weights=1 1[out]`,
-					'-map', '[out]',
-					'-y', mixedDst,
-				]);
-			}
+			throw new Error(`[SeparateAfter] vocals not found: ${vocalsPath}`);
+		}
+		if (!existsSync(bgmPath)) {
+			throw new Error(`[SeparateAfter] BGM not found: ${bgmPath}`);
+		}
+		if (mixMode === 'raw-sum') {
+			emitLog(sessionPath, `[SeparateAfter] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
+			ffmpeg([
+				'-i', vocalsPath,
+				'-i', bgmPath,
+				'-filter_complex',
+				`[1:a]volume=${reduceBgm}dB[bgm_r];[0:a][bgm_r]amix=inputs=2:duration=first:weights=1 1[out]`,
+				'-map', '[out]',
+				'-y', mixedDst,
+			]);
+		} else if (mixMode === 'sidechain') {
+			const scParams = `threshold=${sc?.threshold ?? 0.1}:ratio=${sc?.ratio ?? 20}:attack=${sc?.attack ?? 1}:release=${sc?.release ?? 200}`;
+			const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
+			emitLog(sessionPath, `[SeparateAfter] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
+			ffmpeg([
+				'-i', vocalsPath,
+				'-i', bgmPath,
+				'-filter_complex',
+				`[0:a]asplit[v][v_key];[1:a][v_key]sidechaincompress=${scParams}[bgm_sc]${bgmVol ? `;${bgmVol}` : ''};[v][${bgmVol ? 'bgm_final' : 'bgm_sc'}]amix=inputs=2:duration=first:weights=1 1[out]`,
+				'-map', '[out]',
+				'-y', mixedDst,
+			]);
 		}
 	}
 
