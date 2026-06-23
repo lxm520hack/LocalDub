@@ -3,7 +3,8 @@ export interface FrameResult {
 	timestamp: number;
 	confidence: number;
 	box?: number[][];
-	lines?: { text: string; confidence: number; box: number[][] }[];
+	bbox?: { left: number; top: number; right: number; bottom: number };
+	lines?: { text: string; confidence: number; box: number[][]; bbox: { left: number; top: number; right: number; bottom: number } }[];
 }
 
 export interface Segment {
@@ -66,14 +67,14 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		}
 		if (gapStart > 0) {
 			const gapMs = f.timestamp - gapStart;
-			if (gapMs <= 1500 && levenshtein(f.text, currentText) <= 2) {
+			if (gapMs <= 1500 && (f.text === currentText || isSubstringOf(f.text, currentText) || isSubstringOf(currentText, f.text))) {
 				currentConfidences.push(f.confidence);
 				gapStart = 0; continue;
 			}
 			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: boxY(currentBox), confidence: avgConfidence(currentConfidences) });
 			currentText = ""; currentStart = 0; currentBox = undefined; gapStart = 0; currentConfidences = [];
 		}
-		if (!currentText || levenshtein(f.text, currentText) > 2) {
+		if (!currentText || f.text !== currentText) {
 			if (currentText) {
 				segments.push({
 					text: currentText,
@@ -131,7 +132,7 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 	// segments with lev-distant text like 干嘛/于嘛 in the same time window)
 	dedupOverlap(segments);
 
-	return segments.filter((s) => s.end - s.start >= 500);
+	return segments;
 }
 
 export function dedupOverlap(segments: Segment[]): Segment[] {
