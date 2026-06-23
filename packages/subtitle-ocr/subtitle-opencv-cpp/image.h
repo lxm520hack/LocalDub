@@ -22,19 +22,7 @@ static Image loadImage(const char* path) {
     // what PaddleOCR/RapidOCR models were trained with. cv::imread also
     // uses libjpeg-turbo internally for faster and more consistent
     // JPEG decoding than stb_image.
-    cv::Mat mat;
-#ifdef _WIN32
-    int wlen = MultiByteToWideChar(CP_ACP, 0, path, -1, nullptr, 0);
-    if (wlen > 0) {
-        std::wstring wpath(wlen, L'\0');
-        MultiByteToWideChar(CP_ACP, 0, path, -1, &wpath[0], wlen);
-        mat = cv::imread(wpath, cv::IMREAD_COLOR);
-    } else {
-        mat = cv::imread(path, cv::IMREAD_COLOR);
-    }
-#else
-    mat = cv::imread(path, cv::IMREAD_COLOR);
-#endif
+    cv::Mat mat = cv::imread(path, cv::IMREAD_COLOR);
 
     if (mat.empty()) {
         throw std::runtime_error("Failed to load image: " + std::string(path));

@@ -8,6 +8,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Output executables to build directory
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
 # --- ORT ---------------------------------------------------------------------
 set(ORT_DIR "" CACHE PATH "Path to onnxruntime installation (containing include/ and lib/)")
 if(NOT ORT_DIR)
