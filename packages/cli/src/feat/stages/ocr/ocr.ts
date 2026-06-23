@@ -6,6 +6,7 @@ import { ensureDir, writeJson } from "../utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime,  } from "../utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "../utils/ocrMerge.ts";
+import { joinOcrLines } from "./utils.ts";
 import { Context, setStage } from "../../context/context.ts";
 
 export async function stageOcr(ctx: Context) {
@@ -78,16 +79,7 @@ export async function stageOcr(ctx: Context) {
 		const timestampMs = Math.round((i * step / srcFps) * 1000);
 		try {
 			const lines = linesArr[i];
-			const best = lines.reduce(
-				(a, b) => (a.confidence > b.confidence ? a : b),
-				{ text: "", confidence: 0, box: [] },
-			);
-			frameResults.push({
-				text: best.text,
-				timestamp: timestampMs,
-				confidence: best.confidence,
-				box: best.box,
-			});
+			frameResults.push({ ...joinOcrLines(lines), timestamp: timestampMs });
 		} catch {
 			frameResults.push({ text: "", timestamp: timestampMs, confidence: 0 });
 		}

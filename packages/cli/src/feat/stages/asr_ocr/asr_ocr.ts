@@ -5,6 +5,7 @@ import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
 import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
+import { joinOcrLines } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 
 export async function stageAsrOcr(ctx: Context) {
@@ -38,45 +39,8 @@ export async function stageAsrOcr(ctx: Context) {
 		const tsMatch = frameFiles[i].match(/frame_(\d+)\.jpg/);
 		const timestampMs = tsMatch ? parseInt(tsMatch[1]) : 0;
 		const lines = linesArr[i];
-		if (lines.length === 0) {
-			frameResults.push({
-				text: '',
-				timestamp: timestampMs,
-				confidence: 0,
-				box: [],
-			});
-		} else if (lines.length === 1) {
-			frameResults.push({
-				text: lines[0].text,
-				timestamp: timestampMs,
-				confidence: lines[0].confidence,
-				box: lines[0].box,
-			});
-		} else {
-			// Multiple text lines per frame: join with space if Y ranges overlap (same line),
-			// otherwise newline (different lines)
-			const yRanges = lines.map(l => {
-				const ys = l.box.map(p => p[1]);
-				return { min: Math.min(...ys), max: Math.max(...ys) };
-			});
-			let sameLine = false;
-			for (let a = 0; a < yRanges.length - 1 && !sameLine; a++) {
-				for (let b = a + 1; b < yRanges.length && !sameLine; b++) {
-					if (yRanges[a].max >= yRanges[b].min && yRanges[b].max >= yRanges[a].min) {
-						sameLine = true;
-					}
-				}
-			}
-			const combinedText = lines.map(l => l.text).join(sameLine ? ' ' : '\n');
-			const bestConf = lines.reduce((a, b) => a.confidence > b.confidence ? a : b).confidence;
-			frameResults.push({
-				text: combinedText,
-				timestamp: timestampMs,
-				confidence: bestConf,
-				box: lines[0].box,
-				lines: lines.map(l => ({ text: l.text, confidence: l.confidence, box: l.box })),
-			});
-		}
+		const r = joinOcrLines(lines);
+		frameResults.push({ ...r, timestamp: timestampMs });
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
 			emitLog(sessionPath, `[asr_ocr] ${i + 1}/${frameFiles.length} frames`);
