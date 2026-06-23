@@ -320,7 +320,7 @@ async function runOCRBenchmarkNode(label: string, fps: number, textScore?: numbe
 			? result.segments.reduce((a, b) => a.confidence > b.confidence ? a : b)
 			: { text: '', confidence: 0 };
 		frameResultsNode.push({
-			text: result.text || '',
+			text: best.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence,
 		});
@@ -527,7 +527,7 @@ function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number
 		totalPostMs += data.postprocessMs || 0;
 		totalRecMs += data.recInferenceMs || 0;
 		frameResultsCpp.push({
-			text: data.text || '',
+			text: best.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence || 0,
 		});
@@ -645,7 +645,7 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 		totalPostMs += data.postprocess_ms || 0;
 		totalRecMs += data.rec_inference_ms || 0;
 		frameResultsRust.push({
-			text: data.text || '',
+			text: best.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence || 0,
 		});
