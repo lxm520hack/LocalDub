@@ -15,7 +15,7 @@ export async function stageAsrOcr(ctx: Context) {
 		progress: 0,
 	});
 
-	const frameDir = join(sessionPath, 'tmp', 'asr-ocr-frames');
+	const frameDir = join(sessionPath, 'asr_ocr_pre', 'frames');
 	if (!existsSync(frameDir)) {
 		throw new Error(`Frame directory not found: ${frameDir} — run asr_ocr_pre first`);
 	}

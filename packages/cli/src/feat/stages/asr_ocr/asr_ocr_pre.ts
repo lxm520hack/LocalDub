@@ -139,7 +139,7 @@ export async function stageAsrOcrPre(ctx: Context) {
 	emitLog(sessionPath, `[asr_ocr_pre] ${asrSegs.length} split segs → ${sortedTs.length} frame positions`);
 
 	// Step 3: Extract frames
-	const frameDir = join(sessionPath, 'tmp', 'asr-ocr-frames');
+	const frameDir = join(sessionPath, 'asr_ocr_pre', 'frames');
 	ensureDir(frameDir, ctx);
 
 	let extractCount = 0;
