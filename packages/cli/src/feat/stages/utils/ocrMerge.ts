@@ -3,6 +3,7 @@ export interface FrameResult {
 	timestamp: number;
 	confidence: number;
 	box?: number[][];
+	lines?: { text: string; confidence: number; box: number[][] }[];
 }
 
 export interface Segment {

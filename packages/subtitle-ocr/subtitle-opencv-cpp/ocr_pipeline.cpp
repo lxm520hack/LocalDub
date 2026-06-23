@@ -738,8 +738,8 @@ static OCRResult runOcr(
             for (auto& p : boxPts) p.y += (float)detPrep.yOffset;
         }
 
-        // Y-position filter for subtitle only — 对齐 Python rapidocr 绝对值
-        // Python: 620 <= y_center <= 700 on 720p frames
+        // Y-position filter for subtitle only — 对齐 Python rapidocr 比值
+        // Python: 620 <= y_center <= 700 on 720p frames → ratio 0.86-0.97
         if (subtitleOnly) {
             float yMinCk = boxPts[0].y, yMaxCk = boxPts[0].y;
             for (auto& p : boxPts) {
@@ -747,7 +747,7 @@ static OCRResult runOcr(
                 yMaxCk = std::max(yMaxCk, p.y);
             }
             float yCenter = (yMinCk + yMaxCk) / 2;
-            if (yCenter < 620.0f || yCenter > 700.0f) continue;
+            if (yCenter < (float)(img.h * 0.85f) || yCenter > (float)(img.h * 0.99f)) continue;
         }
 
         // 对齐 Python rapidocr: orderPointsClockwise 排序 + warpPerspective 裁剪
