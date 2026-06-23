@@ -2,7 +2,7 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { DUB_STAGES, getStages } from './../../feat/tasks/stages.ts';
-import type { Ctx, TargetLang } from '../config/types.ts';
+import type {  TargetLang } from '../config/types.ts';
 import { Context, VideoSource, writeCtx } from '../context/context.ts';
 import { existsSync } from '../stages/utils/fileOps.ts';
 import { nowISO } from '../stages/utils/utils.ts';

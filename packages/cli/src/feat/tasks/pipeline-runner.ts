@@ -9,7 +9,6 @@ import type { MLDaemon } from '../../ml/daemon/client.ts';
 import {
 	readConfig,
 } from '../config/config.ts';
-import type { Ctx } from '../config/types.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
 import { Context, 	readCtx,
 	readPipeline,

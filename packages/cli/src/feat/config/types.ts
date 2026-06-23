@@ -52,6 +52,7 @@ const stagesList = [
 	'asr_fix',
 	'ocr',
 	'ocr_fix',
+	'asr_ocr_pre',
 	'asr_ocr',
 	'asr_ocr_fix',
 	'translate',
@@ -536,52 +537,3 @@ export const ConfigSchema = TaskSchema.and(BaseConfigSchema);
 export type RawConfigInput = z.input<typeof ConfigSchema>;
 export type RawConfig = z.output<typeof ConfigSchema>;
 
-/** local_info.json — 运行时状态/自动探测层 */
-export interface Ctx {
-	// ——— 创建时写入，只读 ———
-	id: string; // 任务 ID (本地或url) | 视频id (视频平台)
-	title?: string;
-	source: 'youtube' | 'bilibili' | 'local' | 'remote'
-	webpage_url?: string;
-	original_path?: string;
-
-	// ——— 运行时读写 ———
-	pipeline: 'dub' | 'subtitle';
-	lastRunPipeline?: 'dub' | 'subtitle'; // 用于 detect pipeline 切换
-
-	// ——— auto 探测结果 ———
-	asr_language?: string; // ASR 自动检测的语言
-	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
-
-	// ——— pipeline 启动时快照（readConfig 的有效值） ———
-	lastRunConfig?: {
-		timestamp: string;
-		pipeline: 'dub' | 'subtitle';
-		subtitleSource?: 'asr' | 'ocr';
-		stages: {
-			asr?: { runtime: string; device?: string; useSeparated?: boolean; mixMode?: string; reduceBgm?: number; wordsOutput?: boolean; sidechainCompress?: { threshold?: number; ratio?: number; attack?: number; release?: number }; useGate?: boolean };
-			separate?: { runtime: string; device?: string; always?: boolean; stems?: string[] };
-			ocr?: { fps?: number; textScore?: number };
-			translate?: { apiBase?: string; model?: string; targetLang?: string; enabled?: boolean };
-			tts?: { runtime: string; device?: string };
-		};
-		daemonPort?: number;
-	};
-
-	// ——— 各 stage 运行后的详细运行时信息 ———
-	runInfo?: {
-		asr?: {
-			engine: string; // 'whisper-pytorch' | 'faster-whisper'
-			device: string;
-			computeType?: string;
-			gpuAttempted?: boolean;
-			fallbackToCpu?: boolean;
-		};
-		translate?: {
-			resolvedDstLang: string;
-			actualModel: string;
-			apiBase: string;
-			batchSize?: number;
-		};
-	};
-}

@@ -2,12 +2,13 @@ import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { stageDownload } from './download.ts';
 import { stageSeparate } from './separate/separate.ts';
 import { stageSeparateAfter } from './separate_after.ts';
-import { stageAsr } from './asr.ts';
-import { stageAsrFix } from './asr_fix.ts';
+import { stageAsr } from './asr/asr.ts';
+import { stageAsrFix } from './asr/asr_fix.ts';
 import { stageOcr } from './ocr/ocr.ts';
 import { stageOcrFix } from './ocr/ocr_fix.ts';
-import { stageAsrOcr } from './asr_ocr.ts';
-import { stageAsrOcrFix } from './asr_ocr_fix.ts';
+import { stageAsrOcrPre } from './asr_ocr/asr_ocr_pre.ts';
+import { stageAsrOcr } from './asr_ocr/asr_ocr.ts';
+import { stageAsrOcrFix } from './asr_ocr/asr_ocr_fix.ts';
 import { stageTranslate } from './translate.ts';
 import { stageSplitAudio } from './split_audio.ts';
 import { stageTts } from './tts.ts';
@@ -24,6 +25,7 @@ export { stageAsr };
 export { stageAsrFix };
 export { stageOcr };
 export { stageOcrFix };
+export { stageAsrOcrPre };
 export { stageAsrOcr };
 export { stageAsrOcrFix };
 export { stageTranslate };
@@ -63,6 +65,10 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
   ocr_fix: (id, sp, _task) => {
     const ctx = readCtx(sp)
     return stageOcrFix(ctx)},
+  asr_ocr_pre: (id, sp, _task) => {
+    const ctx = readCtx(sp)
+    return stageAsrOcrPre(ctx)
+  },
   asr_ocr: (id, sp, _task) => {
     const ctx = readCtx(sp)
     return stageAsrOcr(ctx)

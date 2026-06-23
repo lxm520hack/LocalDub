@@ -90,6 +90,7 @@
                 "asr_fix",
                 "ocr",
                 "ocr_fix",
+                "asr_ocr_pre",
                 "asr_ocr",
                 "asr_ocr_fix",
                 "translate",
@@ -121,6 +122,7 @@
                 "asr_fix",
                 "ocr",
                 "ocr_fix",
+                "asr_ocr_pre",
                 "asr_ocr",
                 "asr_ocr_fix",
                 "translate",
@@ -209,6 +211,7 @@
             "asr_fix",
             "ocr",
             "ocr_fix",
+            "asr_ocr_pre",
             "asr_ocr",
             "asr_ocr_fix",
             "translate",
@@ -768,7 +771,7 @@
                   ]
                 },
                 "skipExisting": {
-                  "default": true,
+                  "default": false,
                   "type": "boolean"
                 }
               },

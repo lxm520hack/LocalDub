@@ -1,10 +1,10 @@
-import { readJson, writeJson } from './utils/fileOps.ts';
+import { readJson, writeJson } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readConfig } from '../config/config.ts';
-import { emitLog, nowISO, srtTime,  } from './utils/utils.ts';
-import { segmentsToPrompt, parseLines, fixWithLLM } from './asr/llm.ts';
-import { Context, setStage } from '../context/context.ts';
+import { readConfig } from '../../config/config.ts';
+import { emitLog, nowISO, srtTime,  } from '../utils/utils.ts';
+import { segmentsToPrompt, parseLines, fixWithLLM } from './llm.ts';
+import { Context, setStage } from '../../context/context.ts';
 
 function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   if (!segments.length) return segments;

@@ -111,7 +111,13 @@ def main():
         idx = f"{index:04d}"
         out_path = os.path.join(args.tts_dir, f"{idx}.wav")
 
-        if args.skip_existing and os.path.exists(out_path):
+        ref_path = os.path.join(args.vocals_dir, f"{idx}.wav")
+        ref_bytes = 1200 * 16 * 2
+        if not os.path.exists(ref_path) or os.path.getsize(ref_path) < ref_bytes:
+            ref_path = fallback
+        ref_mtime = os.path.getmtime(ref_path) if ref_path and os.path.exists(ref_path) else 0
+
+        if args.skip_existing and os.path.exists(out_path) and os.path.getmtime(out_path) > ref_mtime:
             skipped += 1
             print(f"[PROGRESS] {index}/{total}")
             sys.stdout.flush()
@@ -125,10 +131,6 @@ def main():
             sys.stdout.flush()
             continue
 
-        ref_path = os.path.join(args.vocals_dir, f"{idx}.wav")
-        ref_bytes = 1200 * 16 * 2
-        if not os.path.exists(ref_path) or os.path.getsize(ref_path) < ref_bytes:
-            ref_path = fallback
         if not ref_path or not os.path.exists(ref_path):
             write_empty_wav(out_path)
             print(f"[WARN] No reference for segment {idx}", file=sys.stderr)

@@ -1,27 +1,22 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { OCREngine, type OCRRuntime } from '../../ml/ocr/ocr.ts';
-import { ensureDir, writeJson, readJson } from './utils/fileOps.ts';
-import { emitLog, nowISO, srtTime } from './utils/utils.ts';
-import { FrameResult, mergeFrames } from './utils/ocrMerge.ts';
-import { Context, setStage } from '../context/context.ts';
+import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
+import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
+import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
+import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
+import { Context, setStage } from '../../context/context.ts';
 
 export async function stageAsrOcr(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
 	await setStage(sessionPath, 'asr_ocr', {
-		last_message: 'ASR-guided OCR: extracting frames...',
+		last_message: `OCR'ing frames...`,
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'media', 'video_source.mp4');
-	if (!existsSync(videoPath)) {
-		throw new Error(`Video not found: ${videoPath}`);
-	}
-
-	const asrFile = join(sessionPath, 'metadata', 'asr.json');
-	if (!existsSync(asrFile)) {
-		throw new Error(`asr.json not found: ${asrFile}`);
+	const frameDir = join(sessionPath, 'tmp', 'asr-ocr-frames');
+	if (!existsSync(frameDir)) {
+		throw new Error(`Frame directory not found: ${frameDir} — run asr_ocr_pre first`);
 	}
 
 	const asrOcrCfg = ctx.input?.stages?.asr_ocr;
@@ -30,63 +25,6 @@ export async function stageAsrOcr(ctx: Context) {
 	const runtime = (asrOcrCfg?.runtime ?? 'ort-opencv-cpp') as OCRRuntime;
 	const device = (asrOcrCfg?.device ?? 'cpu') as 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
 	const cleanupFrames = asrOcrCfg?.cleanupFrames ?? false;
-
-	const asrData = await readJson(asrFile, ctx);
-	const asrSegs: { text: string; start: number; end: number }[] = (asrData.result?.segments ?? []).map((s: any) => ({
-		text: s.text,
-		start: Math.round(s.start),
-		end: Math.round(s.end),
-	}));
-
-	if (!asrSegs.length) throw new Error('No ASR segments found');
-
-	// Generate frame timestamps: end2fps strategy
-	// First segment: 10fps (100ms steps) for precise first-subtitle detection
-	// Subsequent segments: 500ms steps backwards from end
-	const allTimestamps = new Set<number>();
-	for (let i = 0; i < asrSegs.length; i++) {
-		const seg = asrSegs[i];
-		if (i === 0) {
-			for (let t = Math.round(seg.start); t <= Math.round(seg.end); t += 100) {
-				allTimestamps.add(Math.round(t));
-			}
-		} else {
-			for (let t = Math.round(seg.end); t >= seg.start; t -= 500) {
-				allTimestamps.add(Math.round(t));
-			}
-		}
-	}
-	const sortedTs = [...allTimestamps].sort((a, b) => a - b);
-
-	emitLog(sessionPath, `[asr_ocr] ${asrSegs.length} ASR segs → ${sortedTs.length} frame positions`);
-
-	// Extract frames
-	const frameDir = join(sessionPath, 'tmp', 'asr-ocr-frames');
-	ensureDir(frameDir, ctx);
-
-	let ocrCount = 0;
-	for (let i = 0; i < sortedTs.length; i++) {
-		const ts = sortedTs[i];
-		const framePath = join(frameDir, `frame_${ts.toString().padStart(7, '0')}.jpg`);
-		const r = spawnSync('ffmpeg', [
-			'-y', '-ss', String(ts / 1000), '-i', videoPath,
-			'-frames:v', '1', '-qscale:v', '2', framePath,
-		], { timeout: 15_000, encoding: 'utf-8' });
-		if (r.status !== 0) continue;
-		ocrCount++;
-
-		if ((i + 1) % 50 === 0 || i === sortedTs.length - 1) {
-			emitLog(sessionPath, `[asr_ocr] Extracted ${i + 1}/${sortedTs.length} frames`);
-		}
-	}
-
-	if (!ocrCount) {
-		throw new Error('No frames extracted');
-	}
-
-	await setStage(sessionPath, 'asr_ocr', {
-		last_message: `OCR'ing ${ocrCount} frames (${runtime})...`,
-	});
 
 	// OCR each frame
 	const engine = new OCREngine(runtime, device);
@@ -124,7 +62,7 @@ export async function stageAsrOcr(ctx: Context) {
 
 	// probe video duration fallback
 	const probe = spawnSync('ffprobe', [
-		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoPath,
+		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', join(sessionPath, 'media', 'video_source.mp4'),
 	], { timeout: 15_000, encoding: 'utf-8' });
 	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
 
@@ -164,7 +102,7 @@ export async function stageAsrOcr(ctx: Context) {
 		ctx,
 	);
 
-	emitLog(sessionPath, `[asr_ocr] ${ocrCount} OCR frames → ${ocrSegments.length} OCR segments`);
+	emitLog(sessionPath, `[asr_ocr] ${frameFiles.length} OCR frames → ${ocrSegments.length} OCR segments`);
 
 	// Cleanup frames (optional)
 	if (cleanupFrames) {

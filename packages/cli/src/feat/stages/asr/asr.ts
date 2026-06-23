@@ -1,18 +1,18 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
+import { readJson, writeJson, ensureDir, removeFile } from '../utils/fileOps.ts';
 import { copyFileSync, existsSync } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import type { MLDaemon } from '../../ml/daemon/client.ts';
+import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
 	readConfig,
-} from '../config/config.ts';
-import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from './utils/utils.ts';
-import { AsrOptions } from './asr/types.ts';
-import { parseAsrOutput } from './asr/utils.ts';
-import { Context, setCtx, setStage } from '../context/context.ts';
+} from '../../config/config.ts';
+import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from '../utils/utils.ts';
+import { AsrOptions } from './types.ts';
+import { parseAsrOutput } from './utils.ts';
+import { Context, setCtx, setStage } from '../../context/context.ts';
 
 const VAD_CANDIDATES: Record<string, string[]> = {
 	'silero-v5': [
