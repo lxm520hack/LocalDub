@@ -30,6 +30,8 @@ pub struct Segment {
 pub struct OcrOutput {
     pub text: String,
     pub segments: Vec<Segment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
     pub char_list_load_ms: f32,
     pub image_load_ms: f32,
     pub model_load_ms: f32,
@@ -53,13 +55,72 @@ pub fn run_ocr(
     let char_list_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
 
     let t0 = Instant::now();
+    let mut sessions = load_sessions(models_dir)?;
+    let model_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
+
+    let result = run_ocr_core(image_path, &char_list, &mut sessions, text_score, subtitle_only)?;
+
+    Ok(OcrOutput {
+        text: result.text,
+        segments: result.segments,
+        file: None,
+        char_list_load_ms,
+        image_load_ms: result.image_load_ms,
+        model_load_ms,
+        det_inference_ms: result.det_ms,
+        postprocess_ms: result.post_ms,
+        rec_inference_ms: result.rec_ms,
+        total_ms: t_start.elapsed().as_secs_f32() * 1000.0,
+    })
+}
+
+pub fn run_ocr_with_sessions(
+    image_path: &str,
+    char_list: &[String],
+    sessions: &mut crate::infer::OcrSessions,
+    text_score: f32,
+    subtitle_only: bool,
+    char_list_load_ms_val: f32,
+    model_load_ms_val: f32,
+) -> Result<OcrOutput> {
+    let t_start = Instant::now();
+    let result = run_ocr_core(image_path, char_list, sessions, text_score, subtitle_only)?;
+
+    Ok(OcrOutput {
+        text: result.text,
+        segments: result.segments,
+        file: None,
+        char_list_load_ms: char_list_load_ms_val,
+        image_load_ms: result.image_load_ms,
+        model_load_ms: model_load_ms_val,
+        det_inference_ms: result.det_ms,
+        postprocess_ms: result.post_ms,
+        rec_inference_ms: result.rec_ms,
+        total_ms: t_start.elapsed().as_secs_f32() * 1000.0,
+    })
+}
+
+struct CoreResult {
+    text: String,
+    segments: Vec<Segment>,
+    image_load_ms: f32,
+    det_ms: f32,
+    post_ms: f32,
+    rec_ms: f32,
+}
+
+fn run_ocr_core(
+    image_path: &str,
+    char_list: &[String],
+    sessions: &mut crate::infer::OcrSessions,
+    text_score: f32,
+    subtitle_only: bool,
+) -> Result<CoreResult> {
+    // --- Image load ---
+    let t0 = Instant::now();
     let img = Image::load(image_path)?;
     let (full_w, full_h) = (img.w, img.h);
     let image_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
-
-    let t0 = Instant::now();
-    let mut sessions = load_sessions(models_dir)?;
-    let model_load_ms = t0.elapsed().as_secs_f32() * 1000.0;
 
     // --- DET ---
     let t0 = Instant::now();
@@ -133,16 +194,13 @@ pub fn run_ocr(
 
     let full_text: String = segs.iter().map(|s| s.text.as_str()).collect();
 
-    Ok(OcrOutput {
+    Ok(CoreResult {
         text: full_text,
         segments: segs,
-        char_list_load_ms,
         image_load_ms,
-        model_load_ms,
-        det_inference_ms: det_ms,
-        postprocess_ms: post_ms,
-        rec_inference_ms: rec_ms,
-        total_ms: t_start.elapsed().as_secs_f32() * 1000.0,
+        det_ms,
+        post_ms,
+        rec_ms,
     })
 }
 

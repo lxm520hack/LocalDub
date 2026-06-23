@@ -493,29 +493,44 @@ function runOCRBenchmarkCppOpencv(label: string, fps: number, textScore?: number
 	console.log('  extracting frames...');
 	const { durationS: durationSCpp, step: stepCpp, srcFps: srcFpsCpp } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing ${Math.ceil(durationSCpp * fps)} frames...`);
+	console.log(`  OCR'ing ${Math.ceil(durationSCpp * fps)} frames (batch --dir mode)...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
 		.sort();
 
+	const args: string[] = ['--dir', frameDir];
+	if (textScore != null) args.push(String(textScore));
+	if (subtitleOnly) args.push('--subtitle-only');
+	if (noNms) args.push('--no-nms');
+	const r = spawnSync(CPP_OPENCV_BIN, args, {
+		timeout: 600_000,
+		encoding: 'utf-8',
+		env: { ...process.env, LD_LIBRARY_PATH: CPP_OPENCV_LD_PATH, OCR_MODELS_DIR, OCR_KEYS_PATH },
+	});
+	if (r.status !== 0) {
+		throw new Error(`cpp-opencv OCR error: ${r.stderr?.slice(-300) || `exit ${r.status}`}`);
+	}
+	const batchResults: any[] = JSON.parse(r.stdout);
+
 	const frameResultsCpp: FrameResult[] = [];
 	let totalMs = 0, totalDetMs = 0, totalPostMs = 0, totalRecMs = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
-		const f = frameFiles[i];
-		const framePath = join(frameDir, f);
 		const timestampMs = Math.round((i * stepCpp / srcFpsCpp) * 1000);
-		const result = ocrFrameCpp(framePath, textScore, subtitleOnly, CPP_OPENCV_BIN, CPP_OPENCV_LD_PATH, noNms);
-		totalMs += result.totalMs;
-		totalDetMs += result.detMs;
-		totalPostMs += result.postMs;
-		totalRecMs += result.recMs;
+		const data = batchResults[i] || { segments: [], text: '' };
+		const segs: { text: string; confidence: number }[] = data.segments || [];
+		const best = segs.length > 0
+			? segs.reduce((a: any, b: any) => a.confidence > b.confidence ? a : b)
+			: { text: '', confidence: 0 };
+		totalMs += (data.detInferenceMs || 0) + (data.postprocessMs || 0) + (data.recInferenceMs || 0);
+		totalDetMs += data.detInferenceMs || 0;
+		totalPostMs += data.postprocessMs || 0;
+		totalRecMs += data.recInferenceMs || 0;
 		frameResultsCpp.push({
-			text: result.text || '',
+			text: data.text || '',
 			timestamp: timestampMs,
-			confidence: result.confidence || 0,
+			confidence: best.confidence || 0,
 		});
-		if ((i + 1) % 50 === 0) console.log(`  OCR: ${i + 1}/${frameFiles.length}`);
 	}
 
 	const segmentsCpp = mergeFrames(frameResultsCpp);
@@ -596,52 +611,44 @@ function runOCRBenchmarkRust(label: string, fps: number, textScore?: number, sub
 	console.log('  extracting frames...');
 	const { durationS: durationSRust, step: stepRust, srcFps: srcFpsRust } = extractFrames(VIDEO_PATH, frameDir, fps);
 
-	console.log(`  OCR'ing ${Math.ceil(durationSRust * fps)} frames...`);
+	console.log(`  OCR'ing ${Math.ceil(durationSRust * fps)} frames (batch --dir mode)...`);
 	const frameFiles = spawnSync('ls', [frameDir], { encoding: 'utf-8' })
 		.stdout.trim().split('\n')
 		.filter(f => f.endsWith('.jpg'))
 		.sort();
 
+	const argsRust = ['--dir', frameDir];
+	if (textScore != null) argsRust.push(String(textScore));
+	if (subtitleOnly) argsRust.push('--subtitle-only');
+	const rRust = spawnSync(RUST_BIN, argsRust, {
+		timeout: 600_000,
+		encoding: 'utf-8',
+		env: { ...process.env, OCR_MODELS_DIR, OCR_KEYS_PATH, OCR_INFER_PY: RUST_INFER_PY },
+	});
+	if (rRust.status !== 0) {
+		throw new Error(`Rust OCR error: ${rRust.stderr?.slice(-300) || `exit ${rRust.status}`}`);
+	}
+	const batchResultsRust: any[] = JSON.parse(rRust.stdout);
+
 	const frameResultsRust: FrameResult[] = [];
 	let totalMs = 0, totalDetMs = 0, totalPostMs = 0, totalRecMs = 0;
 	for (let i = 0; i < frameFiles.length; i++) {
-		const f = frameFiles[i];
-		const framePath = join(frameDir, f);
 		const timestampMs = Math.round((i * stepRust / srcFpsRust) * 1000);
-		const args = [framePath];
-		if (textScore != null) args.push(String(textScore));
-		if (subtitleOnly) args.push('--subtitle-only');
-		const r = spawnSync(RUST_BIN, args, {
-			timeout: 60_000,
-			encoding: 'utf-8',
-			env: { ...process.env, OCR_MODELS_DIR, OCR_KEYS_PATH, OCR_INFER_PY: RUST_INFER_PY },
-		});
-		if (r.status !== 0) {
-			console.error(`  Rust OCR error (${r.status}): ${(r.stderr || '').slice(-300)}`);
-			frameResultsRust.push({ text: '', timestamp: timestampMs, confidence: 0 });
-			continue;
-		}
-		let data: any;
-		try {
-			data = JSON.parse(r.stdout);
-		} catch {
-			console.error(`  Rust JSON parse failed: ${(r.stdout || '').slice(-200)}`);
-			frameResultsRust.push({ text: '', timestamp: timestampMs, confidence: 0 });
-			continue;
-		}
+		const data = batchResultsRust[i] || { segments: [], text: '' };
+		const segs: { text: string; confidence: number }[] = data.segments || [];
+		const best = segs.length > 0
+			? segs.reduce((a: any, b: any) => a.confidence > b.confidence ? a : b)
+			: { text: '', confidence: 0 };
 		const totalF = (data.det_inference_ms || 0) + (data.postprocess_ms || 0) + (data.rec_inference_ms || 0);
 		totalMs += totalF;
 		totalDetMs += data.det_inference_ms || 0;
 		totalPostMs += data.postprocess_ms || 0;
 		totalRecMs += data.rec_inference_ms || 0;
-		const segs = data.segments || [];
-		const best = segs.length > 0 ? segs.reduce((a: any, b: any) => a.confidence > b.confidence ? a : b) : { text: '', confidence: 0 };
 		frameResultsRust.push({
 			text: data.text || '',
 			timestamp: timestampMs,
 			confidence: best.confidence || 0,
 		});
-		if ((i + 1) % 50 === 0) console.log(`  OCR: ${i + 1}/${frameFiles.length}`);
 	}
 
 	const segmentsRust = mergeFrames(frameResultsRust);
