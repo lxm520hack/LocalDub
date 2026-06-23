@@ -11,7 +11,7 @@
 use std::ffi::c_void;
 use std::path::Path;
 
-use opencv::core::{Mat, Point2f, Size, Vector};
+use opencv::core::{Mat, Point2f, Size, CV_8UC};
 use opencv::imgproc;
 use opencv::prelude::*;
 
@@ -30,44 +30,58 @@ impl Image {
         Self { w, h, data: vec![0u8; w * h * 3] }
     }
 
-    /// Load from path. Converts any supported input to RGB8.
+    /// Load from path. Converts any supported input to RGB8, then swaps
+    /// to BGR to match Python rapidocr (which uses cv2.imread directly).
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         let img = image::open(path.as_ref())
             .map_err(|e| format!("load image failed: {}", e))?;
         let rgb = img.to_rgb8();
         let (w, h) = (rgb.width() as usize, rgb.height() as usize);
-        Ok(Self { w, h, data: rgb.into_raw() })
+        let mut raw = rgb.into_raw();
+        // RGB -> BGR
+        for px in raw.chunks_exact_mut(3) {
+            px.swap(0, 2);
+        }
+        Ok(Self { w, h, data: raw })
     }
 }
 
-/// Build an OpenCV Mat that wraps our RGB buffer (no copy).
-/// Color channel order is RGB (matches rapidocr).
+/// Build an OpenCV Mat that wraps our BGR buffer (no copy).
+/// Color channel order is BGR (matches rapidocr + cv2.imread).
 fn as_mat(img: &Image) -> Mat {
     unsafe {
         Mat::new_rows_cols_with_data_unsafe_def(
             img.h as i32,
             img.w as i32,
-            u8::opencv_type(),
+            CV_8UC(3),
             img.data.as_ptr() as *mut c_void,
         ).expect("cv::Mat wrap")
     }
 }
 
-/// Copy data from an OpenCV Mat (RGB, 8UC3) into a new Image.
+/// Copy data from an OpenCV Mat (8UC3) into a new Image.
+/// Uses raw pointer access to handle both continuous and non-continuous Mats.
 fn from_mat(mat: &Mat) -> Image {
     let w = mat.cols() as usize;
     let h = mat.rows() as usize;
     let mut out = Image::new(w, h);
-    // OpenCV Mat stores data as 3 consecutive bytes per pixel (row-major).
-    // For continuous 8UC3 mats we can memcpy the whole buffer.
-    let total = w * h * 3;
-    let data: &[u8] = mat.data_typed().expect("cv::data_typed");
-    if data.len() >= total {
-        out.data.copy_from_slice(&data[..total]);
+    let mat_ptr = mat.data() as *const u8;
+    let step = mat.step1(0).unwrap_or(0) as usize;
+    let row_bytes = w * 3;
+    if mat.is_continuous() && step == row_bytes {
+        // Fast path: memcpy the whole buffer
+        let total = row_bytes * h;
+        unsafe {
+            std::ptr::copy_nonoverlapping(mat_ptr, out.data.as_mut_ptr(), total);
+        }
     } else {
-        // Fallback: copy what's available (shouldn't happen for 8UC3).
-        for i in 0..data.len().min(total) {
-            out.data[i] = data[i];
+        // Safe path: copy row by row
+        for y in 0..h {
+            let src = unsafe { mat_ptr.add(y * step) };
+            let dst = out.data.as_mut_ptr() as *mut u8;
+            unsafe {
+                std::ptr::copy_nonoverlapping(src, dst.add(y * row_bytes), row_bytes);
+            }
         }
     }
     out
@@ -82,7 +96,7 @@ pub fn resize_bilinear(
     let src_mat = unsafe {
         Mat::new_rows_cols_with_data_unsafe_def(
             src_h as i32, src_w as i32,
-            u8::opencv_type(),
+            CV_8UC(3),
             src.as_ptr() as *mut c_void,
         ).expect("cv::Mat src")
     };
@@ -94,9 +108,21 @@ pub fn resize_bilinear(
         imgproc::INTER_LINEAR,
     ).expect("cv::resize");
     let total = dst_w * dst_h * 3;
-    let data: &[u8] = dst_mat.data_typed().expect("cv::data_typed");
-    let to_copy = data.len().min(total);
-    dst[..to_copy].copy_from_slice(&data[..to_copy]);
+    let mat_ptr = dst_mat.data() as *const u8;
+    let step = dst_mat.step1(0).unwrap_or(0) as usize;
+    let row_bytes = dst_w * 3;
+    if dst_mat.is_continuous() && step == row_bytes {
+        unsafe {
+            std::ptr::copy_nonoverlapping(mat_ptr, dst.as_mut_ptr(), total);
+        }
+    } else {
+        for y in 0..dst_h {
+            let src = unsafe { mat_ptr.add(y * step) };
+            unsafe {
+                std::ptr::copy_nonoverlapping(src, dst.as_mut_ptr().add(y * row_bytes), row_bytes);
+            }
+        }
+    }
 }
 
 pub fn rotate_180(img: &Image) -> Image {
@@ -157,8 +183,10 @@ pub fn warp_perspective_crop(img: &Image, pts: &[Point; 4]) -> Image {
         Point2f::new(pts[3].x, pts[3].y),
     ];
 
+    // OpenCV: getPerspectiveTransform(src, dst) returns M: src->dst.
+    // warpPerspective with default flags expects M: src->dst (inverts internally to sample).
     let m = imgproc::get_perspective_transform_slice_def(
-        &dst_pts_arr, &src_pts_arr,
+        &src_pts_arr, &dst_pts_arr,
     ).expect("cv::getPerspectiveTransform");
 
     let src = as_mat(img);

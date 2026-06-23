@@ -48,7 +48,6 @@ pub fn run_ocr(
     let char_list = load_char_list(keys_path)?;
     let img = Image::load(image_path)?;
     let (full_w, full_h) = (img.w, img.h);
-    eprintln!("[OCR] image {}x{}", full_w, full_h);
 
     let mut sessions = load_sessions(models_dir)?;
 

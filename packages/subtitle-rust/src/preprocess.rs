@@ -51,9 +51,8 @@ pub fn preprocess_det(full: &Image, bottom_only: bool) -> DetPreproc {
             (orig_h as f32) * (DET_LIMIT_SIDE as f32) / (orig_w as f32),
         )
     };
-    // 先 int 截断（与 C++ 的 int(W*ratio)、Python 的 int() 一致），再 32 对齐
-    let new_w = (new_w_f as usize as f32 / 32.0).round() as usize * 32;
-    let new_h = (new_h_f as usize as f32 / 32.0).round() as usize * 32;
+    let new_w = (new_w_f as usize / 32) * 32;
+    let new_h = (new_h_f as usize / 32) * 32;
 
     let mut resized = vec![0u8; new_w * new_h * 3];
     resize_bilinear(&roi.data, roi.w, roi.h, &mut resized, new_w, new_h);

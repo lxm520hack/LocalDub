@@ -39,6 +39,7 @@ pub fn load_sessions(models_dir: &str) -> Result<OcrSessions> {
 
 fn run(session: &mut Session, tensor: &[f32], dims: &[usize]) -> Result<Vec<f32>> {
     let shape: Vec<usize> = dims.to_vec();
+
     let input = Value::from_array((shape, tensor.to_vec()))
         .map_err(|e| format!("value wrap: {}", e))?;
 
