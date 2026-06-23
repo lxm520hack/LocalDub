@@ -377,7 +377,24 @@ function checkOpenCV(): boolean {
 		return false;
 	}
 
-	// Windows: 检查常见安装路径
+	// Windows: 优先检查 MSYS2 pacman 安装的 OpenCV
+	const msys2Dir = 'C:\\msys64';
+	const msys2OpenCv = join(msys2Dir, 'mingw64');
+	if (existsSync(join(msys2OpenCv, 'include', 'opencv2', 'core.hpp')) ||
+		existsSync(join(msys2OpenCv, 'lib', 'libopencv_core.a')) ||
+		existsSync(join(msys2OpenCv, 'bin', 'opencv_world*.dll'))) {
+		process.env.OpenCV_DIR = msys2OpenCv;
+		return true;
+	}
+
+	// 检查 vcpkg 安装的 OpenCV
+	const vcpkgDir = join(repoRoot, 'submodule', 'vcpkg', 'installed', 'x64-windows');
+	if (existsSync(join(vcpkgDir, 'include', 'opencv2', 'core.hpp'))) {
+		process.env.OpenCV_DIR = vcpkgDir;
+		return true;
+	}
+
+	// 检查常见安装路径
 	const paths = [
 		'C:\\opencv\\build',
 		'C:\\opencv4\\build',
@@ -444,6 +461,16 @@ function installOpenCVWithVcpkgSubmodule(): boolean {
 	// 设置环境变量
 	const vcpkgDir = vcpkgSubmodule;
 	
+	// 检查是否已经安装了 OpenCV
+	const opencvDir = join(vcpkgDir, 'installed', 'x64-windows');
+	const opencvLib = join(opencvDir, 'lib', 'libopencv_core.a');
+	const opencvDll = join(opencvDir, 'bin', 'opencv_world481.dll');
+	if (existsSync(opencvLib) || existsSync(opencvDll)) {
+		log('OpenCV 已通过 vcpkg 安装', 'gray');
+		process.env.OpenCV_DIR = opencvDir;
+		return true;
+	}
+	
 	// 使用 vcpkg 安装 opencv4
 	log('使用 vcpkg 安装 opencv4:x64-windows...', 'yellow');
 	
@@ -469,7 +496,6 @@ function installOpenCVWithVcpkgSubmodule(): boolean {
 	log('OpenCV 通过 vcpkg 安装成功', 'green');
 	
 	// 设置 OpenCV_DIR
-	const opencvDir = join(vcpkgDir, 'installed', 'x64-windows');
 	if (existsSync(opencvDir)) {
 		process.env.OpenCV_DIR = opencvDir;
 		log(`设置 OpenCV_DIR=${opencvDir}`, 'green');
@@ -597,6 +623,56 @@ function installOpenCVWithVcpkg(): boolean {
 }
 
 /**
+ * 使用 MSYS2 pacman 安装 OpenCV
+ */
+function installOpenCVWithPacman(): boolean {
+	// 检查 MSYS2 是否已安装
+	const msys2Dir = 'C:\\msys64';
+	if (!existsSync(msys2Dir)) {
+		log('MSYS2 未安装，跳过', 'gray');
+		return false;
+	}
+
+	// 检查 pacman 是否可用
+	const bashBin = join(msys2Dir, 'usr', 'bin', 'bash.exe');
+	if (!existsSync(bashBin)) {
+		log('bash 未找到，跳过', 'gray');
+		return false;
+	}
+
+	// 检查 OpenCV 是否已安装
+	const opencvLib = join(msys2Dir, 'mingw64', 'lib', 'libopencv_core.a');
+	const opencvDll = join(msys2Dir, 'mingw64', 'bin', 'opencv_world490.dll');
+	if (existsSync(opencvLib) || existsSync(opencvDll)) {
+		log('OpenCV 已通过 pacman 安装', 'gray');
+		process.env.OpenCV_DIR = join(msys2Dir, 'mingw64');
+		return true;
+	}
+
+	// 使用 pacman 安装 opencv
+	log('使用 pacman 安装 opencv（下载约 315 MB，安装约 1.8 GB）...', 'yellow');
+
+	// 使用 bash -lc 执行命令（避免 PowerShell 引号问题）
+	const pacmanCmd = 'rm -f /var/lib/pacman/db.lck && pacman -S --noconfirm --overwrite "*" mingw-w64-x86_64-opencv';
+	const result = Bun.spawnSync([
+		bashBin, '-lc', pacmanCmd
+	], {
+		cwd: repoRoot,
+		stdout: 'inherit',
+		stderr: 'inherit',
+	});
+
+	if (result.exitCode !== 0) {
+		log('pacman 安装 opencv 失败', 'red');
+		return false;
+	}
+
+	log('OpenCV 通过 pacman 安装成功', 'green');
+	process.env.OpenCV_DIR = join(msys2Dir, 'mingw64');
+	return true;
+}
+
+/**
  * 自动安装 OpenCV（Windows）
  */
 function installOpenCV(): boolean {
@@ -605,8 +681,14 @@ function installOpenCV(): boolean {
 		return false;
 	}
 
-	// 优先尝试使用 vcpkg 子模块安装
-	log('尝试使用 vcpkg 子模块安装 OpenCV...', 'yellow');
+	// 优先尝试使用 MSYS2 pacman 安装
+	log('尝试使用 MSYS2 pacman 安装 OpenCV...', 'yellow');
+	if (installOpenCVWithPacman()) {
+		return true;
+	}
+
+	// pacman 方案失败，尝试使用 vcpkg 子模块安装
+	log('pacman 方案失败，尝试使用 vcpkg 子模块...', 'yellow');
 	if (installOpenCVWithVcpkgSubmodule()) {
 		return true;
 	}
@@ -624,6 +706,9 @@ function installOpenCV(): boolean {
 	log('└────────────────────────────────────────┘', 'yellow');
 	log('', 'yellow');
 	log('手动安装 OpenCV:', 'yellow');
+	log('', 'yellow');
+	log('  - 使用 pacman (推荐):', 'yellow');
+	log('    pacman -S mingw-w64-x86_64-opencv', 'yellow');
 	log('', 'yellow');
 	log('  - 使用 vcpkg:', 'yellow');
 	log('    git clone https://github.com/microsoft/vcpkg', 'yellow');
@@ -644,8 +729,9 @@ function installOpenCV(): boolean {
 function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName: 'ocr_pipeline' | 'ocr_pipeline_opencv') {
 	const ortBase = join(repoRoot, 'packages', 'tmp', isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
 	const ortExtDir = join(ortBase, isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
-	const cppBuildDir = join(repoRoot, 'packages', 'subtitle-ocr', project, 'build');
-	const ocrBinary = join(cppBuildDir, 'Release', isWindows ? `${binaryName}.exe` : binaryName);
+	const cppSourceDir = join(repoRoot, 'packages', 'subtitle-ocr', project);
+	const cppBuildDir = join(cppSourceDir, 'build');
+	const ocrBinary = join(cppBuildDir, isWindows ? `${binaryName}.exe` : binaryName);
 
 	// 若二进制已存在，跳过
 	if (existsSync(ocrBinary)) {
@@ -655,7 +741,14 @@ function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName
 
 	// subtitle-opencv-cpp 需要 OpenCV，先检查并安装
 	if (project === 'subtitle-opencv-cpp') {
-		if (!checkOpenCV()) {
+		// 优先使用 MSYS2 pacman 安装的 OpenCV
+		const msys2Dir = 'C:\\msys64';
+		const msys2OpenCv = join(msys2Dir, 'mingw64');
+		if (existsSync(join(msys2OpenCv, 'lib', 'libopencv_core.a')) ||
+			existsSync(join(msys2OpenCv, 'bin', 'opencv_world490.dll'))) {
+			log(`OpenCV 已安装 (MSYS2): ${msys2OpenCv}`, 'gray');
+			process.env.OpenCV_DIR = msys2OpenCv;
+		} else if (!checkOpenCV()) {
 			log('OpenCV 未安装，尝试自动安装...', 'yellow');
 			if (!installOpenCV()) {
 				return;
@@ -709,33 +802,88 @@ function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName
 		return;
 	}
 
-	// 添加 MSYS2 工具链到 PATH（cmake 需要用到 g++ 和 make）
+	// 添加 MSYS2 到 PATH
+	const msys2Dir = 'C:\\msys64';
+	const useMsys2 = project === 'subtitle-opencv-cpp' && isWindows;
 	const msys2Paths = isWindows
-		? 'C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;'
+		? join(msys2Dir, 'mingw64', 'bin') + ';' + join(msys2Dir, 'usr', 'bin') + ';'
 		: '';
+
+	// subtitle-opencv-cpp：使用 MSYS2 原生环境
+	const opencvDir = useMsys2
+		? join(msys2Dir, 'mingw64')
+		: (process.env.OpenCV_DIR || '');
+
 	const buildEnv: Record<string, string> = {
 		...process.env,
 		PATH: `${msys2Paths}${process.env.PATH}`,
+		OpenCV_DIR: opencvDir,
 	};
 
 	// 编译
 	log(`编译 ${binaryName}...`, 'yellow');
-	const cmakeOpts = isWindows
-		? ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', project),
-			`-DORT_DIR=${ortExtDir}`, '-G', 'MinGW Makefiles']
-		: ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', project),
-			`-DORT_DIR=${ortExtDir}`];
 
-	const cmakeCode = run(cmakeOpts, { cwd: repoRoot, env: buildEnv });
+	// 构建 cmake 命令
+	const cmakeBaseArgs = [
+		'cmake',
+		'-B', cppBuildDir,
+		'-S', join(repoRoot, 'packages', 'subtitle-ocr', project),
+		`-DORT_DIR=${ortExtDir}`,
+	];
+
+	// subtitle-opencv-cpp 使用 MSYS2 cmake，不指定 OpenCV_DIR（从环境变量读取）
+	// subtitle-cpp 继续使用原来的配置
+	const cmakeExtraArgs = project === 'subtitle-opencv-cpp' && isWindows
+		? []
+		: (project === 'subtitle-cpp' ? [] : []);
+
+	const cmakeFinalArgs = [
+		...cmakeBaseArgs,
+		...cmakeExtraArgs,
+		...(isWindows ? ['-G', 'MinGW Makefiles'] : [])
+	];
+
+	let cmakeCode: number;
+
+	if (useMsys2) {
+		// 使用 PowerShell 执行 cmake，但确保 MSYS2 在 PATH 中
+		const cmakeCmd = [...cmakeFinalArgs].map(arg => `"${arg}"`).join(' ');
+		const psCmd = `$env:PATH = 'C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;' + $env:PATH; cd '${repoRoot}'; ${cmakeCmd}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }`;
+		const cmakeBashResult = Bun.spawnSync([
+			'powershell.exe', '-Command', psCmd
+		], {
+			cwd: repoRoot,
+			env: buildEnv,
+			stdout: 'inherit',
+			stderr: 'inherit',
+		});
+		cmakeCode = cmakeBashResult.exitCode;
+	} else {
+		cmakeCode = run(cmakeFinalArgs, { cwd: repoRoot, env: buildEnv });
+	}
+
 	if (cmakeCode !== 0) {
 		log(`cmake configure 失败 (exit ${cmakeCode})`, 'red');
 		return;
 	}
 
-	const buildCode = run(
-		['cmake', '--build', cppBuildDir, '--parallel'],
-		{ cwd: repoRoot, env: buildEnv }
-	);
+	// 编译
+	let buildCode: number;
+	if (useMsys2) {
+		const buildCmd = `$env:PATH = 'C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;' + $env:PATH; cd '${repoRoot}'; cmake --build '${cppBuildDir}' --parallel`;
+		const buildBashResult = Bun.spawnSync([
+			'powershell.exe', '-Command', buildCmd
+		], {
+			cwd: repoRoot,
+			env: buildEnv,
+			stdout: 'inherit',
+			stderr: 'inherit',
+		});
+		buildCode = buildBashResult.exitCode;
+	} else {
+		buildCode = run(['cmake', '--build', cppBuildDir, '--parallel'], { cwd: repoRoot, env: buildEnv });
+	}
+
 	if (buildCode !== 0) {
 		log(`${binaryName} 编译失败 (exit ${buildCode})`, 'red');
 		return;
