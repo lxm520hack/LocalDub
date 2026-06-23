@@ -54,6 +54,11 @@ if sys.platform == "win32":
 _WHISPER: "whisper.Whisper | None" = None
 _VOXCPM: "VoxCPM | None" = None
 
+# Import Demucs separate handler
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs"))
+from daemon_separate import handle_separate  # noqa: PLC0414,E402
+
 
 def _load_whisper(device: str) -> None:
     global _WHISPER
@@ -95,13 +100,6 @@ def _load_voxcpm(model_dir: str, device: str) -> None:
 	_VOXCPM = VoxCPM.from_pretrained(model_dir, load_denoiser=False, device=device)
 
 
-def _load_demucs(device: str):
-    demucs_path = _demucs_source_path()
-    sys.path.insert(0, str(demucs_path))
-    from demucs.api import Separator
-
-    return Separator
-
 # ---------------------------------------------------------------------------
 # Stage handlers
 # ---------------------------------------------------------------------------
@@ -138,26 +136,6 @@ def _write_empty_wav(path: str) -> None:
         wf.setsampwidth(2)
         wf.setframerate(48000)
         wf.writeframes(b"")
-
-
-def _demucs_source_path() -> Path:
-    repo_root = Path(__file__).resolve().parents[3]
-    demucs_path = repo_root / "submodule" / "demucs"
-    if (demucs_path / "demucs" / "api.py").exists():
-        return demucs_path
-    raise RuntimeError("Demucs submodule not found; run: git submodule update --init --recursive")
-
-
-def _demucs_progress(info: dict, shifts: int) -> int:
-    models = max(1, int(info.get("models") or 1))
-    model_index = max(0, int(info.get("model_idx_in_bag") or 0))
-    shift_index = max(0, int(info.get("shift_idx") or 0))
-    audio_length = max(0, int(info.get("audio_length") or 0))
-    segment_offset = max(0, int(info.get("segment_offset") or 0))
-    segment_ratio = min(segment_offset / audio_length, 1) if audio_length else 0
-    total_units = max(1, models * shifts)
-    completed_units = model_index * shifts + shift_index + segment_ratio
-    return max(0, min(99, int(completed_units / total_units * 100)))
 
 
 # ---------------------------------------------------------------------------
@@ -323,69 +301,6 @@ def handle_tts(params: dict, task_id: str, *, emit=None) -> dict:
 # ---------------------------------------------------------------------------
 # Separate (Demucs)
 # ---------------------------------------------------------------------------
-
-def handle_separate(params: dict, task_id: str, *, emit=None) -> dict:
-    from pydub import AudioSegment
-
-    video_path = params["video_path"]
-    session_path = params["session_path"]
-    device = params.get("device", "cpu")
-
-    t0 = time.perf_counter()
-    Separator = _load_demucs(device)
-
-    media_dir = Path(session_path) / "media"
-    media_dir.mkdir(parents=True, exist_ok=True)
-    stem_paths = {
-        "drums": media_dir / "target_0_drums.wav",
-        "bass": media_dir / "target_1_bass.wav",
-        "other": media_dir / "target_2_other.wav",
-        "vocals": media_dir / "target_3_vocals.wav",
-    }
-    bgm_file = media_dir / "target_bgm.wav"
-
-    shifts = 3
-
-    def report_progress(info: dict) -> None:
-        progress = _demucs_progress(info, shifts)
-        _emit_progress("separate", task_id, progress, 100, emit=emit)
-
-    separator = Separator(
-        model="htdemucs_ft",
-        device=device,
-        progress=True,
-        shifts=shifts,
-        callback=report_progress,
-    )
-    load_time = time.perf_counter() - t0
-
-    t1 = time.perf_counter()
-    _, separated = separator.separate_audio_file(video_path)
-    process_time = time.perf_counter() - t1
-
-    audio_duration_s = len(AudioSegment.from_file(video_path)) / 1000.0
-
-    bgm = None
-    for stem, source in separated.items():
-        if stem == "vocals":
-            continue
-        bgm = source if bgm is None else bgm + source
-
-    from demucs.api import save_audio
-
-    for stem, path in stem_paths.items():
-        save_audio(separated[stem], str(path), samplerate=separator.samplerate)
-    save_audio(bgm, str(bgm_file), samplerate=separator.samplerate)
-
-    return {
-        "vocals_file": str(stem_paths["vocals"]),
-        "bgm_file": str(bgm_file),
-        "load_time_s": round(load_time, 3),
-        "process_time_s": round(process_time, 3),
-        "audio_duration_s": round(audio_duration_s, 3),
-        "rtf": round(process_time / audio_duration_s, 3) if audio_duration_s > 0 else 0,
-    }
-
 
 # ---------------------------------------------------------------------------
 # IO helpers — all accept optional emit override for TCP output
