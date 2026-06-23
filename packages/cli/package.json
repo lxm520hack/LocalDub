@@ -10,13 +10,13 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@napi-rs/image": "^1.12.0",
     "@repo/config": "workspace:*",
     "@repo/device": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/voxlab": "workspace:*",
     "dotenv": "^17.4.2",
     "find-up": "^8.0.0",
-    "@napi-rs/image": "^1.12.0",
     "onnxruntime-node": "^1.26.0",
     "openai": "^6.42.0",
     "pngjs": "^7.0.0",

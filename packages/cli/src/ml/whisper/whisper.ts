@@ -109,7 +109,12 @@ function loadAudio(filePath: string): Float32Array {
 		'-i', filePath, '-f', 'f32le', '-acodec', 'pcm_f32le',
 		'-ar', '16000', '-ac', '1', '-',
 	], { stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
-	if (r.error) throw new Error(`ffmpeg not found. Check FFMPEG_PATH="${env.FFMPEG_PATH}" or install ffmpeg (winget/brew/apt/pacman).\n${r.error.message}`);
+	if (r.error) {
+		const e = r.error as NodeJS.ErrnoException;
+		if (e.code === 'ENOENT')
+			throw new Error(`ffmpeg not found. Check FFMPEG_PATH="${env.FFMPEG_PATH}" or install ffmpeg (winget/brew/apt/pacman).\nDetails: ${e.message}`);
+		throw new Error(`ffmpeg failed: ${e.message}`);
+	}
 	if (r.status !== 0) throw new Error(`ffmpeg exit ${r.status}`);
 	return new Float32Array(r.stdout.buffer);
 }

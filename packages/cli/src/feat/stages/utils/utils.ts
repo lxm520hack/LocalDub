@@ -211,9 +211,12 @@ export function ffmpeg(args: string[], timeout = 120_000) {
 		timeout,
 	});
 	if (r.error) {
-		throw new Error(
-			`ffmpeg not found. Try: ${ffmpegInstallHint()}\nOr set FFMPEG_PATH in .env (currently "${env.FFMPEG_PATH}").\nDetails: ${r.error.message}`,
-		);
+		const e = r.error as NodeJS.ErrnoException;
+		if (e.code === 'ENOENT')
+			throw new Error(
+				`ffmpeg not found. Try: ${ffmpegInstallHint()}\nOr set FFMPEG_PATH in .env (currently "${env.FFMPEG_PATH}").\nDetails: ${e.message}`,
+			);
+		throw new Error(`ffmpeg failed: ${e.message}`);
 	}
 	if (r.status !== 0)
 		throw new Error(

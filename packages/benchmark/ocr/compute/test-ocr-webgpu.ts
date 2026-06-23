@@ -1,8 +1,32 @@
 import * as ort from '/home/aa/repos/env_ls/LocalDub/packages/cli/node_modules/onnxruntime-node';
 import { join, resolve } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
-const MODEL_DIR = resolve(REPO_ROOT, '.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models');
+
+/** Find rapidocr model directory dynamically. */
+function findRapidOCRModelsDir(): string {
+	const venvBase = resolve(REPO_ROOT, '.venv');
+	const sitePackagesBase = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib', 'site-packages');
+	if (!existsSync(sitePackagesBase)) {
+		throw new Error(`site-packages not found: ${sitePackagesBase}`);
+	}
+	let spDir = sitePackagesBase;
+	if (process.platform !== 'win32') {
+		const entries = readdirSync(spDir, { withFileTypes: true });
+		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
+		if (pyDir) {
+			spDir = join(spDir, pyDir.name);
+		}
+	}
+	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
+	if (!existsSync(modelsDir)) {
+		throw new Error(`rapidocr models not found: ${modelsDir}`);
+	}
+	return modelsDir;
+}
+
+const MODEL_DIR = findRapidOCRModelsDir();
 const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
 
 async function main() {

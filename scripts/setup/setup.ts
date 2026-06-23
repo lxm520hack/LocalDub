@@ -223,6 +223,110 @@ function setupSubmodules(config: CliConfig, venv: string) {
 }
 
 // ---------------------------------------------------------------------------
+// C++ OCR 编译
+// ---------------------------------------------------------------------------
+
+function checkCommand(cmd: string): boolean {
+	return Bun.which(cmd) !== null;
+}
+
+function setupOcrCpp() {
+	// onnxruntime zip 解压后嵌套一层同名目录: .../onnxruntime-win-x64-1.26.0/onnxruntime-win-x64-1.26.0/
+	const ortBase = join(repoRoot, 'packages', 'tmp', isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
+	const ortExtDir = join(ortBase, isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
+	const cppBuildDir = join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp', 'build');
+	const ocrBinary = join(cppBuildDir, 'Release', isWindows ? 'ocr_pipeline.exe' : 'ocr_pipeline');
+
+	// 若二进制已存在，跳过
+	if (existsSync(ocrBinary)) {
+		log('ocr_pipeline 已编译', 'gray');
+		return;
+	}
+
+	// 下载 onnxruntime
+	if (!existsSync(ortExtDir)) {
+		log('下载 onnxruntime...', 'yellow');
+		const tmpDir = join(repoRoot, 'packages', 'tmp');
+		if (!existsSync(tmpDir)) {
+			run(isWindows
+				? ['cmd', '/c', 'mkdir', tmpDir]
+				: ['mkdir', '-p', tmpDir],
+				{ cwd: repoRoot });
+		}
+
+		const archivename = isWindows ? 'onnxruntime-win-x64-1.26.0.zip' : 'onnxruntime-linux-x64-1.24.4.tgz';
+		const archivePath = join(tmpDir, archivename);
+		const downloadUrl = isWindows
+			? `https://github.com/microsoft/onnxruntime/releases/download/v1.26.0/${archivename}`
+			: `https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/${archivename}`;
+
+		// 使用 curl 下载
+		const curlCode = run(
+			['curl', '-L', '-o', archivePath, downloadUrl],
+			{ cwd: repoRoot }
+		);
+		if (curlCode !== 0) {
+			log(`onnxruntime 下载失败 (curl exit ${curlCode})`, 'red');
+			return;
+		}
+
+		// 解压
+		log('解压 onnxruntime...', 'yellow');
+		if (isWindows) {
+			run(['powershell', '-Command', `Expand-Archive -Path "${archivePath}" -DestinationPath "${tmpDir}" -Force`], { cwd: repoRoot });
+		} else {
+			run(['tar', '-xzf', archivePath, '-C', tmpDir], { cwd: repoRoot });
+		}
+	} else {
+		log('onnxruntime 已存在', 'gray');
+	}
+
+	// 检查 cmake
+	if (!checkCommand('cmake')) {
+		log('cmake 未找到，跳过 ocr_pipeline 编译', 'yellow');
+		return;
+	}
+
+	// 添加 MSYS2 工具链到 PATH（cmake 需要用到 g++ 和 make）
+	const msys2Paths = isWindows
+		? 'C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin;'
+		: '';
+	const buildEnv: Record<string, string> = {
+		...process.env,
+		PATH: `${msys2Paths}${process.env.PATH}`,
+	};
+
+	// 编译
+	log('编译 ocr_pipeline...', 'yellow');
+	const cmakeOpts = isWindows
+		? ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp'),
+			`-DORT_DIR=${ortExtDir}`, '-G', 'MinGW Makefiles']
+		: ['cmake', '-B', cppBuildDir, '-S', join(repoRoot, 'packages', 'subtitle-ocr', 'subtitle-cpp'),
+			`-DORT_DIR=${ortExtDir}`];
+
+	const cmakeCode = run(cmakeOpts, { cwd: repoRoot, env: buildEnv });
+	if (cmakeCode !== 0) {
+		log(`cmake configure 失败 (exit ${cmakeCode})`, 'red');
+		return;
+	}
+
+	const buildCode = run(
+		['cmake', '--build', cppBuildDir, '--parallel'],
+		{ cwd: repoRoot, env: buildEnv }
+	);
+	if (buildCode !== 0) {
+		log(`ocr_pipeline 编译失败 (exit ${buildCode})`, 'red');
+		return;
+	}
+
+	if (existsSync(ocrBinary)) {
+		log('ocr_pipeline 编译成功', 'green');
+	} else {
+		log(`编译完成但 binary 未找到: ${ocrBinary}`, 'yellow');
+	}
+}
+
+// ---------------------------------------------------------------------------
 // 工作目录
 // ---------------------------------------------------------------------------
 
@@ -247,6 +351,7 @@ function main() {
 	const args = process.argv.slice(2);
 	const skipPipUpgrade = args.includes('--skip-pip-upgrade');
 	const skipJs = args.includes('--skip-js');
+	const skipOcr = args.includes('--skip-ocr');
 
 	if (skipPipUpgrade) {
 		log('将跳过 pip 升级', 'yellow');
@@ -285,6 +390,12 @@ function main() {
 
 	setupSubmodules(config, venv);
 
+	if (!skipOcr) {
+		setupOcrCpp();
+	} else {
+		log('跳过 OCR 编译', 'gray');
+	}
+
 	const envWorkfolder = process.env['WORKFOLDER'];
 	setupWorkdir(envWorkfolder);
 
@@ -296,6 +407,7 @@ function main() {
 	console.log('\n可选参数:');
 	console.log('  --skip-pip-upgrade   跳过 pip 升级');
 	console.log('  --skip-js            跳过 JS 依赖安装');
+	console.log('  --skip-ocr           跳过 OCR binary 编译');
 	console.log('');
 }
 
