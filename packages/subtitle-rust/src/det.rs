@@ -36,12 +36,19 @@ pub fn db_postprocess(
     orig_h: usize,
     box_thresh: f32,
 ) -> Vec<DetBox> {
+    let expected = hm_w * hm_h;
+    let actual = heatmap.len();
     let sigmoid = heatmap.iter().any(|&v| v > 1.0);
     let prob: Vec<f32> = if sigmoid {
         heatmap.iter().map(|&v| 1.0 / (1.0 + (-v).exp())).collect()
     } else {
         heatmap.to_vec()
     };
+
+    let max_val = prob.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+    let min_val = prob.iter().cloned().fold(f32::INFINITY, f32::min);
+    let mean_val: f32 = prob.iter().sum::<f32>() / prob.len() as f32;
+    eprintln!("[dbg] heatmap len={} expected={} sigmoid={} min={:.4} max={:.4} mean={:.4}", actual, expected, sigmoid, min_val, max_val, mean_val);
 
     let mut bitmap_data = vec![0u8; hm_w * hm_h];
     for i in 0..hm_w * hm_h {
@@ -71,8 +78,12 @@ pub fn db_postprocess(
         imgproc::CHAIN_APPROX_SIMPLE,
     ).expect("cv::findContours");
 
+    let n_above_thresh = bitmap_data.iter().filter(|&&v| v == 255).count();
+    eprintln!("[dbg] pixels above thresh={}/{}", n_above_thresh, hm_w * hm_h);
+
     let mut out: Vec<DetBox> = Vec::new();
     let n_contours = contours.len();
+    eprintln!("[dbg] contours found={}", n_contours);
     for ci in 0..n_contours {
         let pts_vec = contours.get(ci).expect("contour");
         if pts_vec.len() < 3 { continue; }
@@ -145,6 +156,7 @@ pub fn db_postprocess(
     }
     out.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     out.truncate(MAX_CANDIDATES);
+    eprintln!("[dbg] final boxes={}", out.len());
     out
 }
 
