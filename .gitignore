@@ -214,5 +214,5 @@ pretrained_models/
 packages/cli/config.json 
 
 **/build2
-
+*.zip
 build/
