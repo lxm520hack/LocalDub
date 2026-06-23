@@ -14,3 +14,9 @@
 [submodule "demucs.cpp"]
 	path = submodule/demucs.cpp
 	url = https://github.com/sevagh/demucs.cpp.git
+[submodule "submodule/opencv"]
+	path = submodule/opencv
+	url = https://github.com/opencv/opencv.git
+[submodule "submodule/vcpkg"]
+	path = submodule/vcpkg
+	url = https://github.com/microsoft/vcpkg.git

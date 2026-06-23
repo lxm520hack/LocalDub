@@ -4,9 +4,9 @@
  * 统一管理子模块初始化、依赖安装等
  */
 import { join, resolve } from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 
-const repoRoot = resolve(import.meta.dir, '..');
+const repoRoot = resolve(import.meta.dir, '..', '..');
 const isWindows = process.platform === 'win32';
 
 // ---------------------------------------------------------------------------
@@ -38,15 +38,142 @@ function run(cmd: string[], opts: { cwd?: string; env?: Record<string, string> }
 // 前置检测
 // ---------------------------------------------------------------------------
 
-function checkPrerequisites() {
-	const missing: string[] = [];
-	for (const cmd of ['bun', 'ffmpeg', 'python']) {
-		if (!Bun.which(cmd)) missing.push(cmd);
+function findFfmpegPath(): string | null {
+	// 先检查 PATH 中是否存在
+	if (Bun.which('ffmpeg')) {
+		return 'ffmpeg';
 	}
+
+	// Windows: 使用 where.exe 查找
+	if (isWindows) {
+		const whereResult = Bun.spawnSync(['where.exe', 'ffmpeg'], {
+			cwd: repoRoot,
+		});
+		if (whereResult.exitCode === 0 && whereResult.stdout) {
+			const stdoutStr = whereResult.stdout.toString('utf-8');
+			const paths = stdoutStr.trim().split('\n').filter(Boolean);
+			if (paths.length > 0) {
+				return paths[0].trim();
+			}
+		}
+
+		// 检查 winget 常见安装路径
+		const wingetPaths = [
+			join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages', 'Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe'),
+			join('C:', 'Program Files', 'FFmpeg'),
+			join('C:', 'Program Files (x86)', 'FFmpeg'),
+		];
+
+		for (const basePath of wingetPaths) {
+			if (existsSync(basePath)) {
+				// 查找 ffmpeg-*-full_build/bin 目录
+				const dirs = readdirSync(basePath);
+				for (const dir of dirs) {
+					if (dir.startsWith('ffmpeg-') && dir.endsWith('-full_build')) {
+						const ffmpegPath = join(basePath, dir, 'bin', 'ffmpeg.exe');
+						if (existsSync(ffmpegPath)) {
+							return ffmpegPath;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+function updateEnvFile(key: string, value: string) {
+	const envPath = join(repoRoot, '.env');
+	if (!existsSync(envPath)) {
+		log('.env 文件不存在', 'gray');
+		return;
+	}
+
+	let content = readFileSync(envPath, 'utf-8');
+	const regex = new RegExp(`^${key}=.*$`, 'm');
+	
+	if (regex.test(content)) {
+		content = content.replace(regex, `${key}=${value}`);
+	} else {
+		content += `\n${key}=${value}`;
+	}
+
+	Bun.write(envPath, content);
+	log(`已更新 .env 中 ${key}`, 'green');
+}
+
+function installFfmpeg(): boolean {
+	if (!isWindows) {
+		log('自动安装仅支持 Windows 系统', 'yellow');
+		return false;
+	}
+
+	log('使用 winget 安装 Gyan.FFmpeg...', 'yellow');
+	// 使用 powershell 执行 winget，因为 winget.exe 可能是符号链接
+	const result = Bun.spawnSync(['powershell.exe', '-Command', 'winget install --id Gyan.FFmpeg --accept-source-agreements --accept-package-agreements'], {
+		cwd: repoRoot,
+		stdout: 'inherit',
+		stderr: 'inherit',
+	});
+
+	if (result.exitCode === 0) {
+		log('ffmpeg 安装成功', 'green');
+		// 尝试重新查找路径并添加到 PATH
+		const newPath = findFfmpegPath();
+		if (newPath && newPath !== 'ffmpeg') {
+			const ffmpegDir = resolve(newPath, '..');
+			process.env.PATH = `${ffmpegDir};${process.env.PATH}`;
+			log('已将 ffmpeg 路径添加到当前进程 PATH', 'green');
+		}
+		return true;
+	} else {
+		log(`ffmpeg 安装失败 (exit code: ${result.exitCode})`, 'red');
+		return false;
+	}
+}
+
+function checkPrerequisites() {
+	let missing: string[] = [];
+	let ffmpegPath = findFfmpegPath();
+
+	if (!ffmpegPath) {
+		missing.push('ffmpeg');
+	}
+	if (!Bun.which('bun')) {
+		missing.push('bun');
+	}
+	if (!Bun.which('python')) {
+		missing.push('python');
+	}
+
+	// 尝试自动安装 ffmpeg
+	if (!ffmpegPath) {
+		log('ffmpeg 未找到，尝试自动安装...', 'yellow');
+		if (installFfmpeg()) {
+			missing = missing.filter(m => m !== 'ffmpeg');
+			ffmpegPath = findFfmpegPath();
+		}
+	}
+
 	if (missing.length > 0) {
 		log(`缺少命令: ${missing.join(', ')}`, 'red');
+		log('请手动安装后再运行此脚本', 'yellow');
 		process.exit(1);
 	}
+
+	// 如果 ffmpeg 在 PATH 中，直接显示成功
+	if (ffmpegPath === 'ffmpeg') {
+		log('bun / ffmpeg / python 均已安装', 'green');
+		return;
+	}
+
+	// 如果 ffmpeg 不在 PATH 但找到了，写入 .env 并临时添加到进程 PATH
+	log(`ffmpeg 已安装但不在 PATH 中，找到路径: ${ffmpegPath}`, 'yellow');
+	updateEnvFile('FFMPEG_PATH', ffmpegPath!);
+	const ffmpegDir = resolve(ffmpegPath!, '..');
+	process.env.PATH = `${ffmpegDir}${isWindows ? ';' : ':'}${process.env.PATH}`;
+	log('已将 ffmpeg 路径添加到当前进程 PATH', 'green');
 	log('bun / ffmpeg / python 均已安装', 'green');
 }
 
@@ -68,10 +195,9 @@ function detectGpu(): 'cuda' | 'cpu' {
 // ---------------------------------------------------------------------------
 // .env 检查
 // ---------------------------------------------------------------------------
-
+const envPath = join(repoRoot, '.env');
+const envExample = join(repoRoot, '.env.example');
 function checkEnv() {
-	const envPath = join(repoRoot, '.env');
-	const envExample = join(repoRoot, '.env.example');
 	if (!existsSync(envPath) && existsSync(envExample)) {
 		// Bun doesn't have cp, use spawn
 		run(['cmd', '/c', 'copy', '.env.example', '.env'], { cwd: repoRoot });
@@ -101,6 +227,7 @@ function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', skipPipUpgrade: bool
 			? join(venv, 'Scripts', 'python.exe')
 			: join(venv, 'bin', 'python');
 		run([python, '-m', 'pip', 'install', '--quiet', '--upgrade', 'pip'], { cwd: repoRoot });
+		log('pip 升级完成', 'gray');
 	} else {
 		log('跳过 pip 升级', 'gray');
 	}
@@ -111,6 +238,7 @@ function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', skipPipUpgrade: bool
 		if (existsSync(pytorchCu)) {
 			log('安装 PyTorch CUDA 12.8...', 'yellow');
 			run([pip, 'install', '-r', pytorchCu, '--quiet'], { cwd: repoRoot });
+			log('PyTorch CUDA 12.8 安装完成', 'gray');
 		}
 	}
 
@@ -201,6 +329,7 @@ function setupSubmodules(config: CliConfig, venv: string) {
 		if (existsSync(demucsReq)) {
 			log('安装 demucs 核心依赖...', 'yellow');
 			run([pip, 'install', '-r', demucsReq, '--quiet'], { cwd: repoRoot });
+			log('demucs 核心依赖安装完成', 'gray');
 		}
 	}
 
@@ -210,6 +339,7 @@ function setupSubmodules(config: CliConfig, venv: string) {
 		if (existsSync(voxcpmReq)) {
 			log('安装 VoxCPM 依赖...', 'yellow');
 			run([pip, 'install', '-r', voxcpmReq, '--quiet'], { cwd: repoRoot });
+			log('VoxCPM 依赖安装完成', 'gray');
 		}
 	}
 
@@ -233,12 +363,285 @@ function checkCommand(cmd: string): boolean {
 }
 
 /**
+ * 检查 OpenCV 是否已安装
+ */
+function checkOpenCV(): boolean {
+	if (!isWindows) {
+		// Linux: 检查 pkg-config 或常见路径
+		if (run(['pkg-config', '--exists', 'opencv4'], { cwd: repoRoot }) === 0) {
+			return true;
+		}
+		if (existsSync('/usr/lib/libopencv_core.so')) {
+			return true;
+		}
+		return false;
+	}
+
+	// Windows: 检查常见安装路径
+	const paths = [
+		'C:\\opencv\\build',
+		'C:\\opencv4\\build',
+		join(process.env.ProgramFiles || 'C:\\Program Files', 'OpenCV', 'build'),
+		join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'OpenCV', 'build'),
+	];
+
+	for (const path of paths) {
+		if (existsSync(join(path, 'include', 'opencv2', 'core.hpp'))) {
+			process.env.OpenCV_DIR = path;
+			return true;
+		}
+	}
+
+	// 检查环境变量
+	if (process.env.OpenCV_DIR && existsSync(process.env.OpenCV_DIR)) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * 使用子模块安装 vcpkg 并构建 OpenCV
+ */
+function installOpenCVWithVcpkgSubmodule(): boolean {
+	const vcpkgSubmodule = join(repoRoot, 'submodule', 'vcpkg');
+	
+	// 检查子模块是否已初始化
+	if (!existsSync(vcpkgSubmodule) || !existsSync(join(vcpkgSubmodule, 'CMakeLists.txt'))) {
+		log('vcpkg 子模块未初始化，正在添加...', 'yellow');
+		
+		// 添加 vcpkg 子模块
+		const addResult = run(['git', 'submodule', 'add', '-f', 'https://github.com/microsoft/vcpkg.git', 'submodule/vcpkg'], { cwd: repoRoot });
+		if (addResult !== 0) {
+			log('vcpkg 子模块添加失败', 'red');
+			return false;
+		}
+	}
+	
+	// 检查 vcpkg 是否已 bootstrap
+	const vcpkgExe = join(vcpkgSubmodule, 'vcpkg.exe');
+	if (!existsSync(vcpkgExe)) {
+		log('Bootstrap vcpkg...', 'yellow');
+		
+		// 添加 MSYS2 到 PATH 以便 bootstrap 找到编译器
+		const msys2Path = 'C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin';
+		const oldPath = process.env.PATH;
+		process.env.PATH = msys2Path + ';' + oldPath;
+		
+		// 运行 bootstrap-vcpkg.bat
+		const bootstrapResult = run(['cmd.exe', '/c', 'bootstrap-vcpkg.bat'], { cwd: vcpkgSubmodule });
+		
+		process.env.PATH = oldPath;
+		
+		if (bootstrapResult !== 0) {
+			log('vcpkg bootstrap 失败', 'red');
+			return false;
+		}
+	}
+	
+	log(`找到 vcpkg: ${vcpkgExe}`, 'gray');
+	
+	// 设置环境变量
+	const vcpkgDir = vcpkgSubmodule;
+	
+	// 使用 vcpkg 安装 opencv4
+	log('使用 vcpkg 安装 opencv4:x64-windows...', 'yellow');
+	
+	// 设置 VCPKG_ROOT
+	const oldVcpkgRoot = process.env.VCPKG_ROOT;
+	process.env.VCPKG_ROOT = vcpkgDir;
+	
+	// 添加 vcpkg 到 PATH
+	const oldPath = process.env.PATH;
+	process.env.PATH = vcpkgDir + ';' + oldPath;
+	
+	const installResult = run([vcpkgExe, 'install', 'opencv4:x64-windows'], { cwd: repoRoot });
+	
+	process.env.PATH = oldPath;
+	if (oldVcpkgRoot) process.env.VCPKG_ROOT = oldVcpkgRoot;
+	else delete process.env.VCPKG_ROOT;
+	
+	if (installResult !== 0) {
+		log('vcpkg install opencv4 失败', 'red');
+		return false;
+	}
+	
+	log('OpenCV 通过 vcpkg 安装成功', 'green');
+	
+	// 设置 OpenCV_DIR
+	const opencvDir = join(vcpkgDir, 'installed', 'x64-windows');
+	if (existsSync(opencvDir)) {
+		process.env.OpenCV_DIR = opencvDir;
+		log(`设置 OpenCV_DIR=${opencvDir}`, 'green');
+	}
+	
+	return true;
+}
+
+/**
+ * 使用子模块构建 OpenCV
+ */
+function buildOpenCVFromSubmodule(): boolean {
+	const opencvSubmodule = join(repoRoot, 'submodule', 'opencv');
+	const opencvBuildDir = join(opencvSubmodule, 'build');
+	
+	// 检查子模块是否已初始化
+	if (!existsSync(opencvSubmodule) || !existsSync(join(opencvSubmodule, 'CMakeLists.txt'))) {
+		log('OpenCV 子模块未初始化，正在添加...', 'yellow');
+		
+		// 先尝试 git submodule add（如果 .gitmodules 中没有配置）
+		const addResult = run(['git', 'submodule', 'add', '-f', 'https://github.com/opencv/opencv.git', 'submodule/opencv'], { cwd: repoRoot });
+		if (addResult !== 0) {
+			// 如果 add 失败，尝试 update --init
+			log('git submodule add 失败，尝试 update --init...', 'gray');
+			const initResult = run(['git', 'submodule', 'update', '--init', '--recursive', 'submodule/opencv'], { cwd: repoRoot });
+			if (initResult !== 0) {
+				log('OpenCV 子模块初始化失败', 'red');
+				return false;
+			}
+		}
+	}
+	
+	// 检查是否已构建
+	const opencvInstallDir = join(opencvBuildDir, 'install');
+	if (existsSync(join(opencvInstallDir, 'include', 'opencv2', 'core.hpp'))) {
+		log(`OpenCV 已构建: ${opencvInstallDir}`, 'gray');
+		process.env.OpenCV_DIR = opencvInstallDir;
+		return true;
+	}
+	
+	// 构建 OpenCV
+	log('构建 OpenCV（这可能需要 30-60 分钟）...', 'yellow');
+	
+	// 创建 build 目录
+	if (!existsSync(opencvBuildDir)) {
+		mkdirSync(opencvBuildDir, { recursive: true });
+	}
+	
+	// cmake configure
+	const cmakeConfig = isWindows
+		? ['cmake', '-B', opencvBuildDir, '-S', opencvSubmodule, '-G', 'MinGW Makefiles', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + join(opencvBuildDir, 'install'), '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_TESTS=OFF', '-DBUILD_PERF_TESTS=OFF', '-DBUILD_EXAMPLES=OFF', '-DBUILD_opencv_apps=OFF']
+		: ['cmake', '-B', opencvBuildDir, '-S', opencvSubmodule, '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + join(opencvBuildDir, 'install'), '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_TESTS=OFF', '-DBUILD_PERF_TESTS=OFF', '-DBUILD_EXAMPLES=OFF', '-DBUILD_opencv_apps=OFF'];
+	
+	const configResult = run(cmakeConfig, { cwd: repoRoot });
+	if (configResult !== 0) {
+		log('OpenCV cmake configure 失败', 'red');
+		return false;
+	}
+	
+	// cmake build
+	const buildResult = run(['cmake', '--build', opencvBuildDir, '--config', 'Release', '--target', 'install', '-j', '4'], { cwd: repoRoot });
+	if (buildResult !== 0) {
+		log('OpenCV cmake build 失败', 'red');
+		return false;
+	}
+	
+	log('OpenCV 构建成功', 'green');
+	process.env.OpenCV_DIR = opencvInstallDir;
+	return true;
+}
+
+/**
+ * 使用 vcpkg 安装 OpenCV
+ */
+function installOpenCVWithVcpkg(): boolean {
+	// 检查 vcpkg 是否已安装
+	let vcpkgPath = Bun.which('vcpkg');
+	if (!vcpkgPath) {
+		// 尝试在常见位置查找
+		const possiblePaths = [
+			'C:\\vcpkg\\vcpkg.exe',
+			join(process.env.PROGRAMFILES || 'C:\\Program Files', 'vcpkg', 'vcpkg.exe'),
+			join(process.env.LOCALAPPDATA || 'C:\\Users\\' + (process.env.USERNAME || '') + '\\AppData\\Local', 'vcpkg', 'vcpkg.exe'),
+		];
+		for (const path of possiblePaths) {
+			if (existsSync(path)) {
+				vcpkgPath = path;
+				break;
+			}
+		}
+	}
+	
+	if (!vcpkgPath) {
+		log('vcpkg 未安装', 'yellow');
+		return false;
+	}
+	
+	log(`找到 vcpkg: ${vcpkgPath}`, 'gray');
+	
+	// 使用 vcpkg 安装 opencv4
+	log('执行 vcpkg install opencv4...', 'yellow');
+	const installResult = Bun.spawnSync([vcpkgPath, 'install', 'opencv4'], {
+		cwd: repoRoot,
+		stdout: 'inherit',
+		stderr: 'inherit',
+	});
+	
+	if (installResult.exitCode === 0) {
+		log('OpenCV 通过 vcpkg 安装成功', 'green');
+		
+		// 设置 OpenCV_DIR 环境变量
+		const vcpkgDir = resolve(vcpkgPath, '..');
+		const opencvDir = join(vcpkgDir, 'installed', 'x64-windows');
+		
+		if (existsSync(opencvDir)) {
+			process.env.OpenCV_DIR = opencvDir;
+			log(`设置 OpenCV_DIR=${opencvDir}`, 'green');
+		}
+		
+		return true;
+	} else {
+		log(`vcpkg install opencv4 失败 (exit code: ${installResult.exitCode})`, 'red');
+		return false;
+	}
+}
+
+/**
+ * 自动安装 OpenCV（Windows）
+ */
+function installOpenCV(): boolean {
+	if (!isWindows) {
+		log('OpenCV 自动安装仅支持 Windows', 'yellow');
+		return false;
+	}
+
+	// 优先尝试使用 vcpkg 子模块安装
+	log('尝试使用 vcpkg 子模块安装 OpenCV...', 'yellow');
+	if (installOpenCVWithVcpkgSubmodule()) {
+		return true;
+	}
+
+	// vcpkg 子模块方案失败，尝试直接构建 OpenCV
+	log('vcpkg 子模块方案失败，尝试构建 OpenCV...', 'yellow');
+	if (buildOpenCVFromSubmodule()) {
+		return true;
+	}
+
+	// 所有方法都失败，给出手动安装提示
+	log('', 'yellow');
+	log('┌────────────────────────────────────────┐', 'yellow');
+	log('│ 需要安装 OpenCV 以编译 ort-opencv-cpp  │', 'yellow');
+	log('└────────────────────────────────────────┘', 'yellow');
+	log('', 'yellow');
+	log('手动安装 OpenCV:', 'yellow');
+	log('', 'yellow');
+	log('  - 使用 vcpkg:', 'yellow');
+	log('    git clone https://github.com/microsoft/vcpkg', 'yellow');
+	log('    cd vcpkg && bootstrap-vcpkg.bat', 'yellow');
+	log('    vcpkg install opencv4:x64-windows', 'yellow');
+	log('', 'yellow');
+	log('  - 或下载预构建版本:', 'yellow');
+	log('    https://github.com/opencv/opencv/releases', 'yellow');
+	log('    解压后设置环境变量 OpenCV_DIR', 'yellow');
+	return false;
+}
+
+/**
  * 编译 OCR C++ 二进制
  * @param project - 'subtitle-cpp' (ort-cpp) 或 'subtitle-opencv-cpp' (ort-opencv-cpp)
  * @param binaryName - 'ocr_pipeline' 或 'ocr_pipeline_opencv'
  */
 function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName: 'ocr_pipeline' | 'ocr_pipeline_opencv') {
-	// onnxruntime zip 解压后嵌套一层同名目录: .../onnxruntime-win-x64-1.26.0/onnxruntime-win-x64-1.26.0/
 	const ortBase = join(repoRoot, 'packages', 'tmp', isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
 	const ortExtDir = join(ortBase, isWindows ? 'onnxruntime-win-x64-1.26.0' : 'onnxruntime-linux-x64-1.24.4');
 	const cppBuildDir = join(repoRoot, 'packages', 'subtitle-ocr', project, 'build');
@@ -248,6 +651,18 @@ function setupOcrCpp(project: 'subtitle-cpp' | 'subtitle-opencv-cpp', binaryName
 	if (existsSync(ocrBinary)) {
 		log(`${binaryName} 已编译`, 'gray');
 		return;
+	}
+
+	// subtitle-opencv-cpp 需要 OpenCV，先检查并安装
+	if (project === 'subtitle-opencv-cpp') {
+		if (!checkOpenCV()) {
+			log('OpenCV 未安装，尝试自动安装...', 'yellow');
+			if (!installOpenCV()) {
+				return;
+			}
+		} else {
+			log(`OpenCV 已安装 (OpenCV_DIR=${process.env.OpenCV_DIR})`, 'gray');
+		}
 	}
 
 	// 下载 onnxruntime
@@ -363,7 +778,7 @@ function main() {
 	if (skipPipUpgrade) {
 		log('将跳过 pip 升级', 'yellow');
 	}
-
+	checkEnv();
 	checkPrerequisites();
 
 	const gpuMode = detectGpu();
@@ -382,8 +797,6 @@ function main() {
 	} else {
 		log('config.json not found, skipping submodule init', 'yellow');
 	}
-
-	checkEnv();
 
 	const venv = join(repoRoot, '.venv');
 	setupPython(venv, gpuMode, skipPipUpgrade);
