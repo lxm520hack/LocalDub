@@ -29,16 +29,13 @@ export async function stageDownload(
 	if (ctx.task.source === 'local') {
 		const sessionPath = ctx.task.session_path;
 		const downloadDir = join(sessionPath, 'download');
-		let mediaDir = join(downloadDir, 'media');
-		let videoPath = join(mediaDir, 'video_source.mp4');
+		let videoPath = join(downloadDir, 'video_source.mp4');
 		emitLog(sessionPath, '[Download] Importing local video...');
 		await setStage(sessionPath, 'download', {
 			last_message: 'Importing local video...',
 			progress: 0,
 		});
 		mkdirSync(downloadDir, { recursive: true });
-		mkdirSync(mediaDir, { recursive: true });
-		mkdirSync(join(downloadDir, 'metadata'), { recursive: true });
 
 		const t0 = Date.now();
 		ffmpeg([
@@ -109,9 +106,9 @@ export async function stageDownload(
 				const videoId = info.id || extractVideoId(url);
 				sessionPath = join(WORKFOLDER, uploader, `${title}__${videoId}`);
 
-				mkdirSync(join(sessionPath, 'download', 'metadata'), { recursive: true });
+				mkdirSync(join(sessionPath, 'download'), { recursive: true });
 				writeFileSync(
-					join(sessionPath, 'download', 'metadata', 'ytdlp_info.json'),
+					join(sessionPath, 'download', 'ytdlp_info.json'),
 					infoR.stdout,
 				);
 				await setTask(sessionPath, {
@@ -122,16 +119,15 @@ export async function stageDownload(
 			/* fall back to flat path */
 		}
 
-		const mediaDir = join(sessionPath, 'download', 'media');
-		const videoPath = join(mediaDir, 'video_source.mp4');
+		const downloadDir = join(sessionPath, 'download');
+		const videoPath = join(downloadDir, 'video_source.mp4');
 
 		emitLog(sessionPath, '[Download] Downloading video...');
 		await setStage(sessionPath, 'download', {
 			last_message: 'Downloading video...',
 			progress: 0,
 		});
-		mkdirSync(mediaDir, { recursive: true });
-		mkdirSync(join(sessionPath, 'download', 'metadata'), { recursive: true });
+		mkdirSync(downloadDir, { recursive: true });
 
 		const ytArgs: string[] = [
 			'-f',
@@ -139,7 +135,7 @@ export async function stageDownload(
 			'--merge-output-format',
 			'mp4',
 			'-o',
-			join(mediaDir, 'video_source.%(ext)s'),
+			join(downloadDir, 'video_source.%(ext)s'),
 			...authArgs,
 			url,
 		];
