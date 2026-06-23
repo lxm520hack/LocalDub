@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { emitLog, ffmpeg, nowISO } from './utils/utils.ts';
 import { Context, setStage } from '../context/context.ts';
@@ -12,15 +12,17 @@ export async function stageSeparateAfter(ctx: Context) {
 		progress: 0,
 	});
 
-	const mediaDir = join(sessionPath, 'media');
+	const sepDir = join(sessionPath, 'separate');
+	const outDir = join(sessionPath, 'separate_after');
+	mkdirSync(outDir, { recursive: true });
 	const stems = {
-		drums: join(mediaDir, 'target_0_drums.wav'),
-		bass: join(mediaDir, 'target_1_bass.wav'),
-		other: join(mediaDir, 'target_2_other.wav'),
-		vocals: join(mediaDir, 'target_3_vocals.wav'),
+		drums: join(sepDir, 'target_0_drums.wav'),
+		bass: join(sepDir, 'target_1_bass.wav'),
+		other: join(sepDir, 'target_2_other.wav'),
+		vocals: join(sepDir, 'target_3_vocals.wav'),
 	};
-	const bgmDst = join(mediaDir, 'target_bgm.wav');
-	const mixedDst = join(mediaDir, 'target_3_vocals_mixed.wav');
+	const bgmDst = join(outDir, 'target_bgm.wav');
+	const mixedDst = join(outDir, 'target_3_vocals_mixed.wav');
 
 	// 1. Regenerate target_bgm.wav from stems (fixes amix normalize bug)
 	const allStemsExist = [stems.drums, stems.bass, stems.other].every(existsSync);
@@ -83,7 +85,7 @@ export async function stageSeparateAfter(ctx: Context) {
 	}
 
 	if (useGate && existsSync(mixedDst)) {
-		const gatedPath = join(mediaDir, 'target_3_vocals_gated.wav');
+		const gatedPath = join(outDir, 'target_3_vocals_gated.wav');
 		emitLog(sessionPath, '[SeparateAfter] Applying silence gate...');
 		ffmpeg([
 			'-i', mixedDst,
