@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime, probeVideoResolution } from '../utils/utils.ts';
 import { FrameResult, Segment, fixOverlap, toOcrFiltered } from '../utils/ocrMerge.ts';
+import { computeBoxYStats, computeSegmentAdjustments } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 
 export async function stageAsrOcrFix(ctx: Context) {
@@ -14,17 +15,22 @@ export async function stageAsrOcrFix(ctx: Context) {
 	});
 
 	const metadataDir = resolve(sessionPath, 'metadata');
+	const asrOcrPreDir = resolve(sessionPath, 'asr_ocr_pre');
+	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
+	const asrOcrFixDir = resolve(sessionPath, 'asr_ocr_fix');
 
 	// Read inputs
 	const asrFile = join(metadataDir, 'asr.json');
-	const asrSplitFile = join(metadataDir, 'asr_split.json');
-	const ocrFramesFile = join(metadataDir, 'ocr_frames.json');
-	const ocrFile = join(metadataDir, 'asr_ocr.json');
+	const asrSplitFile = join(asrOcrPreDir, 'asr_split.json');
+	const ocrFramesFile = join(asrOcrDir, 'ocr_frames.json');
+	const ocrFile = join(asrOcrDir, 'asr_ocr.json');
 
 	if (!existsSync(asrFile)) throw new Error(`asr.json not found: ${asrFile}`);
 	if (!existsSync(asrSplitFile)) throw new Error(`asr_split.json not found, run asr_ocr_pre first`);
 	if (!existsSync(ocrFramesFile)) throw new Error(`ocr_frames.json not found, run asr_ocr first`);
 	if (!existsSync(ocrFile)) throw new Error(`asr_ocr.json not found, run asr_ocr first`);
+
+	ensureDir(asrOcrFixDir, ctx);
 
 	const asrData = await readJson(asrFile, ctx);
 	const asrSplitData = await readJson(asrSplitFile, ctx);
@@ -56,16 +62,51 @@ export async function stageAsrOcrFix(ctx: Context) {
 	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
 	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
 
-	const textScore = ctx.input?.stages?.asr_ocr_fix?.textScore ?? 0.45;
+	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
+	const textScore = asrOcrFixCfg?.textScore ?? 0.45;
 
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!ocrSegs.length) throw new Error('No OCR segments found (empty asr_ocr.json)');
+
+	// ========== ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） ==========
+	const yStats = computeBoxYStats(rawFrames);
+	const { height: videoHeight } = probeVideoResolution(join(sessionPath, 'media', 'video_source.mp4'));
+	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
+	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
+	const adjustIsoWeight = asrOcrFixCfg?.adjustIsoWeight ?? 0.2;
+	const adjustYFactor = asrOcrFixCfg?.adjustYFactor ?? 0.08;
+	const adjustedSegs = computeSegmentAdjustments(ocrSegs, rawFrames, yStats, videoHeight, isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor);
+
+	writeJson(
+		join(asrOcrFixDir, 'ocr_merged.json'),
+		{
+			_engine: 'asr_ocr',
+			_fusion_params: { strategy: 'end2fps', isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor },
+			result: {
+				text: adjustedSegs.map(s => s.text).join(' '),
+				segments: adjustedSegs.map(s => ({
+					text: s.text,
+					start: s.start,
+					end: s.end,
+					start_fmt: srtTime(s.start),
+					end_fmt: srtTime(s.end),
+					confidence: s.confidence,
+					...(s.box_y ? { box_y: s.box_y } : {}),
+					frameCount: s.frameCount,
+					adjustedConfidence: s.adjustedConfidence,
+					yPenalty: s.yPenalty,
+					isoPenalty: s.isoPenalty,
+				})),
+			},
+		},
+		ctx,
+	);
 
 	// ========== ocr_filtered.json：以 asr_ocr.json 的 segments 为输入，按 segment confidence 过滤 ==========
 	const { segments: ocrSegsMerged, dropped } = toOcrFiltered(ocrSegs, textScore);
 
 	writeJson(
-		join(metadataDir, 'ocr_filtered.json'),
+		join(asrOcrFixDir, 'ocr_filtered.json'),
 		{
 			audio_info: { duration: ocrSegsMerged.length > 0 ? ocrSegsMerged[ocrSegsMerged.length - 1].end : 0 },
 			_boundary: 'ocr',
@@ -112,7 +153,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	const asrOcrText = asrOcrSegs.map(s => s.text).join(' ');
 
 	writeJson(
-		join(metadataDir, 'asr_ocr_merged.json'),
+		join(asrOcrFixDir, 'asr_ocr_merged.json'),
 		{
 			audio_info: { duration: asrOcrSegs.length > 0 ? asrOcrSegs[asrOcrSegs.length - 1].end : 0 },
 			_engine: 'asr_ocr',
@@ -139,7 +180,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	);
 	const fixText = fix.map(s => s.text).join(' ');
 	writeJson(
-		join(metadataDir, 'asr_ocr_fused.json'),
+		join(asrOcrFixDir, 'asr_ocr_fused.json'),
 		{
 			_engine: 'asr_ocr',
 			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, fixSegs: fix.length, textScore, dropped },

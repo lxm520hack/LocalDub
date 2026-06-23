@@ -194,8 +194,28 @@ const OcrConfigSchema = z
 			.default(false)
 			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
 			.optional(),
+		isoThresholdMs: z
+			.number()
+			.default(1500)
+			.describe('单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500')
+			.optional(),
+		adjustYWeight: z
+			.number()
+			.default(0.8)
+			.describe('Y 偏移在调整置信度中的权重 (0~1); 默认 0.8')
+			.optional(),
+		adjustIsoWeight: z
+			.number()
+			.default(0.2)
+			.describe('孤立程度在调整置信度中的权重 (0~1); 默认 0.2')
+			.optional(),
+		adjustYFactor: z
+			.number()
+			.default(0.08)
+			.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
+			.optional(),
 	})
-	.default({ runtime: 'ort-opencv-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
+	.default({ runtime: 'ort-opencv-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
 
@@ -392,6 +412,26 @@ const StagesSchema = z.object({
 				.default(0.5)
 				.optional()
 				.describe('OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃'),
+			isoThresholdMs: z
+				.number()
+				.default(1500)
+				.describe('单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500')
+				.optional(),
+			adjustYWeight: z
+				.number()
+				.default(0.8)
+				.describe('Y 偏移在调整置信度中的权重 (0~1); 默认 0.8')
+				.optional(),
+			adjustIsoWeight: z
+				.number()
+				.default(0.2)
+				.describe('孤立程度在调整置信度中的权重 (0~1); 默认 0.2')
+				.optional(),
+			adjustYFactor: z
+				.number()
+				.default(0.08)
+				.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
+				.optional(),
 			llmFix: z
 				.boolean()
 				.default(false)
@@ -411,7 +451,7 @@ const StagesSchema = z.object({
 				.optional()
 				.describe('领域提示'),
 		})
-		.default({ llmFix: false, textScore: 0.5 })
+		.default({ llmFix: false, textScore: 0.5, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 		.optional(),
 	ocr_fix: z
 		.looseObject({

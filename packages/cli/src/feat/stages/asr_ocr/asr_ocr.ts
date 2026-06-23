@@ -5,7 +5,7 @@ import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
 import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
-import { joinOcrLines } from '../ocr/utils.ts';
+import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 
 export async function stageAsrOcr(ctx: Context) {
@@ -59,8 +59,10 @@ export async function stageAsrOcr(ctx: Context) {
 	], { timeout: 15_000, encoding: 'utf-8' });
 	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
 
-	const metadataDir = resolve(sessionPath, 'metadata');
-	ensureDir(metadataDir, ctx);
+	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
+	ensureDir(asrOcrDir, ctx);
+
+	const yStats = computeBoxYStats(frameResults);
 
 	const ocrSegmentsOut = ocrSegments.map(s => ({
 		text: s.text,
@@ -70,13 +72,15 @@ export async function stageAsrOcr(ctx: Context) {
 		end_fmt: srtTime(s.end),
 		confidence: s.confidence,
 		...(s.box_y ? { box_y: s.box_y } : {}),
+		...(s.frameCount !== undefined ? { frameCount: s.frameCount } : {}),
 	}));
 
 	// Write ocr_frames.json — raw frame data for debugging/reproducibility
 	writeJson(
-		join(metadataDir, 'ocr_frames.json'),
+		join(asrOcrDir, 'ocr_frames.json'),
 		{
 			_frames_raw: frameResults,
+			_y_stats: yStats,
 			_ocr_segments: ocrSegmentsOut,
 		},
 		ctx,
@@ -84,7 +88,7 @@ export async function stageAsrOcr(ctx: Context) {
 
 	// Write asr_ocr.json — pure OCR-boundary segments (from mergeFrames)
 	writeJson(
-		join(metadataDir, 'asr_ocr.json'),
+		join(asrOcrDir, 'asr_ocr.json'),
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			_source: 'asr_ocr',

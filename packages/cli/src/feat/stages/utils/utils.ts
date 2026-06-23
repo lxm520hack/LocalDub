@@ -166,7 +166,7 @@ export function subtitleFilePath(sessionPath: string, src: SubtitleSource = 'asr
 		if (existsSync(fixFile)) return fixFile;
 	}
 	if (src === 'asr_ocr') {
-		const fixFile = join(sessionPath, 'metadata', 'asr_ocr_fused.json');
+		const fixFile = join(sessionPath, 'asr_ocr_fix', 'asr_ocr_fused.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
 	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');

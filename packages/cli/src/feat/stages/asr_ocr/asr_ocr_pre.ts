@@ -89,12 +89,12 @@ export async function stageAsrOcrPre(ctx: Context) {
 	// Step 1: Split ASR segments by punctuation
 	const asrSegs = splitAsrByWords(asrSegsRaw);
 
-	const metadataDir = resolve(sessionPath, 'metadata');
-	ensureDir(metadataDir, ctx);
+	const preDir = resolve(sessionPath, 'asr_ocr_pre');
+	ensureDir(preDir, ctx);
 
 	// Write asr_split.json
 	writeJson(
-		join(metadataDir, 'asr_split.json'),
+		join(preDir, 'asr_split.json'),
 		{
 			_source: 'asr_split',
 			_original_segments: asrSegsRaw.length,

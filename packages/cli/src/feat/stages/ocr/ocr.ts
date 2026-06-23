@@ -3,10 +3,10 @@ import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { OCREngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "../utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime,  } from "../utils/utils.ts";
+import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution } from "../utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "../utils/ocrMerge.ts";
-import { joinOcrLines } from "./utils.ts";
+import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
 import { Context, setStage } from "../../context/context.ts";
 
 export async function stageOcr(ctx: Context) {
@@ -29,6 +29,10 @@ export async function stageOcr(ctx: Context) {
 	const runtime = (ocrCfg?.runtime ?? 'ort-opencv-cpp') as OCRRuntime;
 	const device = (ocrCfg?.device ?? 'cpu') as 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
 	const cleanupFrames = ocrCfg?.cleanupFrames ?? false;
+	const isoThresholdMs = ocrCfg?.isoThresholdMs ?? 1500;
+	const adjustYWeight = ocrCfg?.adjustYWeight ?? 0.8;
+	const adjustIsoWeight = ocrCfg?.adjustIsoWeight ?? 0.2;
+	const adjustYFactor = ocrCfg?.adjustYFactor ?? 0.08;
 
 	// 1. Extract frames
 	const frameDir = join(sessionPath, "tmp", "ocr-frames");
@@ -116,11 +120,14 @@ export async function stageOcr(ctx: Context) {
 		{ timeout: 15_000, encoding: "utf-8" },
 	);
 	const videoDurationS = parseFloat(probe.stdout?.trim() || "0");
+	const { height: videoHeight } = probeVideoResolution(videoPath);
 
 	// 6. Write ocr.json (same format as asr_fix)
 	const metadataDir = resolve(sessionPath, "metadata");
 	ensureDir(metadataDir, ctx);
-	const segmentsOut = segments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}) }));
+	const yStats = computeBoxYStats(frameResults);
+	const adjustedSegments = computeSegmentAdjustments(segments, frameResults, yStats, videoHeight, isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor);
+	const segmentsOut = adjustedSegments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}), ...(s.frameCount !== undefined ? { frameCount: s.frameCount } : {}), ...(s.adjustedConfidence !== undefined ? { adjustedConfidence: s.adjustedConfidence } : {}), ...(s.yPenalty !== undefined ? { yPenalty: s.yPenalty } : {}), ...(s.isoPenalty !== undefined ? { isoPenalty: s.isoPenalty } : {}) }));
 	writeJson(
 		join(metadataDir, "ocr.json"),
 		{
@@ -130,6 +137,7 @@ export async function stageOcr(ctx: Context) {
 			_device: device,
 			_fps: fps,
 			_textScore: textScore,
+			_y_stats: yStats,
 			_source: "ocr",
 			_frames_raw: frameResults,
 		},

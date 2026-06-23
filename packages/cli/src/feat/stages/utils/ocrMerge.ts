@@ -13,6 +13,10 @@ export interface Segment {
 	end: number;
 	box_y?: [number, number];
 	confidence?: number;
+	frameCount?: number;
+	adjustedConfidence?: number;
+	yPenalty?: number;
+	isoPenalty?: number;
 }
 
 export function levenshtein(a: string, b: string): number {
@@ -52,13 +56,19 @@ function mergeConfidence(a?: number, b?: number): number | undefined {
 	return (a + b) / 2;
 }
 
+const normalize = (s: string) => s.replace(/\s+/g, '');
+
 export function mergeFrames(frames: FrameResult[]): Segment[] {
 	const segments: Segment[] = [];
 	let currentText = "";
 	let currentStart = 0;
-	let currentBox: number[][] | undefined;
+	let currentBoxY: [number, number] | undefined;
 	let gapStart = 0;
 	let currentConfidences: number[] = [];
+
+	function frameBoxY(f: FrameResult): [number, number] | undefined {
+		return f.bbox ? [f.bbox.top, f.bbox.bottom] : undefined;
+	}
 
 	for (const f of frames) {
 		if (!f.text) {
@@ -67,26 +77,27 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		}
 		if (gapStart > 0) {
 			const gapMs = f.timestamp - gapStart;
-			if (gapMs <= 1500 && (f.text === currentText || isSubstringOf(f.text, currentText) || isSubstringOf(currentText, f.text))) {
+			if (gapMs <= 1500 && (normalize(f.text) === normalize(currentText) || isSubstringOf(f.text, currentText) || isSubstringOf(currentText, f.text))) {
 				currentConfidences.push(f.confidence);
 				gapStart = 0; continue;
 			}
-			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: boxY(currentBox), confidence: avgConfidence(currentConfidences) });
-			currentText = ""; currentStart = 0; currentBox = undefined; gapStart = 0; currentConfidences = [];
+			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
+			currentText = ""; currentStart = 0; currentBoxY = undefined; gapStart = 0; currentConfidences = [];
 		}
-		if (!currentText || f.text !== currentText) {
+		if (!currentText || normalize(f.text) !== normalize(currentText)) {
 			if (currentText) {
 				segments.push({
 					text: currentText,
 					start: currentStart,
 					end: f.timestamp,
-					box_y: boxY(currentBox),
+					box_y: currentBoxY,
 					confidence: avgConfidence(currentConfidences),
+					frameCount: currentConfidences.length,
 				});
 			}
 			currentText = f.text;
 			currentStart = f.timestamp;
-			currentBox = f.box;
+			currentBoxY = frameBoxY(f);
 			currentConfidences = [f.confidence];
 		} else {
 			currentConfidences.push(f.confidence);
@@ -94,7 +105,7 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 	}
 	if (currentText) {
 		const lastTs = gapStart > 0 ? gapStart : frames[frames.length - 1]?.timestamp ?? currentStart;
-		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: boxY(currentBox), confidence: avgConfidence(currentConfidences) });
+		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
 	}
 
 	// second pass: merge adjacent segments where text is a substring of the other
@@ -103,7 +114,7 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		const prev = segments[i - 1];
 		const cur = segments[i];
 		if (overlap(prev.box_y, cur.box_y) && isSubstringOf(prev.text, cur.text)) {
-			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence) };
+			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence), frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1) };
 			segments.splice(i, 1);
 		}
 	}
@@ -120,7 +131,7 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 			const isSingleChar = b.text.length <= 2;
 			if (isShort && isSingleChar) {
 				const mergedConf = [a.confidence, b.confidence, c.confidence].filter((v): v is number => v !== undefined);
-				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf) };
+				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf), frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1) + (c.frameCount ?? 1) };
 				segments.splice(i + 1, 2);
 				i--; // re-check from this position
 			}
@@ -148,6 +159,7 @@ export function dedupOverlap(segments: Segment[]): Segment[] {
 					end: Math.max(a.end, b.end),
 					box_y: a.box_y,
 					confidence: mergeConfidence(a.confidence, b.confidence),
+					frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1),
 				};
 				segments.splice(j, 1);
 				j--;
