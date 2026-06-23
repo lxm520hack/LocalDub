@@ -28,15 +28,17 @@ export async function stageDownload(
 	// Local upload URL (local://upload/<uploadTaskId>)
 	if (ctx.task.source === 'local') {
 		const sessionPath = ctx.task.session_path;
-		let mediaDir = join(sessionPath, 'media');
+		const downloadDir = join(sessionPath, 'download');
+		let mediaDir = join(downloadDir, 'media');
 		let videoPath = join(mediaDir, 'video_source.mp4');
 		emitLog(sessionPath, '[Download] Importing local video...');
 		await setStage(sessionPath, 'download', {
 			last_message: 'Importing local video...',
 			progress: 0,
 		});
+		mkdirSync(downloadDir, { recursive: true });
 		mkdirSync(mediaDir, { recursive: true });
-		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
+		mkdirSync(join(downloadDir, 'metadata'), { recursive: true });
 
 		const t0 = Date.now();
 		ffmpeg([
@@ -107,9 +109,9 @@ export async function stageDownload(
 				const videoId = info.id || extractVideoId(url);
 				sessionPath = join(WORKFOLDER, uploader, `${title}__${videoId}`);
 
-				mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
+				mkdirSync(join(sessionPath, 'download', 'metadata'), { recursive: true });
 				writeFileSync(
-					join(sessionPath, 'metadata', 'ytdlp_info.json'),
+					join(sessionPath, 'download', 'metadata', 'ytdlp_info.json'),
 					infoR.stdout,
 				);
 				await setTask(sessionPath, {
@@ -120,7 +122,7 @@ export async function stageDownload(
 			/* fall back to flat path */
 		}
 
-		const mediaDir = join(sessionPath, 'media');
+		const mediaDir = join(sessionPath, 'download', 'media');
 		const videoPath = join(mediaDir, 'video_source.mp4');
 
 		emitLog(sessionPath, '[Download] Downloading video...');
@@ -129,7 +131,7 @@ export async function stageDownload(
 			progress: 0,
 		});
 		mkdirSync(mediaDir, { recursive: true });
-		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
+		mkdirSync(join(sessionPath, 'download', 'metadata'), { recursive: true });
 
 		const ytArgs: string[] = [
 			'-f',
