@@ -610,7 +610,7 @@ static Image warpPerspectiveCrop(const Image& img, const Polygon& pts) {
     cv::Mat src(img.h, img.w, CV_8UC3, const_cast<uint8_t*>(img.data.data()));
 
     cv::Mat warped;
-    cv::warpPerspective(src, warped, M, cv::Size(dstW, dstH), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+    cv::warpPerspective(src, warped, M, cv::Size(dstW, dstH), cv::INTER_CUBIC, cv::BORDER_REPLICATE);
 
     // Handle rotate90: transpose so that text reads horizontally
     if (rotate90) {
