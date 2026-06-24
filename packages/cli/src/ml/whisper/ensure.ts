@@ -123,116 +123,130 @@ export function ensureVadModel(sessionPath: string): boolean {
 	return downloadFile(url, dest, sessionPath);
 }
 
-function autoInstallVulkan(sessionPath: string): boolean {
-	const { spawnSync } = require('child_process');
-	const os = require('os');
-	if (process.platform === 'win32') {
-		// Try winget, then choco
-		emitLog(sessionPath, '[Whisper] Attempting to install Vulkan SDK on Windows (winget/choco)');
-		let r = spawnSync('winget', ['install', '--id', 'LunarG.VulkanSDK', '-e', '--accept-package-agreements', '--accept-source-agreements'], { timeout: 600_000 });
-		if (r.status === 0) return true;
-		emitLog(sessionPath, `[Whisper] winget install failed (exit ${r.status}), trying choco`);
-		r = spawnSync('choco', ['install', 'vulkan-sdk', '-y'], { timeout: 600_000 });
-		if (r.status === 0) return true;
-		emitLog(sessionPath, `[Whisper] choco install failed (exit ${r.status})`);
-		return false;
-	} else if (process.platform === 'linux') {
-		emitLog(sessionPath, '[Whisper] Attempting to install Vulkan SDK on Linux via apt');
-		let r = spawnSync('bash', ['-lc', 'sudo apt-get update && sudo apt-get install -y vulkan-sdk || sudo apt-get install -y libvulkan1 vulkan-utils'], { timeout: 600_000 });
-		if (r.status === 0) return true;
-		emitLog(sessionPath, `[Whisper] apt-get install failed (exit ${r.status})`);
-		return false;
-	} else if (process.platform === 'darwin') {
-		emitLog(sessionPath, '[Whisper] macOS detected: attempting to install Vulkan SDK via brew (MoltenVK)');
-		let r = spawnSync('brew', ['install', 'vulkan-sdk'], { timeout: 600_000 });
-		if (r.status === 0) return true;
-		emitLog(sessionPath, `[Whisper] brew install failed (exit ${r.status})`);
+// ---- Vulkan SDK helper & installer (user-provided logic) ----
+const VK_SDK_VERSION = '1.3.296.0';
+const VK_SDK_INSTALLER_URL =
+	`https://sdk.lunarg.com/sdk/download/${VK_SDK_VERSION}/windows/VulkanSDK-${VK_SDK_VERSION}-Installer.exe`;
+
+let _vkSdkDir: string | null = null;
+
+function findVulkanSdkDir(): string | null {
+	if (_vkSdkDir && existsSync(join(_vkSdkDir, 'Include', 'vulkan', 'vulkan.h'))) return _vkSdkDir;
+
+	const candidates = [
+		process.env.VK_SDK_PATH,
+		join('C:\\', 'VulkanSDK', VK_SDK_VERSION),
+		join(process.env.ProgramFiles || 'C:\\Program Files', 'VulkanSDK', VK_SDK_VERSION),
+		join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'VulkanSDK', VK_SDK_VERSION),
+	];
+	for (const dir of candidates) {
+		if (dir && existsSync(join(dir, 'Include', 'vulkan', 'vulkan.h'))) {
+			_vkSdkDir = dir;
+			return dir;
+		}
+	}
+	return null;
+}
+
+function isVulkanSdkInstalled(): boolean {
+	return findVulkanSdkDir() !== null;
+}
+
+function installVulkanSdkWinget(sessionPath: string): boolean {
+	emitLog(sessionPath, '[Whisper] Installing Vulkan SDK via winget...');
+	emitLog(sessionPath, '[Whisper] This may open a UAC prompt (admin required)');
+	const r = spawnSync('winget', ['install', '-e', '--id', 'KhronosGroup.VulkanSDK', '--accept-package-agreements'],
+		{ timeout: 600_000 });
+	if (r.status !== 0) {
+		const err = r.stderr?.toString() || '';
+		emitLog(sessionPath, `[Whisper] winget install failed (exit ${r.status}):\n${err.slice(-300)}`);
 		return false;
 	}
+	emitLog(sessionPath, '[Whisper] Vulkan SDK installed via winget');
+	return true;
+}
+
+function installVulkanSdkInstaller(sessionPath: string): boolean {
+	const tmpDir = join(REPO_ROOT, 'packages', 'tmp');
+	const installerPath = join(tmpDir, `VulkanSDK-${VK_SDK_VERSION}-Installer.exe`);
+
+	if (!downloadFile(VK_SDK_INSTALLER_URL, installerPath, sessionPath)) return false;
+
+	emitLog(sessionPath, `[Whisper] Running Vulkan SDK installer (${VK_SDK_VERSION})...`);
+	emitLog(sessionPath, '[Whisper] This may open a UAC prompt (admin required)');
+	const r = spawnSync(`"${installerPath}"`, ['/S'], {
+		timeout: 600_000,
+		shell: true,
+	});
+	if (r.status !== 0) {
+		emitLog(sessionPath, `[Whisper] Vulkan SDK installer failed (exit ${r.status})`);
+		emitLog(sessionPath, `[Whisper] Install manually: ${VK_SDK_INSTALLER_URL}`);
+		return false;
+	}
+	emitLog(sessionPath, '[Whisper] Vulkan SDK installed');
+	return true;
+}
+
+function ensureVulkanSdk(sessionPath: string): boolean {
+	if (isVulkanSdkInstalled()) {
+		emitLog(sessionPath, '[Whisper] Vulkan SDK OK');
+		return true;
+	}
+
+	emitLog(sessionPath, '[Whisper] Vulkan SDK not found');
+	if (installVulkanSdkWinget(sessionPath) && isVulkanSdkInstalled()) return true;
+	if (installVulkanSdkInstaller(sessionPath) && isVulkanSdkInstalled()) return true;
+
+	emitLog(sessionPath, '[Whisper] Vulkan SDK install failed. Install manually:\n'
+	+ `  winget install -e --id KhronosGroup.VulkanSDK\n`
+	+ `  Or download: ${VK_SDK_INSTALLER_URL}`);
+	return false;
+}
+
+function whisperCppBuildDir(): string {
+	return join(whisperCppDir(), 'build');
+}
+
+function tryBuild(sessionPath: string): boolean {
+	const buildDir = whisperCppBuildDir();
+	const args = ['-B', buildDir, '-S', whisperCppDir(), '-DGGML_VULKAN=1'];
+
+	emitLog(sessionPath, '[Whisper] cmake configure (Vulkan)...');
+	const buildEnv: Record<string, string> = { ...process.env as Record<string, string> };
+	const vkDir = findVulkanSdkDir();
+	if (vkDir) {
+		buildEnv['VULKAN_SDK'] = vkDir;
+		buildEnv['SPIRV-Headers_DIR'] = join(vkDir, 'Lib', 'cmake');
+	}
+	const cfg = spawnSync('cmake', args, { timeout: 120_000, env: buildEnv });
+	if (cfg.status !== 0) {
+		const err = cfg.stderr?.toString() || '';
+		emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) failed:\n${err.slice(-500)}`);
+		return false;
+	}
+
+	emitLog(sessionPath, '[Whisper] cmake build (Vulkan)...');
+	const build = spawnSync('cmake', ['--build', buildDir, '--config', 'Release', '-j', '4'],
+		{ timeout: 600_000 });
+	if (build.status !== 0) {
+		const err = build.stderr?.toString() || '';
+		emitLog(sessionPath, `[Whisper] cmake build (Vulkan) failed:\n${err.slice(-500)}`);
+		return false;
+	}
+
+	const binPath = whisperCppBinaryPath();
+	if (existsSync(binPath)) {
+		emitLog(sessionPath, `[Whisper] Built ${binPath}`);
+		return true;
+	}
+	emitLog(sessionPath, `[Whisper] Build completed but binary not found at ${binPath}`);
 	return false;
 }
 
 function buildWhisperCpp(sessionPath: string): boolean {
-	const { spawnSync } = require('child_process');
-	const os = require('os');
-	const cwd = whisperCppDir();
-
-	emitLog(sessionPath, '[Whisper] Attempting to build whisper.cpp (cmake configure + build)...');
-
-	// Check cmake availability
-	let r = spawnSync('cmake', ['--version'], { cwd, timeout: 30_000 });
-	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake not available or failed --version (exit ${r.status}). Install CMake or ensure it's on PATH.`);
-		return false;
-	}
-
-	// Configure
-	emitLog(sessionPath, `[Whisper] Running: cmake -B build -DGGML_VULKAN=1`);
-	r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
-	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake configure failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
-		const stderr = (r.stderr||'').toString();
-		// If Vulkan not found, attempt to auto-install Vulkan SDK then retry configure
-		if (stderr.includes('Could NOT find Vulkan') || stderr.includes('FindVulkan') || stderr.includes('Vulkan_LIBRARY')) {
-			emitLog(sessionPath, '[Whisper] Vulkan not detected. Attempting automatic Vulkan SDK install (platform-specific)');
-			try {
-				if (!autoInstallVulkan(sessionPath)) {
-					emitLog(sessionPath, '[Whisper] Automatic Vulkan install failed');
-					return false;
-				}
-			} catch (e:any) {
-				emitLog(sessionPath, `[Whisper] Exception while trying to install Vulkan: ${e?.message || e}`);
-				return false;
-			}
-			// Retry configure with Vulkan enabled
-			emitLog(sessionPath, '[Whisper] Retrying: cmake -B build -DGGML_VULKAN=1');
-			r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
-			if (r.status !== 0) {
-				emitLog(sessionPath, `[Whisper] cmake configure still failed after Vulkan install (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
-				return false;
-			}
-		} else {
-			return false;
-		}
-	}
-
-	// Verify CMakeCache indicates Vulkan enabled; abort (no CPU fallback) if not
-	try {
-		const cachePath = join(cwd, 'build', 'CMakeCache.txt');
-		if (existsSync(cachePath)) {
-			const cache = require('fs').readFileSync(cachePath, 'utf8');
-			const hasVulkanOn = /GGML_VULKAN\s*[:=].*(ON|1|TRUE)/i.test(cache) || /GGML_VULKAN:BOOL=ON/i.test(cache) || /GGML_USE_VULKAN.*ON/i.test(cache);
-			if (!hasVulkanOn) {
-				emitLog(sessionPath, '[Whisper] CMake configure completed but GGML_VULKAN is not ON — aborting build (no CPU fallback as requested)');
-				return false;
-			}
-		} else {
-			emitLog(sessionPath, `[Whisper] CMakeCache not found at ${cachePath} — cannot verify Vulkan state`);
-			return false;
-		}
-	} catch (e:any) {
-		emitLog(sessionPath, `[Whisper] Failed to read CMakeCache to verify Vulkan: ${e?.message || e}`);
-		return false;
-	}
-
-	// Build
-	const cpus = Math.max(2, (os.cpus && os.cpus().length) || 2);
-	let buildArgs: string[];
-	if (process.platform === 'win32') {
-		buildArgs = ['--build', 'build', '--config', 'Release', '-j', String(cpus)];
-	} else {
-		buildArgs = ['--build', 'build', '-j', String(cpus)];
-	}
-	emitLog(sessionPath, `[Whisper] Running: cmake ${buildArgs.join(' ')}`);
-	// Allow up to 1 hour for build on slow machines
-	r = spawnSync('cmake', buildArgs, { cwd, timeout: 3_600_000 });
-	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake build failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
-		return false;
-	}
-
-	emitLog(sessionPath, '[Whisper] Build completed');
-	return true;
+	emitLog(sessionPath, '[Whisper] Starting Vulkan-enabled build flow: ensure SDK then build');
+	if (!ensureVulkanSdk(sessionPath)) return false;
+	return tryBuild(sessionPath);
 }
 
 export function ensureWhisperCppBinary(sessionPath: string): boolean {
