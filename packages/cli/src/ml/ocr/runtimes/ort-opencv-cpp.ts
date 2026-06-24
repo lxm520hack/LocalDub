@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '../../../feat/config/config.ts';
 
@@ -74,9 +74,11 @@ export async function ocrFramesOpenCvCpp(
 }
 
 function ocrEnv(): Record<string, string | undefined> {
+	const msys2Bin = 'C:\\msys64\\mingw64\\bin';
+	const extraPath = process.platform === 'win32' && existsSync(msys2Bin) ? `${msys2Bin};` : '';
 	return {
 		...process.env,
-		[LIB_PATH_KEY]: `${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
+		[LIB_PATH_KEY]: `${extraPath}${BUILD_DIR}${process.platform === 'win32' ? ';' : ':'}${process.env[LIB_PATH_KEY] || ''}`,
 		OCR_MODELS_DIR: getRapidOCRModelsDir(),
 		OCR_KEYS_PATH,
 	};
@@ -101,3 +103,5 @@ function parseBatchOutput(stdout: string): Map<string, OCRLine[]> {
 	}
 	return result;
 }
+
+

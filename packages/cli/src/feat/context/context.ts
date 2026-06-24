@@ -55,7 +55,7 @@ export interface TaskStage {
 }
 
 export const ctxPath = (sessionPath: string) =>
-	join(sessionPath, 'metadata', 'ctx.json');
+	join(sessionPath, 'ctx.json');
 
 /**
  * readFileSync, JSON.parse 都可以抛错, 如何处理交给使用者

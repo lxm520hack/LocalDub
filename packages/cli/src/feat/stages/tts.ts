@@ -9,7 +9,7 @@ import { VoxCPMEngine } from '../../ml/voxcpm/voxcpm.ts';
 import type { MLDaemon } from '../../ml/daemon/client.ts';
 import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
-import { emitLog, ffmpeg, nowISO, readTaskLanguages, } from './utils/utils.ts';
+import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath, } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
 
@@ -121,13 +121,9 @@ export async function stageTts(
 	});
 	const ttsCfg = ctx.input?.stages?.tts!
 	const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-	const timingsFile = join(
-		sessionPath,
-		'metadata',
-		`timings.json`,
-	);
-	const vocalsDir = join(sessionPath, 'segments', 'vocals');
-	const ttsDir = join( sessionPath, 'segments', 'tts');
+	const timingsFile = timingsFilePath(sessionPath);
+	const vocalsDir = join(sessionPath, 'split_audio', 'vocals');
+	const ttsDir = join( sessionPath, 'tts', 'wavs');
 	const tmpDir = join( sessionPath, 'tmp');
 
 	if (!existsSync(timingsFile))

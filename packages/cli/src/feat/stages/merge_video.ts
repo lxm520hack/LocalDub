@@ -12,7 +12,11 @@ import {
 	subtitleFilePath,
 	finalVideoFilename,
 	translationFilePath,
+	timingsFilePath,
+	videoSourcePath,
+	bgmPath,
 	defaultFont,
+	videoSourcePath,
 } from './utils/utils.ts';
 
 function filterSubPath(subPath: string): string {
@@ -211,12 +215,11 @@ function probeStyle(
 export async function stageMergeVideo(ctx: Context) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
-	const video_file_path = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4')
+	const video_file_path = ctx.video_file_path ?? videoSourcePath(sessionPath);
 	await setTask(sessionPath, { current_stage: 'merge_video' });
-	const mediaDir = join(sessionPath, 'media');
-	ensureDir(mediaDir, ctx);
+	const mergeVideoDir = join(sessionPath, 'merge_video');
+	ensureDir(mergeVideoDir, ctx);
 	const tmpDir = join(sessionPath, 'tmp');
-	const metadataDir = join(sessionPath, 'metadata');
 	const srtPath = ctx.input?.stages?.merge_video?.srtPath
 	const subtitleSource = ctx.input?.subtitleSource;
 	if (!existsSync(video_file_path)) throw new Error('video_source.mp4 not found');
@@ -235,7 +238,7 @@ export async function stageMergeVideo(ctx: Context) {
 
 	const noTranslate = ctx.input?.stages?.translate?.enabled === false;
 	const finalVideo = join(
-		mediaDir,
+		mergeVideoDir,
 		finalVideoFilename(taskId, pipeline, ctx.input?.subtitleSource ?? 'asr', noTranslate),
 	);
 
@@ -244,7 +247,7 @@ export async function stageMergeVideo(ctx: Context) {
 		const translateEnabled = ctx.input?.stages?.translate?.enabled ?? true;
 		let data: { translation: any[] };
 		if (vadAlign) {
-			data = await readJson(join(metadataDir, 'timings.json'), ctx);
+			data = await readJson(timingsFilePath(sessionPath), ctx);
 		} else if (translateEnabled) {
 			const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 			const trFile = translationFilePath(sessionPath, dstLangCode);
@@ -263,7 +266,7 @@ export async function stageMergeVideo(ctx: Context) {
 			};
 		}
 		const dstLang = dstLangFromTranslation(data.translation);
-		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
+		const subPath = join(mergeVideoDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, ctx, subPath, !translateEnabled);
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
 
@@ -292,10 +295,10 @@ export async function stageMergeVideo(ctx: Context) {
 			300_000,
 		);
 	} else {
-		const dubbingFile = join(mediaDir, 'audio_dubbing.wav');
+		const dubbingFile = join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
 		const ctxBgmPath = ctx.input?.stages?.merge_video?.bgmPath;
-		const bgmFile = ctxBgmPath ? ctxBgmPath : join(mediaDir, 'target_bgm.wav');
-		const timingsFile = join(metadataDir, 'timings.json');
+		const bgmFile = ctxBgmPath ? ctxBgmPath : bgmPath(sessionPath);
+		const timingsFile = timingsFilePath(sessionPath);
 
 		if (!existsSync(dubbingFile))
 			throw new Error('audio_dubbing.wav not found');
@@ -303,13 +306,13 @@ export async function stageMergeVideo(ctx: Context) {
 
 		const data = await readJson(timingsFile, ctx);
 		const dstLang = dstLangFromTranslation(data.translation);
-		const subPath = join(metadataDir, `subtitles.${dstLang}.srt`);
+		const subPath = join(mergeVideoDir, `subtitles.${dstLang}.srt`);
 		writeSrt(data.translation, ctx, subPath);
 		const style = probeStyle(video_file_path, dstLang, probeOverrides);
 
 		const bgmGain = ctx.input?.stages?.merge_video?.bgmGain ?? -6;
 		const dubGain = ctx.input?.stages?.merge_video?.dubGain ?? 3;
-		const mixedAudio = join(tmpDir, 'audio_mixed.m4a');
+		const mixedAudio = join(mergeVideoDir, 'audio_mixed.m4a');
 		ffmpeg([
 			'-i',
 			dubbingFile,

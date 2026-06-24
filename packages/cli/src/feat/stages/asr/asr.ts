@@ -9,7 +9,8 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from '../utils/utils.ts';
+import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
+import { ensureWhisperCpp, ensureVadModel } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
@@ -59,8 +60,8 @@ export async function stageAsr(
 		last_message: 'Transcribing...',
 		progress: 0,
 	});
-	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? join(sessionPath, 'media', 'target_3_vocals.wav');
-	const videoSource = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4');
+	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? vocalsPath(sessionPath);
+	const videoSource = ctx.video_file_path ?? videoSourcePath(sessionPath);
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal
@@ -71,8 +72,8 @@ export async function stageAsr(
 		);
 
 	if (ctx.input?.stages?.asr?.useSeparated) {
-		const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-		const gatedPath = resolve(sessionPath, 'media', 'target_3_vocals_gated.wav');
+		const mixedPath = mixedVocalsPath(sessionPath);
+		const gatedPath = gatedVocalsPath(sessionPath);
 		const mixedOrGated = existsSync(gatedPath) ? gatedPath
 			: existsSync(mixedPath) ? mixedPath
 			: null;
@@ -100,6 +101,7 @@ export async function stageAsr(
 			session_path: sessionPath,
 			language: asrLanguage || 'auto',
 			device,
+			word_timestamps: asrCfg?.wordsOutput ?? false,
 		});
 		const r = result as Record<string, any>;
 		const actualDevice: string = r.actual_device ?? device;
@@ -212,6 +214,7 @@ async function asrPytorch(opts: AsrOptions) {
 	const attempts = device !== 'cpu' ? 2 : 1;
 	let fallbackToCpu = false;
 
+	const emitWords = ctx.input?.stages?.asr?.wordsOutput ?? false;
 	for (let attempt = 0; attempt < attempts; attempt++) {
 		const actualDevice = attempt === 0 ? device : 'cpu';
 		const args = [
@@ -222,6 +225,7 @@ async function asrPytorch(opts: AsrOptions) {
 			'--device',
 			actualDevice,
 		];
+		if (emitWords) args.push('--word-timestamps');
 		const t0 = Date.now();
 		const result = spawnSync(pyBin, args, {
 			maxBuffer: 256 * 1024 * 1024,
@@ -317,12 +321,17 @@ async function asrWhisperCpp(
 	sessionPath: string,
 	language: string,
 ) {
-	const whisperCli = join(
-		REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan',
-	);
+	const whisperCli = whisperCppBinaryPath();
 	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
 
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
+
+	if (!ensureWhisperCpp(sessionPath)) {
+		throw new Error('whisper.cpp setup failed; see logs above for manual steps');
+	}
+	if (ctx.input?.stages?.asr?.vad && ctx.input?.stages?.asr?.vadModel) {
+		ensureVadModel(sessionPath);
+	}
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
 	const audioDir = join(sessionPath, 'tmp');

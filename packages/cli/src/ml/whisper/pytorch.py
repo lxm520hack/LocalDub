@@ -222,7 +222,7 @@ def _device() -> str:
 
 def _convert_words(words: list) -> list:
     return [
-        {"text": w.get("word", ""), "start": round(w.get("start", 0.0) * 1000), "end": round(w.get("end", 0.0) * 1000)}
+        {"word": w.get("word", ""), "start": round(w.get("start", 0.0) * 1000), "end": round(w.get("end", 0.0) * 1000)}
         for w in words or []
     ]
 
@@ -279,7 +279,8 @@ def main() -> None:
     model_name = os.getenv("WHISPER_MODEL", "large-v3-turbo")
     model = whisper.load_model(model_name, device=device)
 
-    result = model.transcribe(str(vocals_file), language=language, word_timestamps=False, verbose=False)
+    word_timestamps = "--word-timestamps" in sys.argv
+    result = model.transcribe(str(vocals_file), language=language, word_timestamps=word_timestamps, verbose=False)
 
     segments = result.get("segments", [])
     converted = _convert_segments(segments)

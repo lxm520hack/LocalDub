@@ -1,4 +1,4 @@
-import { readJson, writeJson } from '../utils/fileOps.ts';
+import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../../config/config.ts';
@@ -9,9 +9,12 @@ import { Context, setStage } from '../../context/context.ts';
 export async function stageOcrFix(ctx: Context) {
     const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
-  const metadataDir = join(sessionPath, 'metadata');
-  const ocrFile = join(metadataDir, 'ocr.json');
-  const fixFile = join(metadataDir, 'ocr_fix.json');
+  const ocrDir = join(sessionPath, 'ocr');
+  const ocrFixDir = join(sessionPath, 'ocr_fix');
+  const ocrFile = join(ocrDir, 'ocr.json');
+  const fixFile = join(ocrFixDir, 'ocr_fix.json');
+
+  ensureDir(ocrFixDir, ctx);
 
   if (!existsSync(ocrFile)) {
     throw new Error(`OCR file not found: ${ocrFile}; run OCR stage first`);
