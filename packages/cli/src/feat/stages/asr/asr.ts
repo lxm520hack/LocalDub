@@ -343,8 +343,8 @@ async function asrWhisperCpp(
 		ensureVadModel(sessionPath);
 	}
 
-	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
-	const audioDir = join(sessionPath, 'tmp');
+	// whisper-cli writes <audioPath>.json alongside input; place input in the persistent asr directory for inspection
+	const audioDir = join(sessionPath, 'asr');
 	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
@@ -497,9 +497,8 @@ async function asrWhisperCpp(
 	};
 	writeJson(join(asrDir, 'asr.json'), asrOutput, ctx);
 
-	// Cleanup tmp audio and json
-	removeFile(tmpAudio, ctx);
-	removeFile(whisperJson, ctx);
+	// Preserve whisper input and json in asr directory for debugging and auditing
+	emitLog(sessionPath, `[ASR] Preserving ${tmpAudio} and ${whisperJson} in asr directory`);
 
 	emitLog(sessionPath, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
 	if (segments.length > 0) {
