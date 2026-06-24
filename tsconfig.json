@@ -8,5 +8,11 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "**/build/**",
+    "node_modules",
+    "dist",
+    "packages/tmp/**"
+  ]
 }
