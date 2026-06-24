@@ -180,7 +180,7 @@ function buildWhisperCpp(sessionPath: string): boolean {
 					emitLog(sessionPath, '[Whisper] Automatic Vulkan install failed');
 					return false;
 				}
-			} catch (e) {
+			} catch (e:any) {
 				emitLog(sessionPath, `[Whisper] Exception while trying to install Vulkan: ${e?.message || e}`);
 				return false;
 			}
@@ -194,6 +194,25 @@ function buildWhisperCpp(sessionPath: string): boolean {
 		} else {
 			return false;
 		}
+	}
+
+	// Verify CMakeCache indicates Vulkan enabled; abort (no CPU fallback) if not
+	try {
+		const cachePath = join(cwd, 'build', 'CMakeCache.txt');
+		if (existsSync(cachePath)) {
+			const cache = require('fs').readFileSync(cachePath, 'utf8');
+			const hasVulkanOn = /GGML_VULKAN\s*[:=].*(ON|1|TRUE)/i.test(cache) || /GGML_VULKAN:BOOL=ON/i.test(cache) || /GGML_USE_VULKAN.*ON/i.test(cache);
+			if (!hasVulkanOn) {
+				emitLog(sessionPath, '[Whisper] CMake configure completed but GGML_VULKAN is not ON — aborting build (no CPU fallback as requested)');
+				return false;
+			}
+		} else {
+			emitLog(sessionPath, `[Whisper] CMakeCache not found at ${cachePath} — cannot verify Vulkan state`);
+			return false;
+		}
+	} catch (e:any) {
+		emitLog(sessionPath, `[Whisper] Failed to read CMakeCache to verify Vulkan: ${e?.message || e}`);
+		return false;
 	}
 
 	// Build
@@ -236,7 +255,7 @@ export function ensureWhisperCppBinary(sessionPath: string): boolean {
 		} else {
 			emitLog(sessionPath, '[Whisper] Automatic build attempt failed');
 		}
-	} catch (e) {
+	} catch (e:any) {
 		emitLog(sessionPath, `[Whisper] Exception during automatic build: ${e?.message || e}`);
 	}
 
