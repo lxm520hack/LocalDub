@@ -6,33 +6,10 @@ import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
 import { REPO_ROOT } from '@repo/config';
+import { findRapidOcrModelsDir } from './utils';
 
-/**
- * Dynamically locate rapidocr model directory.
- */
-function findRapidOCRModelsDir(): string {
-	const venvBase = resolve(REPO_ROOT, '.venv');
-	const libDir = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib');
-	let spDir: string;
-	if (process.platform === 'win32') {
-		spDir = join(libDir, 'site-packages');
-	} else {
-		// Linux/macOS: lib/pythonX.Y/site-packages
-		const entries = existsSync(libDir) ? readdirSync(libDir, { withFileTypes: true }) : [];
-		const pyDir = entries.find(e => e.isDirectory() && e.name.startsWith('python'));
-		spDir = pyDir ? join(libDir, pyDir.name, 'site-packages') : join(libDir, 'site-packages');
-	}
-	if (!existsSync(spDir)) {
-		throw new Error(`site-packages not found: ${spDir}`);
-	}
-	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
-	if (!existsSync(modelsDir)) {
-		throw new Error(`rapidocr models not found: ${modelsDir}`);
-	}
-	return modelsDir;
-}
 
-const MODEL_DIR = findRapidOCRModelsDir();
+const MODEL_DIR = findRapidOcrModelsDir();
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const POSTPROCESS_PY = resolve(__dirname, 'postprocess_det.py');
 const KEYS_PATH = resolve(__dirname, 'ppocr_keys.json');
