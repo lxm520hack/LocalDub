@@ -116,12 +116,73 @@ export function ensureVadModel(sessionPath: string): boolean {
 	return downloadFile(url, dest, sessionPath);
 }
 
+function buildWhisperCpp(sessionPath: string): boolean {
+	const { spawnSync } = require('child_process');
+	const os = require('os');
+	const cwd = whisperCppDir();
+
+	emitLog(sessionPath, '[Whisper] Attempting to build whisper.cpp (cmake configure + build)...');
+
+	// Check cmake availability
+	let r = spawnSync('cmake', ['--version'], { cwd, timeout: 30_000 });
+	if (r.status !== 0) {
+		emitLog(sessionPath, `[Whisper] cmake not available or failed --version (exit ${r.status}). Install CMake or ensure it's on PATH.`);
+		return false;
+	}
+
+	// Configure
+	emitLog(sessionPath, `[Whisper] Running: cmake -B build -DGGML_VULKAN=1`);
+	r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
+	if (r.status !== 0) {
+		emitLog(sessionPath, `[Whisper] cmake configure failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+		return false;
+	}
+
+	// Build
+	const cpus = Math.max(2, (os.cpus && os.cpus().length) || 2);
+	let buildArgs: string[];
+	if (process.platform === 'win32') {
+		buildArgs = ['--build', 'build', '--config', 'Release', '-j', String(cpus)];
+	} else {
+		buildArgs = ['--build', 'build', '-j', String(cpus)];
+	}
+	emitLog(sessionPath, `[Whisper] Running: cmake ${buildArgs.join(' ')}`);
+	// Allow up to 1 hour for build on slow machines
+	r = spawnSync('cmake', buildArgs, { cwd, timeout: 3_600_000 });
+	if (r.status !== 0) {
+		emitLog(sessionPath, `[Whisper] cmake build failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+		return false;
+	}
+
+	emitLog(sessionPath, '[Whisper] Build completed');
+	return true;
+}
+
 export function ensureWhisperCppBinary(sessionPath: string): boolean {
 	const binPath = whisperVulkanPath();
 	if (existsSync(binPath)) return true;
 
 	emitLog(sessionPath, `[Whisper] whisper-vulkan not found at ${binPath}`);
-	emitLog(sessionPath, '[Whisper] Build whisper.cpp with Vulkan:\n'
+
+	// Attempt an automatic build once
+	try {
+		if (buildWhisperCpp(sessionPath)) {
+			// re-evaluate path after build
+			const newBin = whisperVulkanPath();
+			if (existsSync(newBin)) {
+				emitLog(sessionPath, `[Whisper] Found binary after build at ${newBin}`);
+				return true;
+			}
+			// fallback: list build dir for diagnostics
+			emitLog(sessionPath, `[Whisper] Build finished but binary still not found at ${newBin}`);
+		} else {
+			emitLog(sessionPath, '[Whisper] Automatic build attempt failed');
+		}
+	} catch (e) {
+		emitLog(sessionPath, `[Whisper] Exception during automatic build: ${e?.message || e}`);
+	}
+
+	emitLog(sessionPath, '[Whisper] Build whisper.cpp with Vulkan (manual steps):\n'
 		+ `  cd submodule/whisper.cpp\n`
 		+ `  cmake -B build -DGGML_VULKAN=1\n`
 		+ `  cmake --build build --config Release -j4\n`
