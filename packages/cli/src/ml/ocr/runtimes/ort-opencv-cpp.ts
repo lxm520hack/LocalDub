@@ -55,18 +55,33 @@ export async function ocrFramesOpenCvCpp(
 	frameDir: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<Map<string, OCRLine[]>> {
-	const r = spawnSync(ocrOpenCvCppBinaryPath(), [
+	const binPath = ocrOpenCvCppBinaryPath();
+	const args = [
 		'--dir', frameDir,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
 		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),
 		...(opts?.device && opts.device !== 'cpu' ? ['--device', opts.device] : []),
-	], {
+	];
+	const env = ocrEnv();
+	const r = spawnSync(binPath, args, {
 		encoding: 'utf-8',
-		env: ocrEnv(),
+		env,
 	});
 
 	if (r.status !== 0) {
-		throw new Error(`ocr_pipeline_opencv --dir failed (exit ${r.status}): ${(r.stderr || '').slice(-300)}`);
+		const stderr = (r.stderr || '').slice(-500);
+		const stdout = (r.stdout || '').slice(-500);
+		const diag = [
+			`exit=${r.status} signal=${r.signal}`,
+			`bin=${binPath}`,
+			`frameDir=${frameDir}`,
+			`msys2Bin exists=${existsSync(resolve('C:\\', 'msys64', 'mingw64', 'bin'))}`,
+			`ortLib exists=${existsSync(ORT_LIB_DIR)}`,
+			`buildDir exists=${existsSync(BUILD_DIR)}`,
+			stderr && `stderr:\n${stderr}`,
+			stdout && `stdout:\n${stdout}`,
+		].filter(Boolean).join('\n');
+		throw new Error(`ocr_pipeline_opencv --dir failed\n${diag}`);
 	}
 
 	return parseBatchOutput(r.stdout);
@@ -80,10 +95,7 @@ function ocrEnv(): Record<string, string | undefined> {
 	const msys2Bin = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 	const extra: string[] = [];
 	if (process.platform === 'win32') {
-		// MSYS2 MinGW OpenCV DLLs (libopencv_core-413.dll, etc.)
 		if (existsSync(msys2Bin)) extra.push(msys2Bin);
-		// MinGW runtime DLLs (libstdc++-6.dll, libgcc_s_seh-1.dll, libwinpthread-1.dll)
-		// shipped alongside onnxruntime.dll in the ORT package
 		if (existsSync(ORT_LIB_DIR)) extra.push(ORT_LIB_DIR);
 	}
 	const libPath = [...extra, BUILD_DIR, process.env[LIB_PATH_KEY] || ''].filter(Boolean).join(';');
