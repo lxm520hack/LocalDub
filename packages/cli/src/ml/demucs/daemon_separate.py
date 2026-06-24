@@ -1,6 +1,6 @@
 """
 Daemon handler for Demucs separate stage.
-Imported by pipeline_daemon.py.
+Imported by pytorch_server.py.
 """
 from __future__ import annotations
 

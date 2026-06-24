@@ -3,7 +3,7 @@ import { readJson, writeJson, ensureDir, removeFile } from '../utils/fileOps.ts'
 import { copyFileSync, existsSync, renameSync } from 'node:fs';
 import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
-import type { MLDaemon } from '../../../ml/daemon/client.ts';
+import { runStage, type DaemonConnection } from '../../../ml/server/client.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
@@ -61,7 +61,7 @@ function resolveVadModel(name: string): string {
 
 export async function stageAsr(
 	ctx: Context,
-	daemon?: MLDaemon,
+	daemon?: DaemonConnection,
 ) {
 	const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
@@ -103,9 +103,8 @@ export async function stageAsr(
 	const { asrLanguage } = readTaskLanguages(ctx);
 
 	if (runtime === 'pytorch' && daemon) {
-		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[ASR] Using Python daemon (device=${device})`);
-		const result = await daemon.runStage('asr', taskId, {
+		const result = await runStage(daemon, 'asr', taskId, {
 			vocals_path: audioPath,
 			session_path: sessionPath,
 			language: asrLanguage || 'auto',

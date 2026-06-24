@@ -12,7 +12,7 @@ const MSYS2_BIN = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 const ORT_LIB_DIR = resolve(REPO_ROOT, 'packages', 'tmp', 'onnxruntime-win-x64-1.26.0',
 	'onnxruntime-win-x64-1.26.0', 'lib');
 
-const MODELS_DIR = findRapidOcrModelsDir()
+const MODELS_DIR = findRapidOcrModelsDir() 
 const KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const SRC_FRAMES_DIR = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'asr_ocr_pre', 'frames');
 const TMP_TEST_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', '.test-frames');

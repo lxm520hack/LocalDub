@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import type { MLDaemon } from '../../../ml/daemon/client.ts';
+import { runStage, type DaemonConnection } from '../../../ml/server/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
 import {
@@ -12,12 +12,13 @@ import {
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
+import { startLog } from '../utils/log.ts';
 
 export async function stageSeparate(
 	ctx: Context,
-	daemon?: MLDaemon,
+	daemon?: DaemonConnection,
 ) {
-	console.log(`[separate] Starting stage for task ${ctx.task.id}`);
+	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
 	// subtitle 模式且未配置 always 时，跳过分离
@@ -49,7 +50,6 @@ export async function stageSeparate(
 	const device = sepCfg?.device ?? 'cuda';
 
 	if (runtime === 'pytorch' && daemon) {
-		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[Separate] Using Python daemon (device=${device})`);
 		const absVideo = resolve(
 			REPO_ROOT,
@@ -57,7 +57,7 @@ export async function stageSeparate(
 			'download',
 			'video_source.mp4',
 		);
-		const result = await daemon.runStage(
+		const result = await runStage(daemon,
 			'separate',
 			taskId,
 			{

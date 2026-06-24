@@ -112,7 +112,7 @@ flag only affects the second-pass word alignment in `openai-whisper`; the encode
 
 **Code changes applied**:
 - `packages/cli/scripts/asr/pytorch.py` — `word_timestamps` → `False` (still useful for CPU path)
-- `packages/cli/scripts/pipeline_daemon.py` — same
+- `packages/cli/src/ml/server/pytorch_server.py` — same
 
 The pipeline does not need word-level timestamps — they are stripped by `asr_fix` before
 any consumer. Production ASR path: `faster-whisper` GPU → CPU fallback (see `run.py`).
