@@ -16,13 +16,13 @@ const audioSource = resolve(REPO_ROOT, 'packages', 'tmp', 'raw-audio.wav');
 if (!existsSync(srtPath)) throw new Error(`not found: ${srtPath}`);
 if (!existsSync(audioSource)) throw new Error(`not found: ${audioSource}`);
 
-const ctx: Context = {
+const ctx = {
   task: { id: 'benchmark-split', source: 'local', url: '', status: 'running', session_path: resultDir, created_at: new Date().toISOString(), current_stage: 'split_audio' },
   pipeline: 'dub',
   asr_language: 'zh',
   target_language: 'zh',
   input: { stages: { translate: { enabled: false }, split_audio: { vadAlign: false } } },
-};
+} as unknown as Context;
 writeCtx(ctx);
 ensureDir(join(resultDir, 'segments', 'vocals'), ctx);
 
