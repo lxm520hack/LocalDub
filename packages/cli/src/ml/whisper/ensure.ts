@@ -27,25 +27,28 @@ function whisperModelPath(): string {
 }
 
 export function whisperVulkanPath(): string {
-	// Prefer Release folder (DLLs live there on Windows) then common locations.
+	// Explicitly prefer Release copy (stable DLL layout) to avoid intermittent selection
 	const baseBin = join(whisperCppDir(), 'build', 'bin');
 	const buildRoot = join(whisperCppDir(), 'build');
-	const candidates: string[] = [];
+	const releasePathWin = join(buildRoot, 'Release', 'whisper-cli.exe');
+	const releasePathUnix = join(buildRoot, 'Release', 'whisper-cli');
+	const baseBinCliWin = join(baseBin, 'whisper-cli.exe');
+	const baseBinCliUnix = join(baseBin, 'whisper-cli');
+	const baseBinVulkanWin = join(baseBin, 'whisper-vulkan.exe');
+	const baseBinVulkanUnix = join(baseBin, 'whisper-vulkan');
+
 	if (process.platform === 'win32') {
-		// Prefer Release copy first (stable DLL layout)
-		candidates.push(join(buildRoot, 'Release', 'whisper-cli.exe'));
-		candidates.push(join(baseBin, 'whisper-cli.exe'));
-		candidates.push(join(baseBin, 'whisper-vulkan.exe'));
-		candidates.push(join(buildRoot, 'whisper-cli.exe'));
+		if (existsSync(releasePathWin)) return releasePathWin;
+		if (existsSync(baseBinCliWin)) return baseBinCliWin;
+		if (existsSync(baseBinVulkanWin)) return baseBinVulkanWin;
+		if (existsSync(join(buildRoot, 'whisper-cli.exe'))) return join(buildRoot, 'whisper-cli.exe');
 	} else {
-		candidates.push(join(buildRoot, 'Release', 'whisper-cli'));
-		candidates.push(join(baseBin, 'whisper-cli'));
-		candidates.push(join(baseBin, 'whisper-vulkan'));
-		candidates.push(join(buildRoot, 'whisper-cli'));
+		if (existsSync(releasePathUnix)) return releasePathUnix;
+		if (existsSync(baseBinCliUnix)) return baseBinCliUnix;
+		if (existsSync(baseBinVulkanUnix)) return baseBinVulkanUnix;
+		if (existsSync(join(buildRoot, 'whisper-cli'))) return join(buildRoot, 'whisper-cli');
 	}
-	for (const c of candidates) {
-		if (existsSync(c)) return c;
-	}
+
 	// Fallback to original expected path
 	const fallback = process.platform === 'win32'
 		? join(whisperCppDir(), 'build', 'bin', 'whisper-vulkan.exe')
