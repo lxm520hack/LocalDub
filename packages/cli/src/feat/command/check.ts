@@ -40,8 +40,8 @@ export async function cmdCheck(opts: {
 		}
 
 
-		const asrPath = join(sessionPath, 'metadata', 'asr_fix.json');
-		const asrRawPath = join(sessionPath, 'metadata', 'asr.json');
+		const asrPath = join(sessionPath, 'asr_fix', 'asr_fix.json');
+		const asrRawPath = join(sessionPath, 'asr', 'asr.json');
 		let asrFile = asrPath;
 		if (!existsSync(asrPath) && existsSync(asrRawPath)) asrFile = asrRawPath;
 		if (!existsSync(asrFile)) {

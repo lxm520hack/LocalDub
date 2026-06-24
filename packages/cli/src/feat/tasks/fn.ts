@@ -88,7 +88,6 @@ export async function createTask({
 		}
 
 		const sessionPath = join(WORKFOLDER, 'local', params.taskId);
-		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
 		ctx.task.title = filename.replace(/\.\w+$/, '')
 		ctx.task.session_path =`workfolder/local/${params.taskId}`
 

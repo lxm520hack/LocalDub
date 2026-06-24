@@ -14,13 +14,12 @@ export async function stageAsrOcrFix(ctx: Context) {
 		progress: 0,
 	});
 
-	const metadataDir = resolve(sessionPath, 'metadata');
 	const asrOcrPreDir = resolve(sessionPath, 'asr_ocr_pre');
 	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
 	const asrOcrFixDir = resolve(sessionPath, 'asr_ocr_fix');
 
 	// Read inputs
-	const asrFile = join(metadataDir, 'asr.json');
+	const asrFile = join(sessionPath, 'asr', 'asr.json');
 	const asrSplitFile = join(asrOcrPreDir, 'asr_split.json');
 	const ocrFramesFile = join(asrOcrDir, 'ocr_frames.json');
 	const ocrFile = join(asrOcrDir, 'asr_ocr.json');
