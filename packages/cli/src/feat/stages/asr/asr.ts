@@ -348,16 +348,20 @@ async function asrWhisperCpp(
 	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
-	// Copy/convert input to WAV
-	if (audioPath.endsWith('.wav')) {
-		copyFileSync(audioPath, tmpAudio);
+	// Prepare input WAV for whisper-cli: if input is already WAV, use it directly to avoid unnecessary copies
+	let tmpAudio: string;
+	if (audioPath.toLowerCase().endsWith('.wav')) {
+		tmpAudio = audioPath;
+		emitLog(sessionPath, `[ASR] Using existing WAV input: ${tmpAudio}`);
 	} else {
+		ensureDir(audioDir, ctx);
+		tmpAudio = join(audioDir, 'whisper-input.wav');
 		spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
 			timeout: 30_000,
 		});
-	}
-	if (!existsSync(tmpAudio)) {
-		throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
+		if (!existsSync(tmpAudio)) {
+			throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
+		}
 	}
 
 	const t0 = performance.now();
