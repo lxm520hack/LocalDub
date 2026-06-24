@@ -233,9 +233,9 @@ export function fixOverlap(asrSegs: Segment[], rawFrames: FrameResult[], ocrSegs
 
 /**
  * 从 ocr.json 的 segments 出发，按 segment confidence 过滤，生成 ocr_filtered.json 的结果。
- * 不需要重新跑 mergeFrames，直接在 segment 级别过滤低 confidence 的片段。
+ * 如果 segment 已带有 adjustedConfidence（Y 偏移 + 孤立惩罚后的置信度），则优先用它过滤。
  *
- * @param segments 来自 ocr.json.result.segments（mergeFrames 结果）
+ * @param segments 来自 ocr.json.result.segments（mergeFrames 结果），或 computeSegmentAdjustments 的输出
  * @param textScore confidence 阈值，低于此值的 segment 会被丢弃。0 表示不过滤。
  * @returns 过滤后的 segments，以及被丢弃的数量
  */
@@ -246,7 +246,12 @@ export function toOcrFiltered(
 	if (!textScore || textScore <= 0) {
 		return { segments: segments.map(s => ({ ...s })), dropped: 0 };
 	}
-	const filtered = segments.filter(s => s.confidence === undefined || s.confidence >= textScore);
+	const filtered = segments.filter(s => {
+		const score = (s as any).adjustedConfidence !== undefined
+			? (s as any).adjustedConfidence
+			: s.confidence;
+		return score === undefined || score >= textScore;
+	});
 	return {
 		segments: filtered,
 		dropped: segments.length - filtered.length,

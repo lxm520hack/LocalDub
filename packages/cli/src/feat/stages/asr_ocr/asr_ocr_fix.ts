@@ -56,6 +56,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		end: Math.round(s.end),
 		confidence: s.confidence,
 		box_y: s.box_y,
+		frameCount: s.frameCount,
 	}));
 
 	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
@@ -101,8 +102,8 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
-	// ========== ocr_filtered.json：以 asr_ocr.json 的 segments 为输入，按 segment confidence 过滤 ==========
-	const { segments: ocrSegsMerged, dropped } = toOcrFiltered(ocrSegs, textScore);
+	// ========== ocr_filtered.json：以 adjustedSegs 为输入，按 adjustedConfidence 过滤（Y 偏移 + 孤立惩罚） ==========
+	const { segments: ocrSegsMerged, dropped } = toOcrFiltered(adjustedSegs, textScore);
 
 	writeJson(
 		join(asrOcrFixDir, 'ocr_filtered.json'),
