@@ -21,16 +21,11 @@ const ctx = {
   pipeline: 'dub',
   asr_language: 'zh',
   target_language: 'zh',
-  input: { stages: { translate: { enabled: false }, split_audio: { vadAlign: false } } },
+  input: { stages: { translate: { enabled: false }, split_audio: { vadAlign: false, vocalsFilePath: audioSource, sourceFilePath: audioSource } } },
 } as unknown as Context;
 writeCtx(ctx);
 ensureDir(join(resultDir, 'segments', 'vocals'), ctx);
 
-await stageSplitAudio({
-  ctx,
-  sourceFilePath: audioSource,
-  srtFilePath: srtPath,
-  vocalsFilePath: audioSource,
-});
+await stageSplitAudio({ ctx });
 
 console.log(`Segments: ${resultDir}/segments/vocals/`);
