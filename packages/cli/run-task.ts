@@ -211,7 +211,6 @@ switch (cmd) {
 		// Allow pipeline switch on resume (e.g. subtitle → dub)
 		if (config.pipeline) {
 				setCtx(sessionPath, { pipeline: config.pipeline });
-				console.log(`[CLI] Switched pipeline to "${config.pipeline}"`);
 		}
 
 		console.log(`[CLI] Resuming pipeline for task ${sessionPath}${label}...`);
