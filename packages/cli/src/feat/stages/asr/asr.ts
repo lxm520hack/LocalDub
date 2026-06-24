@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readJson, writeJson, ensureDir, removeFile } from '../utils/fileOps.ts';
-import { copyFileSync, existsSync } from 'node:fs';
-import { delimiter, join, resolve } from 'node:path';
+import { copyFileSync, existsSync, renameSync } from 'node:fs';
+import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import {
@@ -347,7 +347,7 @@ async function asrWhisperCpp(
 	const audioDir = join(sessionPath, 'asr');
 	ensureDir(audioDir, ctx);
 	const tmpAudio = join(audioDir, 'whisper-input.wav');
-
+	
 	// Prepare input WAV for whisper-cli: if input is already WAV, use it directly to avoid unnecessary copies
 	let tmpAudio: string;
 	if (audioPath.toLowerCase().endsWith('.wav')) {
@@ -442,6 +442,21 @@ async function asrWhisperCpp(
 	}
 
 	const raw = await readJson(whisperJson, ctx);
+	// Move the generated whisper JSON into the session asr directory for centralized storage
+	ensureDir(asrDir, ctx);
+	const destWhisperJson = join(asrDir, basename(whisperJson));
+	try {
+		if (whisperJson !== destWhisperJson && existsSync(whisperJson)) {
+			renameSync(whisperJson, destWhisperJson);
+			emitLog(sessionPath, `[ASR] Moved ${whisperJson} -> ${destWhisperJson}`);
+			// update whisperJson path to the new location for downstream use
+			// (raw content already loaded into memory)
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			whisperJson = destWhisperJson;
+		}
+	} catch (e) {
+		emitLog(sessionPath, `[ASR] Failed to move whisper json: ${e?.message ?? e}`);
+	}
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = ctx.input?.stages?.asr?.wordsOutput ?? true;
