@@ -376,17 +376,19 @@ async function asrWhisperCpp(
 	if (asrCfg?.maxLen && asrCfg.maxLen > 0) whisperArgs.push('--max-len', String(asrCfg.maxLen));
 	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
 	const libPathKey = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
+	const { dirname } = await import('node:path');
+	const binDir = dirname(whisperCli);
 	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
 		env: {
 			...process.env,
 			[libPathKey]: [
 				// include build bin and Release folders so DLLs (ggml/*.dll, whisper.dll) are found on Windows
-				join(whisperCli, '..'),
-				join(whisperCli, '..', 'Release'),
-				join(whisperCli, '..', '..', 'src'),
-				join(whisperCli, '..', '..', 'ggml', 'src'),
-				join(whisperCli, '..', '..', 'ggml', 'src', 'ggml-hip'),
+				binDir,
+				join(binDir, 'Release'),
+				join(binDir, '..', 'src'),
+				join(binDir, '..', 'ggml', 'src'),
+				join(binDir, '..', 'ggml', 'src', 'ggml-hip'),
 				process.env[libPathKey] || '',
 			].filter(Boolean).join(delimiter),
 		},
