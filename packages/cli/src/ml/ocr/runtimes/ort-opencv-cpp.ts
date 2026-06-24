@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '../../../feat/config/config.ts';
@@ -12,7 +12,12 @@ export interface OCRLine {
 
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-opencv-cpp', 'build');
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
-const LIB_PATH_KEY = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
+function getLibPathKey(): string {
+	if (process.platform !== 'win32') return 'LD_LIBRARY_PATH';
+	const existing = Object.keys(process.env).find(k => k.toLowerCase() === 'path');
+	return existing || 'PATH';
+}
+const LIB_PATH_KEY = getLibPathKey();
 
 function ocrOpenCvCppBinaryPath(): string {
 	const name = 'ocr_pipeline_opencv' + (process.platform === 'win32' ? '.exe' : '');
