@@ -27,20 +27,21 @@ function whisperModelPath(): string {
 }
 
 export function whisperVulkanPath(): string {
-	// Search common build output locations and return the first existing binary.
+	// Prefer Release folder (DLLs live there on Windows) then common locations.
 	const baseBin = join(whisperCppDir(), 'build', 'bin');
 	const buildRoot = join(whisperCppDir(), 'build');
 	const candidates: string[] = [];
 	if (process.platform === 'win32') {
-		candidates.push(join(baseBin, 'whisper-vulkan.exe'));
-		candidates.push(join(baseBin, 'whisper-cli.exe'));
-		candidates.push(join(buildRoot, 'whisper-cli.exe'));
+		// Prefer Release copy first (stable DLL layout)
 		candidates.push(join(buildRoot, 'Release', 'whisper-cli.exe'));
+		candidates.push(join(baseBin, 'whisper-cli.exe'));
+		candidates.push(join(baseBin, 'whisper-vulkan.exe'));
+		candidates.push(join(buildRoot, 'whisper-cli.exe'));
 	} else {
-		candidates.push(join(baseBin, 'whisper-vulkan'));
-		candidates.push(join(baseBin, 'whisper-cli'));
-		candidates.push(join(buildRoot, 'whisper-cli'));
 		candidates.push(join(buildRoot, 'Release', 'whisper-cli'));
+		candidates.push(join(baseBin, 'whisper-cli'));
+		candidates.push(join(baseBin, 'whisper-vulkan'));
+		candidates.push(join(buildRoot, 'whisper-cli'));
 	}
 	for (const c of candidates) {
 		if (existsSync(c)) return c;
