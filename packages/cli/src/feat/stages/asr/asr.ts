@@ -9,7 +9,8 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime,  } from '../utils/utils.ts';
+import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
+import { ensureWhisperCpp, ensureVadModel } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
@@ -59,8 +60,8 @@ export async function stageAsr(
 		last_message: 'Transcribing...',
 		progress: 0,
 	});
-	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? join(sessionPath, 'media', 'target_3_vocals.wav');
-	const videoSource = ctx.video_file_path ?? join(sessionPath, 'media', 'video_source.mp4');
+	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? vocalsPath(sessionPath);
+	const videoSource = ctx.video_file_path ?? videoSourcePath(sessionPath);
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal
@@ -71,8 +72,8 @@ export async function stageAsr(
 		);
 
 	if (ctx.input?.stages?.asr?.useSeparated) {
-		const mixedPath = resolve(sessionPath, 'media', 'target_3_vocals_mixed.wav');
-		const gatedPath = resolve(sessionPath, 'media', 'target_3_vocals_gated.wav');
+		const mixedPath = mixedVocalsPath(sessionPath);
+		const gatedPath = gatedVocalsPath(sessionPath);
 		const mixedOrGated = existsSync(gatedPath) ? gatedPath
 			: existsSync(mixedPath) ? mixedPath
 			: null;
@@ -323,6 +324,13 @@ async function asrWhisperCpp(
 	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
 
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
+
+	if (!ensureWhisperCpp(sessionPath)) {
+		throw new Error('whisper.cpp setup failed; see logs above for manual steps');
+	}
+	if (ctx.input?.stages?.asr?.vad && ctx.input?.stages?.asr?.vadModel) {
+		ensureVadModel(sessionPath);
+	}
 
 	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
 	const audioDir = join(sessionPath, 'tmp');

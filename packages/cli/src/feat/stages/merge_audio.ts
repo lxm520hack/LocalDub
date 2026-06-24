@@ -1,7 +1,7 @@
 import { readJson, writeJson, writeFile, ensureDir } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readTaskLanguages, ffmpeg, nowISO, probeSampleRate, probeDuration } from './utils/utils.ts';
+import { readTaskLanguages, ffmpeg, nowISO, probeSampleRate, probeDuration, timingsFilePath } from './utils/utils.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
@@ -9,17 +9,17 @@ export async function stageMergeAudio(ctx: Context) {
   const sessionPath = ctx.task.session_path
   setTask(sessionPath, { current_stage: 'merge_audio' });
   const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-  const ttsDir = join(sessionPath, 'segments', 'tts');
-  const tmpDir = join(sessionPath, 'tmp');
-  const stretchedDir = join(sessionPath, 'segments', 'stretched');
-  const metadataDir = join(sessionPath, 'metadata');
+  const mergeAudioDir = join(sessionPath, 'merge_audio');
+  const ttsDir = join(sessionPath, 'tts', 'wavs');
+  const stretchedDir = join(mergeAudioDir, 'stretched');
+  const silenceDir = join(mergeAudioDir, 'silences');
 
-  ensureDir(tmpDir, ctx);
   ensureDir(stretchedDir, ctx);
-  ensureDir(metadataDir, ctx);
+  ensureDir(silenceDir, ctx);
+  ensureDir(mergeAudioDir, ctx);
 
-  const dubbingFile = join(sessionPath, 'media', 'audio_dubbing.wav');
-  const timingsFile = join(metadataDir, 'timings.json');
+  const dubbingFile = join(mergeAudioDir, 'audio_dubbing.wav');
+  const timingsFile = timingsFilePath(sessionPath);
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
   const data = await readJson(timingsFile, ctx);
@@ -83,7 +83,7 @@ export async function stageMergeAudio(ctx: Context) {
 
     if (realStartMs > lastEndMs) {
       const gapSec = (realStartMs - lastEndMs) / 1000;
-      const silenceFile = join(tmpDir, `silence_${i}.wav`);
+      const silenceFile = join(silenceDir, `silence_${i}.wav`);
       ffmpeg(['-f', 'lavfi', '-i', `anullsrc=r=${sampleRate}:cl=mono`, '-t', String(gapSec), silenceFile]);
       segmentInputs.push(silenceFile);
     }
@@ -128,7 +128,7 @@ export async function stageMergeAudio(ctx: Context) {
 
   if (segmentInputs.length === 0) throw new Error('No audio segments to merge');
 
-  const concatFile = join(tmpDir, 'concat_list.txt');
+  const concatFile = join(mergeAudioDir, 'concat_list.txt');
   writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), ctx);
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 

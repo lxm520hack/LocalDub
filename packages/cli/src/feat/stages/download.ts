@@ -14,7 +14,6 @@ import {
 	emitLog,
 	ffmpeg,
 	nowISO,
-
 } from './utils/utils.ts';
 import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '../context/context.ts';
 import { to } from '@repo/shared/lib/utils/try.ts';
@@ -64,6 +63,11 @@ export async function stageDownload(
 
 		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
 		emitLog(sessionPath, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+
+		// Extract audio for downstream stages
+		const audioPath = join(downloadDir, 'audio_source.wav');
+		emitLog(sessionPath, '[Download] Extracting audio_source.wav...');
+		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 
 		// Preserve existing fields  from fn.ts
 		const existing = readCtx(sessionPath);
@@ -160,6 +164,11 @@ export async function stageDownload(
 		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
 		emitLog(sessionPath, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
 		emitLog(sessionPath, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
+
+		// Extract audio for downstream stages
+		const audioPath = join(downloadDir, 'audio_source.wav');
+		emitLog(sessionPath, '[Download] Extracting audio_source.wav...');
+		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 
 		await setStage(sessionPath, 'download', {
 			status: 'succeeded',

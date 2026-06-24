@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { OCREngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "../utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution } from "../utils/utils.ts";
+import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "../utils/utils.ts";
 
 import { FrameResult, mergeFrames } from "../utils/ocrMerge.ts";
 import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
@@ -17,7 +17,7 @@ export async function stageOcr(ctx: Context) {
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, "media", "video_source.mp4");
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) {
 		throw new Error(`OCR input not found: ${videoPath}`);
 	}
@@ -123,13 +123,13 @@ export async function stageOcr(ctx: Context) {
 	const { height: videoHeight } = probeVideoResolution(videoPath);
 
 	// 6. Write ocr.json (same format as asr_fix)
-	const metadataDir = resolve(sessionPath, "metadata");
-	ensureDir(metadataDir, ctx);
+	const ocrDir = join(sessionPath, "ocr");
+	ensureDir(ocrDir, ctx);
 	const yStats = computeBoxYStats(frameResults);
 	const adjustedSegments = computeSegmentAdjustments(segments, frameResults, yStats, videoHeight, isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor);
 	const segmentsOut = adjustedSegments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}), ...(s.frameCount !== undefined ? { frameCount: s.frameCount } : {}), ...(s.adjustedConfidence !== undefined ? { adjustedConfidence: s.adjustedConfidence } : {}), ...(s.yPenalty !== undefined ? { yPenalty: s.yPenalty } : {}), ...(s.isoPenalty !== undefined ? { isoPenalty: s.isoPenalty } : {}) }));
 	writeJson(
-		join(metadataDir, "ocr.json"),
+		join(ocrDir, "ocr.json"),
 		{
 			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
 			result: { text, segments: segmentsOut },
