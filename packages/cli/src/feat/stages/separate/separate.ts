@@ -248,18 +248,46 @@ async function separateGgml(
 	}
 
 	const t0 = performance.now();
-	const result = spawnSync(ggmlBinPath, [ggmlModel, audioPath, sepDir, '4'], {
-		timeout: 600_000,
-		env: { ...process.env, OMP_NUM_THREADS: '2' },
+	await new Promise<void>((resolve, reject) => {
+		const proc = spawn(ggmlBinPath, [ggmlModel, audioPath, sepDir, '4'], {
+			env: { ...process.env, OMP_NUM_THREADS: '2' },
+		});
+		let stderr = '';
+		const hung = setTimeout(() => {
+			proc.kill('SIGKILL');
+			reject(new Error('GGML separate timed out after 600s'));
+		}, 600_000);
+
+		proc.stdout?.on('data', (chunk) => {
+			const lines = chunk.toString().split('\n');
+			for (const line of lines) {
+				const m = line.match(/\((\s*\d+(?:\.\d+)?)%\)/);
+				if (m) {
+					const pct = Math.min(100, Math.max(0, Math.round(Number(m[1]))));
+					setStage(sessionPath, 'separate', {
+						progress: pct,
+						last_message: `Separating ${pct}%`,
+					});
+				}
+			}
+		});
+
+		proc.stderr?.on('data', (chunk) => {
+			stderr += chunk.toString();
+		});
+
+		proc.on('error', (e) => {
+			clearTimeout(hung);
+			reject(new Error(`GGML separate failed to spawn: ${e.message}`));
+		});
+
+		proc.on('close', (code) => {
+			clearTimeout(hung);
+			if (code === 0) resolve();
+			else reject(new Error(`GGML separate failed (${code}): ${stderr.slice(-300)}`));
+		});
 	});
 	const elapsedSec = (performance.now() - t0) / 1000;
-
-	if (result.error) {
-		throw new Error(`GGML separate failed to spawn: ${result.error.message}`);
-	}
-	if (result.status !== 0) {
-		throw new Error(`GGML separate failed (${result.status}): ${result.stderr?.toString().slice(-300)}`);
-	}
 
 	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
