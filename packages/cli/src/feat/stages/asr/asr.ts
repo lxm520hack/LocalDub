@@ -100,6 +100,7 @@ export async function stageAsr(
 			session_path: sessionPath,
 			language: asrLanguage || 'auto',
 			device,
+			word_timestamps: asrCfg?.wordsOutput ?? false,
 		});
 		const r = result as Record<string, any>;
 		const actualDevice: string = r.actual_device ?? device;
@@ -212,6 +213,7 @@ async function asrPytorch(opts: AsrOptions) {
 	const attempts = device !== 'cpu' ? 2 : 1;
 	let fallbackToCpu = false;
 
+	const emitWords = ctx.input?.stages?.asr?.wordsOutput ?? false;
 	for (let attempt = 0; attempt < attempts; attempt++) {
 		const actualDevice = attempt === 0 ? device : 'cpu';
 		const args = [
@@ -222,6 +224,7 @@ async function asrPytorch(opts: AsrOptions) {
 			'--device',
 			actualDevice,
 		];
+		if (emitWords) args.push('--word-timestamps');
 		const t0 = Date.now();
 		const result = spawnSync(pyBin, args, {
 			maxBuffer: 256 * 1024 * 1024,
