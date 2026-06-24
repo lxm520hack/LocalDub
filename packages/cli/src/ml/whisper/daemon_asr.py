@@ -61,7 +61,7 @@ def handle_asr(params: dict) -> dict:
     load_time = time.perf_counter() - t0
 
     t1 = time.perf_counter()
-    result = _WHISPER.transcribe(vocals_path, language=language, word_timestamps=False, verbose=False)
+    result = _WHISPER.transcribe(vocals_path, language=language, word_timestamps=params.get("word_timestamps", False), verbose=False)
     process_time = time.perf_counter() - t1
 
     segments = _convert_segments(result.get("segments", []))
