@@ -209,28 +209,34 @@ function whisperCppBuildDir(): string {
 
 function tryBuild(sessionPath: string): boolean {
 	const buildDir = whisperCppBuildDir();
-	const args = ['-B', buildDir, '-S', whisperCppDir(), '-DGGML_VULKAN=1'];
-
-	emitLog(sessionPath, '[Whisper] cmake configure (Vulkan)...');
-	const buildEnv: Record<string, string> = { ...process.env as Record<string, string> };
 	const vkDir = findVulkanSdkDir();
+	const cmakeArgs = ['-B', buildDir, '-S', whisperCppDir(), '-DGGML_VULKAN=1'];
+
+	// If SPIRV headers dir is available, pass explicit vars to help CMake find packages
+	if (vkDir) {
+		const spirvCmake = join(vkDir, 'Lib', 'cmake');
+		cmakeArgs.push(`-DSPIRV-Headers_DIR=${spirvCmake}`);
+		cmakeArgs.push(`-DCMAKE_PREFIX_PATH=${spirvCmake}`);
+	}
+
+	emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) args=${cmakeArgs.join(' ')}`);
+	const buildEnv: Record<string, string> = { ...process.env as Record<string, string> };
 	if (vkDir) {
 		buildEnv['VULKAN_SDK'] = vkDir;
-		buildEnv['SPIRV-Headers_DIR'] = join(vkDir, 'Lib', 'cmake');
 	}
-	const cfg = spawnSync('cmake', args, { timeout: 120_000, env: buildEnv });
+	const cfg = spawnSync('cmake', cmakeArgs, { timeout: 120_000, env: buildEnv });
 	if (cfg.status !== 0) {
 		const err = cfg.stderr?.toString() || '';
-		emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) failed:\n${err.slice(-500)}`);
+		emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) failed:\n${err.slice(-2000)}`);
 		return false;
 	}
 
 	emitLog(sessionPath, '[Whisper] cmake build (Vulkan)...');
 	const build = spawnSync('cmake', ['--build', buildDir, '--config', 'Release', '-j', '4'],
-		{ timeout: 600_000 });
+		{ timeout: 600_000, env: buildEnv });
 	if (build.status !== 0) {
 		const err = build.stderr?.toString() || '';
-		emitLog(sessionPath, `[Whisper] cmake build (Vulkan) failed:\n${err.slice(-500)}`);
+		emitLog(sessionPath, `[Whisper] cmake build (Vulkan) failed:\n${err.slice(-2000)}`);
 		return false;
 	}
 
