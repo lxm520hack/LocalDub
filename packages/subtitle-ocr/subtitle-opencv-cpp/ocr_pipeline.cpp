@@ -20,11 +20,21 @@
 #define NOGDI
 #define NOMINMAX
 #include <windows.h>
+#include <shellapi.h>
 static std::wstring toWide(const std::string& s) {
-    int len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), -1, nullptr, 0);
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
     std::wstring wstr(len, L'\0');
-    MultiByteToWideChar(CP_ACP, 0, s.c_str(), -1, &wstr[0], len);
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, &wstr[0], len);
+    wstr.pop_back();
     return wstr;
+}
+static std::string wideToUtf8(const std::wstring& wstr) {
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string s(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &s[0], len, nullptr, nullptr);
+    s.pop_back();
+    return s;
 }
 #define ORT_PATH(s) toWide(s).c_str()
 #else
@@ -881,6 +891,25 @@ namespace fs = std::filesystem;
 
 static std::vector<std::string> listFrames(const std::string& dir) {
     std::vector<std::string> files;
+#ifdef _WIN32
+    auto dirW = toWide(dir);
+    std::wstring pattern = dirW + L"\\*";
+    WIN32_FIND_DATAW ffd;
+    HANDLE hFind = FindFirstFileW(pattern.c_str(), &ffd);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+            std::wstring fname = ffd.cFileName;
+            auto dot = fname.rfind(L'.');
+            if (dot == std::wstring::npos) continue;
+            std::wstring ext;
+            for (auto c : fname.substr(dot)) ext.push_back(towlower(c));
+            if (ext != L".jpg" && ext != L".jpeg" && ext != L".png" && ext != L".bmp") continue;
+            files.push_back(wideToUtf8(dirW + L"\\" + fname));
+        } while (FindNextFileW(hFind, &ffd));
+        FindClose(hFind);
+    }
+#else
     for (const auto& entry : fs::directory_iterator(dir)) {
         if (!entry.is_regular_file()) continue;
         auto path = entry.path().string();
@@ -890,15 +919,36 @@ static std::vector<std::string> listFrames(const std::string& dir) {
             files.push_back(path);
         }
     }
+#endif
     std::sort(files.begin(), files.end());
     return files;
 }
 
 static std::string extractFilename(const std::string& path) {
-    return fs::path(path).filename().string();
+    auto pos = path.find_last_of("/\\");
+    return (pos == std::string::npos) ? path : path.substr(pos + 1);
 }
 
 static int runMain(int argc, char* argv[]) {
+#ifdef _WIN32
+    std::vector<std::string> utf8Args;
+    std::vector<const char*> utf8Ptrs;
+    int wargc;
+    LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    if (wargv) {
+        for (int i = 0; i < wargc; i++) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);
+            utf8Args.emplace_back(len, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, utf8Args.back().data(), len, nullptr, nullptr);
+            utf8Args.back().pop_back();
+        }
+        LocalFree(wargv);
+        argc = (int)utf8Args.size();
+        utf8Ptrs.reserve(argc);
+        for (auto& s : utf8Args) utf8Ptrs.push_back(s.data());
+        argv = const_cast<char**>(utf8Ptrs.data());
+    }
+#endif
     std::string target;
     float textScore = 0.5f;
     bool subtitleOnly = false;
