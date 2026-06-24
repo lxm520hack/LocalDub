@@ -169,12 +169,16 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 }
 
 export function dedupOverlap(segments: Segment[]): Segment[] {
+	const TOUCH_GAP_MS = 500;
 	for (let i = 0; i < segments.length; i++) {
 		for (let j = i + 1; j < segments.length; j++) {
 			const a = segments[i];
 			const b = segments[j];
 			if (!a || !b) continue;
-			if (a.start < b.end && b.start < a.end && levenshtein(a.text, b.text) <= 2) {
+			const gap = Math.max(a.start, b.start) - Math.min(a.end, b.end);
+			const overlap = a.start < b.end && b.start < a.end;
+			const touching = gap <= TOUCH_GAP_MS;
+			if ((overlap || touching) && levenshtein(a.text, b.text) <= 2) {
 				segments[i] = {
 					text: a.text.length >= b.text.length ? a.text : b.text,
 					start: Math.min(a.start, b.start),
