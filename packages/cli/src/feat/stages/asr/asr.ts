@@ -10,7 +10,7 @@ import {
 	readConfig,
 } from '../../config/config.ts';
 import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
-import { ensureWhisperCpp, ensureVadModel } from '../../../ml/whisper/ensure.ts';
+import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
