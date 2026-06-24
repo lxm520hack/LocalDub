@@ -11,7 +11,7 @@ import {
 } from '../../config/config.ts';
 import { emitLog, nowISO, probeDuration } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
-import { tryBuildGgml, ensureGgmlModel } from './separate-build.ts';
+import { tryBuildGgml, ensureGgmlModel } from '../../../ml/demucs/separate-build.ts';
 
 export async function stageSeparate(
 	ctx: Context,

@@ -10,7 +10,7 @@ import {
 	readConfig,
 } from '../../config/config.ts';
 import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
-import { ensureWhisperCpp, ensureVadModel } from '../../../ml/whisper/ensure.ts';
+import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
@@ -321,9 +321,7 @@ async function asrWhisperCpp(
 	sessionPath: string,
 	language: string,
 ) {
-	const whisperCli = join(
-		REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan',
-	);
+	const whisperCli = whisperCppBinaryPath();
 	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
 
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
