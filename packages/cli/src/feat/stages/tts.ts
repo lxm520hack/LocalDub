@@ -6,7 +6,7 @@ import {
 	writeWav,
 } from '@repo/voxlab';
 import { VoxCPMEngine } from '../../ml/voxcpm/voxcpm.ts';
-import type { MLDaemon } from '../../ml/daemon/client.ts';
+import { runStage, type DaemonConnection } from '../../ml/server/client.ts';
 import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath, } from './utils/utils.ts';
@@ -112,7 +112,7 @@ async function runPytorchBatch(
 
 export async function stageTts(
 	ctx: Context,
-	daemon?: MLDaemon,
+	daemon?: DaemonConnection,
 ) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
@@ -143,17 +143,16 @@ export async function stageTts(
 	}
 
 	if (ttsCfg.runtime === 'pytorch' && daemon) {
-		if (!daemon.ready) await daemon.start();
 		emitLog(sessionPath, `[TTS] Using Python daemon (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
-		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
+		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'src', 'ml', 'voxcpm', 'ensure_voxcpm.py');
 		const procEnsure = spawn(pythonBin(), [ensureScript, 'OpenBMB/VoxCPM2', modelDir], { timeout: 1_800_000 });
 		procEnsure.stderr?.pipe(process.stderr);
 		await new Promise<void>((resolve, reject) => {
 			procEnsure.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`ensure_voxcpm.py exited ${code}`)));
 			procEnsure.on('error', reject);
 		});
-		const result = await daemon.runStage(
+		const result = await runStage(daemon,
 			'tts',
 			taskId,
 			{

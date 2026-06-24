@@ -1,1 +1,1 @@
-export const startLog = (name: string, id: string) => console.log(`[name] Starting for ${id}`)
+export const startLog = (name: string, id: string) => console.log(`[${name}] Starting for ${id}`)

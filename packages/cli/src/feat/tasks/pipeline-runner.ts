@@ -5,7 +5,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
 import { getStages } from './../../feat/tasks/stages.ts';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import type { MLDaemon } from '../../ml/daemon/client.ts';
+import type { DaemonConnection } from '../../ml/server/client.ts';
 import {
 	readConfig,
 } from '../config/config.ts';
@@ -39,7 +39,7 @@ function snapshotConfig(sessionPath: string) {
 	setCtx(sessionPath, { input: snap });
 }
 
-export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
+export async function runPipeline(ctx: Context, daemon?: DaemonConnection) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	let task = readTask(sessionPath);
@@ -57,9 +57,7 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 	await setTask(sessionPath, { status: 'running', started_at: nowISO() });
 
 	for (const stage of stages) {
-		setTask(sessionPath, {
-			current_stage: stage.name
-		});
+		setTask(sessionPath, { current_stage: stage.name });
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -74,7 +72,6 @@ export async function runPipeline(ctx: Context, daemon?: MLDaemon) {
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-		await setTask(sessionPath, { current_stage: stage.name });
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
@@ -112,7 +109,7 @@ export async function resumePipeline(
 	ctx: Context,
 	resumeFrom?: string,
 	stageOverrides?: Record<string, any>,
-	daemon?: MLDaemon,
+	daemon?: DaemonConnection,
 ) {
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
@@ -212,9 +209,7 @@ export async function resumePipeline(
 
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
-		setTask(sessionPath, {
-			current_stage: stage.name
-		});
+		setTask(sessionPath, { current_stage: stage.name });
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -229,7 +224,6 @@ export async function resumePipeline(
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-		setTask(sessionPath, { current_stage: stage.name });
 
 		try {
 			await handler(taskId, sessionPath, task, daemon);
@@ -267,7 +261,7 @@ export async function rerunSingleStage(
 	ctx: Context,
 	stageName: string,
 	stageOverrides?: Record<string, any>,
-	daemon?: MLDaemon,
+	daemon?: DaemonConnection,
 ) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path

@@ -17,7 +17,7 @@ SSE events from /run/{stage}:
   data: {"message":"..."}
 
 Usage (detached, spawned by TS):
-  .venv/bin/python packages/cli/scripts/pipeline_daemon.py --http-port 19109
+  .venv/bin/python packages/cli/src/ml/server/pytorch_server.py --http-port 19109
 
 Check health:
   curl http://127.0.0.1:19109/health
@@ -42,7 +42,7 @@ from fastapi.responses import StreamingResponse
 # ---------------------------------------------------------------------------
 # Model handler imports
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "whisper"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "voxcpm"))

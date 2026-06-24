@@ -17,6 +17,7 @@ import {
 	defaultFont,
 	videoSourcePath,
 } from './utils/utils.ts';
+import { startLog } from './utils/log.ts';
 
 function filterSubPath(subPath: string): string {
 	if (process.platform !== 'win32') return subPath;
@@ -212,10 +213,10 @@ function probeStyle(
 }
 
 export async function stageMergeVideo(ctx: Context) {
+	startLog('merge_video', ctx.task.id);
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
 	const video_file_path = ctx.video_file_path ?? videoSourcePath(sessionPath);
-	await setTask(sessionPath, { current_stage: 'merge_video' });
 	const mergeVideoDir = join(sessionPath, 'merge_video');
 	ensureDir(mergeVideoDir, ctx);
 	const tmpDir = join(sessionPath, 'tmp');

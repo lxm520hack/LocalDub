@@ -1,0 +1,9 @@
+{
+  "include": ["**/*.ts", "**/*.tsx"], 
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "allowJs": true,
+    "noEmit": true,
+  }
+}

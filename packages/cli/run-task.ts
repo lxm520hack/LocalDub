@@ -15,23 +15,22 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { MLDaemon } from './src/ml/daemon/client.ts';
+import { startDaemon, stopDaemon, type DaemonConnection } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
 
 async function withDaemon<T>(
 	taskId: string,
-	fn: (daemon?: MLDaemon) => Promise<T>,
+	fn: (daemon: DaemonConnection) => Promise<T>,
 ): Promise<T> {
 	const config = readConfig();
 	const DAEMON_PORT = config.daemonPort || 19109;
-	// 只创建实例，不 start——pipeline-runner 按需惰性连接
-	const daemon = new MLDaemon(DAEMON_PORT);
+	const daemon = await startDaemon(DAEMON_PORT);
 	try {
 		return await fn(daemon);
 	} finally {
-		await daemon.stop();
+		await stopDaemon(daemon);
 	}
 }
 
@@ -240,8 +239,10 @@ switch (cmd) {
 			REPO_ROOT,
 			'packages',
 			'cli',
-			'scripts',
-			'pipeline_daemon.py',
+			'src',
+			'ml',
+			'server',
+			'pytorch_server.py',
 		);
 		const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
