@@ -379,18 +379,33 @@ async function asrWhisperCpp(
 	const { dirname } = await import('node:path');
 	const { readdirSync } = await import('node:fs');
 	const binDir = dirname(whisperCli);
-	const releaseDir = join(binDir, 'Release');
+
+	// Determine candidate Release directories robustly to avoid 'Release/Release' when the
+	// binary already sits in a Release folder or when DLLs live under build/bin/Release.
+	const repoWhisperBuild = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build');
+	const candidateReleaseDirs = [
+		join(binDir, 'Release'),            // common when binary in build/bin
+		join(binDir, '..', 'Release'),      // common when binary in build/Release
+		join(repoWhisperBuild, 'bin', 'Release'),
+		join(repoWhisperBuild, 'Release'),
+	];
+	const existingReleaseDirs = candidateReleaseDirs.filter(d => existsSync(d));
+	const chosenReleaseDir = existingReleaseDirs.length ? existingReleaseDirs[0] : candidateReleaseDirs[0];
+
 	// Log chosen binary & availability for diagnostics
-	emitLog(sessionPath, `[ASR] whisper binary chosen=${whisperCli} exists=${existsSync(whisperCli)} binDir=${binDir} releaseDir=${releaseDir} releaseExists=${existsSync(releaseDir)}`);
+	emitLog(sessionPath, `[ASR] whisper binary chosen=${whisperCli} exists=${existsSync(whisperCli)} binDir=${binDir} releaseDir=${chosenReleaseDir} releaseExists=${existsSync(chosenReleaseDir)}`);
 	try {
 		const binFiles = existsSync(binDir) ? readdirSync(binDir).join(',') : '';
 		emitLog(sessionPath, `[ASR] binDir files=${binFiles}`);
-		if (existsSync(releaseDir)) {
-			emitLog(sessionPath, `[ASR] releaseDir files=${readdirSync(releaseDir).join(',')}`);
+		if (existsSync(chosenReleaseDir)) {
+			emitLog(sessionPath, `[ASR] releaseDir files=${readdirSync(chosenReleaseDir).join(',')}`);
 		}
 	} catch (e) {
 		// ignore listing errors
 	}
+
+	// Build lib path list: include binDir and any existing Release dirs (deduplicated)
+	const releaseDirsToInclude = Array.from(new Set([binDir, ...existingReleaseDirs, join(binDir, '..', 'src'), join(binDir, '..', 'ggml', 'src'), join(binDir, '..', 'ggml', 'src', 'ggml-hip')]));
 
 	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
@@ -398,11 +413,7 @@ async function asrWhisperCpp(
 			...process.env,
 			[libPathKey]: [
 				// include build bin and Release folders so DLLs (ggml/*.dll, whisper.dll) are found on Windows
-				binDir,
-				releaseDir,
-				join(binDir, '..', 'src'),
-				join(binDir, '..', 'ggml', 'src'),
-				join(binDir, '..', 'ggml', 'src', 'ggml-hip'),
+				...releaseDirsToInclude,
 				process.env[libPathKey] || '',
 			].filter(Boolean).join(delimiter),
 		},
