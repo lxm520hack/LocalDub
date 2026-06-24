@@ -135,7 +135,18 @@ function buildWhisperCpp(sessionPath: string): boolean {
 	r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
 	if (r.status !== 0) {
 		emitLog(sessionPath, `[Whisper] cmake configure failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
-		return false;
+		const stderr = (r.stderr||'').toString();
+		// If Vulkan not found, try configure without Vulkan as a fallback
+		if (stderr.includes('Could NOT find Vulkan') || stderr.includes('FindVulkan')) {
+			emitLog(sessionPath, '[Whisper] Vulkan not available; retrying configure without Vulkan');
+			r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=0'], { cwd, timeout: 600_000 });
+			if (r.status !== 0) {
+				emitLog(sessionPath, `[Whisper] cmake configure (no-vulkan) failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+				return false;
+			}
+		} else {
+			return false;
+		}
 	}
 
 	// Build
