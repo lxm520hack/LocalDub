@@ -27,26 +27,33 @@ function whisperModelPath(): string {
 }
 
 export function whisperVulkanPath(): string {
-	// Explicitly prefer Release copy (stable DLL layout) to avoid intermittent selection
+	// Prefer Release or bin/Release copies then common locations.
 	const baseBin = join(whisperCppDir(), 'build', 'bin');
 	const buildRoot = join(whisperCppDir(), 'build');
-	const releasePathWin = join(buildRoot, 'Release', 'whisper-cli.exe');
-	const releasePathUnix = join(buildRoot, 'Release', 'whisper-cli');
-	const baseBinCliWin = join(baseBin, 'whisper-cli.exe');
-	const baseBinCliUnix = join(baseBin, 'whisper-cli');
-	const baseBinVulkanWin = join(baseBin, 'whisper-vulkan.exe');
-	const baseBinVulkanUnix = join(baseBin, 'whisper-vulkan');
 
+	const candidates: string[] = [];
 	if (process.platform === 'win32') {
-		if (existsSync(releasePathWin)) return releasePathWin;
-		if (existsSync(baseBinCliWin)) return baseBinCliWin;
-		if (existsSync(baseBinVulkanWin)) return baseBinVulkanWin;
-		if (existsSync(join(buildRoot, 'whisper-cli.exe'))) return join(buildRoot, 'whisper-cli.exe');
+		candidates.push(join(buildRoot, 'Release', 'whisper-cli.exe'));
+		candidates.push(join(baseBin, 'Release', 'whisper-cli.exe'));
+		candidates.push(join(baseBin, 'whisper-cli.exe'));
+		candidates.push(join(baseBin, 'whisper-vulkan.exe'));
+		candidates.push(join(buildRoot, 'whisper-cli.exe'));
+		candidates.push(join(buildRoot, 'bin', 'whisper-cli.exe'));
+		candidates.push(join(buildRoot, 'bin', 'whisper-vulkan.exe'));
+		candidates.push(join(buildRoot, 'Release', 'whisper-vulkan.exe'));
 	} else {
-		if (existsSync(releasePathUnix)) return releasePathUnix;
-		if (existsSync(baseBinCliUnix)) return baseBinCliUnix;
-		if (existsSync(baseBinVulkanUnix)) return baseBinVulkanUnix;
-		if (existsSync(join(buildRoot, 'whisper-cli'))) return join(buildRoot, 'whisper-cli');
+		candidates.push(join(buildRoot, 'Release', 'whisper-cli'));
+		candidates.push(join(baseBin, 'Release', 'whisper-cli'));
+		candidates.push(join(baseBin, 'whisper-cli'));
+		candidates.push(join(baseBin, 'whisper-vulkan'));
+		candidates.push(join(buildRoot, 'whisper-cli'));
+		candidates.push(join(buildRoot, 'bin', 'whisper-cli'));
+		candidates.push(join(buildRoot, 'bin', 'whisper-vulkan'));
+		candidates.push(join(buildRoot, 'Release', 'whisper-vulkan'));
+	}
+
+	for (const c of candidates) {
+		if (existsSync(c)) return c;
 	}
 
 	// Fallback to original expected path
