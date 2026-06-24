@@ -12,12 +12,13 @@ import {
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
+import { startLog } from '../utils/log.ts';
 
 export async function stageSeparate(
 	ctx: Context,
 	daemon?: MLDaemon,
 ) {
-	console.log(`[separate] Starting stage for task ${ctx.task.id}`);
+	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
 	// subtitle 模式且未配置 always 时，跳过分离

@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { connect } from 'node:net';
 import { join, resolve } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { timeId } from '../shared/db/timeId.ts';
@@ -16,7 +15,7 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { connectToDaemon, MLDaemon } from './src/ml/daemon/client.ts';
+import { MLDaemon } from './src/ml/daemon/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
@@ -82,18 +81,9 @@ switch (cmd) {
 	case 'daemonStatus': {
 		const DAEMON_PORT = config.daemonPort || 19109;
 		try {
-			await new Promise<void>((resolve, reject) => {
-				const sock = connect(DAEMON_PORT, '127.0.0.1', () => {
-					sock.end();
-					resolve();
-				});
-				sock.on('error', reject);
-				sock.setTimeout(2000, () => {
-					sock.destroy();
-					reject(new Error('timeout'));
-				});
-			});
-			console.log(JSON.stringify({ alive: true, port: DAEMON_PORT }));
+			const res = await fetch(`http://127.0.0.1:${DAEMON_PORT}/health`, { signal: AbortSignal.timeout(2000) });
+			const data = await res.json();
+			console.log(JSON.stringify({ alive: true, port: DAEMON_PORT, ...data }));
 		} catch {
 			console.log(
 				JSON.stringify({
@@ -109,18 +99,12 @@ switch (cmd) {
 	case 'daemonStop': {
 		const DAEMON_PORT = config.daemonPort || 19109;
 		try {
-			await new Promise<void>((resolve, reject) => {
-				const sock = connect(DAEMON_PORT, '127.0.0.1', () => {
-					sock.write(JSON.stringify({ action: 'shutdown' }) + '\n');
-					resolve();
-				});
-				sock.on('error', reject);
-				sock.setTimeout(2000, () => {
-					sock.destroy();
-					reject(new Error('timeout'));
-				});
+			const res = await fetch(`http://127.0.0.1:${DAEMON_PORT}/shutdown`, {
+				method: 'POST',
+				signal: AbortSignal.timeout(2000),
 			});
-			console.log(JSON.stringify({ stopped: true, port: DAEMON_PORT }));
+			const data = await res.json();
+			console.log(JSON.stringify({ stopped: true, port: DAEMON_PORT, ...data }));
 		} catch {
 			console.log(
 				JSON.stringify({
@@ -269,7 +253,7 @@ switch (cmd) {
 
 		const proc = spawn(
 			pythonBin(),
-			[scriptPath, '--port', String(DAEMON_PORT)],
+			[scriptPath, '--http-port', String(DAEMON_PORT)],
 			{
 				env: pyEnv,
 				detached: true,

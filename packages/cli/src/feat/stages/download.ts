@@ -17,11 +17,13 @@ import {
 } from './utils/utils.ts';
 import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '../context/context.ts';
 import { to } from '@repo/shared/lib/utils/try.ts';
+import { startLog } from './utils/log.ts';
 
 export async function stageDownload(
 	ctx: Context,
 ) {
 	const taskId = ctx.task.id;
+	startLog('download', ctx.task.id);
 	const url = ctx.task.url;
 
 	// Local upload URL (local://upload/<uploadTaskId>)
