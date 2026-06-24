@@ -22,9 +22,9 @@ export function vocalsPath(sessionPath: string): string {
 	return join(sessionPath, 'separate', 'target_3_vocals.wav');
 }
 
-/** Get the BGM stem path from separate stage. */
+/** Get the BGM stem path from separate_after stage. */
 export function bgmPath(sessionPath: string): string {
-	return join(sessionPath, 'separate', 'target_bgm.wav');
+	return join(sessionPath, 'separate_after', 'target_bgm.wav');
 }
 
 /** Get the separate stage output directory. */
