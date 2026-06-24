@@ -211,7 +211,6 @@ packages/subtitle-ocr/.test-frames/
 **/results/**/*.wav
 **/results/**/*.m4a
 **/results/**/*.jpg
-**/benchmark/**/*.jpg
 **/results/**/*.json
 
 packages/cli/config.json 
