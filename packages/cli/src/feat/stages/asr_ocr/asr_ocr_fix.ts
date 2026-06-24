@@ -177,15 +177,33 @@ export async function stageAsrOcrFix(ctx: Context) {
 	const fix = fixOverlap(asrOcrSegs, rawFrames, ocrSegsMerged, maxAdvanceMs).filter(
 		s => s.end > s.start,
 	);
-	const fixText = fix.map(s => s.text).join(' ');
+
+	// 最终去重：相邻且文本相同的段合并为一段，防止 OCR 噪声把一句台词切成多段
+	// （例如"娘带着我们门爬了七座山才到"中间插入"门"字的 OCR 噪声）
+	const merged: Segment[] = [];
+	for (const s of fix) {
+		const prev = merged[merged.length - 1];
+		if (prev && prev.text.trim() === s.text.trim() && s.start - prev.end <= 2000) {
+			prev.end = s.end;
+			if (s.confidence !== undefined) {
+				prev.confidence = prev.confidence !== undefined
+					? (prev.confidence + s.confidence) / 2
+					: s.confidence;
+			}
+		} else {
+			merged.push({ ...s });
+		}
+	}
+
+	const fixText = merged.map(s => s.text).join(' ');
 	writeJson(
 		join(asrOcrFixDir, 'asr_ocr_fused.json'),
 		{
 			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, fixSegs: fix.length, textScore, dropped },
+			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, fixSegs: merged.length, textScore, dropped },
 			result: {
 				text: fixText,
-				segments: fix.map(s => ({
+				segments: merged.map(s => ({
 					text: s.text,
 					start: s.start,
 					end: s.end,

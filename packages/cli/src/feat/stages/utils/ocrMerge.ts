@@ -120,7 +120,8 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 	}
 
 	// third pass: A-B-C triplet where A.text == C.text and B is a short hallucination
-	// (handles patterns like "嗯发财了" → "菌" → "嗯发财了")
+	// (handles patterns like "嗯发财了" → "菌" → "嗯发财了", or same-text segments
+	// split by a one-word noise like "娘带着我们门爬了七座山才到")
 	for (let i = 0; i < segments.length - 2; i++) {
 		const a = segments[i];
 		const b = segments[i + 1];
@@ -128,8 +129,12 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		if (levenshtein(a.text, c.text) <= 2 && overlap(a.box_y, b.box_y) && overlap(b.box_y, c.box_y)) {
 			const durB = b.end - b.start;
 			const isShort = durB <= 1000;
-			const isSingleChar = b.text.length <= 2;
-			if (isShort && isSingleChar) {
+			// 中间段是一个 OCR 噪声：要么它本身就很短（<=1000ms），要么
+			// 它和 a/c 的文本差异很小且长度差不多（中间插入一个字的噪声）
+			const bNearA = levenshtein(b.text, a.text) <= 2 && Math.abs(b.text.length - a.text.length) <= 2;
+			const bNearC = levenshtein(b.text, c.text) <= 2 && Math.abs(b.text.length - c.text.length) <= 2;
+			const isNoise = isShort || bNearA || bNearC;
+			if (isNoise) {
 				const mergedConf = [a.confidence, b.confidence, c.confidence].filter((v): v is number => v !== undefined);
 				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf), frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1) + (c.frameCount ?? 1) };
 				segments.splice(i + 1, 2);
@@ -142,6 +147,23 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 	// (handles ASR segment overlap where end2fps scans produce duplicate
 	// segments with lev-distant text like 干嘛/于嘛 in the same time window)
 	dedupOverlap(segments);
+
+	// fifth pass: merge adjacent segments with the same normalized text
+	// (handles A → noise → A cut by a frame gap where the triplet didn't fire
+	// because noise was a single long segment, e.g. same subtitle resumed after
+	// a punctuation/breath pause split the ASR slice)
+	for (let i = segments.length - 1; i > 0; i--) {
+		const prev = segments[i - 1];
+		const cur = segments[i];
+		if (normalize(prev.text) !== normalize(cur.text)) continue;
+		const gap = cur.start - prev.end;
+		if (gap < 0 || gap > 2000) continue; // 不重叠 + 间隔不超过 2s 才合并
+		prev.end = cur.end;
+		const mergedConf = [prev.confidence, cur.confidence].filter((v): v is number => v !== undefined);
+		prev.confidence = avgConfidence(mergedConf);
+		prev.frameCount = (prev.frameCount ?? 1) + (cur.frameCount ?? 1);
+		segments.splice(i, 1);
+	}
 
 	return segments;
 }
