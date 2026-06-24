@@ -88,7 +88,6 @@ export async function createTask({
 			copyFileSync(url, join(sessionPath, filename));
 		}
 
-		mkdirSync(join(sessionPath, 'metadata'), { recursive: true });
 		ctx.task.title = filename.replace(/\.\w+$/, '')
 		ctx.task.session_path = sessionPath
 	} else if (source === 'youtube' || source === 'bilibili') {
