@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
@@ -215,13 +215,13 @@ async function separateGgml(
 	const ggmlModel = join(
 		REPO_ROOT, 'packages', 'tmp', 'demucs-ggml', 'ggml-model-htdemucs-4s-f16.bin',
 	);
-	const outDir = resolve(REPO_ROOT, sessionPath, 'tmp', 'ggml-separate');
-	mkdirSync(outDir, { recursive: true });
+	const sepDir = separateDir(sessionPath);
+	mkdirSync(sepDir, { recursive: true });
 
 	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV
-	const audioPath = resolve(REPO_ROOT, sessionPath, 'download', 'audio_source.wav');
+	const audioPath = join(sessionPath, 'download', 'audio_source.wav');
 	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found (run download stage)');
 
 	const isWin = process.platform === 'win32';
@@ -248,7 +248,7 @@ async function separateGgml(
 	}
 
 	const t0 = performance.now();
-	const result = spawnSync(ggmlBinPath, [ggmlModel, audioPath, outDir, '4'], {
+	const result = spawnSync(ggmlBinPath, [ggmlModel, audioPath, sepDir, '4'], {
 		timeout: 600_000,
 		env: { ...process.env, OMP_NUM_THREADS: '2' },
 	});
@@ -263,22 +263,13 @@ async function separateGgml(
 
 	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
-	// Output already in separate/
-	const sepDir = resolve(REPO_ROOT, sessionPath, 'separate');
-	mkdirSync(sepDir, { recursive: true });
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
-	for (let i = 0; i < stemNames.length; i++) {
-		const src = join(outDir, `target_${i}_${stemNames[i]}.wav`);
-		const dst = join(sepDir, `target_${i}_${stemNames[i]}.wav`);
-		if (existsSync(src)) {
-			copyFileSync(src, dst);
-		} else {
-			emitLog(sessionPath, `[Separate] WARN: ${src} not found`);
+	for (const name of stemNames) {
+		const p = join(sepDir, `target_${stemNames.indexOf(name)}_${name}.wav`);
+		if (!existsSync(p)) {
+			emitLog(sessionPath, `[Separate] WARN: ${p} not found`);
 		}
 	}
-
-	// Cleanup tmp
-	rmSync(outDir, { recursive: true, force: true });
 
 	const durationS = probeDuration(audioPath);
 	if (durationS > 0) {
