@@ -11,10 +11,27 @@ const BIN_PATH = resolve(BUILD_DIR, BIN_NAME);
 const MSYS2_BIN = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 const ORT_LIB_DIR = resolve(REPO_ROOT, 'packages', 'tmp', 'onnxruntime-win-x64-1.26.0',
 	'onnxruntime-win-x64-1.26.0', 'lib');
-const MODELS_DIR = resolve(REPO_ROOT, '.venv', 'Lib', 'site-packages', 'rapidocr_onnxruntime', 'models');
+function findRapidOcrModelsDir(): string | null {
+	const candidates = [
+		['.venv', 'Lib', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+		['.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+		['.venv', 'lib', 'python3.13', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+		['.venv', 'lib', 'python3.12', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+		['.venv', 'lib', 'python3.11', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+		['.venv', 'lib', 'python3.10', 'site-packages', 'rapidocr_onnxruntime', 'models'],
+	];
+	for (const parts of candidates) {
+		const p = resolve(REPO_ROOT, ...parts);
+		if (existsSync(p)) return p;
+	}
+	return null;
+}
+const MODELS_DIR = findRapidOcrModelsDir() ?? resolve(REPO_ROOT, '.venv', 'Lib', 'site-packages', 'rapidocr_onnxruntime', 'models');
 const KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
-const SRC_FRAMES_DIR = resolve(REPO_ROOT, 'workfolder', 'local', '猫妖也疯狂', '8', 'asr_ocr_pre', 'frames');
+const SRC_FRAMES_DIR = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'asr_ocr_pre', 'frames');
 const TMP_TEST_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', '.test-frames');
+
+const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 
 function ocrEnv(overrides?: Record<string, string>): Record<string, string> {
 	const extra: string[] = [];
@@ -22,7 +39,7 @@ function ocrEnv(overrides?: Record<string, string>): Record<string, string> {
 		if (existsSync(MSYS2_BIN)) extra.push(MSYS2_BIN);
 		if (existsSync(ORT_LIB_DIR)) extra.push(ORT_LIB_DIR);
 	}
-	const libPath = [...extra, BUILD_DIR, process.env.PATH || ''].filter(Boolean).join(';');
+	const libPath = [...extra, BUILD_DIR, process.env.PATH || ''].filter(Boolean).join(PATH_SEP);
 	return {
 		...process.env as Record<string, string>,
 		...overrides,
@@ -39,7 +56,7 @@ function runBin(args: string[]) {
 	});
 }
 
-// Setup: copy first 5 existing frames to a temp dir for batch testing
+// Setup: copy first 3 existing frames to a temp dir for batch testing
 beforeAll(async () => {
 	if (!existsSync(TMP_TEST_DIR)) {
 		mkdirSync(TMP_TEST_DIR, { recursive: true });
@@ -73,7 +90,8 @@ test('nonexistent image fails with non-zero exit', () => {
 
 // ---- valid single frame ----
 describe('single frame', () => {
-	const singleFrame = resolve(SRC_FRAMES_DIR, 'frame_0000000.jpg');
+	const sorted = readdirSync(SRC_FRAMES_DIR).filter(f => /\.(jpg|jpeg|png|bmp)$/i.test(f)).sort();
+	const singleFrame = resolve(SRC_FRAMES_DIR, sorted[0]);
 
 	test('frame exists', () => {
 		expect(existsSync(singleFrame)).toBe(true);
