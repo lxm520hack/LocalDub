@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '../../../feat/config/config.ts';
