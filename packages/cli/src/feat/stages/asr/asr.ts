@@ -375,7 +375,11 @@ async function asrWhisperCpp(
 	});
 	if (asrCfg?.maxLen && asrCfg.maxLen > 0) whisperArgs.push('--max-len', String(asrCfg.maxLen));
 	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
-	const libPathKey = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
+	const libPathKey = (() => {
+		if (process.platform !== 'win32') return 'LD_LIBRARY_PATH';
+		const existing = Object.keys(process.env).find(k => k.toLowerCase() === 'path');
+		return existing || 'PATH';
+	})();
 	const { dirname } = await import('node:path');
 	const { readdirSync } = await import('node:fs');
 	const binDir = dirname(whisperCli);
