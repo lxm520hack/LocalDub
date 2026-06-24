@@ -377,7 +377,21 @@ async function asrWhisperCpp(
 	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
 	const libPathKey = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
 	const { dirname } = await import('node:path');
+	const { readdirSync } = await import('node:fs');
 	const binDir = dirname(whisperCli);
+	const releaseDir = join(binDir, 'Release');
+	// Log chosen binary & availability for diagnostics
+	emitLog(sessionPath, `[ASR] whisper binary chosen=${whisperCli} exists=${existsSync(whisperCli)} binDir=${binDir} releaseDir=${releaseDir} releaseExists=${existsSync(releaseDir)}`);
+	try {
+		const binFiles = existsSync(binDir) ? readdirSync(binDir).join(',') : '';
+		emitLog(sessionPath, `[ASR] binDir files=${binFiles}`);
+		if (existsSync(releaseDir)) {
+			emitLog(sessionPath, `[ASR] releaseDir files=${readdirSync(releaseDir).join(',')}`);
+		}
+	} catch (e) {
+		// ignore listing errors
+	}
+
 	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
 		env: {
@@ -385,7 +399,7 @@ async function asrWhisperCpp(
 			[libPathKey]: [
 				// include build bin and Release folders so DLLs (ggml/*.dll, whisper.dll) are found on Windows
 				binDir,
-				join(binDir, 'Release'),
+				releaseDir,
 				join(binDir, '..', 'src'),
 				join(binDir, '..', 'ggml', 'src'),
 				join(binDir, '..', 'ggml', 'src', 'ggml-hip'),
@@ -393,6 +407,13 @@ async function asrWhisperCpp(
 			].filter(Boolean).join(delimiter),
 		},
 	});
+
+	// Diagnostic logging on failure
+	if (result.status !== 0 && result.status !== null) {
+		emitLog(sessionPath, `[ASR] whisper-cli exit=${result.status} stdout=${result.stdout?.toString().slice(-2000) ?? ''} stderr=${result.stderr?.toString().slice(-2000) ?? ''}`);
+		emitLog(sessionPath, `[ASR] PATH used=${(process.env[libPathKey] || '').slice(-2000)}`);
+	}
+
 	const elapsedSec = (performance.now() - t0) / 1000;
 
 	if (result.status !== 0 && result.status !== null) {
