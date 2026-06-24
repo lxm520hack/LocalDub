@@ -11,6 +11,9 @@ import { REPO_ROOT } from '@repo/config';
  * Dynamically locate rapidocr model directory.
  */
 export function findRapidOcrModelsDir(): string {
+		if (process.env.OCR_MODELS_DIR && existsSync(process.env.OCR_MODELS_DIR)) {
+		return process.env.OCR_MODELS_DIR;
+	}
 	const venvBase = resolve(REPO_ROOT, '.venv');
 	const libDir = resolve(venvBase, process.platform === 'win32' ? 'Lib' : 'lib');
 	let spDir: string;
@@ -27,7 +30,7 @@ export function findRapidOcrModelsDir(): string {
 	}
 	const modelsDir = join(spDir, 'rapidocr_onnxruntime', 'models');
 	if (!existsSync(modelsDir)) {
-		throw new Error(`rapidocr models not found: ${modelsDir}`);
+		throw new Error(`rapidocr models not found: ${modelsDir}\nHint: pip install rapidocr-onnxruntime in .venv, or set OCR_MODELS_DIR env var.`);
 	}
 	return modelsDir;
 }

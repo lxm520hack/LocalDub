@@ -5,7 +5,8 @@
   "exports": {
     "./subtitle-node": "./subtitle-node.ts",
     "./subtitle-py": "./subtitle-py.py",
-    "./subtitle-cpp": "./ort-cpp/ts/ocr.ts"
+    "./subtitle-cpp": "./ort-cpp/ts/ocr.ts",
+    "./utils": "./utils.ts"
   },
   "scripts": {
     "test": "bun test",
