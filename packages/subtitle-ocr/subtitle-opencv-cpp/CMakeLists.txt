@@ -40,6 +40,14 @@ set(ORT_LIB_DIR "${ORT_DIR}/lib")
 #                         cv::getPerspectiveTransform, cv::warpPerspective,
 #                         cv::rotate
 #   opencv_imgcodecs    — (optional) imread / imwrite for debugging images
+
+# On MSYS2/MinGW, prefer the MSYS2-installed OpenCV over vcpkg's
+if(WIN32)
+    if(EXISTS "C:/msys64/mingw64/lib/cmake/opencv4")
+        set(OpenCV_DIR "C:/msys64/mingw64/lib/cmake/opencv4")
+    endif()
+endif()
+
 find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
 if(NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV (core, imgproc, imgcodecs) not found. Install libopencv-dev or set OpenCV_DIR.")
