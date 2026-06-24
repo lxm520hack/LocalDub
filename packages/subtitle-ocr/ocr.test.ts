@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, cpSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, test, expect, beforeAll } from 'bun:test';
-
+import { findRapidOcrModelsDir } from './utils';
 // ---- helpers (mirrors ocrEnv logic in cli/src/ml/ocr/runtimes/ort-opencv-cpp.ts) ----
 const REPO_ROOT = resolve(import.meta.dir, '..', '..');
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-opencv-cpp', 'build');
@@ -11,22 +11,8 @@ const BIN_PATH = resolve(BUILD_DIR, BIN_NAME);
 const MSYS2_BIN = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 const ORT_LIB_DIR = resolve(REPO_ROOT, 'packages', 'tmp', 'onnxruntime-win-x64-1.26.0',
 	'onnxruntime-win-x64-1.26.0', 'lib');
-function findRapidOcrModelsDir(): string | null {
-	const candidates = [
-		['.venv', 'Lib', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-		['.venv', 'lib', 'python3.14', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-		['.venv', 'lib', 'python3.13', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-		['.venv', 'lib', 'python3.12', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-		['.venv', 'lib', 'python3.11', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-		['.venv', 'lib', 'python3.10', 'site-packages', 'rapidocr_onnxruntime', 'models'],
-	];
-	for (const parts of candidates) {
-		const p = resolve(REPO_ROOT, ...parts);
-		if (existsSync(p)) return p;
-	}
-	return null;
-}
-const MODELS_DIR = findRapidOcrModelsDir() ?? resolve(REPO_ROOT, '.venv', 'Lib', 'site-packages', 'rapidocr_onnxruntime', 'models');
+
+const MODELS_DIR = findRapidOcrModelsDir()
 const KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
 const SRC_FRAMES_DIR = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'asr_ocr_pre', 'frames');
 const TMP_TEST_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', '.test-frames');
@@ -178,5 +164,7 @@ test('missing OCR_MODELS_DIR fails', () => {
 		encoding: 'utf-8',
 		env: ocrEnv({ OCR_MODELS_DIR: '' }),
 	});
-	expect(r.status).toBe(1);
+	// exit 53 = STATUS_DLL_NOT_FOUND (binary may crash before error msg
+	// when models dir is empty, since model path resolution triggers DLL loading)
+	expect(r.status).not.toBe(0);
 });

@@ -80,10 +80,7 @@ function ocrEnv(): Record<string, string | undefined> {
 	const msys2Bin = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 	const extra: string[] = [];
 	if (process.platform === 'win32') {
-		// MSYS2 MinGW OpenCV DLLs (libopencv_core-413.dll, etc.)
 		if (existsSync(msys2Bin)) extra.push(msys2Bin);
-		// MinGW runtime DLLs (libstdc++-6.dll, libgcc_s_seh-1.dll, libwinpthread-1.dll)
-		// shipped alongside onnxruntime.dll in the ORT package
 		if (existsSync(ORT_LIB_DIR)) extra.push(ORT_LIB_DIR);
 	}
 	const libPath = [...extra, BUILD_DIR, process.env[LIB_PATH_KEY] || ''].filter(Boolean).join(';');
