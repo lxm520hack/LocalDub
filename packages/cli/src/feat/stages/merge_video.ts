@@ -13,7 +13,6 @@ import {
 	finalVideoFilename,
 	translationFilePath,
 	timingsFilePath,
-	videoSourcePath,
 	bgmPath,
 	defaultFont,
 	videoSourcePath,

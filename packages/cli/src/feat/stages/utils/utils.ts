@@ -206,13 +206,8 @@ export function timingsFilePath(sessionPath: string): string {
 	return join(sessionPath, 'split_audio', 'timings.json');
 }
 
-export function videoSourcePath(sessionPath: string): string {
-	return join(sessionPath, 'download', 'video_source.mp4');
-}
 
-export function vocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate', 'target_3_vocals.wav');
-}
+
 
 export function mixedVocalsPath(sessionPath: string): string {
 	return join(sessionPath, 'separate_after', 'target_3_vocals_mixed.wav');
@@ -222,29 +217,19 @@ export function gatedVocalsPath(sessionPath: string): string {
 	return join(sessionPath, 'separate_after', 'target_3_vocals_gated.wav');
 }
 
-export function bgmPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_bgm.wav');
-}
+
 
 export function dubbingPath(sessionPath: string): string {
 	return join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
 }
 
-export function videoSourcePath(sessionPath: string): string {
-	return join(sessionPath, 'download', 'video_source.mp4');
-}
 
-export function vocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate', 'target_3_vocals.wav');
-}
 
-export function mixedVocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_3_vocals_mixed.wav');
-}
 
-export function gatedVocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_3_vocals_gated.wav');
-}
+
+
+
+
 
 export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
 	const suffix = subtitleSource === 'asr_ocr' ? '_asr_ocr' : subtitleSource === 'ocr' ? '_ocr' : '';

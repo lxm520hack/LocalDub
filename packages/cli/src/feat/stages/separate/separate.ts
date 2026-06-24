@@ -9,7 +9,7 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { emitLog, nowISO, probeDuration } from '../utils/utils.ts';
+import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
 
