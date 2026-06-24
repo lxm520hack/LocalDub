@@ -68,6 +68,7 @@ export class MLDaemon {
 
 		const env: Record<string, string> = {
 			...(process.env as Record<string, string>),
+			TORCHAUDIO_USE_BACKEND: 'soundfile',
 		};
 		const existing = env.PYTHONPATH || '';
 		env.PYTHONPATH = existing

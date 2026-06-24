@@ -135,6 +135,7 @@ const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => 
 export const setStage = (sessionPath: string, stage: string, patch: Partial<TaskStage>) => {
 	const existing = readStage(sessionPath, stage) ?? ({} as TaskStage);
 	const updated = { ...existing, ...patch };
+	if (updated.status === 'succeeded') updated.error_message = null as any;
 	writeStage(sessionPath, stage, updated);
 }
 

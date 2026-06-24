@@ -17,6 +17,7 @@ export async function stageSeparate(
 	ctx: Context,
 	daemon?: MLDaemon,
 ) {
+	console.log(`[separate] Starting stage for task ${ctx.task.id}`);
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
 	// subtitle 模式且未配置 always 时，跳过分离
@@ -165,7 +166,9 @@ async function separatePytorch(
 	emitLog(sessionPath, `[Separate] runtime=pytorch device=${device}`);
 
 	return new Promise<void>((resolve, reject) => {
-		const proc = spawn(pyBin, pythonArgs);
+		const proc = spawn(pyBin, pythonArgs, {
+			env: { ...process.env, TORCHAUDIO_USE_BACKEND: 'soundfile' } as Record<string, string>,
+		});
 
 		let stderr = '';
 

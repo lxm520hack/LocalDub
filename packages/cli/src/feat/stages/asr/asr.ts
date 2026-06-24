@@ -7,7 +7,6 @@ import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
-	readConfig,
 } from '../../config/config.ts';
 import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
 import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../../ml/whisper/ensure.ts';
