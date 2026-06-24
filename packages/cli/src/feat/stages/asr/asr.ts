@@ -38,6 +38,16 @@ function resolveVadModel(name: string): string {
 		for (const c of candidates) {
 			const p = join(dir, `ggml-${c}.bin`);
 			if (existsSync(p)) return p;
+			// fallback: allow versioned filenames like ggml-silero-vad-v6.2.0.bin
+			try {
+				const files = require('node:fs').readdirSync(dir);
+				for (const f of files) {
+					if (!f.startsWith('ggml-') || !f.endsWith('.bin')) continue;
+					if (f.includes(c) || f.includes(c.split('.')[0])) return join(dir, f);
+				}
+			} catch (e) {
+				// ignore and continue
+			}
 		}
 	}
 	const dir = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'models');
@@ -371,6 +381,9 @@ async function asrWhisperCpp(
 		env: {
 			...process.env,
 			[libPathKey]: [
+				// include build bin and Release folders so DLLs (ggml/*.dll, whisper.dll) are found on Windows
+				join(whisperCli, '..'),
+				join(whisperCli, '..', 'Release'),
 				join(whisperCli, '..', '..', 'src'),
 				join(whisperCli, '..', '..', 'ggml', 'src'),
 				join(whisperCli, '..', '..', 'ggml', 'src', 'ggml-hip'),

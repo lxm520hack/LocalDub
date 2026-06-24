@@ -27,8 +27,29 @@ function whisperModelPath(): string {
 }
 
 export function whisperVulkanPath(): string {
-	const base = join(whisperCppDir(), 'build', 'bin', 'whisper-vulkan');
-	return process.platform === 'win32' ? `${base}.exe` : base;
+	// Search common build output locations and return the first existing binary.
+	const baseBin = join(whisperCppDir(), 'build', 'bin');
+	const buildRoot = join(whisperCppDir(), 'build');
+	const candidates: string[] = [];
+	if (process.platform === 'win32') {
+		candidates.push(join(baseBin, 'whisper-vulkan.exe'));
+		candidates.push(join(baseBin, 'whisper-cli.exe'));
+		candidates.push(join(buildRoot, 'whisper-cli.exe'));
+		candidates.push(join(buildRoot, 'Release', 'whisper-cli.exe'));
+	} else {
+		candidates.push(join(baseBin, 'whisper-vulkan'));
+		candidates.push(join(baseBin, 'whisper-cli'));
+		candidates.push(join(buildRoot, 'whisper-cli'));
+		candidates.push(join(buildRoot, 'Release', 'whisper-cli'));
+	}
+	for (const c of candidates) {
+		if (existsSync(c)) return c;
+	}
+	// Fallback to original expected path
+	const fallback = process.platform === 'win32'
+		? join(whisperCppDir(), 'build', 'bin', 'whisper-vulkan.exe')
+		: join(whisperCppDir(), 'build', 'bin', 'whisper-vulkan');
+	return fallback;
 }
 
 export function whisperCppBinaryPath(): string {
