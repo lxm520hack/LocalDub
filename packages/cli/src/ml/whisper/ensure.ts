@@ -153,6 +153,9 @@ function isVulkanSdkInstalled(): boolean {
 }
 
 function installVulkanSdkWinget(sessionPath: string): boolean {
+	const tmpDir = join(REPO_ROOT, 'packages', 'tmp');
+	const installerPath = join(tmpDir, `VulkanSDK-${VK_SDK_VERSION}-Installer.exe`);
+
 	emitLog(sessionPath, '[Whisper] Installing Vulkan SDK via winget...');
 	emitLog(sessionPath, '[Whisper] This may open a UAC prompt (admin required)');
 	const r = spawnSync('winget', ['install', '-e', '--id', 'KhronosGroup.VulkanSDK', '--accept-package-agreements'],

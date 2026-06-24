@@ -212,7 +212,7 @@ pretrained_models/
 **/results/**/*.json
 
 packages/cli/config.json 
-
+tmp
 **/build2
 *.zip
 build/

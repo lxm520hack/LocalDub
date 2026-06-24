@@ -346,15 +346,14 @@ async function asrWhisperCpp(
 	// whisper-cli writes <audioPath>.json alongside input; place input in the persistent asr directory for inspection
 	const audioDir = join(sessionPath, 'asr');
 	ensureDir(audioDir, ctx);
-	const tmpAudio = join(audioDir, 'whisper-input.wav');
-	
+
 	// Prepare input WAV for whisper-cli: if input is already WAV, use it directly to avoid unnecessary copies
 	let tmpAudio: string;
 	if (audioPath.toLowerCase().endsWith('.wav')) {
 		tmpAudio = audioPath;
 		emitLog(sessionPath, `[ASR] Using existing WAV input: ${tmpAudio}`);
 	} else {
-		ensureDir(audioDir, ctx);
+		// converted WAV will be placed under session asr directory
 		tmpAudio = join(audioDir, 'whisper-input.wav');
 		spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
 			timeout: 30_000,
@@ -436,26 +435,23 @@ async function asrWhisperCpp(
 	}
 
 	// Read the generated JSON
-	const whisperJson = `${tmpAudio}.json`;
+	let whisperJson = `${tmpAudio}.json`;
 	if (!existsSync(whisperJson)) {
 		throw new Error(`whisper-cli did not produce ${whisperJson}`);
 	}
 
 	const raw = await readJson(whisperJson, ctx);
 	// Move the generated whisper JSON into the session asr directory for centralized storage
-	ensureDir(asrDir, ctx);
-	const destWhisperJson = join(asrDir, basename(whisperJson));
+	const destWhisperJson = join(audioDir, basename(whisperJson));
 	try {
 		if (whisperJson !== destWhisperJson && existsSync(whisperJson)) {
 			renameSync(whisperJson, destWhisperJson);
 			emitLog(sessionPath, `[ASR] Moved ${whisperJson} -> ${destWhisperJson}`);
 			// update whisperJson path to the new location for downstream use
-			// (raw content already loaded into memory)
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			whisperJson = destWhisperJson;
 		}
 	} catch (e) {
-		emitLog(sessionPath, `[ASR] Failed to move whisper json: ${e?.message ?? e}`);
+		emitLog(sessionPath, `[ASR] Failed to move whisper json: ${(e as any)?.message ?? e}`);
 	}
 	const transcription: any[] = raw.transcription || [];
 
