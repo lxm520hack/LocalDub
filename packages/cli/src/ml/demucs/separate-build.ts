@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { REPO_ROOT } from '../../config/config.ts';
-import { emitLog } from '../utils/utils.ts';
+import { REPO_ROOT } from '@repo/config';
+import { emitLog } from '../../feat/stages/utils/utils';
 
 /**
  * Find cmake.exe in common installation paths on Windows.
