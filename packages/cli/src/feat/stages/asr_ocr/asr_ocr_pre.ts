@@ -70,7 +70,7 @@ export async function stageAsrOcrPre(ctx: Context) {
 		throw new Error(`Video not found: ${videoPath}`);
 	}
 
-	const asrFile = join(sessionPath, 'metadata', 'asr.json');
+	const asrFile = join(sessionPath, 'asr', 'asr.json');
 	if (!existsSync(asrFile)) {
 		throw new Error(`asr.json not found: ${asrFile}`);
 	}
