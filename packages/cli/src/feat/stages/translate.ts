@@ -1,4 +1,4 @@
-import { readJson, writeJson } from './utils/fileOps.ts';
+import { readJson, writeJson, ensureDir } from './utils/fileOps.ts';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
@@ -34,7 +34,6 @@ export interface TranslateFile {
 export async function stageTranslate(ctx: Context) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
-	const metadataDir = join(sessionPath, 'metadata');
 	const subtitleSource = ctx.input?.subtitleSource;
 	// 解析目标语言: config > auto 推断
 	const configTargetLang = readConfig().stages?.translate?.targetLang;
@@ -58,7 +57,7 @@ export async function stageTranslate(ctx: Context) {
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
 
-	const ytdlpPath = join(metadataDir, 'ytdlp_info.json');
+	const ytdlpPath = join(sessionPath, 'download', 'ytdlp_info.json');
 	const hasMeta = existsSync(ytdlpPath);
 	let meta: any = {};
 	if (hasMeta) {
@@ -257,6 +256,8 @@ ${correctionsStr}
 		speaker: '1',
 	}));
 
+	const translateDir = join(sessionPath, 'translate');
+	ensureDir(translateDir, ctx);
 	writeJson(translationFile, { translation }, ctx);
 
 	await setStage(sessionPath, 'translate', {

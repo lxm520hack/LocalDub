@@ -12,6 +12,36 @@ export function defaultWhisperCppModelPath(): string {
 	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
 }
 
+/** Get the downloaded video source path for a session. */
+export function videoSourcePath(sessionPath: string): string {
+	return join(sessionPath, 'download', 'video_source.mp4');
+}
+
+/** Get the vocals stem path from separate stage. */
+export function vocalsPath(sessionPath: string): string {
+	return join(sessionPath, 'separate', 'target_3_vocals.wav');
+}
+
+/** Get the BGM stem path from separate stage. */
+export function bgmPath(sessionPath: string): string {
+	return join(sessionPath, 'separate', 'target_bgm.wav');
+}
+
+/** Get the separate stage output directory. */
+export function separateDir(sessionPath: string): string {
+	return join(sessionPath, 'separate');
+}
+
+/** Get the ASR output directory. */
+export function asrDir(sessionPath: string): string {
+	return join(sessionPath, 'asr');
+}
+
+/** Get the separate_after output directory. */
+export function separateAfterDir(sessionPath: string): string {
+	return join(sessionPath, 'separate_after');
+}
+
 export function defaultFont(dstLang: string): string {
 	if (dstLang !== 'zh') return 'Arial';
 	switch (process.platform) {
@@ -157,28 +187,47 @@ export function readTaskLanguages(ctx: Context): {
 }
 
 export function translationFilePath(sessionPath: string, lang: string): string {
-	return join(sessionPath, 'metadata', `translation.${lang}.json`);
+	return join(sessionPath, 'translate', `translation.${lang}.json`);
 }
 
 export function subtitleFilePath(sessionPath: string, src: SubtitleSource = 'asr'): string {
 	if (src === 'ocr') {
-		const fixFile = join(sessionPath, 'metadata', 'ocr_fix.json');
+		const fixFile = join(sessionPath, 'ocr_fix', 'ocr_fix.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
 	if (src === 'asr_ocr') {
 		const fixFile = join(sessionPath, 'asr_ocr_fix', 'asr_ocr_fused.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
-	return join(sessionPath, 'metadata', src === 'ocr' ? 'ocr.json' : 'asr_fix.json');
+	return join(sessionPath, 'asr_fix', 'asr_fix.json');
 }
 
-export function timingFilePath(sessionPath: string): string {
-	const src = readConfig().subtitleSource ?? 'asr';
-	if (src === 'ocr') {
-		const asrFile = join(sessionPath, 'metadata', 'asr.json');
-		if (existsSync(asrFile)) return asrFile;
-	}
-	return subtitleFilePath(sessionPath);
+export function timingsFilePath(sessionPath: string): string {
+	return join(sessionPath, 'split_audio', 'timings.json');
+}
+
+export function videoSourcePath(sessionPath: string): string {
+	return join(sessionPath, 'download', 'video_source.mp4');
+}
+
+export function vocalsPath(sessionPath: string): string {
+	return join(sessionPath, 'separate', 'target_3_vocals.wav');
+}
+
+export function mixedVocalsPath(sessionPath: string): string {
+	return join(sessionPath, 'separate_after', 'target_3_vocals_mixed.wav');
+}
+
+export function gatedVocalsPath(sessionPath: string): string {
+	return join(sessionPath, 'separate_after', 'target_3_vocals_gated.wav');
+}
+
+export function bgmPath(sessionPath: string): string {
+	return join(sessionPath, 'separate_after', 'target_bgm.wav');
+}
+
+export function dubbingPath(sessionPath: string): string {
+	return join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
 }
 
 export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {

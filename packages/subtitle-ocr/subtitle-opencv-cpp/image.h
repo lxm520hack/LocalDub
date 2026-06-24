@@ -18,11 +18,29 @@ struct Image {
 };
 
 static Image loadImage(const char* path) {
-    // Use cv::imread directly — it produces BGR output which matches
-    // what PaddleOCR/RapidOCR models were trained with. cv::imread also
-    // uses libjpeg-turbo internally for faster and more consistent
-    // JPEG decoding than stb_image.
+#ifdef _WIN32
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+    std::wstring wpath(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], wlen);
+    HANDLE hFile = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error("Failed to open image: " + std::string(path));
+    }
+    LARGE_INTEGER fileSize;
+    GetFileSizeEx(hFile, &fileSize);
+    std::vector<uint8_t> buf((size_t)fileSize.QuadPart);
+    DWORD bytesRead;
+    if (!ReadFile(hFile, buf.data(), (DWORD)buf.size(), &bytesRead, nullptr)) {
+        CloseHandle(hFile);
+        throw std::runtime_error("Failed to read image: " + std::string(path));
+    }
+    CloseHandle(hFile);
+    buf.resize(bytesRead);
+    cv::Mat mat = cv::imdecode(buf, cv::IMREAD_COLOR);
+#else
     cv::Mat mat = cv::imread(path, cv::IMREAD_COLOR);
+#endif
 
     if (mat.empty()) {
         throw std::runtime_error("Failed to load image: " + std::string(path));

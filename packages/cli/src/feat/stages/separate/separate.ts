@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
@@ -9,9 +9,9 @@ import {
 	REPO_ROOT,
 	readConfig,
 } from '../../config/config.ts';
-import { emitLog, ffmpeg, nowISO, probeDuration } from '../utils/utils.ts';
+import { emitLog, nowISO, probeDuration } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
-import { tryBuildGgml, ensureGgmlModel } from './separate-build.ts';
+import { tryBuildGgml, ensureGgmlModel } from '../../../ml/demucs/separate-build.ts';
 
 export async function stageSeparate(
 	ctx: Context,
@@ -41,7 +41,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'download', 'video_source.mp4');
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
 	const runtime = sepCfg?.runtime ?? 'pytorch';
@@ -116,19 +116,8 @@ async function separateOrt(
 	const demucs = new Demucs(undefined, { executionProvider: ep, stems: targetStems });
 	await demucs.load();
 
-	const audioPath = join(sessionPath, 'separate', 'audio_source.wav');
-	mkdirSync(dirname(audioPath), { recursive: true });
-	ffmpeg([
-		'-i',
-		videoPath,
-		'-acodec',
-		'pcm_s16le',
-		'-ar',
-		'44100',
-		'-ac',
-		'2',
-		audioPath,
-	]);
+	const audioPath = join(sessionPath, 'download', 'audio_source.wav');
+	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found (run download stage)');
 
 	const t0 = performance.now();
 	const stems = await demucs.separate(audioPath);
@@ -138,7 +127,7 @@ async function separateOrt(
 	const audioDurationS = stems.vocals.length / 88200;
 	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
-	const sepDir = join(sessionPath, 'separate');
+	const sepDir = separateDir(sessionPath);
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		demucs.writeWav(
@@ -229,14 +218,8 @@ async function separateGgml(
 	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV
-	const audioPath = resolve(REPO_ROOT, sessionPath, 'separate', 'audio_source.wav');
-	mkdirSync(dirname(audioPath), { recursive: true });
-	const ffmpegResult = spawnSync('ffmpeg', [
-		'-y', '-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath,
-	]);
-	if (ffmpegResult.status !== 0) {
-		throw new Error(`ffmpeg extract failed: ${ffmpegResult.stderr?.toString().slice(-200)}`);
-	}
+	const audioPath = resolve(REPO_ROOT, sessionPath, 'download', 'audio_source.wav');
+	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found (run download stage)');
 
 	const isWin = process.platform === 'win32';
 	const ggmlBinPath = isWin && !ggmlBin.endsWith('.exe') ? `${ggmlBin}.exe` : ggmlBin;

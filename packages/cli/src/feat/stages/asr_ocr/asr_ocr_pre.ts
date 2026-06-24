@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
 import type { Segment } from '../utils/ocrMerge.ts';
 import { Context, setStage } from '../../context/context.ts';
 
@@ -65,12 +65,12 @@ export async function stageAsrOcrPre(ctx: Context) {
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'media', 'video_source.mp4');
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) {
 		throw new Error(`Video not found: ${videoPath}`);
 	}
 
-	const asrFile = join(sessionPath, 'metadata', 'asr.json');
+	const asrFile = join(sessionPath, 'asr', 'asr.json');
 	if (!existsSync(asrFile)) {
 		throw new Error(`asr.json not found: ${asrFile}`);
 	}

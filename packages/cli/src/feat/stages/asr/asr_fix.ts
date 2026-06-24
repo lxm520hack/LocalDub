@@ -1,8 +1,8 @@
-import { readJson, writeJson } from '../utils/fileOps.ts';
+import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig } from '../../config/config.ts';
-import { emitLog, nowISO, srtTime,  } from '../utils/utils.ts';
+import { emitLog, nowISO, srtTime, } from '../utils/utils.ts';
 import { segmentsToPrompt, parseLines, fixWithLLM } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';
 
@@ -50,9 +50,9 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 export async function stageAsrFix(ctx: Context) {
     const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
-  const metadataDir = join(sessionPath, 'metadata');
-  const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(metadataDir, 'asr.json');
-  const srtFile = join(metadataDir, 'asr_fix.json');
+	const asrFixDir = join(sessionPath, 'asr_fix');
+	const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(sessionPath, 'asr', 'asr.json');
+	const srtFile = join(asrFixDir, 'asr_fix.json');
 
   if (!existsSync(asrFile)) {
     throw new Error(`ASR file not found: ${asrFile}; run ASR stage first`);
@@ -107,13 +107,14 @@ export async function stageAsrFix(ctx: Context) {
     emitLog(sessionPath, `[ASR Fix] Segment padding disabled`);
   }
 
-  segments = segments.map((s: any) => ({ ...s, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end) }));
-  const resultText = segments.map((s: any) => s.text).join(' ');
-  writeJson(srtFile, {
-    audio_info: data.audio_info || {},
-    result: { text: resultText, segments },
-    _llm_fixed: llmFix,
-  }, ctx);
+	segments = segments.map((s: any) => ({ ...s, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end) }));
+	const resultText = segments.map((s: any) => s.text).join(' ');
+	ensureDir(asrFixDir, ctx);
+	writeJson(srtFile, {
+		audio_info: data.audio_info || {},
+		result: { text: resultText, segments },
+		_llm_fixed: llmFix,
+	}, ctx);
 
   emitLog(sessionPath, `[ASR Fix] Written ${segments.length} segs to asr_fix.json`);
 
