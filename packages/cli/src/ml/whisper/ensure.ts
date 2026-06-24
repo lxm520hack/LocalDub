@@ -26,9 +26,13 @@ function whisperModelPath(): string {
 	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
 }
 
-function whisperVulkanPath(): string {
+export function whisperVulkanPath(): string {
 	const base = join(whisperCppDir(), 'build', 'bin', 'whisper-vulkan');
 	return process.platform === 'win32' ? `${base}.exe` : base;
+}
+
+export function whisperCppBinaryPath(): string {
+	return whisperVulkanPath();
 }
 
 function downloadFile(url: string, dest: string, sessionPath: string): boolean {
