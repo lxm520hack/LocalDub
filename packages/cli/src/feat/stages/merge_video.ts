@@ -16,6 +16,7 @@ import {
 	videoSourcePath,
 	bgmPath,
 	defaultFont,
+	videoSourcePath,
 } from './utils/utils.ts';
 
 function filterSubPath(subPath: string): string {

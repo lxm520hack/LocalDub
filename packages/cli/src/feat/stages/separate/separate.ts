@@ -41,7 +41,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = join(sessionPath, 'download', 'video_source.mp4');
+	const videoPath = videoSourcePath(sessionPath);
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
 	const runtime = sepCfg?.runtime ?? 'pytorch';
@@ -127,7 +127,7 @@ async function separateOrt(
 	const audioDurationS = stems.vocals.length / 88200;
 	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
-	const sepDir = join(sessionPath, 'separate');
+	const sepDir = separateDir(sessionPath);
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		demucs.writeWav(

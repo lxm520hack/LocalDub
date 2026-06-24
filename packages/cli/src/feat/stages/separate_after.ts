@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { emitLog, ffmpeg, nowISO } from './utils/utils.ts';
+import { join } from 'node:path';
+import { emitLog, ffmpeg, nowISO, separateDir, separateAfterDir } from './utils/utils.ts';
 import { Context, setStage } from '../context/context.ts';
 
 export async function stageSeparateAfter(ctx: Context) {
@@ -12,8 +12,8 @@ export async function stageSeparateAfter(ctx: Context) {
 		progress: 0,
 	});
 
-	const sepDir = join(sessionPath, 'separate');
-	const outDir = join(sessionPath, 'separate_after');
+	const sepDir = separateDir(sessionPath);
+	const outDir = separateAfterDir(sessionPath);
 	mkdirSync(outDir, { recursive: true });
 	const stems = {
 		drums: join(sepDir, 'target_0_drums.wav'),
