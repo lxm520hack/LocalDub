@@ -11,10 +11,6 @@
 #include <sstream>
 #include <iomanip>
 
-#ifndef M_PI_2
-#define M_PI_2 1.57079632679489661923
-#endif
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
@@ -307,24 +303,18 @@ static std::vector<std::pair<Polygon, float>> dbPostprocess(
     float thresh, float boxThresh, float unclipRatio, int maxCandidates)
 {
     // ------------------------------------------------------------------
-    // Step 1. Build cv::Mat views of the probability map.
+    // Step 1. Build cv::Mat view of the probability map (zero-copy).
     // ------------------------------------------------------------------
     // `heatmap` is laid out as NCHW tensor from the detector. For a
     // single-class DB head the shape is (1, 1, H, W).  We take the
     // first element of the batch: heatmap[0, 0, :, :].
-    cv::Mat_<float> prob(H, W);
-    // Copy values; pointer to first `H * W` block.
-    for (int y = 0; y < H; ++y)
-        for (int x = 0; x < W; ++x)
-            prob(y, x) = heatmap[y * W + x];
+    cv::Mat_<float> prob(H, W, const_cast<float*>(heatmap));
 
     // ------------------------------------------------------------------
     // Step 2. Binary segmentation: bitmap = prob > thresh.
     // ------------------------------------------------------------------
-    cv::Mat bitmap(H, W, CV_8UC1);
-    for (int y = 0; y < H; ++y)
-        for (int x = 0; x < W; ++x)
-            bitmap.at<uchar>(y, x) = prob(y, x) > thresh ? 1 : 0;
+    cv::Mat bitmap;
+    cv::compare(prob, thresh, bitmap, cv::CMP_GT);
 
     // ------------------------------------------------------------------
     // Step 3. 2x2 dilation with all-ones kernel (matches Python
@@ -481,55 +471,6 @@ static std::vector<std::pair<Polygon, float>> dbPostprocess(
     return results;
 }
 
-// --- Warp rotated crop using RotatedRect (affine rotation + bilinear sampling) ---
-static Image warpRotatedCrop(const Image& img, const RotatedRect& rect) {
-    int dstW = std::max(1, (int)std::round(rect.width));
-    int dstH = std::max(1, (int)std::round(rect.height));
-    if (dstW > img.w * 2) dstW = std::min(dstW, img.w);
-    if (dstH > img.h * 2) dstH = std::min(dstH, img.h);
-
-    // Build affine rotation matrix: rotate around (cx, cy) by -angle, then translate to image center
-    // We want: output (dx, dy) with center (dstW/2, dstH/2) maps to source at (cx, cy) + rotation
-    // Inverse mapping: for each output pixel (dx, dy), compute source (sx, sy):
-    //   let ox = dx - dstW/2, oy = dy - dstH/2
-    //   sx = ox*cosA - oy*sinA + cx
-    //   sy = ox*sinA + oy*cosA + cy
-    // OpenCV warpAffine takes the forward mapping M: [src] -> [dst]
-    // forward: sx = ox*cosA - oy*sinA + cx, sy = ox*sinA + oy*cosA + cy
-    //   where ox = dx - dstW/2, oy = dy - dstH/2
-    // Inverse (what cv::warpAffine needs): for each dst pixel (dx, dy), find (sx, sy)
-    //   sx = (dx - dstW/2)*cosA - (dy - dstH/2)*sinA + cx
-    //   sy = (dx - dstW/2)*sinA + (dy - dstH/2)*cosA + cy
-    // So the 2x3 inverse transform matrix maps (dx, dy) -> (sx, sy):
-    //   [ sx ]   [ cosA  -sinA   -cosA*dstW/2 + sinA*dstH/2 + cx ] [ dx ]
-    //   [ sy ] = [ sinA   cosA   -sinA*dstW/2 - cosA*dstH/2 + cy ] [ dy ]
-    //                                                               [ 1  ]
-    float cosA = std::cos(rect.angle), sinA = std::sin(rect.angle);
-    float cx = rect.center.x, cy = rect.center.y;
-
-    double M[2][3] = {
-        { cosA, -sinA, -cosA * dstW / 2.0 + sinA * dstH / 2.0 + cx },
-        { sinA,  cosA, -sinA * dstW / 2.0 - cosA * dstH / 2.0 + cy }
-    };
-    cv::Mat M_mat(2, 3, CV_64F, M);
-
-    cv::Mat src(img.h, img.w, CV_8UC3, const_cast<uint8_t*>(img.data.data()));
-    cv::Mat warped;
-    cv::warpAffine(src, warped, M_mat, cv::Size(dstW, dstH), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
-
-    Image out;
-    out.w = dstW; out.h = dstH; out.c = img.c;
-    out.data.resize((size_t)dstW * dstH * img.c);
-    if (warped.isContinuous()) {
-        std::memcpy(out.data.data(), warped.data, (size_t)dstW * dstH * img.c);
-    } else {
-        for (int y = 0; y < dstH; ++y) {
-            std::memcpy(out.data.data() + (size_t)y * dstW * img.c, warped.ptr(y), (size_t)dstW * img.c);
-        }
-    }
-    return out;
-}
-
 // --- Rotate image 180° ---
 static Image rotate180(const Image& img) {
     cv::Mat src(img.h, img.w, CV_8UC3, const_cast<uint8_t*>(img.data.data()));
@@ -550,6 +491,7 @@ static Image rotate180(const Image& img) {
 
 // --- Order points clockwise (top-left, top-right, bottom-right, bottom-left) ---
 static Polygon orderPointsClockwise(const Polygon& pts) {
+    if (pts.size() != 4) return pts;
     std::vector<int> idx(pts.size());
     for (size_t i = 0; i < pts.size(); ++i) idx[i] = (int)i;
     std::sort(idx.begin(), idx.end(), [&](int a, int b) { return pts[a].x < pts[b].x; });

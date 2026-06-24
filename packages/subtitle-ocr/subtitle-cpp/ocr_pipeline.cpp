@@ -11,10 +11,6 @@
 #include <sstream>
 #include <iomanip>
 
-#ifndef M_PI_2
-#define M_PI_2 1.57079632679489661923
-#endif
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
@@ -328,33 +324,6 @@ static std::vector<std::pair<Polygon,float>> dbPostprocess(
     return results;
 }
 
-// --- Warp rotated crop using RotatedRect (affine rotation + bilinear sampling) ---
-static Image warpRotatedCrop(const Image& img, const RotatedRect& rect) {
-    int dstW = std::max(1, (int)std::round(rect.width));
-    int dstH = std::max(1, (int)std::round(rect.height));
-    if (dstW > img.w * 2) dstW = std::min(dstW, img.w);
-    if (dstH > img.h * 2) dstH = std::min(dstH, img.h);
-
-    Image out;
-    out.w = dstW; out.h = dstH; out.c = img.c;
-    out.data.resize(dstW * dstH * img.c, 0);
-
-    float cosA = std::cos(rect.angle), sinA = std::sin(rect.angle);
-    float cx = rect.center.x, cy = rect.center.y;
-
-    for (int dy = 0; dy < dstH; ++dy) {
-        float perp = dy - dstH / 2.0f;
-        for (int dx = 0; dx < dstW; ++dx) {
-            float proj = dx - dstW / 2.0f;
-            float sx = proj * cosA - perp * sinA + cx;
-            float sy = proj * sinA + perp * cosA + cy;
-            for (int c = 0; c < img.c; ++c)
-                out.data[(dy * dstW + dx) * img.c + c] = (uint8_t)std::round(sampleBicubic(img, sx, sy, c));
-        }
-    }
-    return out;
-}
-
 // --- Rotate image 180° ---
 static Image rotate180(const Image& img) {
     Image out;
@@ -374,6 +343,7 @@ static Image rotate180(const Image& img) {
 
 // --- Order points clockwise (top-left, top-right, bottom-right, bottom-left) ---
 static Polygon orderPointsClockwise(const Polygon& pts) {
+    if (pts.size() != 4) return pts;
     std::vector<int> idx(pts.size());
     for (size_t i = 0; i < pts.size(); ++i) idx[i] = (int)i;
     std::sort(idx.begin(), idx.end(), [&](int a, int b) { return pts[a].x < pts[b].x; });
