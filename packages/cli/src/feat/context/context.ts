@@ -104,6 +104,10 @@ export const writeTask = ( task: Task) => {
 		setCtx(task.session_path, { task });
 }
 export const setTask = (sessionPath: string, patch: Partial<Task>) => {
+	// If marking succeeded, clear any previous error_message to avoid stale failure state
+	if (patch.status === 'succeeded') {
+		patch.error_message = null;
+	}
 	const existing = readTask(sessionPath) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
 	writeTask(updated);

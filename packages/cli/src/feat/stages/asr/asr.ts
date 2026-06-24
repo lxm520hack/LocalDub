@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { readJson, writeJson, ensureDir, removeFile } from '../utils/fileOps.ts';
-import { copyFileSync, existsSync } from 'node:fs';
-import { delimiter, join, resolve } from 'node:path';
+import { copyFileSync, existsSync, renameSync } from 'node:fs';
+import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import type { MLDaemon } from '../../../ml/daemon/client.ts';
 import {
@@ -38,6 +38,16 @@ function resolveVadModel(name: string): string {
 		for (const c of candidates) {
 			const p = join(dir, `ggml-${c}.bin`);
 			if (existsSync(p)) return p;
+			// fallback: allow versioned filenames like ggml-silero-vad-v6.2.0.bin
+			try {
+				const files = require('node:fs').readdirSync(dir);
+				for (const f of files) {
+					if (!f.startsWith('ggml-') || !f.endsWith('.bin')) continue;
+					if (f.includes(c) || f.includes(c.split('.')[0])) return join(dir, f);
+				}
+			} catch (e) {
+				// ignore and continue
+			}
 		}
 	}
 	const dir = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'models');
@@ -333,21 +343,24 @@ async function asrWhisperCpp(
 		ensureVadModel(sessionPath);
 	}
 
-	// whisper-cli writes <audioPath>.json alongside input; use a copy in tmp to avoid clobber
-	const audioDir = join(sessionPath, 'tmp');
+	// whisper-cli writes <audioPath>.json alongside input; place input in the persistent asr directory for inspection
+	const audioDir = join(sessionPath, 'asr');
 	ensureDir(audioDir, ctx);
-	const tmpAudio = join(audioDir, 'whisper-input.wav');
 
-	// Copy/convert input to WAV
-	if (audioPath.endsWith('.wav')) {
-		copyFileSync(audioPath, tmpAudio);
+	// Prepare input WAV for whisper-cli: if input is already WAV, use it directly to avoid unnecessary copies
+	let tmpAudio: string;
+	if (audioPath.toLowerCase().endsWith('.wav')) {
+		tmpAudio = audioPath;
+		emitLog(sessionPath, `[ASR] Using existing WAV input: ${tmpAudio}`);
 	} else {
+		// converted WAV will be placed under session asr directory
+		tmpAudio = join(audioDir, 'whisper-input.wav');
 		spawnSync('ffmpeg', ['-y', '-i', audioPath, '-ac', '1', tmpAudio], {
 			timeout: 30_000,
 		});
-	}
-	if (!existsSync(tmpAudio)) {
-		throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
+		if (!existsSync(tmpAudio)) {
+			throw new Error(`ffmpeg failed to convert ${audioPath} to ${tmpAudio}`);
+		}
 	}
 
 	const t0 = performance.now();
@@ -366,18 +379,55 @@ async function asrWhisperCpp(
 	if (asrCfg?.maxLen && asrCfg.maxLen > 0) whisperArgs.push('--max-len', String(asrCfg.maxLen));
 	if (asrCfg?.splitOnWord) whisperArgs.push('--split-on-word');
 	const libPathKey = process.platform === 'win32' ? 'PATH' : 'LD_LIBRARY_PATH';
+	const { dirname } = await import('node:path');
+	const { readdirSync } = await import('node:fs');
+	const binDir = dirname(whisperCli);
+
+	// Determine candidate Release directories robustly to avoid 'Release/Release' when the
+	// binary already sits in a Release folder or when DLLs live under build/bin/Release.
+	const repoWhisperBuild = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build');
+	const candidateReleaseDirs = [
+		join(binDir, 'Release'),            // common when binary in build/bin
+		join(binDir, '..', 'Release'),      // common when binary in build/Release
+		join(repoWhisperBuild, 'bin', 'Release'),
+		join(repoWhisperBuild, 'Release'),
+	];
+	const existingReleaseDirs = candidateReleaseDirs.filter(d => existsSync(d));
+	const chosenReleaseDir = existingReleaseDirs.length ? existingReleaseDirs[0] : candidateReleaseDirs[0];
+
+	// Log chosen binary & availability for diagnostics
+	emitLog(sessionPath, `[ASR] whisper binary chosen=${whisperCli} exists=${existsSync(whisperCli)} binDir=${binDir} releaseDir=${chosenReleaseDir} releaseExists=${existsSync(chosenReleaseDir)}`);
+	try {
+		const binFiles = existsSync(binDir) ? readdirSync(binDir).join(',') : '';
+		emitLog(sessionPath, `[ASR] binDir files=${binFiles}`);
+		if (existsSync(chosenReleaseDir)) {
+			emitLog(sessionPath, `[ASR] releaseDir files=${readdirSync(chosenReleaseDir).join(',')}`);
+		}
+	} catch (e) {
+		// ignore listing errors
+	}
+
+	// Build lib path list: include binDir and any existing Release dirs (deduplicated)
+	const releaseDirsToInclude = Array.from(new Set([binDir, ...existingReleaseDirs, join(binDir, '..', 'src'), join(binDir, '..', 'ggml', 'src'), join(binDir, '..', 'ggml', 'src', 'ggml-hip')]));
+
 	const result = spawnSync(whisperCli, whisperArgs, {
 		timeout: 600_000,
 		env: {
 			...process.env,
 			[libPathKey]: [
-				join(whisperCli, '..', '..', 'src'),
-				join(whisperCli, '..', '..', 'ggml', 'src'),
-				join(whisperCli, '..', '..', 'ggml', 'src', 'ggml-hip'),
+				// include build bin and Release folders so DLLs (ggml/*.dll, whisper.dll) are found on Windows
+				...releaseDirsToInclude,
 				process.env[libPathKey] || '',
 			].filter(Boolean).join(delimiter),
 		},
 	});
+
+	// Diagnostic logging on failure
+	if (result.status !== 0 && result.status !== null) {
+		emitLog(sessionPath, `[ASR] whisper-cli exit=${result.status} stdout=${result.stdout?.toString().slice(-2000) ?? ''} stderr=${result.stderr?.toString().slice(-2000) ?? ''}`);
+		emitLog(sessionPath, `[ASR] PATH used=${(process.env[libPathKey] || '').slice(-2000)}`);
+	}
+
 	const elapsedSec = (performance.now() - t0) / 1000;
 
 	if (result.status !== 0 && result.status !== null) {
@@ -385,12 +435,24 @@ async function asrWhisperCpp(
 	}
 
 	// Read the generated JSON
-	const whisperJson = `${tmpAudio}.json`;
+	let whisperJson = `${tmpAudio}.json`;
 	if (!existsSync(whisperJson)) {
 		throw new Error(`whisper-cli did not produce ${whisperJson}`);
 	}
 
 	const raw = await readJson(whisperJson, ctx);
+	// Move the generated whisper JSON into the session asr directory for centralized storage
+	const destWhisperJson = join(audioDir, basename(whisperJson));
+	try {
+		if (whisperJson !== destWhisperJson && existsSync(whisperJson)) {
+			renameSync(whisperJson, destWhisperJson);
+			emitLog(sessionPath, `[ASR] Moved ${whisperJson} -> ${destWhisperJson}`);
+			// update whisperJson path to the new location for downstream use
+			whisperJson = destWhisperJson;
+		}
+	} catch (e) {
+		emitLog(sessionPath, `[ASR] Failed to move whisper json: ${(e as any)?.message ?? e}`);
+	}
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = ctx.input?.stages?.asr?.wordsOutput ?? true;
@@ -450,9 +512,8 @@ async function asrWhisperCpp(
 	};
 	writeJson(join(asrDir, 'asr.json'), asrOutput, ctx);
 
-	// Cleanup tmp audio and json
-	removeFile(tmpAudio, ctx);
-	removeFile(whisperJson, ctx);
+	// Preserve whisper input and json in asr directory for debugging and auditing
+	emitLog(sessionPath, `[ASR] Preserving ${tmpAudio} and ${whisperJson} in asr directory`);
 
 	emitLog(sessionPath, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);
 	if (segments.length > 0) {
