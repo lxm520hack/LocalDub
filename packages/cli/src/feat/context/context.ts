@@ -86,13 +86,20 @@ export const _writeCtx = (ctx: Context) => {
 	writeFileSync(path, raw);
 	return ctx;
 };
+export const _setCtx = (
+	sessionPath: string,
+	patch: Partial<Context>,
+ ) => {
+	const existing = _readCtx(sessionPath) ?? ({} as Context);
+	const ctx = _writeCtx( { ...existing, ...patch });
+	return ctx;
+};
 export const setCtx = (
 	sessionPath: string,
 	patch: Partial<Context>,
 ): void => {
-	const existing = _readCtx(sessionPath) ?? ({} as Context);
-	const ctx = _writeCtx( { ...existing, ...patch });
-	console.log(`[${ctx.task.current_stage}] [File] set ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
+	const ctx = _setCtx(sessionPath,patch)
+	console.log(`[${ctx.task.current_stage}] setCtx ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
 };
 export const readTask = (sessionPath: string) => {
 	const path = ctxPath(sessionPath);
@@ -100,8 +107,12 @@ export const readTask = (sessionPath: string) => {
 	const ctx = JSON.parse(raw) as Context;
 	return ctx.task;
 }
+export const _writeTask = ( task: Task) => {
+	_setCtx(task.session_path, { task });
+}
 export const writeTask = ( task: Task) => {
-		setCtx(task.session_path, { task });
+	_setCtx(task.session_path, { task });
+			console.log(`[${task.current_stage}] setTask ${ctxPath(task.session_path)}:`, JSON.stringify(task));
 }
 export const setTask = (sessionPath: string, patch: Partial<Task>) => {
 	// If marking succeeded, clear any previous error_message to avoid stale failure state
@@ -110,7 +121,8 @@ export const setTask = (sessionPath: string, patch: Partial<Task>) => {
 	}
 	const existing = readTask(sessionPath) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
-	writeTask(updated);
+	_writeTask(updated);
+		console.log(`[${updated.current_stage}] setTask ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
 }
 
 export const listStage = (sessionPath: string) => _readCtx(sessionPath).stages ?? [];
