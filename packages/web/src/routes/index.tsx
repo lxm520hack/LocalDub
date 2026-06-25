@@ -1,6 +1,7 @@
-import { createFileRoute } from '@tanstack/solid-router';
-import { Dashboard } from '../components/pages/Dashboard';
+import { createFileRoute, redirect } from '@tanstack/solid-router';
 
 export const Route = createFileRoute('/')({
-  component: Dashboard,
+  beforeLoad: () => {
+    throw redirect({ to: '/server/torch' });
+  },
 });

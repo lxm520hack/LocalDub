@@ -14,7 +14,7 @@ function fmtUptime(s: number): string {
   return `${hh}h ${mm}m ${ss}s`;
 }
 
-export function Dashboard() {
+export function TorchServer() {
   const [health, setHealth] = createSignal<HealthData | null>(null);
   const [logs, setLogs] = createSignal('');
 
@@ -34,7 +34,7 @@ export function Dashboard() {
   });
 
   return (
-    <div class="p-8 max-w-5xl mx-auto">
+    <div class="p-8  ">
       <div class="flex items-center gap-3 mb-6">
         <div
           class="w-3 h-3 rounded-full shrink-0"

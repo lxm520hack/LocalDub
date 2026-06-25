@@ -10,33 +10,43 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ServerTorchRouteImport } from './routes/server/torch'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServerTorchRoute = ServerTorchRouteImport.update({
+  id: '/server/torch',
+  path: '/server/torch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/server/torch': typeof ServerTorchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/server/torch': typeof ServerTorchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/server/torch': typeof ServerTorchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/server/torch'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/server/torch'
+  id: '__root__' | '/' | '/server/torch'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ServerTorchRoute: typeof ServerTorchRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -48,11 +58,19 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/server/torch': {
+      id: '/server/torch'
+      path: '/server/torch'
+      fullPath: '/server/torch'
+      preLoaderRoute: typeof ServerTorchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ServerTorchRoute: ServerTorchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
