@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+@source '.';
+@plugin 'tailwindcss-animate';
+@import '../shared/styles/index.css';

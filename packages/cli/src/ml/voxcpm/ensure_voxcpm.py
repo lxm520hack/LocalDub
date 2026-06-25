@@ -1,14 +1,17 @@
 """
-Ensure VoxCPM model is cached locally — try ModelScope first, then HuggingFace.
+Ensure VoxCPM package and model are ready.
+- Installs `voxcpm` Python package from submodule (if not importable)
+- Downloads model weights via ModelScope / HuggingFace
 Exit codes:
-  0 = model ready (downloaded or already cached)
-  1 = all download sources failed
+  0 = ready
+  1 = failed
 
 Usage:
   python ensure_voxcpm.py <model_id> <local_dir>
 """
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,9 +36,38 @@ def _try_huggingface(model_id: str, local_dir: str) -> bool:
         return False
 
 
+def _ensure_package() -> bool:
+    """Install voxcpm package from submodule if not already importable."""
+    try:
+        import voxcpm  # noqa: PLC0415
+        print("[ensure_voxcpm] voxcpm package already installed")
+        return True
+    except ModuleNotFoundError:
+        pass
+
+    submodule_dir = Path(__file__).resolve().parents[6] / "submodule" / "VoxCPM"
+    if not submodule_dir.is_dir():
+        print(f"[ensure_voxcpm] Submodule not found at {submodule_dir}", file=sys.stderr)
+        return False
+
+    print(f"[ensure_voxcpm] Installing voxcpm from {submodule_dir}...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--no-build-isolation", "--no-deps", "-e", str(submodule_dir)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"[ensure_voxcpm] pip install failed: {result.stderr}", file=sys.stderr)
+        return False
+    print("[ensure_voxcpm] voxcpm package installed")
+    return True
+
+
 def main() -> None:
     if len(sys.argv) < 3:
         print("Usage: ensure_voxcpm.py <model_id> <local_dir>", file=sys.stderr)
+        sys.exit(1)
+
+    if not _ensure_package():
         sys.exit(1)
 
     model_id = sys.argv[1]

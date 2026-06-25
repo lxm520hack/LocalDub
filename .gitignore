@@ -213,6 +213,7 @@ packages/subtitle-ocr/.test-frames/
 **/results/**/*.jpg
 **/results/**/*.json
 
+
 packages/cli/config.json 
 tmp
 **/build2

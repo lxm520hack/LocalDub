@@ -1,0 +1,26 @@
+{
+  "name": "@repo/ui-solid",
+  "type": "module",
+  "dependencies": {
+    "@kobalte/core": "^0.13.11",
+    "@repo/shared": "workspace:*",
+    "@tanstack/query-core": "^5.100.10",
+    "@tanstack/solid-devtools": "^0.8.5",
+    "@tanstack/solid-form": "^1.32.0",
+    "@tanstack/solid-form-devtools": "^0.2.27",
+    "@tanstack/solid-query": "^5.101.0",
+    "@tanstack/solid-query-devtools": "^5.100.10",
+    "@tanstack/solid-router": "^1.169.2",
+    "@tanstack/solid-router-devtools": "^1.167.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-solid": "^1.16.0",
+    "solid-js": "^1.9.12",
+    "solid-sonner": "^0.3.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vite": "^8.0.14",
+    "vite-plugin-solid": "^2.11.12"
+  }
+}

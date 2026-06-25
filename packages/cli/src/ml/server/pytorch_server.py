@@ -2,11 +2,14 @@
 Torch server — FastAPI + uvicorn HTTP server.
 
 Endpoints:
-  GET  /health                       → server status and model states
-  POST /run/{stage}                  → execute a stage, returns SSE stream
-  POST /shutdown                     → graceful shutdown
+  GET  /                           → status dashboard (Solid.js + TailwindCSS)
+  GET  /api/events                 → SSE stream: health (3s) + log (on change)
+  GET  /api/health                 → server status and model states
+  GET  /api/logs                   → server log lines (text/plain lines)
+  POST /api/run/{stage}            → execute a stage, returns SSE stream
+  POST /api/shutdown               → graceful shutdown
 
-SSE events from /run/{stage}:
+SSE events from /api/run/{stage}:
   event: progress
   data: {"current":50,"total":100}
 
@@ -20,24 +23,85 @@ Usage (detached, spawned by TS):
   .venv/bin/python packages/cli/src/ml/server/pytorch_server.py --http-port 19109
 
 Check health:
-  curl http://127.0.0.1:19109/health
+  curl http://127.0.0.1:19109/api/health
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import html
 import json
 import os
 import sys
 import time
 import traceback
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
+# ---------------------------------------------------------------------------
+# Server log buffer
+# ---------------------------------------------------------------------------
+
+class _LogBuffer:
+    def __init__(self, max_lines: int = 500):
+        self._lines: deque[str] = deque(maxlen=max_lines)
+        self._write_count: int = 0
+
+    def write(self, text: str) -> None:
+        for line in text.rstrip("\n").split("\n"):
+            if line:
+                self._lines.append(line)
+                self._write_count += 1
+
+    def flush(self) -> None:
+        pass
+
+    def get_lines(self, n: int = 100) -> list[str]:
+        return list(self._lines)[-n:]
+
+    def get_text(self, n: int = 100) -> str:
+        return "\n".join(self.get_lines(n))
+
+    @property
+    def write_count(self) -> int:
+        return self._write_count
+
+_log_buffer = _LogBuffer()
+_log_writer = _LogBuffer()
+
+# Wrap stdout/stderr so all server-side output is captured
+class _Tee:
+    def __init__(self, stream, buffer: _LogBuffer):
+        self._stream = stream
+        self._buffer = buffer
+
+    def write(self, text: str) -> None:
+        self._stream.write(text)
+        self._buffer.write(text)
+
+    def flush(self) -> None:
+        self._stream.flush()
+
+    def reconfigure(self, **kwargs):
+        if hasattr(self._stream, 'reconfigure'):
+            self._stream.reconfigure(**kwargs)
+
+    def isatty(self):
+        return False
+
+    @property
+    def encoding(self):
+        return getattr(self._stream, 'encoding', 'utf-8')
+
+sys.stdout = _Tee(sys.stdout, _log_buffer)
+sys.stderr = _Tee(sys.stderr, _log_buffer)
 
 # ---------------------------------------------------------------------------
 # Model handler imports
@@ -114,38 +178,16 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# API endpoints (define BEFORE static files to avoid mount conflict)
 # ---------------------------------------------------------------------------
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    uptime = round(time.time() - _start_time)
-    h, m = divmod(uptime, 3600)
-    m, s = divmod(m, 60)
-    rows = "".join(
-        f"<tr><td>{k}</td><td class=\"{'on' if v else 'off'}\">{'✅ loaded' if v else '○ idle'}</td></tr>"
-        for k, v in _models.items()
-    )
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Torch Server</title>
-<style>
-  body {{ font: 14px/1.6 sans-serif; margin: 2rem; }}
-  h1 {{ margin: 0 0 .5rem; }}
-  .meta {{ color: #666; font-size: 13px; margin-bottom: 1rem; }}
-  table {{ border-collapse: collapse; }}
-  td {{ padding: 4px 16px 4px 0; }}
-  .on {{ color: #090; font-weight: 600; }}
-  .off {{ color: #999; }}
-</style></head>
-<body>
-<h1>🔧 Torch Server</h1>
-<div class="meta">uptime {h}h {m}m {s}s</div>
-<table><tr><th>Model</th><th>Status</th></tr>{rows}</table>
-</body></html>"""
+@app.get("/api/logs")
+async def get_logs(n: int = 100):
+    return {"lines": "\n".join(_log_buffer.get_lines(n))}
 
-@app.get("/health")
+
+@app.get("/api/health")
 async def health():
     return {
         "status": "ok",
@@ -154,7 +196,7 @@ async def health():
     }
 
 
-@app.post("/run/{stage}")
+@app.post("/api/run/{stage}")
 async def run_stage(stage: str, body: dict):
     task_id = body.get("task_id", "")
     params = body.get("params", {})
@@ -165,13 +207,53 @@ async def run_stage(stage: str, body: dict):
     )
 
 
-@app.post("/shutdown")
+@app.get("/api/events")
+async def events():
+    """SSE endpoint — pushes health every 3s and log lines on change."""
+
+    async def event_generator():
+        last_count = _log_buffer.write_count
+        while not _shutdown:
+            # health event every tick
+            health_data = {
+                "status": "ok",
+                "uptime_s": round(time.time() - _start_time, 1),
+                "models": _models,
+            }
+            yield f"event: health\ndata: {json.dumps(health_data)}\n\n"
+
+            # log event only when new lines arrived
+            current_count = _log_buffer.write_count
+            if current_count != last_count:
+                new_lines = "\n".join(_log_buffer.get_lines(100))
+                yield f"event: log\ndata: {json.dumps({'lines': new_lines, 'count': current_count})}\n\n"
+                last_count = current_count
+
+            await asyncio.sleep(3)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/shutdown")
 async def shutdown():
     global _shutdown
     _shutdown = True
     # Schedule server shutdown in next event loop iteration
     asyncio.get_event_loop().call_later(0.1, lambda: __import__("os")._exit(0))
     return {"status": "shutting_down"}
+
+
+# ---------------------------------------------------------------------------
+# Static dashboard (Solid.js built output) — mounted last so API routes win
+# ---------------------------------------------------------------------------
+
+_DASHBOARD_DIR = REPO_ROOT / "packages" / "web" / "dist"
+if _DASHBOARD_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(_DASHBOARD_DIR), html=True), name="dashboard")
 
 
 # ---------------------------------------------------------------------------

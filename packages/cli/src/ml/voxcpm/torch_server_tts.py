@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -66,88 +67,107 @@ def handle_tts(params: dict, task_id: str, *, emit: Callable | None = None) -> d
 
     tts_dir.mkdir(parents=True, exist_ok=True)
 
-    t0 = time.perf_counter()
-    _load_voxcpm(model_dir, device)
-    load_time = time.perf_counter() - t0
+    # Heartbeat daemon thread — keeps SSE connection alive during long operations
+    _heartbeat_stop = threading.Event()
 
-    data = json.loads(translation_file.read_text(encoding="utf-8"))
-    items = data["translation"]
-    total = len(items)
-    if total == 0:
-        return {"generated": 0, "skipped": 0, "errors": 0, "generate_time_s": 0, "load_time_s": round(load_time, 3)}
-
-    min_bytes = 1200 * 16 * 2
-    fallback = ""
-    for f in sorted(vocals_dir.glob("*.wav")):
-        if f.stat().st_size >= min_bytes:
-            fallback = str(f)
-            break
-
-    generated = skipped = errors = 0
-    gen_time = 0.0
-
-    for index, item in enumerate(items, start=1):
-        idx = f"{index:04d}"
-        out_path = tts_dir / f"{idx}.wav"
-
-        ref_path = vocals_dir / f"{idx}.wav"
-        if not ref_path.exists() or ref_path.stat().st_size < min_bytes:
-            ref_path = Path(fallback) if fallback else None
-        ref_mtime = ref_path.stat().st_mtime_ns if ref_path and ref_path.exists() else 0
-
-        if skip_existing and out_path.exists() and out_path.stat().st_mtime_ns > ref_mtime:
-            skipped += 1
+    def _heartbeat_loop():
+        while not _heartbeat_stop.wait(timeout=10):
             if emit:
-                emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
-            continue
+                emit({"type": "heartbeat"})
 
-        text = item.get("dst") or item.get("zh", "")
-        if not text.strip():
-            _write_empty_wav(str(out_path))
-            skipped += 1
-            if emit:
-                emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
-            continue
+    heartbeat_thread = threading.Thread(target=_heartbeat_loop, daemon=True)
+    heartbeat_thread.start()
 
-        if ref_path is None or not ref_path.exists():
-            _write_empty_wav(str(out_path))
-            skipped += 1
-            if emit:
-                emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
-            continue
-
-        t1 = time.perf_counter()
-        try:
-            wav = _VOXCPM.generate(
-                text=text,
-                reference_wav_path=str(ref_path),
-                cfg_value=cfg_value,
-                inference_timesteps=timesteps,
-            )
-            _write_wav(wav, str(out_path), 48000)
-            gen_time += time.perf_counter() - t1
-            generated += 1
-        except Exception as e:
-            errors += 1
-            sys.stderr.write(f"[ERROR] Segment {idx} failed: {e}\n")
-            sys.stderr.flush()
-            _write_empty_wav(str(out_path))
-
+    try:
+        t0 = time.perf_counter()
         if emit:
-            emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
+            emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": 0, "total": 1, "message": "Loading model..."})
+        _load_voxcpm(model_dir, device)
+        load_time = time.perf_counter() - t0
+        if emit:
+            emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": 0, "total": 1, "message": "Model loaded"})
 
-    total_time = time.perf_counter() - t0
-    out_dur = sum(
-        item.get("end_time", 0) - item.get("start_time", 0)
-        for item in items
-    ) / 1000.0
-    rtf = round(gen_time / max(out_dur, 0.001), 3) if generated > 0 and out_dur > 0 else 0
-    return {
-        "generated": generated,
-        "skipped": skipped,
-        "errors": errors,
-        "generate_time_s": round(gen_time, 3),
-        "load_time_s": round(load_time, 3),
-        "total_time_s": round(total_time, 3),
-        "rtf": rtf,
-    }
+        data = json.loads(translation_file.read_text(encoding="utf-8"))
+        items = data["translation"]
+        total = len(items)
+        if total == 0:
+            return {"generated": 0, "skipped": 0, "errors": 0, "generate_time_s": 0, "load_time_s": round(load_time, 3)}
+
+        min_bytes = 1200 * 16 * 2
+        fallback = ""
+        for f in sorted(vocals_dir.glob("*.wav")):
+            if f.stat().st_size >= min_bytes:
+                fallback = str(f)
+                break
+
+        generated = skipped = errors = 0
+        gen_time = 0.0
+
+        for index, item in enumerate(items, start=1):
+            idx = f"{index:04d}"
+            out_path = tts_dir / f"{idx}.wav"
+
+            ref_path = vocals_dir / f"{idx}.wav"
+            if not ref_path.exists() or ref_path.stat().st_size < min_bytes:
+                ref_path = Path(fallback) if fallback else None
+            ref_mtime = ref_path.stat().st_mtime_ns if ref_path and ref_path.exists() else 0
+
+            if skip_existing and out_path.exists() and out_path.stat().st_mtime_ns > ref_mtime:
+                skipped += 1
+                if emit:
+                    emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
+                continue
+
+            text = item.get("dst") or item.get("zh", "")
+            if not text.strip():
+                _write_empty_wav(str(out_path))
+                skipped += 1
+                if emit:
+                    emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
+                continue
+
+            if ref_path is None or not ref_path.exists():
+                _write_empty_wav(str(out_path))
+                skipped += 1
+                if emit:
+                    emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
+                continue
+
+            t1 = time.perf_counter()
+            try:
+                wav = _VOXCPM.generate(
+                    text=text,
+                    reference_wav_path=str(ref_path),
+                    cfg_value=cfg_value,
+                    inference_timesteps=timesteps,
+                )
+                _write_wav(wav, str(out_path), 48000)
+                gen_time += time.perf_counter() - t1
+                generated += 1
+            except Exception as e:
+                errors += 1
+                sys.stderr.write(f"[ERROR] Segment {idx} failed: {e}\n")
+                sys.stderr.flush()
+                _write_empty_wav(str(out_path))
+
+            if emit:
+                emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
+
+        total_time = time.perf_counter() - t0
+        out_dur = sum(
+            item.get("end_time", 0) - item.get("start_time", 0)
+            for item in items
+        ) / 1000.0
+        rtf = round(gen_time / max(out_dur, 0.001), 3) if generated > 0 and out_dur > 0 else 0
+        return {
+            "generated": generated,
+            "skipped": skipped,
+            "errors": errors,
+            "generate_time_s": round(gen_time, 3),
+            "load_time_s": round(load_time, 3),
+            "total_time_s": round(total_time, 3),
+            "rtf": rtf,
+        }
+    finally:
+        _heartbeat_stop.set()
+        heartbeat_thread.join(timeout=3)

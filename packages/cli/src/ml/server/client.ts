@@ -4,7 +4,7 @@ import { delimiter, pythonBin, REPO_ROOT } from '../../feat/config/config.ts';
 
 const DEFAULT_PORT = 19109;
 
-type ProgressCallback = (current: number, total: number) => void;
+type ProgressCallback = (current: number, total: number, message?: string) => void;
 
 export interface TorchServerConnection {
 	baseUrl: string;
@@ -24,7 +24,7 @@ function readSSE(
 	function dispatch() {
 		if (currentEvent === 'progress') {
 			const d = JSON.parse(currentData);
-			onProgress?.(d.current, d.total);
+			onProgress?.(d.current, d.total, d.message);
 			return null;
 		}
 		if (currentEvent === 'complete') {
@@ -71,7 +71,7 @@ function readSSE(
 
 async function healthCheck(baseUrl: string): Promise<boolean> {
 	try {
-		const res = await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(2000) });
+		const res = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(2000) });
 		return res.ok;
 	} catch {
 		return false;
@@ -123,7 +123,7 @@ export async function startTorchServer(port: number = DEFAULT_PORT): Promise<Tor
 
 export async function stopTorchServer(torchServer: TorchServerConnection): Promise<void> {
 	try {
-		await fetch(`${torchServer.baseUrl}/shutdown`, { method: 'POST' });
+		await fetch(`${torchServer.baseUrl}/api/shutdown`, { method: 'POST' });
 	} catch {
 		// already gone
 	}
@@ -140,7 +140,7 @@ export async function runStage(
 	params: Record<string, unknown>,
 	onProgress?: ProgressCallback,
 ): Promise<Record<string, unknown>> {
-	const res = await fetch(`${torchServer.baseUrl}/run/${stage}`, {
+	const res = await fetch(`${torchServer.baseUrl}/api/run/${stage}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ task_id: taskId, params }),
