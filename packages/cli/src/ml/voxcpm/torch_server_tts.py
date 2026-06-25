@@ -17,9 +17,11 @@ import wave
 
 _VOXCPM: "VoxCPM | None" = None
 
-def _load_voxcpm(model_dir: str, device: str) -> None:
+def _load_voxcpm(model_dir: str, device: str, emit: Callable | None = None) -> None:
     global _VOXCPM
     if _VOXCPM is not None:
+        if emit:
+            emit({"type": "progress", "stage": "tts", "message": "Reusing cached VoxCPM model"})
         return
 
     if not os.path.isdir(model_dir) or not os.listdir(model_dir):
@@ -82,10 +84,10 @@ def handle_tts(params: dict, task_id: str, *, emit: Callable | None = None) -> d
         t0 = time.perf_counter()
         if emit:
             emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": 0, "total": 1, "message": "Loading model..."})
-        _load_voxcpm(model_dir, device)
+        _load_voxcpm(model_dir, device, emit=emit)
         load_time = time.perf_counter() - t0
         if emit:
-            emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": 0, "total": 1, "message": "Model loaded"})
+            emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": 0, "total": 1, "message": f"Model loaded ({load_time:.1f}s)"})
 
         data = json.loads(translation_file.read_text(encoding="utf-8"))
         items = data["translation"]

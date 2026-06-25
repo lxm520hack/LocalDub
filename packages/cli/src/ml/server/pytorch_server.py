@@ -142,9 +142,14 @@ def _emit_to_queue(queue: asyncio.Queue, obj: dict) -> None:
 async def _run_stage_events(stage: str, task_id: str, params: dict):
     """Async generator yielding SSE events for a stage run."""
     queue: asyncio.Queue = asyncio.Queue()
+    last_log_count = _log_buffer.write_count
 
     def emit(obj: dict) -> None:
         _emit_to_queue(queue, obj)
+
+    def emit_log_line(line: str) -> None:
+        """Forward a log line back into the queue so it's yielded in-band."""
+        emit({"type": "log", "line": line})
 
     def worker() -> None:
         try:
@@ -171,7 +176,20 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
     loop.run_in_executor(_executor, worker)
 
     while True:
+        # Real-time: no timeout, yields immediately when the queue has data
         event = await queue.get()
+
+        # Before yielding, flush any accumulated log lines into the queue
+        current_count = _log_buffer.write_count
+        if current_count > last_log_count:
+            for line in _log_buffer.get_lines(current_count - last_log_count):
+                if line.startswith('\r') and '%|' in line and '| ' in line:
+                    continue
+                if not line.strip():
+                    continue
+                emit_log_line(line)
+            last_log_count = current_count
+
         yield f"event: {event['event']}\ndata: {json.dumps(event['data'], ensure_ascii=False)}\n\n"
         if event["event"] in ("complete", "error"):
             break

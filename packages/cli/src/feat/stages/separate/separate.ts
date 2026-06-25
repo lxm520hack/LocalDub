@@ -72,6 +72,7 @@ export async function stageSeparate(
 					last_message: `Separating ${current}%...`,
 				});
 			},
+			(line) => process.stderr.write(line + '\n'),
 		);
 		const sr = result as Record<string, number>;
 		if (sr.load_time_s)

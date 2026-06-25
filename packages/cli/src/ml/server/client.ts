@@ -5,6 +5,7 @@ import { delimiter, pythonBin, REPO_ROOT } from '../../feat/config/config.ts';
 const DEFAULT_PORT = 19109;
 
 type ProgressCallback = (current: number, total: number, message?: string) => void;
+type LogCallback = (line: string) => void;
 
 export interface TorchServerConnection {
 	baseUrl: string;
@@ -14,6 +15,7 @@ export interface TorchServerConnection {
 function readSSE(
 	stream: ReadableStream<Uint8Array>,
 	onProgress?: ProgressCallback,
+	onLog?: LogCallback,
 ): Promise<{ ok: true; output: Record<string, unknown> } | { ok: false; message: string }> {
 	const reader = stream.getReader();
 	const decoder = new TextDecoder();
@@ -32,6 +34,11 @@ function readSSE(
 		}
 		if (currentEvent === 'error') {
 			return { ok: false as const, message: JSON.parse(currentData).message ?? 'Unknown error' };
+		}
+		if (currentEvent === 'log') {
+			const d = JSON.parse(currentData) as { line?: string };
+			onLog?.(d.line ?? '');
+			return null;
 		}
 		return null;
 	}
@@ -139,6 +146,7 @@ export async function runStage(
 	taskId: string,
 	params: Record<string, unknown>,
 	onProgress?: ProgressCallback,
+	onLog?: LogCallback,
 ): Promise<Record<string, unknown>> {
 	const res = await fetch(`${torchServer.baseUrl}/api/run/${stage}`, {
 		method: 'POST',
@@ -151,7 +159,7 @@ export async function runStage(
 	}
 	if (!res.body) throw new Error('TorchServer returned empty response body');
 
-	const result = await readSSE(res.body, onProgress);
+	const result = await readSSE(res.body, onProgress, onLog);
 	if (result.ok) return result.output;
 	throw new Error(result.message);
 }

@@ -193,6 +193,7 @@ export async function stageTts(
 				};
 				process.stdout.write(`\r${pct}%|${bar}| ${current}/${total} [${fmt(elapsed)}<${fmt(eta)}, ${rate.toFixed(2)}it/s]`);
 			},
+			(line) => process.stderr.write(line + '\n'),
 		);
 		process.stdout.write('\n');
 		const r = result as Record<string, number>;
