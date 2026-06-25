@@ -35,7 +35,7 @@ export async function stageOcr(ctx: Context) {
 	const adjustYFactor = ocrCfg?.adjustYFactor ?? 0.08;
 
 	// 1. Extract frames
-	const frameDir = join(sessionPath, "tmp", "ocr-frames");
+	const frameDir = join(sessionPath, "ocr", "frames");
 	ensureDir(frameDir, ctx);
 	emitLog(sessionPath, `[OCR] Extracting frames at ${fps}fps...`);
 
