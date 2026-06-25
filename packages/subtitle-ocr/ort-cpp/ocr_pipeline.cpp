@@ -72,48 +72,25 @@ struct OCRResult {
 // 解码用字符表：index 0 = blank (CTC 跳过), 1..6623 = 6623 个字符, 6624 = ' ' (space)
 // 共 6625 个 token，与 rec 模型输出维度 (N, T, 6625) 一致
 static std::vector<std::string> loadCharList(const std::string& path) {
-    std::ifstream f(path);
-    if (!f) return {};
-    std::string json((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    cv::FileStorage fs(path, cv::FileStorage::READ | cv::FileStorage::FORMAT_JSON);
+    if (!fs.isOpened()) return {};
+
     std::vector<std::string> chars;
-    size_t pos = 0;
-    while (pos < json.size() && json[pos] != '[') pos++;
-    if (pos >= json.size()) return chars;
-    pos++; // skip '['
-    while (pos < json.size() && json[pos] != ']') {
-        while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\n' || json[pos] == '\r' || json[pos] == '\t' || json[pos] == ','))
-            pos++;
-        if (pos >= json.size() || json[pos] == ']') break;
-        if (json[pos] == '"') {
-            pos++; // skip opening quote
-            std::string ch;
-            while (pos < json.size() && json[pos] != '"') {
-                if (json[pos] == '\\') {
-                    pos++;
-                    if (pos < json.size()) {
-                        if (json[pos] == 'u') {
-                            ch += '?';
-                            for (int k = 0; k < 5 && pos < json.size(); k++) pos++;
-                        } else {
-                            ch += json[pos++];
-                        }
-                    }
-                } else {
-                    ch += json[pos++];
-                }
-            }
-            if (pos < json.size()) pos++; // skip closing quote
-            chars.push_back(ch);
-        } else break;
+    cv::FileNode root = fs.root();
+    if (root.type() != cv::FileNode::SEQ) return {};
+
+    for (const auto& node : root) {
+        std::string s;
+        node >> s;
+        chars.push_back(s);
     }
-    // chars 现在是原始 6624 元素，首个是空串
-    // 转换为 [blank, chars[1..end], space]
+
     if (chars.empty()) return {};
     std::vector<std::string> table;
-    table.reserve(chars.size() + 1); // 6624 + 1 = 6625
-    table.push_back(""); // index 0: blank (CTC 跳过)
+    table.reserve(chars.size() + 1);
+    table.push_back("");
     for (size_t i = 1; i < chars.size(); ++i) table.push_back(chars[i]);
-    table.push_back(" "); // last index: space
+    table.push_back(" ");
     return table;
 }
 

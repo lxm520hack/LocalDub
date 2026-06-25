@@ -41,13 +41,20 @@ set(ORT_LIB_DIR "${ORT_DIR}/lib")
 #                         cv::rotate
 #   opencv_imgcodecs    — (optional) imread / imwrite for debugging images
 
-# On MSYS2/MinGW, prefer the MSYS2-installed OpenCV over vcpkg's
-if(WIN32)
-    if(EXISTS "C:/msys64/mingw64/lib/cmake/opencv4")
-        set(OpenCV_DIR "C:/msys64/mingw64/lib/cmake/opencv4")
-    endif()
+# Force vcpkg-installed OpenCV over MSYS2 (which may be MinGW-built and incompatible with MSVC)
+# CMAKE_FIND_USE_[SYSTEM]_ENVIRONMENT_PATH is NOT disabled, but we set OpenCV_DIR as a cache variable
+# so find_package uses it with highest priority in Config mode.
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../submodule/vcpkg/installed/x64-windows/share/opencv4")
+    set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../submodule/vcpkg/installed/x64-windows/share/opencv4" CACHE PATH "OpenCV installation directory" FORCE)
 endif()
 
+# On MSYS2/MinGW, prefer the MSYS2-installed OpenCV over vcpkg's
+# (disabled above — use vcpkg OpenCV which is MSVC-compatible)
+# if(WIN32)
+#     if(EXISTS "C:/msys64/mingw64/lib/cmake/opencv4")
+#         set(OpenCV_DIR "C:/msys64/mingw64/lib/cmake/opencv4")
+#     endif()
+# endif()
 find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
 if(NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV (core, imgproc, imgcodecs) not found. Install libopencv-dev or set OpenCV_DIR.")
