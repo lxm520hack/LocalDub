@@ -218,7 +218,7 @@ export async function tryBuildGgml(sessionPath: string): Promise<boolean> {
 	}
 
 	log(`[Separate] Running cmake configure (${cmakePath})...`);
-	const cmakeConfigure = spawnSync(cmakePath, [...cmakeGen, '..', '-DCMAKE_BUILD_TYPE=Release'], {
+	const cmakeConfigure = spawnSync(cmakePath, [...cmakeGen, '..', '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'], {
 		cwd: buildDir,
 		timeout: 60_000,
 	});
