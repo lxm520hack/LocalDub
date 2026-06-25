@@ -1,6 +1,4 @@
 // import { ErrorCard } from '@repo/ui-solid/app/error';
-// import { NotFound } from '@repo/ui-solid/app/NotFound';
-// import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
 import {
 	createRouteMask,
 	createRouter,
@@ -9,6 +7,8 @@ import {
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
 import { NotFound } from '@repo/ui-solid/app/NotFound';
+import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
+import { setupRouterSsrQueryIntegration } from '@tanstack/solid-router-ssr-query';
 
 // const settingsSubRoutes = ["/settings", "/settings/appearance"] as const;
 
@@ -22,16 +22,20 @@ import { NotFound } from '@repo/ui-solid/app/NotFound';
 // );
 export function getRouter() {
 	// Create a new router instance
-	// const queryClient = getQueryClient();
+	const queryClient = getQueryClient();
 	const router = createRouter({
 		routeTree,
-		// context: { queryClient },
+		context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
 		// routeMasks: [...settingsMasks]
 		// defaultErrorComponent: ErrorCard,
 		defaultNotFoundComponent: () => <NotFound />,
+	});
+		setupRouterSsrQueryIntegration({
+		router,
+		queryClient,
 	});
 	return router;
 }

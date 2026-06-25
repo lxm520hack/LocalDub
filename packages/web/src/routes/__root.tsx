@@ -10,8 +10,13 @@ import {
 } from '@repo/shared/i18n/paraglide/runtime.js';
 import { HydrationScript } from 'solid-js/web';
 import styleCss from '../styles.css?url'
+import { QueryClient } from '@tanstack/solid-query';
 
-export const Route = createRootRoute({
+interface MyRouterContext {
+	queryClient: QueryClient;
+}
+
+export const Route = createRootRoute<MyRouterContext>({
   head: () => ({
     meta: [{
       name: 'viewport',
