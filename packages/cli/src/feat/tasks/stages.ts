@@ -30,7 +30,7 @@ export const SUBTITLE_STAGES: StageSpec[] = [
 ];
 
 function withOcrStages(stages: StageSpec[], pipeline?: string): StageSpec[] {
-	const drop = new Set(['asr', 'asr_fix', 'separate']);
+	const drop = new Set(['asr', 'asr_fix', 'separate', 'separate_after']);
 	if (pipeline === 'subtitle') drop.add('separate');
 	const filtered = stages.filter(s => !drop.has(s.name));
 	const idx = filtered.findIndex(s => s.name === 'translate');
