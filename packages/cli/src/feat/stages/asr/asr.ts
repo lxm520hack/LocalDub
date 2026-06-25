@@ -469,7 +469,7 @@ async function asrWhisperCpp(
 			end_fmt: srtTime(endMs),
 		};
 		if (emitWords) {
-			const words = (s.tokens || [])
+			const rawWords = (s.tokens || [])
 				.filter((t: any) => {
 					const txt = t.text?.trim();
 					return txt && !txt.startsWith('[') && t.offsets?.from != null;
@@ -480,8 +480,18 @@ async function asrWhisperCpp(
 					end: t.offsets.to ?? 0,
 					probability: t.p,
 				}));
-			seg.words = words;
-			const probs = words.map((w: any) => w.probability).filter((p: number) => p >= 0);
+			if (rawWords.length > 0) {
+				const offset = startMs - rawWords[0].start;
+				if (Math.abs(offset) > 500) {
+					emitLog(sessionPath, `[ASR] VAD word timestamp shift: ${rawWords.length} words offset by ${Math.round(offset)}ms`);
+				}
+				for (const w of rawWords) {
+					w.start += offset;
+					w.end += offset;
+				}
+			}
+			seg.words = rawWords;
+			const probs = rawWords.map((w: any) => w.probability).filter((p: number) => p >= 0);
 			if (probs.length > 0) {
 				seg.confidence = {
 					avg: +(probs.reduce((a: number, b: number) => a + b, 0) / probs.length).toFixed(4),
