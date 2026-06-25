@@ -4,9 +4,11 @@ import solid from 'vite-plugin-solid';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { devtools } from '@tanstack/devtools-vite';
 
 export default defineConfig({
   plugins: [
+    devtools(),
     tanstackStart(),
     solid({
       ssr: true,

@@ -1,7 +1,7 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 import { startTorch, stopTorch, restartTorch } from '../-fn/torch';
-import { Button } from '@repo/ui-solid/base/button';
 import { useMutation } from '@tanstack/solid-query';
+import { Button } from '@repo/ui-solid/base/button';
 
 interface HealthData {
   status: string;
@@ -20,7 +20,6 @@ function fmtUptime(s: number): string {
 export function TorchServer() {
   const [health, setHealth] = createSignal<HealthData | null>(null);
   const [logs, setLogs] = createSignal('');
-  const [busy, setBusy] = createSignal(false);
   const [errMsg, setErrMsg] = createSignal('');
 
   onMount(() => {
@@ -38,48 +37,32 @@ export function TorchServer() {
     onCleanup(() => es.close());
   });
 
-  const startServer = useMutation(()=>({}))
-  async function handleStart() {
-    setBusy(true);
-    setErrMsg('');
-    try {
-      const s = await startTorch();
+  const startMutation = useMutation(() => ({
+    mutationFn: () => startTorch(),
+    onMutate: () => setErrMsg(''),
+    onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
-      else setErrMsg('Server failed to start');
-    } catch (e) {
-      setErrMsg(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+    onError: (e) => setErrMsg(String(e)),
+  }));
 
-  async function handleStop() {
-    setBusy(true);
-    setErrMsg('');
-    try {
-      await stopTorch();
-      setHealth(null);
-    } catch (e) {
-      setErrMsg(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const stopMutation = useMutation(() => ({
+    mutationFn: () => stopTorch(),
+    onMutate: () => setErrMsg(''),
+    onSuccess: () => setHealth(null),
+    onError: (e) => setErrMsg(String(e)),
+  }));
 
-  async function handleRestart() {
-    setBusy(true);
-    setErrMsg('');
-    try {
-      const s = await restartTorch();
+  const restartMutation = useMutation(() => ({
+    mutationFn: () => restartTorch(),
+    onMutate: () => setErrMsg(''),
+    onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
-      else setErrMsg('Server failed to restart');
-    } catch (e) {
-      setErrMsg(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+    onError: (e) => setErrMsg(String(e)),
+  }));
 
+  const busy = () => startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
   const running = () => health() !== null;
 
   return (
@@ -95,34 +78,27 @@ export function TorchServer() {
 
         <div class="flex items-center gap-2 ml-4">
           <Button
-            onClick={handleStart}
+            variant='ghost'
+            onClick={() =>startMutation.mutate()}
             disabled={busy() || running()}
-            class="bg-green-500"
+            class=" font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-green-400"
           >
             Start
           </Button>
-          <button
-            onClick={handleRestart}
+          <Button
+            onClick={() => {  restartMutation.mutate(); }}
             disabled={busy() || !running()}
-            class="px-4 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: '#854d0e',
-              color: '#fef08a',
-            }}
+            class=" font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-amber-300"
           >
             Restart
-          </button>
-          <button
-            onClick={handleStop}
+          </Button>
+          <Button
+            onClick={() => {  stopMutation.mutate(); }}
             disabled={busy() || !running()}
-            class="px-4 py-1.5 text-sm rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: '#7f1d1d',
-              color: '#fecaca',
-            }}
+            class="font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-red-400"
           >
             Stop
-          </button>
+          </Button>
         </div>
 
         <span class="text-sm text-gray-500 ml-auto">

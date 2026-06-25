@@ -10,7 +10,9 @@ import {
 } from '@repo/shared/i18n/paraglide/runtime.js';
 import { HydrationScript } from 'solid-js/web';
 import styleCss from '../styles.css?url'
-import { QueryClient } from '@tanstack/solid-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
+import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
+import { Devtools } from '@repo/ui-solid/app/devtools';
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -57,6 +59,7 @@ function RootDocument({ children }: { children: JSX.Element }) {
   
 </SidebarProvider>
     </ThemeProvider>
+    <Devtools />
         <Scripts />
       </body>
   </html>
