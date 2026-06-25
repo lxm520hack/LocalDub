@@ -1,4 +1,4 @@
-import type { DaemonConnection } from '../../ml/server/client.ts';
+import type { TorchServerConnection } from '../../ml/server/client.ts';
 import { stageDownload } from './download.ts';
 import { stageSeparate } from './separate/separate.ts';
 import { stageSeparateAfter } from './separate_after.ts';
@@ -35,7 +35,7 @@ export { stageMergeAudio };
 export { stageMergeVideo };
 
 
-export type StageHandler = (taskId: string, sessionPath: string, task: Task, daemon?: DaemonConnection) => Promise<void>;
+export type StageHandler = (taskId: string, sessionPath: string, task: Task, torchServer?: TorchServerConnection) => Promise<void>;
 
 export const STAGE_HANDLERS: Record<string, StageHandler> = {
   download: async (id, sp, task) => {

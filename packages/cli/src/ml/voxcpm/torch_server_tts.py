@@ -1,5 +1,5 @@
 """
-Daemon handler for VoxCPM TTS stage.
+Torch server handler for VoxCPM TTS stage.
 Imported by pytorch_server.py.
 """
 from __future__ import annotations

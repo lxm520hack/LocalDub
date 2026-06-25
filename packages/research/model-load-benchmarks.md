@@ -31,8 +31,8 @@ All measurements from kernel OOM reports + `free -h`.
 
 | Configuration | Peak RSS | Result |
 |--------------|----------|--------|
-| Demucs (CPU) + VoxCPM (CPU) — daemon | ~5.5GB | ✅ Works |
-| Demucs (CPU) + Whisper PyTorch (CPU) + VoxCPM (CPU) — daemon | ~9.5GB | ❌ OOM killed |
+| Demucs (CPU) + VoxCPM (CPU) — torch server | ~5.5GB | ✅ Works |
+| Demucs (CPU) + Whisper PyTorch (CPU) + VoxCPM (CPU) — torch server | ~9.5GB | ❌ OOM killed |
 | Demucs (CPU) + VoxCPM (CPU) — standalone subprocess per stage | ~4-5GB | ✅ Works |
 | Any single model standalone | ~2-5GB | ✅ Works |
 
@@ -45,9 +45,9 @@ Available headroom: ~10GB RAM, ~4GB swap
 ```
 
 - **Whisper PyTorch on GPU**: segfaults (likely ROCm regression, was stable before)
-- **Whisper PyTorch on CPU**: ~3GB RSS added to daemon process
-- **Three models concurrently in daemon**: exceeds 10GB headroom → OOM
-- **Two models (Demucs + VoxCPM) in daemon**: fits within limits
+- **Whisper PyTorch on CPU**: ~3GB RSS added to torch server process
+- **Three models concurrently in torch server**: exceeds 10GB headroom → OOM
+- **Two models (Demucs + VoxCPM) in torch server**: fits within limits
 - **faster-whisper (subprocess)**: loaded in a separate process that exits after ASR, so its memory is reclaimed before VoxCPM starts
 
 ## Device Compatibility
@@ -60,16 +60,16 @@ Available headroom: ~10GB RAM, ~4GB swap
 | VoxCPM | PyTorch (from_pretrained) | ❌ GPU segfault | ✅ (~4.7GB weights) |
 | VoxCPM | ONNX (onnxruntime) | ⏸️ Dawn WebGPU leak / MIGraphX 10x slower | ✅ sequential load, peak ~16GB |
 
-## Daemon Architecture Takeaways
+## Torch Server Architecture Takeaways
 
-The TCP daemon (`MLDaemon` + `DaemonServer`) works correctly when model memory fits:
+The TCP torch server works correctly when model memory fits:
 
-- **Model caching is viable** when only 1-2 moderate models (<6GB total) share the daemon process
-- **faster-whisper as subprocess**: ideal — GPU-accelerated, exits after use, no daemon memory impact
-- **VoxCPM on CPU**: load + generate within daemon works (35s + 462s for 7 clips)
+- **Model caching is viable** when only 1-2 moderate models (<6GB total) share the torch server process
+- **faster-whisper as subprocess**: ideal — GPU-accelerated, exits after use, no torch server memory impact
+- **VoxCPM on CPU**: load + generate within torch server works (35s + 462s for 7 clips)
 - **Demucs on CPU**: works but slow (296s for ~2min audio)
 
-If all three models must be CPU, use standalone subprocesses (MLDaemon not started) to avoid OOM.
+If all three models must be CPU, use standalone subprocesses (torch server not started) to avoid OOM.
 
 ## VoxCPM TTS Performance (CPU)
 

@@ -72,17 +72,33 @@ struct OCRResult {
 // 解码用字符表：index 0 = blank (CTC 跳过), 1..6623 = 6623 个字符, 6624 = ' ' (space)
 // 共 6625 个 token，与 rec 模型输出维度 (N, T, 6625) 一致
 static std::vector<std::string> loadCharList(const std::string& path) {
-    cv::FileStorage fs(path, cv::FileStorage::READ | cv::FileStorage::FORMAT_JSON);
-    if (!fs.isOpened()) return {};
+    std::ifstream ifs(path);
+    if (!ifs) return {};
+    std::string content((std::istreambuf_iterator<char>(ifs)), {});
+    if (content.empty()) return {};
 
     std::vector<std::string> chars;
-    cv::FileNode root = fs.root();
-    if (root.type() != cv::FileNode::SEQ) return {};
+    size_t i = 0;
+    auto skip = [&] { while (i < content.size() && content[i] <= ' ') i++; };
+    skip();
+    if (i >= content.size() || content[i] != '[') return {};
+    i++;
 
-    for (const auto& node : root) {
+    while (i < content.size()) {
+        skip();
+        if (i >= content.size() || content[i] == ']') break;
+        if (content[i] != '"') return {};
+        i++;
         std::string s;
-        node >> s;
+        while (i < content.size() && content[i] != '"') {
+            if (content[i] == '\\' && i + 1 < content.size()) i++;
+            s += content[i++];
+        }
+        if (i >= content.size()) return {};
+        i++;
         chars.push_back(s);
+        skip();
+        if (i < content.size() && content[i] == ',') i++;
     }
 
     if (chars.empty()) return {};

@@ -7,9 +7,11 @@ import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
 import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
+import { startLog } from '../utils/log.ts';
 
 export async function stageAsrOcr(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
+	startLog(sessionPath, ctx.task.id)
 	await setStage(sessionPath, 'asr_ocr', {
 		last_message: `OCR'ing frames...`,
 		progress: 0,

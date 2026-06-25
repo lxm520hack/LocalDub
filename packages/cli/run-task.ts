@@ -15,23 +15,19 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { startDaemon, stopDaemon, type DaemonConnection } from './src/ml/server/client.ts';
+import { startTorchServer, type TorchServerConnection } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
 
-async function withDaemon<T>(
+async function withTorchServer<T>(
 	taskId: string,
-	fn: (daemon: DaemonConnection) => Promise<T>,
+	fn: (torchServer: TorchServerConnection) => Promise<T>,
 ): Promise<T> {
 	const config = readConfig();
-	const DAEMON_PORT = config.daemonPort || 19109;
-	const daemon = await startDaemon(DAEMON_PORT);
-	try {
-		return await fn(daemon);
-	} finally {
-		await stopDaemon(daemon);
-	}
+	const TORCH_SERVER_PORT = config.torchServerPort || 19109;
+	const torchServer = await startTorchServer(TORCH_SERVER_PORT);
+	return await fn(torchServer);
 }
 
 const config = readConfig();
@@ -74,45 +70,6 @@ switch (cmd) {
 		const { getDeviceInfo } = await import('@repo/device');
 		const info = await getDeviceInfo();
 		console.log(JSON.stringify(info, null, 2));
-		break;
-	}
-
-	case 'daemonStatus': {
-		const DAEMON_PORT = config.daemonPort || 19109;
-		try {
-			const res = await fetch(`http://127.0.0.1:${DAEMON_PORT}/health`, { signal: AbortSignal.timeout(2000) });
-			const data = await res.json();
-			console.log(JSON.stringify({ alive: true, port: DAEMON_PORT, ...data }));
-		} catch {
-			console.log(
-				JSON.stringify({
-					alive: false,
-					port: DAEMON_PORT,
-					message: 'Connection failed (daemon not running)',
-				}),
-			);
-		}
-		break;
-	}
-
-	case 'daemonStop': {
-		const DAEMON_PORT = config.daemonPort || 19109;
-		try {
-			const res = await fetch(`http://127.0.0.1:${DAEMON_PORT}/shutdown`, {
-				method: 'POST',
-				signal: AbortSignal.timeout(2000),
-			});
-			const data = await res.json();
-			console.log(JSON.stringify({ stopped: true, port: DAEMON_PORT, ...data }));
-		} catch {
-			console.log(
-				JSON.stringify({
-					stopped: false,
-					port: DAEMON_PORT,
-					message: 'Connection failed (daemon not running)',
-				}),
-			);
-		}
 		break;
 	}
 
@@ -171,8 +128,9 @@ switch (cmd) {
 			);
 
 			console.log(`\n[CLI] Running pipeline for task ${taskId} (${ctx.task.session_path})...`);
-			await withDaemon(taskId, (d) => runPipeline(ctx, d));
+			await withTorchServer(taskId, (d) => runPipeline(ctx, d));
 			console.log('[CLI] Pipeline completed');
+			process.exit(0);
 		} catch (err) {
 			console.error('createTask failed:', err);
 			process.exit(1);
@@ -198,10 +156,11 @@ switch (cmd) {
 
 		console.log(`[CLI] Resuming pipeline for task ${sessionPath}${label}...`);
 		try {
-			await withDaemon(taskId, (d) =>
+			await withTorchServer(taskId, (d) =>
 				resumePipeline(ctx, resumeFrom, config.stages, d),
 			);
 			console.log('[CLI] Pipeline completed');
+			process.exit(0);
 		} catch (err) {
 			console.error('[CLI] Pipeline failed:', err);
 			process.exit(1);
@@ -222,10 +181,11 @@ switch (cmd) {
 		const taskId = ctx.task.id;
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
-			await withDaemon(taskId, (d) =>
+			await withTorchServer(taskId, (d) =>
 				rerunSingleStage(ctx, stageName, config.stages, d),
 			);
 			console.log('[CLI] Stage completed');
+			process.exit(0);
 		} catch (err) {
 			console.error('[CLI] Stage failed:', err);
 			process.exit(1);
@@ -233,40 +193,74 @@ switch (cmd) {
 		break;
 	}
 
-	case 'daemon': {
-		const DAEMON_PORT = config.daemonPort || 19109;
-		const scriptPath = join(
-			REPO_ROOT,
-			'packages',
-			'cli',
-			'src',
-			'ml',
-			'server',
-			'pytorch_server.py',
-		);
-		const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
+	case 'torchServer': {
+		const action = (config as any).torchServerAction ?? 'start';
+		const TORCH_SERVER_PORT = config.torchServerPort || 19109;
+		if (action === 'status') {
+			try {
+				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/health`, { signal: AbortSignal.timeout(2000) });
+				const data = await res.json();
+				console.log(JSON.stringify({ alive: true, port: TORCH_SERVER_PORT, ...data }));
+			} catch {
+				console.log(
+					JSON.stringify({
+						alive: false,
+						port: TORCH_SERVER_PORT,
+						message: 'Connection failed (torch server not running)',
+					}),
+				);
+			}
+		} else if (action === 'stop') {
+			try {
+				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/shutdown`, {
+					method: 'POST',
+					signal: AbortSignal.timeout(2000),
+				});
+				const data = await res.json();
+				console.log(JSON.stringify({ stopped: true, port: TORCH_SERVER_PORT, ...data }));
+			} catch {
+				console.log(
+					JSON.stringify({
+						stopped: false,
+						port: TORCH_SERVER_PORT,
+						message: 'Connection failed (torch server not running)',
+					}),
+				);
+			}
+		} else {
+			const scriptPath = join(
+				REPO_ROOT,
+				'packages',
+				'cli',
+				'src',
+				'ml',
+				'server',
+				'pytorch_server.py',
+			);
+			const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
-		const pyEnv: Record<string, string> = {
-			...(process.env as Record<string, string>),
-		};
-		const existing = pyEnv.PYTHONPATH || '';
-		pyEnv.PYTHONPATH = existing ? `${voxcpmSrc}:${existing}` : voxcpmSrc;
+			const pyEnv: Record<string, string> = {
+				...(process.env as Record<string, string>),
+			};
+			const existing = pyEnv.PYTHONPATH || '';
+			pyEnv.PYTHONPATH = existing ? `${voxcpmSrc}:${existing}` : voxcpmSrc;
 
-		const proc = spawn(
-			pythonBin(),
-			[scriptPath, '--http-port', String(DAEMON_PORT)],
-			{
-				env: pyEnv,
-				detached: true,
-				stdio: 'inherit',
-			},
-		);
-		proc.unref();
-		console.log(
-			`[Daemon] Spawned pipeline daemon (pid ${proc.pid}) on port ${DAEMON_PORT}`,
-		);
-		process.stdin.resume();
-		await new Promise(() => {});
+			const proc = spawn(
+				pythonBin(),
+				[scriptPath, '--http-port', String(TORCH_SERVER_PORT)],
+				{
+					env: pyEnv,
+					detached: true,
+					stdio: 'inherit',
+				},
+			);
+			proc.unref();
+			console.log(
+				`[TorchServer] Spawned torch server (pid ${proc.pid}) on port ${TORCH_SERVER_PORT}`,
+			);
+			process.stdin.resume();
+			await new Promise(() => {});
+		}
 		break;
 	}
 
@@ -281,8 +275,9 @@ switch (cmd) {
 		const taskId = ctx.task.id;
 		console.log(`[CLI] Starting pipeline for task ${taskId}...`);
 		try {
-			await withDaemon(taskId, (d) => runPipeline(ctx, d));
+			await withTorchServer(taskId, (d) => runPipeline(ctx, d));
 			console.log('[CLI] Pipeline completed');
+			process.exit(0);
 		} catch (err) {
 			console.error('[CLI] Pipeline failed:', err);
 			process.exit(1);

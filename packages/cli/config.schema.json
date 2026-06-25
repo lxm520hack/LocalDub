@@ -14,12 +14,10 @@
             "taskStatus",
             "createTask",
             "deviceInfo",
-            "daemon",
-            "daemonStatus",
-            "daemonStop",
+            "torchServer",
             "listModels"
           ],
-          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. daemon: 启动守护进程\n\t\t9. daemonStatus: 显示守护进程状态\n\t\t10. daemonStop: 停止守护进程\n\t\t11. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
+          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. torchServer: 启动 Torch server (torchServerAction=status 查状态, stop 停止)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
         },
         "createTask": {
           "type": "object",
@@ -221,13 +219,22 @@
             "merge_video"
           ]
         },
-        "daemonPort": {
+        "torchServerPort": {
           "default": 19109,
           "type": "number"
         },
-        "daemonIdleTimeout": {
+        "torchServerIdleTimeout": {
           "default": 300,
           "type": "number"
+        },
+        "torchServerAction": {
+          "default": "start",
+          "type": "string",
+          "enum": [
+            "start",
+            "status",
+            "stop"
+          ]
         },
         "stages": {
           "type": "object",
@@ -495,21 +502,25 @@
             },
             "ocr": {
               "default": {
-                "runtime": "ort-opencv-cpp",
+                "runtime": "ort-cpp",
                 "device": "cpu",
                 "fps": 2,
                 "textScore": 0.45,
                 "subtitleOnly": true,
-                "cleanupFrames": false
+                "cleanupFrames": false,
+                "isoThresholdMs": 1500,
+                "adjustYWeight": 0.8,
+                "adjustIsoWeight": 0.2,
+                "adjustYFactor": 0.08
               },
               "type": "object",
               "properties": {
                 "runtime": {
-                  "default": "ort-opencv-cpp",
-                  "description": "OCR 推理运行时: ort-opencv-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
+                  "default": "ort-cpp",
+                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
                   "type": "string",
                   "enum": [
-                    "ort-opencv-cpp",
+                    "ort-cpp",
                     "ort-node",
                     "ort-py",
                     "ort-rust"
@@ -547,13 +558,33 @@
                   "default": false,
                   "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
                   "type": "boolean"
+                },
+                "isoThresholdMs": {
+                  "default": 1500,
+                  "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
+                  "type": "number"
+                },
+                "adjustYWeight": {
+                  "default": 0.8,
+                  "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
+                  "type": "number"
+                },
+                "adjustIsoWeight": {
+                  "default": 0.2,
+                  "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
+                  "type": "number"
+                },
+                "adjustYFactor": {
+                  "default": 0.08,
+                  "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
+                  "type": "number"
                 }
               },
               "additionalProperties": {}
             },
             "asr_ocr": {
               "default": {
-                "runtime": "ort-opencv-cpp",
+                "runtime": "ort-cpp",
                 "device": "cpu",
                 "fps": 2,
                 "textScore": 0.45,
@@ -563,11 +594,11 @@
               "type": "object",
               "properties": {
                 "runtime": {
-                  "default": "ort-opencv-cpp",
-                  "description": "OCR 推理运行时: ort-opencv-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
+                  "default": "ort-cpp",
+                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
                   "type": "string",
                   "enum": [
-                    "ort-opencv-cpp",
+                    "ort-cpp",
                     "ort-node",
                     "ort-py",
                     "ort-rust"
@@ -612,13 +643,37 @@
             "asr_ocr_fix": {
               "default": {
                 "llmFix": false,
-                "textScore": 0.5
+                "textScore": 0.5,
+                "isoThresholdMs": 1500,
+                "adjustYWeight": 0.8,
+                "adjustIsoWeight": 0.2,
+                "adjustYFactor": 0.08
               },
               "type": "object",
               "properties": {
                 "textScore": {
                   "description": "OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃",
                   "default": 0.5,
+                  "type": "number"
+                },
+                "isoThresholdMs": {
+                  "default": 1500,
+                  "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
+                  "type": "number"
+                },
+                "adjustYWeight": {
+                  "default": 0.8,
+                  "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
+                  "type": "number"
+                },
+                "adjustIsoWeight": {
+                  "default": 0.2,
+                  "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
+                  "type": "number"
+                },
+                "adjustYFactor": {
+                  "default": 0.08,
+                  "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
                   "type": "number"
                 },
                 "llmFix": {
