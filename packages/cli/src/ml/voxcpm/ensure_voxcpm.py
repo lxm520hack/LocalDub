@@ -45,16 +45,24 @@ def _ensure_package() -> bool:
     except ModuleNotFoundError:
         pass
 
-    submodule_dir = Path(__file__).resolve().parents[6] / "submodule" / "VoxCPM"
+    submodule_dir = Path(__file__).resolve().parents[5] / "submodule" / "VoxCPM"
     if not submodule_dir.is_dir():
         print(f"[ensure_voxcpm] Submodule not found at {submodule_dir}", file=sys.stderr)
         return False
+
+    pyproj = submodule_dir / "pyproject.toml"
+    orig = pyproj.read_text(encoding="utf-8")
+    patched = orig.replace('license = "Apache-2.0"', "license = {text = \"Apache-2.0\"}")
+    pyproj.write_text(patched, encoding="utf-8")
 
     print(f"[ensure_voxcpm] Installing voxcpm from {submodule_dir}...")
     result = subprocess.run(
         [sys.executable, "-m", "pip", "install", "--no-build-isolation", "--no-deps", "-e", str(submodule_dir)],
         capture_output=True, text=True,
     )
+
+    pyproj.write_text(orig, encoding="utf-8")
+
     if result.returncode != 0:
         print(f"[ensure_voxcpm] pip install failed: {result.stderr}", file=sys.stderr)
         return False

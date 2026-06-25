@@ -38,7 +38,7 @@ async function runPytorchBatch(
 	const pyBin = pythonBin();
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
-	const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'ensure_voxcpm.py');
+	const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'src', 'ml', 'voxcpm', 'ensure_voxcpm.py');
 	const procEnsure = spawn(pyBin, [ensureScript, 'OpenBMB/VoxCPM2', modelDir], { timeout: 1_800_000 });
 	procEnsure.stderr?.pipe(process.stderr);
 	await new Promise<void>((resolve, reject) => {
