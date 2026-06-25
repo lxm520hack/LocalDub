@@ -135,8 +135,11 @@ export async function tryBuildGgml(sessionPath: string): Promise<boolean> {
 			return spawnSync(exePath, ['--version'], { timeout: 5000 }).status === 0;
 		};
 
-		const hasMSVC = checkCompilerFullPath('C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\MSBuild.exe')
-			|| checkCompilerFullPath('C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe');
+		const vsEditions = ['Enterprise', 'Professional', 'Community', 'BuildTools'];
+		const msbuildRoot = 'C:\\Program Files\\Microsoft Visual Studio\\2022';
+		const hasMSVC = vsEditions.some(ed =>
+			existsSync(join(msbuildRoot, ed, 'MSBuild', 'Current', 'Bin', 'MSBuild.exe'))
+		);
 		const hasMinGW = mingwBin ? checkCompilerFullPath(join(mingwBin, 'g++.exe')) : false;
 
 		if (hasMSVC) {
