@@ -198,7 +198,7 @@ switch (cmd) {
 		const TORCH_SERVER_PORT = config.torchServerPort || 19109;
 		if (action === 'status') {
 			try {
-				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/health`, { signal: AbortSignal.timeout(2000) });
+				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/api/health`, { signal: AbortSignal.timeout(2000) });
 				const data = await res.json();
 				console.log(JSON.stringify({ alive: true, port: TORCH_SERVER_PORT, ...data }));
 			} catch {
@@ -212,7 +212,7 @@ switch (cmd) {
 			}
 		} else if (action === 'stop') {
 			try {
-				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/shutdown`, {
+				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/api/shutdown`, {
 					method: 'POST',
 					signal: AbortSignal.timeout(2000),
 				});

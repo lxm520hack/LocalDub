@@ -163,10 +163,11 @@ export async function stageTts(
 				device: ttsCfg.device,
 				skipExisting: ttsCfg.skipExisting,
 			},
-			(current, total) => {
-				emitLog(sessionPath, `[TTS] ${current}/${total}`);
+			(current, total, msg) => {
+				emitLog(sessionPath, `[TTS] ${current}/${total}${msg ? ` ${msg}` : ''}`);
 				setStage(sessionPath, 'tts', {
-					last_message: `Generating ${current}/${total}...`,
+					progress: total > 0 ? Math.round((current / total) * 100) : 0,
+					last_message: msg ?? `Generating ${current}/${total}...`,
 				});
 			},
 		);
