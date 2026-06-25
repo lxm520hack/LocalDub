@@ -6,7 +6,7 @@ const DEFAULT_PORT = 19109;
 
 type ProgressCallback = (current: number, total: number) => void;
 
-export interface DaemonConnection {
+export interface TorchServerConnection {
 	baseUrl: string;
 	proc?: ChildProcess;
 }
@@ -78,17 +78,17 @@ async function healthCheck(baseUrl: string): Promise<boolean> {
 	}
 }
 
-export async function startDaemon(port: number = DEFAULT_PORT): Promise<DaemonConnection> {
+export async function startTorchServer(port: number = DEFAULT_PORT): Promise<TorchServerConnection> {
 	const baseUrl = `http://127.0.0.1:${port}`;
 
-	// 1) Try existing daemon
+	// 1) Try existing server
 	if (await healthCheck(baseUrl)) {
-		console.log(`[Daemon] Connected to existing daemon at ${baseUrl}`);
+		console.log(`[TorchServer] Connected to existing server at ${baseUrl}`);
 		return { baseUrl };
 	}
 
-	// 2) Spawn detached Python daemon
-	console.log('[Daemon] Spawning ML pipeline daemon...');
+	// 2) Spawn detached Torch server
+	console.log('[TorchServer] Spawning ML torch server...');
 	const pyBin = pythonBin();
 	const scriptPath = join(
 		REPO_ROOT, 'packages', 'cli', 'src', 'ml', 'server', 'pytorch_server.py',
@@ -113,43 +113,43 @@ export async function startDaemon(port: number = DEFAULT_PORT): Promise<DaemonCo
 	while (Date.now() < deadline) {
 		await new Promise((r) => setTimeout(r, 200));
 		if (await healthCheck(baseUrl)) {
-			console.log(`[Daemon] Daemon ready at ${baseUrl} (pid ${proc.pid})`);
+			console.log(`[TorchServer] Server ready at ${baseUrl} (pid ${proc.pid})`);
 			return { baseUrl, proc };
 		}
 	}
 
-	throw new Error(`Daemon startup timeout after 60000ms`);
+	throw new Error(`TorchServer startup timeout after 60000ms`);
 }
 
-export async function stopDaemon(daemon: DaemonConnection): Promise<void> {
+export async function stopTorchServer(torchServer: TorchServerConnection): Promise<void> {
 	try {
-		await fetch(`${daemon.baseUrl}/shutdown`, { method: 'POST' });
+		await fetch(`${torchServer.baseUrl}/shutdown`, { method: 'POST' });
 	} catch {
 		// already gone
 	}
-	if (daemon.proc) {
-		daemon.proc.stdout?.destroy();
-		daemon.proc.stderr?.destroy();
+	if (torchServer.proc) {
+		torchServer.proc.stdout?.destroy();
+		torchServer.proc.stderr?.destroy();
 	}
 }
 
 export async function runStage(
-	daemon: DaemonConnection,
+	torchServer: TorchServerConnection,
 	stage: string,
 	taskId: string,
 	params: Record<string, unknown>,
 	onProgress?: ProgressCallback,
 ): Promise<Record<string, unknown>> {
-	const res = await fetch(`${daemon.baseUrl}/run/${stage}`, {
+	const res = await fetch(`${torchServer.baseUrl}/run/${stage}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ task_id: taskId, params }),
 	});
 	if (!res.ok) {
 		const text = await res.text().catch(() => '');
-		throw new Error(`Daemon HTTP ${res.status}: ${text}`);
+		throw new Error(`TorchServer HTTP ${res.status}: ${text}`);
 	}
-	if (!res.body) throw new Error('Daemon returned empty response body');
+	if (!res.body) throw new Error('TorchServer returned empty response body');
 
 	const result = await readSSE(res.body, onProgress);
 	if (result.ok) return result.output;

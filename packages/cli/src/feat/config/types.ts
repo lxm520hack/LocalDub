@@ -37,9 +37,7 @@ export const commandList = [
 	'taskStatus', // 显示某任务状态
 	'createTask', // 创建任务(完成后会自动开始任务)
 	'deviceInfo', // 显示设备信息
-	'daemon', // 启动守护进程
-	'daemonStatus', // 显示守护进程状态
-	'daemonStop', // 停止守护进程
+	'torchServer', // 启动/状态/停止 Torch server
 	'listModels', // 列出 openai 兼容端点的 可用模型
 ] as const;
 export type Command = (typeof commandList)[number];
@@ -162,13 +160,16 @@ const ASRConfigSchema = z
 	.optional();
 
 export type ASRConfig = z.output<typeof ASRConfigSchema>;
+
+const ocrRuntimeList = ['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'] as const;
+const ocrRuntimeSchema = z
+			.enum(ocrRuntimeList)
+			.default('ort-cpp')
+			.describe('OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)')
+			.optional()
 const OcrConfigSchema = z
 	.looseObject({
-		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
-			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
-			.optional(),
+		runtime: ocrRuntimeSchema,
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
 			.default('cpu')
@@ -219,13 +220,10 @@ const OcrConfigSchema = z
 	.optional();
 export type OcrConfig = z.output<typeof OcrConfigSchema>;
 
+
 const AsrOcrConfigSchema = z
 	.looseObject({
-		runtime: z
-			.enum(['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'])
-			.default('ort-cpp')
-			.describe('OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)')
-			.optional(),
+		runtime: ocrRuntimeSchema,
 		device: z
 			.enum(['cpu', 'cuda', 'directml', 'coreml', 'rocm', 'mps'])
 			.default('cpu')
@@ -512,8 +510,9 @@ const BaseConfigSchema = z.looseObject({
 		.enum(stagesList)
 		.optional()
 		.describe('目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤'),
-	daemonPort: z.number().default(19109).optional(),
-	daemonIdleTimeout: z.number().default(300).optional(),
+	torchServerPort: z.number().default(19109).optional(),
+	torchServerIdleTimeout: z.number().default(300).optional(),
+	torchServerAction: z.enum(['start', 'status', 'stop']).default('start').optional(),
 	stages: StagesSchema.optional(),
 });
 export type BaseConfigInput = z.input<typeof BaseConfigSchema>;
@@ -531,10 +530,8 @@ const TaskSchema = z.looseObject({
 		5. taskStatus: 显示某任务状态
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
 		7. deviceInfo: 显示设备信息
-		8. daemon: 启动守护进程
-		9. daemonStatus: 显示守护进程状态
-		10. daemonStop: 停止守护进程
-		11. listModels: 列出 openai 兼容端点的 可用模型
+		8. torchServer: 启动 Torch server (torchServerAction=status 查状态, stop 停止)
+		9. listModels: 列出 openai 兼容端点的 可用模型
 		`),
 	createTask: z
 		.object({

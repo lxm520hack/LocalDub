@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { runStage, type DaemonConnection } from '../../../ml/server/client.ts';
+import { runStage, type TorchServerConnection } from '../../../ml/server/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
 import {
@@ -16,7 +16,7 @@ import { startLog } from '../utils/log.ts';
 
 export async function stageSeparate(
 	ctx: Context,
-	daemon?: DaemonConnection,
+	torchServer?: TorchServerConnection,
 ) {
 	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
@@ -49,15 +49,15 @@ export async function stageSeparate(
 	const runtime = sepCfg?.runtime ?? 'pytorch';
 	const device = sepCfg?.device ?? 'cuda';
 
-	if (runtime === 'pytorch' && daemon) {
-		emitLog(sessionPath, `[Separate] Using Python daemon (device=${device})`);
+	if (runtime === 'pytorch' && torchServer) {
+		emitLog(sessionPath, `[Separate] Using Torch server (device=${device})`);
 		const absVideo = resolve(
 			REPO_ROOT,
 			sessionPath,
 			'download',
 			'video_source.mp4',
 		);
-		const result = await runStage(daemon,
+		const result = await runStage(torchServer,
 			'separate',
 			taskId,
 			{

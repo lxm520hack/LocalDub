@@ -1,8 +1,8 @@
 """
-Pipeline daemon — FastAPI + uvicorn HTTP server.
+Torch server — FastAPI + uvicorn HTTP server.
 
 Endpoints:
-  GET  /health                       → daemon status and model states
+  GET  /health                       → server status and model states
   POST /run/{stage}                  → execute a stage, returns SSE stream
   POST /shutdown                     → graceful shutdown
 
@@ -37,7 +37,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 # ---------------------------------------------------------------------------
 # Model handler imports
@@ -47,15 +47,15 @@ sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs")
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "whisper"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "voxcpm"))
 
-from daemon_separate import handle_separate  # noqa: PLC0414,E402
-from daemon_asr import handle_asr  # noqa: PLC0414,E402
-from daemon_tts import handle_tts  # noqa: PLC0414,E402
+from torch_server_separate import handle_separate  # noqa: PLC0414,E402
+from torch_server_asr import handle_asr  # noqa: PLC0414,E402
+from torch_server_tts import handle_tts  # noqa: PLC0414,E402
 
 # ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="ML Pipeline Daemon")
+app = FastAPI(title="ML Torch Server")
 _shutdown = False
 _start_time = time.time()
 _executor = ThreadPoolExecutor(max_workers=1)
@@ -118,6 +118,33 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
 # ---------------------------------------------------------------------------
 
 
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    uptime = round(time.time() - _start_time)
+    h, m = divmod(uptime, 3600)
+    m, s = divmod(m, 60)
+    rows = "".join(
+        f"<tr><td>{k}</td><td class=\"{'on' if v else 'off'}\">{'✅ loaded' if v else '○ idle'}</td></tr>"
+        for k, v in _models.items()
+    )
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Torch Server</title>
+<style>
+  body {{ font: 14px/1.6 sans-serif; margin: 2rem; }}
+  h1 {{ margin: 0 0 .5rem; }}
+  .meta {{ color: #666; font-size: 13px; margin-bottom: 1rem; }}
+  table {{ border-collapse: collapse; }}
+  td {{ padding: 4px 16px 4px 0; }}
+  .on {{ color: #090; font-weight: 600; }}
+  .off {{ color: #999; }}
+</style></head>
+<body>
+<h1>🔧 Torch Server</h1>
+<div class="meta">uptime {h}h {m}m {s}s</div>
+<table><tr><th>Model</th><th>Status</th></tr>{rows}</table>
+</body></html>"""
+
 @app.get("/health")
 async def health():
     return {
@@ -153,7 +180,7 @@ async def shutdown():
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ML Pipeline Daemon (HTTP)")
+    parser = argparse.ArgumentParser(description="ML Torch Server (HTTP)")
     parser.add_argument(
         "--http-port", type=int, default=19109, help="HTTP port (default: 19109)"
     )
@@ -163,7 +190,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print(
-        f"[Daemon] Starting HTTP server on {args.host}:{args.http_port}",
+        f"[TorchServer] Starting HTTP server on {args.host}:{args.http_port}",
         flush=True,
     )
     uvicorn.run(app, host=args.host, port=args.http_port, log_level="info")

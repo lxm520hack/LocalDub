@@ -1,5 +1,5 @@
 """
-Daemon handler for Whisper ASR stage.
+Torch server handler for Whisper ASR stage.
 Imported by pytorch_server.py.
 """
 from __future__ import annotations

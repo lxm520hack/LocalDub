@@ -1,5 +1,5 @@
 """
-Daemon handler for Demucs separate stage.
+Torch server handler for Demucs separate stage.
 Imported by pytorch_server.py.
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ def handle_separate(
     *,
     emit: Callable | None = None,
 ) -> dict:
-    """Handle separate stage in daemon mode."""
+    """Handle separate stage in torch server mode."""
     from pydub import AudioSegment
 
     video_path = params["video_path"]
