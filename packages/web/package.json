@@ -1,6 +1,7 @@
 {
   "name": "@repo/web",
   "private": true,
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -8,10 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@inlang/paraglide-js": "^2.20.2",
+    "@repo/shared": "workspace:*",
     "@repo/ui-solid": "workspace:*",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/solid-query": "^5.101.1",
     "@tanstack/solid-router": "^1.170.16",
+    "@tanstack/solid-store": "^0.11.0",
+    "lucide-solid": "^1.21.0",
     "solid-js": "^1.9.13",
     "tailwindcss": "^4.3.1",
     "tailwindcss-animate": "^1.0.7"

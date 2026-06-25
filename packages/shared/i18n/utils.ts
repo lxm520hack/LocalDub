@@ -13,12 +13,26 @@ export const mD = <K extends MessageKeys>(key: K) => {
 	return () => fallbackText;
 };
 
+ const localeNameMap = {
+	en: m.en(),
+	'zh-cn': m['zh-cn'](),
+}
+export type LocaleNameKey = keyof typeof localeNameMap;
+export const tLocaleName = (locale:  LocaleNameKey) => localeNameMap[locale]
+
+const colorSchemeMap = {
+	system: m.system(),
+	light: m.light(),
+	dark: m.dark(),
+}
+export type ColorSchemeKey = keyof typeof colorSchemeMap;
+export const tColorScheme = (colorScheme: ColorSchemeKey) =>  colorSchemeMap[colorScheme]
+
 const baseMap = {
-	en: m.en,
-	zh: m.zh,
 	month: m.month,
 	year: m.year,
 };
+
 export const tBase = (key: keyof typeof baseMap) => {
 	return baseMap[key];
 };
