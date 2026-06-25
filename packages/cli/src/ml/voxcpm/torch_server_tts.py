@@ -133,8 +133,6 @@ def handle_tts(params: dict, task_id: str, *, emit: Callable | None = None) -> d
                     emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index, "total": total})
                 continue
 
-            if emit:
-                emit({"type": "progress", "stage": "tts", "task_id": task_id, "current": index - 1, "total": total, "message": f"Generating {idx}..."})
             t1 = time.perf_counter()
             try:
                 wav = _VOXCPM.generate(

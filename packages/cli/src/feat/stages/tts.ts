@@ -12,6 +12,7 @@ import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath, } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
+import { startLog } from './utils/log.ts';
 
 async function runPytorchBatch(
 	ctx: Context,
@@ -116,9 +117,8 @@ export async function stageTts(
 ) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
-	setTask(sessionPath, {
-		current_stage: 'tts',
-	});
+	startLog(sessionPath, taskId)
+
 	const ttsCfg = ctx.input?.stages?.tts!
 	const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 	const timingsFile = timingsFilePath(sessionPath);
@@ -152,6 +152,7 @@ export async function stageTts(
 			procEnsure.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`ensure_voxcpm.py exited ${code}`)));
 			procEnsure.on('error', reject);
 		});
+		const tqdmStart = Date.now();
 		const result = await runStage(torchServer,
 			'tts',
 			taskId,
@@ -164,13 +165,36 @@ export async function stageTts(
 				skipExisting: ttsCfg.skipExisting,
 			},
 			(current, total, msg) => {
-				emitLog(sessionPath, `[TTS] ${current}/${total}${msg ? ` ${msg}` : ''}`);
 				setStage(sessionPath, 'tts', {
 					progress: total > 0 ? Math.round((current / total) * 100) : 0,
 					last_message: msg ?? `Generating ${current}/${total}...`,
 				});
+				if (msg) {
+					emitLog(sessionPath, `[TTS] ${msg}`);
+					return;
+				}
+				const elapsed = (Date.now() - tqdmStart) / 1000;
+				const frac = total > 0 ? current / total : 0;
+				const pct = (frac * 100).toFixed(0).padStart(3);
+				const barW = 10;
+				const fracW = frac * barW;
+				const fill = Math.min(Math.floor(fracW), barW);
+				const blockChars = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█'];
+				const barFull = '█'.repeat(fill);
+				const barRest = fill >= barW ? '' : (blockChars[Math.round((fracW - fill) * 8)] || ' ');
+				const barEmpty = fill >= barW ? '' : ' '.repeat(Math.max(0, barW - fill - 1));
+				const bar = `${barFull}${barRest}${barEmpty}`;
+				const rate = current > 0 ? current / elapsed : 0;
+				const eta = total > 0 && rate > 0 ? (total - current) / rate : 0;
+				const fmt = (s: number) => {
+					const m = Math.floor(s / 60);
+					const sec = Math.floor(s % 60);
+					return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+				};
+				process.stdout.write(`\r${pct}%|${bar}| ${current}/${total} [${fmt(elapsed)}<${fmt(eta)}, ${rate.toFixed(2)}it/s]`);
 			},
 		);
+		process.stdout.write('\n');
 		const r = result as Record<string, number>;
 		emitLog(
 			sessionPath,

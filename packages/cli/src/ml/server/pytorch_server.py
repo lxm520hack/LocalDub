@@ -3,6 +3,7 @@ Torch server — FastAPI + uvicorn HTTP server.
 
 Endpoints:
   GET  /                           → status dashboard (Solid.js + TailwindCSS)
+  GET  /api/events                 → SSE stream: health (3s) + log (on change)
   GET  /api/health                 → server status and model states
   GET  /api/logs                   → server log lines (text/plain lines)
   POST /api/run/{stage}            → execute a stage, returns SSE stream
@@ -51,11 +52,13 @@ from fastapi.staticfiles import StaticFiles
 class _LogBuffer:
     def __init__(self, max_lines: int = 500):
         self._lines: deque[str] = deque(maxlen=max_lines)
+        self._write_count: int = 0
 
     def write(self, text: str) -> None:
         for line in text.rstrip("\n").split("\n"):
             if line:
                 self._lines.append(line)
+                self._write_count += 1
 
     def flush(self) -> None:
         pass
@@ -65,6 +68,10 @@ class _LogBuffer:
 
     def get_text(self, n: int = 100) -> str:
         return "\n".join(self.get_lines(n))
+
+    @property
+    def write_count(self) -> int:
+        return self._write_count
 
 _log_buffer = _LogBuffer()
 _log_writer = _LogBuffer()
@@ -195,6 +202,37 @@ async def run_stage(stage: str, body: dict):
     params = body.get("params", {})
     return StreamingResponse(
         _run_stage_events(stage, task_id, params),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/events")
+async def events():
+    """SSE endpoint — pushes health every 3s and log lines on change."""
+
+    async def event_generator():
+        last_count = _log_buffer.write_count
+        while not _shutdown:
+            # health event every tick
+            health_data = {
+                "status": "ok",
+                "uptime_s": round(time.time() - _start_time, 1),
+                "models": _models,
+            }
+            yield f"event: health\ndata: {json.dumps(health_data)}\n\n"
+
+            # log event only when new lines arrived
+            current_count = _log_buffer.write_count
+            if current_count != last_count:
+                new_lines = "\n".join(_log_buffer.get_lines(100))
+                yield f"event: log\ndata: {json.dumps({'lines': new_lines, 'count': current_count})}\n\n"
+                last_count = current_count
+
+            await asyncio.sleep(3)
+
+    return StreamingResponse(
+        event_generator(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

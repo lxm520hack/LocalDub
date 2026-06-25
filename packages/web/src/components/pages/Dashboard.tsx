@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup } from 'solid-js';
+import { createSignal, onCleanup, onMount } from 'solid-js';
 
 interface HealthData {
   status: string;
@@ -19,26 +19,18 @@ export function Dashboard() {
   const [logs, setLogs] = createSignal('');
 
   onMount(() => {
-    let dead = false;
-
-    async function fetchAll() {
-      try {
-        const [hRes, lRes] = await Promise.all([
-          fetch('/api/health').then((r) => (r.ok ? r.json() : null)),
-          fetch('/api/logs?n=100').then((r) => (r.ok ? r.json() : null)),
-        ]);
-        if (dead) return;
-        if (hRes) setHealth(hRes);
-        if (lRes && lRes.lines != null) setLogs(lRes.lines);
-      } catch {}
-    }
-
-    fetchAll();
-    const id = setInterval(fetchAll, 3000);
-    onCleanup(() => {
-      dead = true;
-      clearInterval(id);
+    const es = new EventSource('/api/events');
+    es.addEventListener('health', (e) => {
+      try { setHealth(JSON.parse(e.data)); } catch {}
     });
+    es.addEventListener('log', (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.lines != null) setLogs(d.lines);
+      } catch {}
+    });
+    es.addEventListener('error', () => {});
+    onCleanup(() => es.close());
   });
 
   return (
