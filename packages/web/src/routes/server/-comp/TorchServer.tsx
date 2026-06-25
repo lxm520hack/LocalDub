@@ -2,6 +2,7 @@ import { createSignal, onCleanup, onMount } from 'solid-js';
 import { startTorch, stopTorch, restartTorch } from '../-fn/torch';
 import { useMutation } from '@tanstack/solid-query';
 import { Button } from '@repo/ui-solid/base/button';
+import { toastError } from '@repo/ui-solid/custom/toast';
 
 interface HealthData {
   status: string;
@@ -21,6 +22,7 @@ export function TorchServer() {
   const [health, setHealth] = createSignal<HealthData | null>(null);
   const [logs, setLogs] = createSignal('');
   const [errMsg, setErrMsg] = createSignal('');
+  let lastLineCount = 0;
 
   onMount(() => {
     const es = new EventSource('/torch_server/api/events');
@@ -29,8 +31,23 @@ export function TorchServer() {
     });
     es.addEventListener('log', (e) => {
       try {
-        const d = JSON.parse(e.data);
-        if (d.lines != null) setLogs(d.lines);
+        const d = JSON.parse(e.data) as { lines?: string; count?: number };
+        if (d.lines == null) return;
+        if (!d.count) { setLogs(d.lines); lastLineCount = 0; return; }
+        if (lastLineCount === 0) {
+          setLogs(d.lines);
+        } else if (d.count > lastLineCount) {
+          const lines = d.lines.split('\n');
+          const newCount = d.count - lastLineCount;
+          const newLines = lines.slice(-newCount).join('\n');
+          setLogs(prev => {
+            const next = prev + '\n' + newLines;
+            // cap at 5000 lines to avoid unbounded memory
+            const all = next.split('\n');
+            return all.length > 5000 ? all.slice(-5000).join('\n') : next;
+          });
+        }
+        lastLineCount = d.count;
       } catch {}
     });
     es.addEventListener('error', () => {});
@@ -43,14 +60,14 @@ export function TorchServer() {
     onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
     },
-    onError: (e) => setErrMsg(String(e)),
+    onError: (e) => toastError(e),
   }));
 
   const stopMutation = useMutation(() => ({
     mutationFn: () => stopTorch(),
     onMutate: () => setErrMsg(''),
     onSuccess: () => setHealth(null),
-    onError: (e) => setErrMsg(String(e)),
+    onError: (e) => toastError(e),
   }));
 
   const restartMutation = useMutation(() => ({
@@ -59,7 +76,7 @@ export function TorchServer() {
     onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
     },
-    onError: (e) => setErrMsg(String(e)),
+    onError: (e) => toastError(e),
   }));
 
   const busy = () => startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
