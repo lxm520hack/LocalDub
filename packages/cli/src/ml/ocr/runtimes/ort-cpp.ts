@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
@@ -32,10 +32,30 @@ export function existsOcrOpenCvCppBinary(): boolean {
 	return existsSync(ocrOpenCvCppBinaryPath());
 }
 
+const SRC_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp');
+const TOOLCHAIN = resolve(REPO_ROOT, 'submodule', 'vcpkg', 'scripts', 'buildsystems', 'vcpkg.cmake');
+
+function ensureOcrCpp(): void {
+	if (existsOcrOpenCvCppBinary()) return;
+	console.log('[OCR] Building C++ binary (cmake)...');
+	execSync(
+		`cmake -S "${SRC_DIR}" -B "${BUILD_DIR}" -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" -DVCPKG_TARGET_TRIPLET=x64-windows`,
+		{ stdio: 'inherit', timeout: 120_000 },
+	);
+	execSync(
+		`cmake --build "${BUILD_DIR}" --config Release --parallel`,
+		{ stdio: 'inherit', timeout: 300_000 },
+	);
+	if (!existsOcrOpenCvCppBinary()) {
+		throw new Error(`OCR build succeeded but binary not found at ${ocrOpenCvCppBinaryPath()}`);
+	}
+}
+
 export async function ocrFrameOpenCvCpp(
 	framePath: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
+	ensureOcrCpp();
 	const r = spawnSync(ocrOpenCvCppBinaryPath(), [
 		framePath,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
@@ -60,6 +80,7 @@ export async function ocrFramesOpenCvCpp(
 	frameDir: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<Map<string, OCRLine[]>> {
+	ensureOcrCpp();
 	const binPath = ocrOpenCvCppBinaryPath();
 	const args = [
 		'--dir', frameDir,
@@ -80,7 +101,7 @@ export async function ocrFramesOpenCvCpp(
 			`exit=${r.status} signal=${r.signal}`,
 			`bin=${binPath}`,
 			`frameDir=${frameDir}`,
-			`msys2Bin exists=${existsSync(resolve('C:\\', 'msys64', 'mingw64', 'bin'))}`,
+
 			`ortLib exists=${existsSync(ORT_LIB_DIR)}`,
 			`buildDir exists=${existsSync(BUILD_DIR)}`,
 			stderr && `stderr:\n${stderr}`,
@@ -97,12 +118,8 @@ const ORT_LIB_DIR = resolve(REPO_ROOT, 'packages', 'tmp', 'onnxruntime-win-x64-1
 	'onnxruntime-win-x64-1.26.0', 'lib');
 
 function ocrEnv(): Record<string, string | undefined> {
-	const msys2Bin = resolve('C:\\', 'msys64', 'mingw64', 'bin');
 	const extra: string[] = [];
-	if (process.platform === 'win32') {
-		if (existsSync(msys2Bin)) extra.push(msys2Bin);
-		if (existsSync(ORT_LIB_DIR)) extra.push(ORT_LIB_DIR);
-	}
+	if (process.platform === 'win32' && existsSync(ORT_LIB_DIR)) extra.push(ORT_LIB_DIR);
 	const libPath = [...extra, BUILD_DIR, process.env[LIB_PATH_KEY] || ''].filter(Boolean).join(';');
 	return {
 		...process.env,
