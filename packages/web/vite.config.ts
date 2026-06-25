@@ -3,10 +3,14 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import solid from 'vite-plugin-solid';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'solid', autoCodeSplitting: true  }),
-    solid(),
+    tanstackStart(),
+    solid({
+      ssr: true,
+    }),
     		paraglideVitePlugin({
 			project: '../../packages/shared/i18n/project.inlang',
 			outdir: '../../packages/shared/i18n/paraglide',
@@ -19,4 +23,7 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:19109',
     },
   },
+  ssr: {
+		noExternal: ['solid-sonner', 'solid-js', '@kobalte/core'],
+	},
 });

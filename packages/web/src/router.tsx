@@ -8,6 +8,7 @@ import {
 } from '@tanstack/solid-router';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
+import { NotFound } from '@repo/ui-solid/app/NotFound';
 
 // const settingsSubRoutes = ["/settings", "/settings/appearance"] as const;
 
@@ -25,11 +26,12 @@ export function getRouter() {
 	const router = createRouter({
 		routeTree,
 		// context: { queryClient },
-		scrollRestoration: true,
-		defaultPreloadStaleTime: 0,
+    scrollRestoration: true,
+    defaultPreload: 'intent',
+    defaultPreloadStaleTime: 0,
 		// routeMasks: [...settingsMasks]
 		// defaultErrorComponent: ErrorCard,
-		// defaultNotFoundComponent: () => <NotFound />,
+		defaultNotFoundComponent: () => <NotFound />,
 	});
 	return router;
 }
