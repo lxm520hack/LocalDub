@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { ConfigSchema } from '../src/feat/config/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outPath = resolve(__dirname, '..', 'config.schema.json');
+const outPath = resolve(__dirname, '..', 'input.schema.json');
 
 const jsonSchema = ConfigSchema.toJSONSchema();
 writeFileSync(outPath, JSON.stringify(jsonSchema, null, 2));

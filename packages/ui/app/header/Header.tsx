@@ -4,7 +4,7 @@ import { TooltipX } from "@repo/ui-solid/custom/tooltip";
 import { SquareTerminal } from "lucide-solid";
 
 export const Header = () => {
-  return <header class="px-3 h-12 py-3 border-b">
+  return <header class="px-3 h-10 py-2 border-b">
 
   <div class=" flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
     <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">activeSessionTitle

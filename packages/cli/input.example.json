@@ -1,5 +1,5 @@
 {
-  "$schema": "./config.schema.json",
+  "$schema": "./input.schema.json",
   "command": "createTask",
   "check": {
     "type": "font"

@@ -203,7 +203,7 @@ pretrained_models/
 /*.onnx
 /*.onnx_data
 /turbo-*
-/VP_*.json
+**/VP_*.json
 
 # OCR test artifacts
 packages/subtitle-ocr/.test-frames/
@@ -214,7 +214,7 @@ packages/subtitle-ocr/.test-frames/
 **/results/**/*.json
 
 
-packages/cli/config.json 
+packages/cli/input.json 
 tmp
 **/build2
 *.zip

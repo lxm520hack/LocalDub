@@ -11,6 +11,7 @@
   "dependencies": {
     "@inlang/paraglide-js": "^2.20.2",
     "@repo/shared": "workspace:*",
+    "@repo/device": "workspace:*",
     "@repo/ui": "workspace:*",
     "@repo/ui-solid": "workspace:*",
     "@tailwindcss/vite": "^4.3.1",

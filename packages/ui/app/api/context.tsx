@@ -1,4 +1,6 @@
 import { createContext, useContext } from 'solid-js';
+import type { DeviceInfo } from '@repo/device';
+export type { DeviceInfo };
 
 export interface TorchStatus {
   running: boolean;
@@ -14,6 +16,7 @@ export interface ServersManagerApi {
 
 export interface ClientApi {
   serversManagerApi?: ServersManagerApi;
+  deviceInfoApi?: { fetchDeviceInfo: () => Promise<DeviceInfo> };
 }
 
 const ClientApiCtx = createContext<ClientApi>({});

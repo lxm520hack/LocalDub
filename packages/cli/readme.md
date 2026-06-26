@@ -1,23 +1,23 @@
 # cli
 
-CLI 端 + core。通过 `config.json` 配置即可运行完整流水线。
+CLI 端 + core。通过 `input.json` 配置即可运行完整流水线。
 
 ## 用法
 
 ```bash
 cd packages/cli
 
-# 编辑 config.json → 设置 command + 参数 + engines
+# 编辑 input.json → 设置 command + 参数 + engines
 
 # 运行
 bun run run
 ```
 
-## config 示例
+## input 示例
 
 ```json
 {
-  "$schema": "./config.schema.json",
+  "$schema": "./input.schema.json",
   "command": "createTask",
   "createTask": {
     "sourceFile": "https://github.com/user-attachments/assets/bd02936f-cf3c-4e4b-85b5-0410d38f69f5"

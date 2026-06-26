@@ -12,6 +12,7 @@ import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Devtools } from '@repo/ui-solid/app/devtools';
 import * as torchApi from '../fn/torch';
+import * as deviceApi from '../fn/device';
 import { Header } from '@repo/ui/app/header/Header';
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -49,6 +50,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
     startTorch: torchApi.startTorch,
     stopTorch: torchApi.stopTorch,
     restartTorch: torchApi.restartTorch,
+  },
+  deviceInfoApi: {
+    fetchDeviceInfo: deviceApi.fetchDeviceInfo,
   },
 }}>
             <ThemeProvider>

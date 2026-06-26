@@ -1,4 +1,3 @@
-import { execSync } from 'node:child_process';
 import * as os from 'node:os';
 import * as ort from 'onnxruntime-node';
 import { getGpuInfo } from './gpu/gpu.ts';
@@ -18,6 +17,7 @@ export interface DeviceInfo {
 		hostname: string;
 		runtime: string;
 		runtimeVersion: string;
+		nodeVersion?: string;
 	};
 	cpu: {
 		model: string;
@@ -51,8 +51,9 @@ export async function getDeviceInfo(): Promise<DeviceInfo> {
 			arch: process.arch,
 			release: os.release(),
 			hostname: os.hostname(),
-			runtime: 'bun',
-			runtimeVersion: process.version,
+			runtime: (process as any).versions?.bun ? 'bun' : 'node',
+			runtimeVersion: (process as any).versions?.bun ? `v${(process as any).versions.bun}` : process.version,
+			nodeVersion: process.version,
 		},
 		cpu: {
 			model: cpus[0]?.model ?? 'unknown',

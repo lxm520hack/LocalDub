@@ -104,7 +104,7 @@ switch (cmd) {
 		const url = p.url
 		if (!url) {
 			console.error(
-				'createTask: need createTask.url in config.json',
+				'createTask: need createTask.url in input.json',
 			);
 			process.exit(1);
 		}
@@ -141,7 +141,7 @@ switch (cmd) {
 	case 'resumeTask': {
 		const sessionPath = config.resumeTask?.sessionPath;
 		if (!sessionPath) {
-			console.error('resumeTask.sessionPath required in config.json');
+			console.error('resumeTask.sessionPath required in input.json');
 			process.exit(1);
 		}
 		const ctx = await readCtx(sessionPath);
@@ -173,7 +173,7 @@ switch (cmd) {
 		const stageName = config.rerunStage?.stageName;
 		if (!sessionPath || !stageName) {
 			console.error(
-				'rerunStage.sessionPath and rerunStage.stageName required in config.json',
+				'rerunStage.sessionPath and rerunStage.stageName required in input.json',
 			);
 			process.exit(1);
 		}
@@ -268,7 +268,7 @@ switch (cmd) {
 	default: {
 		const sessionPath = config.startTask?.sessionPath;
 		if (!sessionPath) {
-			console.error('startTask.sessionPath required in config.json');
+			console.error('startTask.sessionPath required in input.json');
 			process.exit(1);
 		}
 				const ctx = await readCtx(sessionPath);

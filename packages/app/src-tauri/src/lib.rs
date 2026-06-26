@@ -86,12 +86,30 @@ fn check_torch(state: tauri::State<'_, TorchProc>) -> bool {
     }
 }
 
+#[tauri::command]
+fn device_info() -> Result<String, String> {
+    let cli = repo_root()
+        .join("packages")
+        .join("device")
+        .join("cli.ts");
+    let output = Command::new("bun")
+        .arg(cli.to_str().unwrap_or(""))
+        .arg("--json")
+        .output()
+        .map_err(|e| format!("Failed to run device CLI: {}", e))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Device CLI failed: {}", stderr));
+    }
+    String::from_utf8(output.stdout).map_err(|e| format!("Invalid UTF-8: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(TorchProc(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![start_torch, stop_torch, check_torch])
+        .invoke_handler(tauri::generate_handler![start_torch, stop_torch, check_torch, device_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

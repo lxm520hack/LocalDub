@@ -148,8 +148,8 @@ Demucs vocal/instrumental separation. Same handler for both dub and subtitle mod
 | Input | Source | Description |
 |---|---|---|
 | `media/video_source.mp4` | download | Source video |
-| config `separate.runtime` | `config.json` | `ort` or `pytorch` |
-| config `separate.device` | `config.json` | `cpu`, `cuda`, or `webgpu` |
+| config `separate.runtime` | `input.json` | `ort` or `pytorch` |
+| config `separate.device` | `input.json` | `cpu`, `cuda`, or `webgpu` |
 
 | Output | Destination | Description |
 |---|---|---|
@@ -167,8 +167,8 @@ Speech-to-text via Whisper (PyTorch) or faster-whisper (CTranslate2).
 |---|---|---|
 | `media/target_3_vocals.wav` | separate | Clean vocals audio |
 | `metadata/local_info.json` | download | `asr_language` (or "auto") |
-| config `asr.runtime` | `config.json` | `pytorch` or (faster-whisper via `run.py`) |
-| config `asr.device` | `config.json` | `cuda` or `cpu` |
+| config `asr.runtime` | `input.json` | `pytorch` or (faster-whisper via `run.py`) |
+| config `asr.device` | `input.json` | `cuda` or `cpu` |
 
 | Output | Destination | Description |
 |---|---|---|
@@ -215,8 +215,8 @@ Translate ASR text via LLM (OpenAI-compatible API). 可跳过：`config.stages.t
 | `metadata/asr_fix.json` / `ocr.json` | asr_fix / ocr | Sentences to translate（取决于 `subtitleSource`） |
 | `metadata/ytdlp_info.json` | download | Optional context (title, description) |
 | `metadata/local_info.json` | download | Language settings |
-| config `translate.apiBase` | `config.json` | LLM API endpoint |
-| config `translate.model` | `config.json` | LLM model name |
+| config `translate.apiBase` | `input.json` | LLM API endpoint |
+| config `translate.model` | `input.json` | LLM model name |
 
 | Output | Destination | Description |
 |---|---|---|
@@ -263,8 +263,8 @@ Voice cloning TTS via VoxCPM2 (ONNX / PyTorch / Cloud).
 |---|---|---|
 | `metadata/translation.<lang>.json` | translate | Target text per segment |
 | `segments/vocals/<NNNN>.wav` | split_audio | Reference audio for voice cloning |
-| config `tts.runtime` | `config.json` | `ort`, `pytorch`, or `cloud` |
-| config `tts.device` | `config.json` | `cpu`, `webgpu`, or `cuda` |
+| config `tts.runtime` | `input.json` | `ort`, `pytorch`, or `cloud` |
+| config `tts.device` | `input.json` | `cpu`, `webgpu`, or `cuda` |
 
 | Output | Destination | Description |
 |---|---|---|

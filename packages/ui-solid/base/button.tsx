@@ -30,7 +30,7 @@ export const buttonVariants = cva(
 					'bg-secondary text-secondary-foreground hover:bg-accent  rounded-full size-8',
 			},
 			size: {
-				xs: 'h-6 rounded-md gap-1 px-2 has-[>svg]:px-0  [&_svg:not([class*="size-"])]:size-4',
+				xs: 'h-6 w-6 rounded-md gap-1 px-2 has-[>svg]:px-0  [&_svg:not([class*="size-"])]:size-4',
 				sm: 'h-8 rounded-md gap-2 px-3 has-[>svg]:px-2.5 [&_svg:not([class*="size-"])]:size-5',
 				default: 'h-9 px-3 rounded-xs',
 				lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',

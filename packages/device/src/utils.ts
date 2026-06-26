@@ -1,8 +1,9 @@
 import { execSync } from 'node:child_process';
+import * as os from 'node:os';
 
 export function run(cmd: string, timeout = 3000): string {
 	try {
-		return execSync(cmd, { encoding: 'utf8', timeout }).trim();
+		return execSync(cmd, { encoding: 'utf8', timeout, cwd: os.tmpdir() }).trim();
 	} catch {
 		return '';
 	}

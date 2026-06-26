@@ -1,5 +1,5 @@
 import { ClientOnly } from "@tanstack/solid-router";
-import { Keyboard, Palette, Settings, Server } from "lucide-solid";
+import { Keyboard, Monitor, Palette, Settings, Server } from "lucide-solid";
 import { type Component } from "solid-js";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "@repo/ui-solid/base/tabs";
 import { m} from "@repo/shared/i18n/paraglide/messages";
@@ -8,6 +8,7 @@ import type { JSX } from "solid-js";
 import { openModal } from "@repo/ui-solid/custom/modal/renderer";
 import { GeneralSettings } from "./general";
 import { ServerManager } from "./ServerManager";
+import { DeviceInfo } from "./DeviceInfo";
 import { useClientApi } from "../api/context";
 
 export const SettingsContent = () => {
@@ -24,6 +25,7 @@ export const SettingsContent = () => {
       icon: Keyboard,
     },
     ...(serversManagerApi ? [{ value: 'servers', label: 'Servers', icon: Server as typeof Settings, content: ServerManager as Component }] : []),
+    { value: 'device', label: 'Device', icon: Monitor as typeof Settings, content: DeviceInfo as Component },
   ];
   return <ClientOnly>
     <Tabs defaultValue="general" orientation='vertical' class='gap-5' >
@@ -45,6 +47,9 @@ export const SettingsContent = () => {
           <ServerManager />
         </TabsContent>
       )}
+      <TabsContent value="device">
+        <DeviceInfo />
+      </TabsContent>
     </Tabs>
   </ClientOnly>
 }
