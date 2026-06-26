@@ -1,18 +1,16 @@
 import * as ort from 'onnxruntime-node';
-import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { readFileSync, writeFileSync, rmSync, mkdtempSync, existsSync, readdirSync } from 'node:fs';
+
+import { readFileSync } from 'node:fs';
 import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
-import { REPO_ROOT, pythonBin } from '@repo/config';
 import { findRapidOcrModelsDir } from './utils';
+import { dbPostprocess } from './postprocess-det';
 
 
 const MODEL_DIR = findRapidOcrModelsDir();
-const POSTPROCESS_PY = resolve(__dirname, 'postprocess_det.py');
 const KEYS_PATH = resolve(__dirname, 'ppocr_keys.json');
-const TMP_DIR = join(REPO_ROOT, 'packages', 'tmp');
 
 const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
 const CLS_PATH = join(MODEL_DIR, 'ch_ppocr_mobile_v2.0_cls_infer.onnx');
@@ -24,8 +22,6 @@ const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
 // - 6624 = ' ' (space)
 const RAW_CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
 const CHAR_LIST: string[] = ['', ...RAW_CHAR_LIST.slice(1), ' '];
-
-interface OCRBox { box: number[][]; score: number }
 
 // ---------- Image processing (replaces sharp, Windows-friendly) ----------
 
@@ -253,34 +249,17 @@ export async function ocrFrameWithSessions(
 	const detMs = performance.now() - t0;
 	const heatmap = detOut[sessions.det.outputNames[0]] as ort.Tensor;
 
-	// --- POST-PROCESS (Python) ---
-	const tmpDir = mkdtempSync(join(TMP_DIR, 'ocr-det-'));
-	const heatmapPath = join(tmpDir, 'heatmap.raw');
-	const heatmapData = heatmap.data as Float32Array;
-	writeFileSync(heatmapPath, Buffer.from(heatmapData.buffer, heatmapData.byteOffset, heatmapData.byteLength));
-
+	// --- POST-PROCESS (OpenCV WASM) ---
 	t0 = performance.now();
-	const pp = spawnSync(pythonBin(), [
-		POSTPROCESS_PY,
-		heatmapPath,
-		String(resizedH),
-		String(resizedW),
-		String(origH),
-		String(origW),
-		String(0.3),
-		String(textScore),
-		String(1.6),
-	], { timeout: 30_000, encoding: 'utf-8' });
+	const heatmapData = heatmap.data as Float32Array;
+	const heatmapBytes = heatmapData.buffer.slice(
+		heatmapData.byteOffset, heatmapData.byteOffset + heatmapData.byteLength,
+	) as ArrayBuffer;
+	const boxes = dbPostprocess(
+		heatmapBytes, resizedH, resizedW, origH, origW,
+		0.3, textScore, 1.6, 1000, true,
+	);
 	const ppMs = performance.now() - t0;
-
-	try { rmSync(tmpDir, { recursive: true, force: true }); } catch { }
-
-	if (pp.status !== 0 || !pp.stdout) {
-		throw new Error(`Post-process failed: ${pp.stderr?.slice(-200) || 'no output'}`);
-	}
-	const ppResult = JSON.parse(pp.stdout);
-	if (ppResult.error) throw new Error(ppResult.error);
-	const boxes: OCRBox[] = ppResult.boxes ?? [];
 
 	// --- RECOGNITION for each box ---
 	const segments: { text: string; confidence: number; box: number[][] }[] = [];

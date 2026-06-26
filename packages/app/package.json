@@ -1,0 +1,40 @@
+{
+  "name": "app",
+  "version": "0.1.0",
+    "imports": {
+    "#/*": "./src/*"
+  },
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "dev": "vite",
+    "dev:desktop": "bun run tauri dev",
+    "dev:android": "bun run tauri android dev",
+    "typecheck": "tsgo --noEmit",
+    "build": "vite build",
+    "serve": "vite preview",
+    "tauri": "tauri"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@inlang/paraglide-js": "^2.20.2",
+    "@repo/shared": "workspace:*",
+    "@repo/ui-solid": "workspace:*",
+    "@tailwindcss/vite": "^4.3.1",
+    "@tanstack/devtools-vite": "^0.8.1",
+    "@tanstack/router-plugin": "^1.168.18",
+    "@tanstack/solid-query": "^5.101.1",
+    "@tanstack/solid-router": "^1.170.16",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "solid-js": "^1.9.13"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@typescript/native-preview": "latest",
+    "vite": "^8.1.0",
+    "vite-plugin-solid": "^2.11.12",
+    "@tauri-apps/cli": "^2.11.3"
+  }
+}
