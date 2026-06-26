@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "app",
+  "productName": "LocalDub Dashboard",
   "version": "0.1.0",
   "identifier": "com.aa.local_dub",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "app",
+        "title": "LocalDub Dashboard",
         "width": 800,
         "height": 600
       }

@@ -25,7 +25,7 @@ export function TorchServer() {
   let lastLineCount = 0;
 
   onMount(() => {
-    const es = new EventSource('/torch_server/api/events');
+    const es = new EventSource('http://127.0.0.1:19109/api/events');
     es.addEventListener('health', (e) => {
       try { setHealth(JSON.parse(e.data)); } catch {}
     });
