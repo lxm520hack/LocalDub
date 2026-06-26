@@ -89,8 +89,9 @@ export function ThemeProvider(props: { children: JSX.Element }) {
 	createEffect(() => {
 		if (!mounted()) return;
 		const root = window.document.documentElement;
+		const mode = resolvedMode();
 		root.classList.remove('light', 'dark');
-		root.classList.add(resolvedMode());
+		root.classList.add(mode);
 	});
 
 	const value = {

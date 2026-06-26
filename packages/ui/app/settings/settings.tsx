@@ -30,7 +30,7 @@ export const SettingsContent = () => {
     ...(inputEditorApi ? [{ value: 'config', label: 'Config', icon: Code as typeof Settings, content: InputEditor as Component }] : []),
   ];
   return <ClientOnly>
-    <Tabs defaultValue="general" orientation='vertical' class='gap-5' >
+    <Tabs defaultValue="general" orientation='vertical' class='gap-5 h-full' >
       <TabsList class="mb-4" variant='side'>
         {baseItems.map((item) => (
           <TabsTrigger value={item.value} class="gap-2">

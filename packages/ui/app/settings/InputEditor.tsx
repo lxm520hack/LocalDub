@@ -1,4 +1,4 @@
-import { onMount, onCleanup } from 'solid-js';
+import { createSignal, onMount, onCleanup } from 'solid-js';
 import { useClientApi } from '../api/context';
 import { getAutoSaveMode } from './editorPrefs';
 import { useTheme } from '@repo/ui-solid/theme';
@@ -12,6 +12,27 @@ export function InputEditor() {
   let editor: any = null;
   let model: any = null;
   let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastSavedContent = '';
+  const [dirty, setDirty] = createSignal(false);
+
+  const updateDirty = () => {
+    if (!editor) return;
+    setDirty(editor.getValue() !== lastSavedContent);
+  };
+
+  const doSave = async () => {
+    if (!api || !editor) return;
+    const content = editor.getValue();
+    try {
+      JSON.parse(content);
+      await api.writeInput(content);
+      clearTimeout(autoSaveTimer);
+      lastSavedContent = content;
+      setDirty(false);
+    } catch {
+      alert('Invalid JSON');
+    }
+  };
 
   const debouncedSave = (content: string) => {
     clearTimeout(autoSaveTimer);
@@ -20,6 +41,8 @@ export function InputEditor() {
       try {
         JSON.parse(content);
         await api.writeInput(content);
+        lastSavedContent = content;
+        setDirty(false);
       } catch { /* silent */ }
     }, AUTO_SAVE_DELAY);
   };
@@ -31,10 +54,10 @@ export function InputEditor() {
       api.readInput(),
       api.readInputSchema().catch(() => '{}'),
     ]);
+    lastSavedContent = fileContent;
 
     const monaco = await import('monaco-editor');
 
-    // Configure workers for JSON language features
     (self as any).MonacoEnvironment = {
       getWorker: async (_: string, label: string) => {
         if (label === 'json') {
@@ -46,23 +69,18 @@ export function InputEditor() {
       },
     };
 
-    // Register JSON schema
     let schemaObj: any;
     try { schemaObj = JSON.parse(schemaContent); } catch { schemaObj = null; }
 
+    const SCHEMA_URI = 'file:///packages/cli/input.schema.json';
     if (schemaObj && (monaco.languages.json as any)?.jsonDefaults) {
       (monaco.languages.json as any).jsonDefaults.setDiagnosticsOptions({
-        allowComments: true,
         validate: true,
-        schemas: [{
-          uri: 'inmemory://input.schema.json',
-          fileMatch: ['*'],
-          schema: schemaObj,
-        }],
+        allowComments: true,
+        schemas: [{ uri: SCHEMA_URI, schema: schemaObj }],
       });
     }
 
-    // Load Monaco theme matching the current app theme
     const { themeByName } = await import('@repo/ui-solid/theme/defs');
     const { loadMonacoTheme } = await import('./loadTheme');
     const def = themeByName(themeName());
@@ -75,8 +93,7 @@ export function InputEditor() {
       } catch { /* fallback */ }
     }
 
-    // Create the editor
-    model = monaco.editor.createModel(fileContent, 'json');
+    model = monaco.editor.createModel(fileContent, 'json', monaco.Uri.parse('file:///packages/cli/input.json'));
     editor = monaco.editor.create(containerRef, {
       model,
       language: 'json',
@@ -91,9 +108,9 @@ export function InputEditor() {
       wordWrap: 'on',
     });
 
-    // Auto-save on content change
     const autoSaveMode = getAutoSaveMode();
     editor.onDidChangeModelContent(() => {
+      updateDirty();
       if (autoSaveMode === 'afterDelay') {
         debouncedSave(editor.getValue());
       }
@@ -106,31 +123,24 @@ export function InputEditor() {
     model?.dispose();
   });
 
-  const handleSave = async () => {
-    if (!api || !editor) return;
-    const content = editor.getValue();
-    try {
-      JSON.parse(content);
-      await api.writeInput(content);
-      clearTimeout(autoSaveTimer);
-    } catch {
-      alert('Invalid JSON');
-    }
-  };
-
   if (!api) return null;
 
   return (
-    <div class="space-y-3">
-      <div ref={containerRef} class="border border-gray-700 rounded-lg overflow-hidden" style="height: 500px" />
-      <div class="flex gap-2">
-        <button
-          onClick={handleSave}
-          class="px-4 py-1.5 text-sm font-medium rounded-lg bg-green-600 hover:bg-green-500 text-white"
-        >
-          Save
-        </button>
+    <div class="flex flex-col h-full">
+      <div class="flex items-center gap-2 px-3 py-1.5 text-sm border-b  rounded-t-lg select-none">
+        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <span>input.json</span>
+        <span
+          class="text-sm cursor-pointer bg-primary rounded-full size-1.5 shrink-0"
+          classList={{ 'opacity-0': !dirty() }}
+          onClick={doSave}
+          title="Unsaved changes — click to save"
+        ></span>
       </div>
+      <div ref={containerRef} class="border-x border-b border-gray-700  overflow-hidden h-full"  />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
 	pythonBin,
 	readConfig,
 } from './src/feat/config/config.ts';
-import type { RawConfig } from './src/feat/config/types.ts';
+import type { RawInput } from './src/feat/config/types.ts';
 import {
 	getStageStatuses,
 	rerunSingleStage,

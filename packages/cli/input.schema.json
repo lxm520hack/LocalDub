@@ -17,9 +17,10 @@
             "torchServer",
             "listModels"
           ],
-          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. torchServer: 启动 Torch server (torchServerAction=status 查状态, stop 停止)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
+          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. torchServer: 启动 Torch server (torchServer.action=status 查状态, stop 停止)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
         },
         "createTask": {
+          "description": "创建任务, 需要指定 url/sourceLang/targetLang, 其他参数可在 config 中指定",
           "type": "object",
           "properties": {
             "url": {
@@ -73,6 +74,7 @@
           "additionalProperties": false
         },
         "resumeTask": {
+          "description": "继续任务, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始",
           "type": "object",
           "properties": {
             "sessionPath": {
@@ -169,6 +171,32 @@
             "type"
           ],
           "additionalProperties": false
+        },
+        "torchServer": {
+          "type": "object",
+          "properties": {
+            "port": {
+              "description": "Torch server 端口",
+              "default": 19109,
+              "type": "number"
+            },
+            "idleTimeout": {
+              "description": "空闲超时秒数, 超时后自动关闭",
+              "default": 300,
+              "type": "number"
+            },
+            "action": {
+              "description": "服务器操作",
+              "default": "start",
+              "type": "string",
+              "enum": [
+                "start",
+                "status",
+                "stop"
+              ]
+            }
+          },
+          "additionalProperties": {}
         }
       },
       "required": [
@@ -218,30 +246,6 @@
             "merge_audio",
             "merge_video"
           ]
-        },
-        "torchServer": {
-          "default": {
-            "port": 19109,
-            "idleTimeout": 300,
-            "action": "start"
-          },
-          "type": "object",
-          "properties": {
-            "port": {
-              "default": 19109,
-              "type": "number"
-            },
-            "idleTimeout": {
-              "default": 300,
-              "type": "number"
-            },
-            "action": {
-              "default": "start",
-              "type": "string",
-              "enum": ["start", "status", "stop"]
-            }
-          },
-          "required": []
         },
         "stages": {
           "type": "object",
@@ -524,7 +528,7 @@
               "properties": {
                 "runtime": {
                   "default": "ort-cpp",
-                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
+                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
                   "type": "string",
                   "enum": [
                     "ort-cpp",
@@ -602,7 +606,7 @@
               "properties": {
                 "runtime": {
                   "default": "ort-cpp",
-                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制 + Python ONNX)",
+                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
                   "type": "string",
                   "enum": [
                     "ort-cpp",

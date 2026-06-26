@@ -1,4 +1,4 @@
-import { RawConfigInput, TargetLang } from "../config/types";
+import { RawInputInput, TargetLang } from "../config/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER } from '@repo/config';
@@ -27,7 +27,7 @@ export interface Context {
   stages?: TaskStage[]
   pipeline: 'dub' | 'subtitle';
   lastRunPipeline?: 'dub' | 'subtitle'; // 用于 detect pipeline 切换
-  input?: RawConfigInput
+  input?: RawInputInput
   runInfo?: {
 		asr?: {
 			engine: string; // 'whisper-pytorch' | 'faster-whisper'

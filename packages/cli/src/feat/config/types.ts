@@ -61,7 +61,7 @@ const stagesList = [
 ] as const;
 export type StageName = (typeof stagesList)[number];
 
-const SeparateConfigSchema = z.object({
+const SeparateTaskInputSchema = z.object({
 	runtime: z.enum(['ggml', 'ort', 'pytorch']),
 	device: z
 		.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
@@ -89,9 +89,9 @@ const SeparateConfigSchema = z.object({
 			output: media/target_3_vocals.wav 用于 ASR + TTS reference
 						media/target_bgm.wav  用于 MergeVideo 背景
 	`);
-export type SeparateConfig = z.infer<typeof SeparateConfigSchema>;
+export type SeparateConfig = z.infer<typeof SeparateTaskInputSchema>;
 
-const ASRConfigSchema = z
+const ASRTaskInputSchema = z
 	.looseObject({
 		runtime: z.enum(['ggml', 'faster-whisper', 'pytorch',]).default('pytorch'),
 		device: z.enum(['vulkan', 'cuda', 'cpu', 'mps']).default('cuda'),
@@ -159,7 +159,7 @@ const ASRConfigSchema = z
 	})
 	.optional();
 
-export type ASRConfig = z.output<typeof ASRConfigSchema>;
+export type ASRConfig = z.output<typeof ASRTaskInputSchema>;
 
 const ocrRuntimeList = ['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'] as const;
 const ocrRuntimeSchema = z
@@ -167,7 +167,7 @@ const ocrRuntimeSchema = z
 			.default('ort-cpp')
 			.describe('OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)')
 			.optional()
-const OcrConfigSchema = z
+const OcrTaskInputSchema = z
 	.looseObject({
 		runtime: ocrRuntimeSchema,
 		device: z
@@ -218,10 +218,10 @@ const OcrConfigSchema = z
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 	.optional();
-export type OcrConfig = z.output<typeof OcrConfigSchema>;
+export type OcrConfig = z.output<typeof OcrTaskInputSchema>;
 
 
-const AsrOcrConfigSchema = z
+const AsrOcrTaskInputSchema = z
 	.looseObject({
 		runtime: ocrRuntimeSchema,
 		device: z
@@ -252,9 +252,9 @@ const AsrOcrConfigSchema = z
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
 	.optional();
-export type AsrOcrConfig = z.output<typeof AsrOcrConfigSchema>;
+export type AsrOcrConfig = z.output<typeof AsrOcrTaskInputSchema>;
 
-const TranslateConfigSchema = z
+const TranslateTaskInputSchema = z
 	.looseObject({
 		apiBase: z.string().optional(),
 		model: z.string().optional(),
@@ -269,7 +269,7 @@ const TranslateConfigSchema = z
 	})
 	.optional();
 
-const TTSConfigSchema = z.object({
+const TTSTaskInputSchema = z.object({
 	runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud']).default('pytorch').optional(),
 	device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
 	skipExisting: z.boolean().default(false).optional(),
@@ -282,9 +282,9 @@ const TTSConfigSchema = z.object({
 	.optional().describe(`input: 1. metadata/translation.{lang}.json: translation[i].dst
 		2. segments/vocals/{0001..N}.wav
 		output: segments/tts/{0001..N}.wav`);
-export type TTSConfig = z.output<typeof TTSConfigSchema>;
+export type TTSConfig = z.output<typeof TTSTaskInputSchema>;
 
-const SplitAudioConfigSchema = z
+const SplitAudioTaskInputSchema = z
 	.looseObject({
 		vadAlign: z
 			.boolean()
@@ -367,8 +367,8 @@ export type MergeVideoConfig = z.output<typeof MergeVideoSchema>;
 
 const StagesSchema = z.object({
 	download: z.object({}).optional(),
-	separate: SeparateConfigSchema,
-	asr: ASRConfigSchema,
+	separate: SeparateTaskInputSchema,
+	asr: ASRTaskInputSchema,
 	asr_fix: z
 		.looseObject({
 			llmFix: z
@@ -401,8 +401,8 @@ const StagesSchema = z.object({
 		})
 		.optional(),
 
-	ocr: OcrConfigSchema,
-	asr_ocr: AsrOcrConfigSchema,
+	ocr: OcrTaskInputSchema,
+	asr_ocr: AsrOcrTaskInputSchema,
 	asr_ocr_fix: z
 		.looseObject({
 			textScore: z
@@ -474,9 +474,9 @@ const StagesSchema = z.object({
 		})
 		.default({ llmFix: false })
 		.optional(),
-	translate: TranslateConfigSchema,
-	split_audio: SplitAudioConfigSchema,
-	tts: TTSConfigSchema,
+	translate: TranslateTaskInputSchema,
+	split_audio: SplitAudioTaskInputSchema,
+	tts: TTSTaskInputSchema,
 	merge_audio: z.object({
 		maxSpeed: z.number().min(1).default(1.35).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
 		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间'),
@@ -495,7 +495,7 @@ export type StagesConfig = z.output<typeof StagesSchema>;
 const subtitleSourceList = ['asr', 'ocr', 'asr_ocr'] as const;
 export type SubtitleSource = (typeof subtitleSourceList)[number];
 
-const BaseConfigSchema = z.looseObject({
+const BaseTaskInputSchema = z.looseObject({
 	pipeline: z
 		.enum(['dub', 'subtitle'])
 		.default('dub')
@@ -512,8 +512,8 @@ const BaseConfigSchema = z.looseObject({
 		.describe('目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤'),
 	stages: StagesSchema.optional(),
 });
-export type BaseConfigInput = z.input<typeof BaseConfigSchema>;
-export type BaseConfig = z.output<typeof BaseConfigSchema>;
+export type BaseConfigInput = z.input<typeof BaseTaskInputSchema>;
+export type BaseConfig = z.output<typeof BaseTaskInputSchema>;
 const TaskIdSchema = z
 	.string()
 	.describe(
@@ -536,7 +536,7 @@ const TaskSchema = z.looseObject({
 			sourceLang: z.string().optional(),
 			targetLang: z.enum(targetLangList).optional(),
 		})
-		.optional(),
+		.optional().describe(`创建任务, 需要指定 url/sourceLang/targetLang, 其他参数可在 config 中指定`),
 	startTask: z
 		.object({
 			sessionPath: z.string(),
@@ -547,7 +547,7 @@ const TaskSchema = z.looseObject({
 			sessionPath: z.string(),
 			resumeFrom: z.enum(stagesList).optional(),
 		})
-		.optional(),
+		.optional().describe(`继续任务, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
 	rerunStage: z
 		.object({
 			sessionPath: z.string(),
@@ -572,7 +572,7 @@ const TaskSchema = z.looseObject({
 	}).optional(),
 });
 
-export const ConfigSchema = TaskSchema.and(BaseConfigSchema);
-export type RawConfigInput = z.input<typeof ConfigSchema>;
-export type RawConfig = z.output<typeof ConfigSchema>;
+export const TaskInputSchema = TaskSchema.and(BaseTaskInputSchema);
+export type RawInputInput = z.input<typeof TaskInputSchema>;
+export type RawInput = z.output<typeof TaskInputSchema>;
 

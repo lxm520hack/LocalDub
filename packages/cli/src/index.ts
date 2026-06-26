@@ -1,6 +1,6 @@
 export { REPO_ROOT, readConfig } from './feat/config/config.ts';
 export type {
-	ConfigSchema,
-	RawConfig,
-	RawConfigInput,
+	TaskInputSchema,
+	RawInput,
+	RawInputInput,
 } from './feat/config/types.ts';
