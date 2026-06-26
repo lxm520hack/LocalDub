@@ -14,7 +14,7 @@ import {
 } from '@repo/ui-solid/base/sidebar';
 import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
-import { Server, Settings } from 'lucide-solid';
+import { Server, LayoutDashboard, Settings } from 'lucide-solid';
 
 export function AppSidebar() {
 	return (
@@ -30,6 +30,16 @@ export function AppSidebar() {
 				</TooltipX>
 			</SidebarHeader>
 			<SidebarContent>
+				<SidebarGroup>
+					<SidebarGroupLabel>General</SidebarGroupLabel>
+					<SidebarMenu>
+						<SidebarMenuItem>
+							<SidebarMenuButton as={Link} to="/">
+								<LayoutDashboard /> Dashboard
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					</SidebarMenu>
+				</SidebarGroup>
 				<SidebarGroup>
 					<SidebarGroupLabel>Servers</SidebarGroupLabel>
 					<SidebarMenu>

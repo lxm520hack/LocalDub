@@ -20,6 +20,7 @@ interface MyRouterContext {
 
 export const Route = createRootRoute<MyRouterContext>({
   head: () => ({
+    title: 'LocalDub Dashboard',
     meta: [{
       name: 'viewport',
       content: 'width=device-width, initial-scale=1',
