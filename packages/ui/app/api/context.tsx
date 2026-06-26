@@ -17,6 +17,11 @@ export interface ServersManagerApi {
 export interface ClientApi {
   serversManagerApi?: ServersManagerApi;
   deviceInfoApi?: { fetchDeviceInfo: () => Promise<DeviceInfo> };
+  inputEditorApi?: {
+    readInput: () => Promise<string>;
+    writeInput: (content: string) => Promise<void>;
+    readInputSchema: () => Promise<string>;
+  };
 }
 
 const ClientApiCtx = createContext<ClientApi>({});

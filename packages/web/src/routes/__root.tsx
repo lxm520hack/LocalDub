@@ -15,6 +15,7 @@ import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
 import { Devtools } from '@repo/ui-solid/app/devtools';
 import * as torchApi from '../fn/torch';
 import * as deviceApi from '../fn/device';
+import * as inputApi from '../fn/input';
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -59,6 +60,11 @@ function RootDocument({ children }: { children: JSX.Element }) {
   },
   deviceInfoApi: {
     fetchDeviceInfo: deviceApi.fetchDeviceInfo,
+  },
+  inputEditorApi: {
+    readInput: inputApi.readInput,
+    writeInput: inputApi.writeInput,
+    readInputSchema: inputApi.readInputSchema,
   },
 }}>
             <ThemeProvider>

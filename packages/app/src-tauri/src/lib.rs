@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -104,12 +105,47 @@ fn device_info() -> Result<String, String> {
     String::from_utf8(output.stdout).map_err(|e| format!("Invalid UTF-8: {}", e))
 }
 
+fn input_json_path() -> PathBuf {
+    repo_root()
+        .join("packages")
+        .join("cli")
+        .join("input.json")
+}
+
+fn input_schema_path() -> PathBuf {
+    repo_root()
+        .join("packages")
+        .join("cli")
+        .join("input.schema.json")
+}
+
+#[tauri::command]
+fn read_input() -> Result<String, String> {
+    let path = input_json_path();
+    fs::read_to_string(&path).map_err(|e| format!("Failed to read input.json: {}", e))
+}
+
+#[tauri::command]
+fn write_input(content: String) -> Result<(), String> {
+    let path = input_json_path();
+    fs::write(&path, &content).map_err(|e| format!("Failed to write input.json: {}", e))
+}
+
+#[tauri::command]
+fn read_input_schema() -> Result<String, String> {
+    let path = input_schema_path();
+    fs::read_to_string(&path).map_err(|e| format!("Failed to read input.schema.json: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(TorchProc(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![start_torch, stop_torch, check_torch, device_info])
+        .invoke_handler(tauri::generate_handler![
+            start_torch, stop_torch, check_torch, device_info,
+            read_input, write_input, read_input_schema,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

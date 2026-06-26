@@ -136,5 +136,6 @@
   "stages_merge_video": "Merge video",
   "stages_done": "Done",
   "activeTasksText": "{count} task(s) queued / running",
-  "loadedModelsText": "{count} models loaded."
+  "loadedModelsText": "{count} models loaded.",
+  "settings_auto_save": "Controls auto-save for editors with unsaved changes."
 }

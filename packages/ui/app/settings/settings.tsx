@@ -1,5 +1,5 @@
 import { ClientOnly } from "@tanstack/solid-router";
-import { Keyboard, Monitor, Palette, Settings, Server } from "lucide-solid";
+import { Code, Keyboard, Monitor, Palette, Settings, Server } from "lucide-solid";
 import { type Component } from "solid-js";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "@repo/ui-solid/base/tabs";
 import { m} from "@repo/shared/i18n/paraglide/messages";
@@ -10,9 +10,10 @@ import { GeneralSettings } from "./general";
 import { ServerManager } from "./ServerManager";
 import { DeviceInfo } from "./DeviceInfo";
 import { useClientApi } from "../api/context";
+import { InputEditor } from "./InputEditor";
 
 export const SettingsContent = () => {
-  const { serversManagerApi } = useClientApi();
+  const { serversManagerApi, inputEditorApi } = useClientApi();
   const baseItems = [
     {
       value: 'general',
@@ -26,6 +27,7 @@ export const SettingsContent = () => {
     },
     ...(serversManagerApi ? [{ value: 'servers', label: 'Servers', icon: Server as typeof Settings, content: ServerManager as Component }] : []),
     { value: 'device', label: 'Device', icon: Monitor as typeof Settings, content: DeviceInfo as Component },
+    ...(inputEditorApi ? [{ value: 'config', label: 'Config', icon: Code as typeof Settings, content: InputEditor as Component }] : []),
   ];
   return <ClientOnly>
     <Tabs defaultValue="general" orientation='vertical' class='gap-5' >
@@ -50,12 +52,13 @@ export const SettingsContent = () => {
       <TabsContent value="device">
         <DeviceInfo />
       </TabsContent>
+      {inputEditorApi && (
+        <TabsContent value="config">
+          <InputEditor />
+        </TabsContent>
+      )}
     </Tabs>
   </ClientOnly>
 }
-export const SettingsModal = (p: { children: JSX.Element}) => {
-  return <Modal Trigger={p.children} size="2xl">
-    <SettingsContent />
-  </Modal>
-}
-export const openSettings = () => openModal(SettingsContent, { size: '4xl', class: 'p-4' })
+
+export const openSettings = () => openModal(SettingsContent, { size: '5xl', class: 'p-4' })

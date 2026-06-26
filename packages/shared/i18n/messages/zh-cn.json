@@ -327,5 +327,6 @@
   "stages_merge_video": "合成视频",
   "stages_done": "已完成",
   "activeTasksText": "{count} 个任务正在排队或运行",
-  "loadedModelsText": "已加载 {count} 个模型。"
+  "loadedModelsText": "已加载 {count} 个模型。",
+  "settings_auto_save": "控制具有未保存更改的编辑器的自动保存。"
 }

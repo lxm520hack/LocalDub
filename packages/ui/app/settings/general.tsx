@@ -1,15 +1,24 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui-solid/base/select";
 import { CardX } from "@repo/ui-solid/custom/card";
+import { createSignal } from "solid-js";
 import { getLocale, setLocale, locales,  } from "@repo/shared/i18n/paraglide/runtime";
 import { m } from "@repo/shared/i18n/paraglide/messages";
 import { tColorScheme, tLocaleName, type ColorSchemeKey, type LocaleNameKey } from "@repo/shared/i18n/utils";
 import { useTheme } from "@repo/ui-solid/theme";
+import { getAutoSaveMode, setAutoSaveMode } from "./editorPrefs";
+import type { AutoSaveMode } from "./editorPrefs";
 const languages = [
   { value: 'en', label: tLocaleName('en') },
   { value: 'zh-cn', label: tLocaleName('zh-cn') },
 ]
 type LanguageOption = (typeof languages)[number];
+const autoSaveOptions: { value: string; label: string }[] = [
+  { value: 'afterDelay', label: 'After Delay' },
+  { value: 'off', label: 'Off' },
+];
+type AutoSaveOption = { value: string; label: string };
 export const GeneralSettings = () => {
+  const [autoSaveMode, setAutoSaveModeState] = createSignal(getAutoSaveMode());
 
   return <div >
     <h2>{m.general()}</h2>
@@ -33,6 +42,30 @@ export const GeneralSettings = () => {
       </SelectTrigger>
       <SelectContent />
     </Select>} />
+    <CardX
+      title="Files: Auto Save"
+      description={m.settings_auto_save()}
+      size="sm"
+      Footer={
+        <Select
+          value={{ value: autoSaveMode(), label: autoSaveMode() === 'afterDelay' ? 'After Delay' : 'Off' }}
+          optionValue="value"
+          optionTextValue="label"
+          onChange={(v) => {
+            const mode = (v?.value ?? 'afterDelay') as AutoSaveMode;
+            setAutoSaveModeState(mode);
+            setAutoSaveMode(mode);
+          }}
+          options={autoSaveOptions}
+          itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>}
+        >
+          <SelectTrigger class="w-30">
+            <SelectValue<AutoSaveOption>>{(state) => state.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+      }
+    />
     <AppearanceSettings />
   </div>
 }
