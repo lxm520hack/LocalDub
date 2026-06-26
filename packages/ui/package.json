@@ -20,6 +20,8 @@
     "@tanstack/solid-router": "^1.170.16",
     "codemirror": "^6.0.2",
     "lucide-solid": "^1.21.0",
+    "monaco-editor": "^0.55.1",
+    "monaco-themes": "^0.4.8",
     "solid-js": "^1.9.13",
     "tailwindcss": "^4.3.1",
     "tailwindcss-animate": "^1.0.7"

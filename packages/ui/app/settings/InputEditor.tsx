@@ -1,19 +1,16 @@
 import { onMount, onCleanup } from 'solid-js';
-import { EditorView, basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
-import { json, jsonParseLinter } from '@codemirror/lang-json';
-import { linter } from '@codemirror/lint';
-import { autocompletion } from '@codemirror/autocomplete';
 import { useClientApi } from '../api/context';
 import { getAutoSaveMode } from './editorPrefs';
-import { schemaCompletions } from './schemaCompletions';
+import { useTheme } from '@repo/ui-solid/theme';
 
 const AUTO_SAVE_DELAY = 2000;
 
 export function InputEditor() {
   const api = useClientApi().inputEditorApi;
+  const { themeName } = useTheme();
   let containerRef: HTMLDivElement | undefined;
-  let view: EditorView | undefined;
+  let editor: any = null;
+  let model: any = null;
   let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
 
   const debouncedSave = (content: string) => {
@@ -23,59 +20,95 @@ export function InputEditor() {
       try {
         JSON.parse(content);
         await api.writeInput(content);
-      } catch {
-        // silent — invalid JSON, don't save
-      }
+      } catch { /* silent */ }
     }, AUTO_SAVE_DELAY);
   };
 
   onMount(async () => {
     if (!api || !containerRef) return;
 
-    const [content, schema] = await Promise.all([
+    const [fileContent, schemaContent] = await Promise.all([
       api.readInput(),
       api.readInputSchema().catch(() => '{}'),
     ]);
 
-    let schemaObj: any;
-    try { schemaObj = JSON.parse(schema); } catch { schemaObj = null; }
+    const monaco = await import('monaco-editor');
 
+    // Configure workers for JSON language features
+    (self as any).MonacoEnvironment = {
+      getWorker: async (_: string, label: string) => {
+        if (label === 'json') {
+          const mod = await import('monaco-editor/esm/vs/language/json/json.worker?worker');
+          return new mod.default();
+        }
+        const mod = await import('monaco-editor/esm/vs/editor/editor.worker?worker');
+        return new mod.default();
+      },
+    };
+
+    // Register JSON schema
+    let schemaObj: any;
+    try { schemaObj = JSON.parse(schemaContent); } catch { schemaObj = null; }
+
+    if (schemaObj && (monaco.languages.json as any)?.jsonDefaults) {
+      (monaco.languages.json as any).jsonDefaults.setDiagnosticsOptions({
+        allowComments: true,
+        validate: true,
+        schemas: [{
+          uri: 'inmemory://input.schema.json',
+          fileMatch: ['*'],
+          schema: schemaObj,
+        }],
+      });
+    }
+
+    // Load Monaco theme matching the current app theme
+    const { themeByName } = await import('@repo/ui-solid/theme/defs');
+    const { loadMonacoTheme } = await import('./loadTheme');
+    const def = themeByName(themeName());
+    let monacoTheme = 'vs-dark';
+    if (def) {
+      try {
+        const themeFile = def.monacoTheme.replace(/[\\/:"*?<>|]/g, '_');
+        await loadMonacoTheme(monaco, themeFile, def.value);
+        monacoTheme = def.value;
+      } catch { /* fallback */ }
+    }
+
+    // Create the editor
+    model = monaco.editor.createModel(fileContent, 'json');
+    editor = monaco.editor.create(containerRef, {
+      model,
+      language: 'json',
+      theme: monacoTheme,
+      automaticLayout: true,
+      fontSize: 13,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      padding: { top: 8 },
+      tabSize: 2,
+      quickSuggestions: true,
+      wordWrap: 'on',
+    });
+
+    // Auto-save on content change
     const autoSaveMode = getAutoSaveMode();
-    const updateListener = EditorView.updateListener.of((update) => {
-      if (!update.docChanged) return;
+    editor.onDidChangeModelContent(() => {
       if (autoSaveMode === 'afterDelay') {
-        debouncedSave(update.state.doc.toString());
+        debouncedSave(editor.getValue());
       }
     });
-
-    const extensions: any[] = [
-      basicSetup,
-      json(),
-      linter(jsonParseLinter()),
-      autocompletion({ override: schemaObj ? [schemaCompletions(schemaObj)] : undefined }),
-      updateListener,
-      EditorView.theme({
-        '&': { height: '400px', 'font-size': '13px' },
-        '.cm-scroller': { overflow: 'auto' },
-      }),
-    ];
-
-    const state = EditorState.create({
-      doc: content,
-      extensions,
-    });
-
-    view = new EditorView({ state, parent: containerRef });
   });
 
   onCleanup(() => {
     clearTimeout(autoSaveTimer);
-    view?.destroy();
+    editor?.dispose();
+    model?.dispose();
   });
 
   const handleSave = async () => {
-    if (!api || !view) return;
-    const content = view.state.doc.toString();
+    if (!api || !editor) return;
+    const content = editor.getValue();
     try {
       JSON.parse(content);
       await api.writeInput(content);
@@ -89,7 +122,7 @@ export function InputEditor() {
 
   return (
     <div class="space-y-3">
-      <div ref={containerRef} class="border border-gray-700 rounded-lg overflow-hidden" />
+      <div ref={containerRef} class="border border-gray-700 rounded-lg overflow-hidden" style="height: 500px" />
       <div class="flex gap-2">
         <button
           onClick={handleSave}

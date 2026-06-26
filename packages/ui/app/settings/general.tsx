@@ -3,8 +3,9 @@ import { CardX } from "@repo/ui-solid/custom/card";
 import { createSignal } from "solid-js";
 import { getLocale, setLocale, locales,  } from "@repo/shared/i18n/paraglide/runtime";
 import { m } from "@repo/shared/i18n/paraglide/messages";
-import { tColorScheme, tLocaleName, type ColorSchemeKey, type LocaleNameKey } from "@repo/shared/i18n/utils";
+import { tLocaleName, type LocaleNameKey } from "@repo/shared/i18n/utils";
 import { useTheme } from "@repo/ui-solid/theme";
+import { THEMES } from "@repo/ui-solid/theme/defs";
 import { getAutoSaveMode, setAutoSaveMode } from "./editorPrefs";
 import type { AutoSaveMode } from "./editorPrefs";
 const languages = [
@@ -71,42 +72,54 @@ export const GeneralSettings = () => {
 }
 
 const AppearanceSettings = () => {
-  const { theme, setTheme} = useTheme()
-  const colorScheme = () => theme() === 'auto' ? 'system' : theme() as ColorSchemeKey
-  const setColorScheme = (scheme: ColorSchemeKey) => {
-    if(scheme === 'system') {
-      setTheme('auto')
-    } else {
-      setTheme(scheme)
-    }
-  }
-  // 系统, 浅色, 深色
-  const colorSchemeOptions = [
+  const { colorScheme, setColorScheme, themeName, setThemeName, currentThemeDef } = useTheme();
+  const themeOptions = THEMES.map(t => ({ value: t.value, label: t.label }));
+  const schemeOptions = [
     { value: 'system', label: m.system() },
     { value: 'light', label: m.light() },
     { value: 'dark', label: m.dark() },
-  ] 
-  type ColorSchemeOption = (typeof colorSchemeOptions)[number];
+  ];
+  type SchemeOption = { value: string; label: string };
+
   return <>
   <h3>{m.appearance()}</h3>
     <CardX title={m.color_scheme()}
-      description={m.settings_color_scheme()}  
-      size='sm'  
-      Footer={<Select
-      value={{
-        value: colorScheme(),
-        label: tColorScheme(colorScheme())
-      }}
-      optionValue="value"
-			optionTextValue="label"
-      onChange={(v)=>setColorScheme(v?.value ?? 'system')}
-      options={colorSchemeOptions}
-      itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>}
-    >
-      <SelectTrigger  class="w-45">
-        <SelectValue<ColorSchemeOption>>{(state) => state.selectedOption().label}</SelectValue>
-      </SelectTrigger>
-      <SelectContent />
-    </Select>} />
+      description={m.settings_color_scheme()}
+      size="sm"
+      Footer={
+        <Select
+          value={{ value: colorScheme(), label: colorScheme() }}
+          optionValue="value"
+          optionTextValue="label"
+          onChange={(v) => { if (v?.value) setColorScheme(v.value as any); }}
+          options={schemeOptions}
+          itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>}
+        >
+          <SelectTrigger class="w-40">
+            <SelectValue<SchemeOption>>{(state) => state.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+      }
+    />
+    <CardX title="Theme"
+      description="Color palette (affects editor too)"
+      size="sm"
+      Footer={
+        <Select
+          value={{ value: themeName(), label: currentThemeDef()?.label ?? themeName() }}
+          optionValue="value"
+          optionTextValue="label"
+          onChange={(v) => { if (v?.value) setThemeName(v.value); }}
+          options={themeOptions}
+          itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>}
+        >
+          <SelectTrigger class="w-50">
+            <SelectValue<SchemeOption>>{(state) => state.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+      }
+    />
     </>;
-}
+  }
