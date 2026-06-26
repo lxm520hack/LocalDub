@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/solid-router';
-import packageJson from '../../package.json';
+import packageJson from '../package.json';
 import {
 	Sidebar,
 	SidebarContent,
@@ -14,7 +14,7 @@ import {
 } from '@repo/ui-solid/base/sidebar';
 import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
-import { Server, LayoutDashboard, Settings } from 'lucide-solid';
+import { LayoutDashboard, Settings } from 'lucide-solid';
 
 export function AppSidebar() {
 	return (
@@ -31,21 +31,10 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<SidebarGroupLabel>General</SidebarGroupLabel>
 					<SidebarMenu>
 						<SidebarMenuItem>
 							<SidebarMenuButton as={Link} to="/">
 								<LayoutDashboard /> Dashboard
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					</SidebarMenu>
-				</SidebarGroup>
-				<SidebarGroup>
-					<SidebarGroupLabel>Servers</SidebarGroupLabel>
-					<SidebarMenu>
-						<SidebarMenuItem>
-							<SidebarMenuButton as={Link} to="/server/torch">
-								<Server /> Torch Server
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					</SidebarMenu>

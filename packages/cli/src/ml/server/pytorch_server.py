@@ -42,6 +42,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -120,6 +121,13 @@ from torch_server_tts import handle_tts  # noqa: PLC0414,E402
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="ML Torch Server")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 _shutdown = False
 _start_time = time.time()
 _executor = ThreadPoolExecutor(max_workers=1)

@@ -1,4 +1,4 @@
-export { TorchServer } from './src/server/TorchServer';
-export type { TorchStatus } from './src/server/types';
-export { AppSidebar } from './src/app/AppSidebar';
-export { IndexPage } from './src/app/index/IndexPage';
+export { AppSidebar } from './app/AppSidebar';
+export { IndexPage } from './pages/home/IndexPage';
+export { ClientApiProvider, useClientApi } from './app/api/context';
+export type { ClientApi, ServersManagerApi, TorchStatus } from './app/api/context';

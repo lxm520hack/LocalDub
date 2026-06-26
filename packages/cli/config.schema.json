@@ -219,22 +219,29 @@
             "merge_video"
           ]
         },
-        "torchServerPort": {
-          "default": 19109,
-          "type": "number"
-        },
-        "torchServerIdleTimeout": {
-          "default": 300,
-          "type": "number"
-        },
-        "torchServerAction": {
-          "default": "start",
-          "type": "string",
-          "enum": [
-            "start",
-            "status",
-            "stop"
-          ]
+        "torchServer": {
+          "default": {
+            "port": 19109,
+            "idleTimeout": 300,
+            "action": "start"
+          },
+          "type": "object",
+          "properties": {
+            "port": {
+              "default": 19109,
+              "type": "number"
+            },
+            "idleTimeout": {
+              "default": 300,
+              "type": "number"
+            },
+            "action": {
+              "default": "start",
+              "type": "string",
+              "enum": ["start", "status", "stop"]
+            }
+          },
+          "required": []
         },
         "stages": {
           "type": "object",

@@ -14,5 +14,4 @@
     "strict": true,
     "allowJs": true
   },
-  "include": ["src"]
 }

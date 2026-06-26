@@ -25,7 +25,7 @@ async function withTorchServer<T>(
 	fn: (torchServer: TorchServerConnection) => Promise<T>,
 ): Promise<T> {
 	const config = readConfig();
-	const TORCH_SERVER_PORT = config.torchServerPort || 19109;
+	const TORCH_SERVER_PORT = config.torchServer?.port ?? 19109;
 	const torchServer = await startTorchServer(TORCH_SERVER_PORT);
 	return await fn(torchServer);
 }
@@ -194,8 +194,8 @@ switch (cmd) {
 	}
 
 	case 'torchServer': {
-		const action = (config as any).torchServerAction ?? 'start';
-		const TORCH_SERVER_PORT = config.torchServerPort || 19109;
+		const action = config.torchServer?.action ?? 'start';
+		const TORCH_SERVER_PORT = config.torchServer?.port ?? 19109;
 		if (action === 'status') {
 			try {
 				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/api/health`, { signal: AbortSignal.timeout(2000) });

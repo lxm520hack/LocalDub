@@ -510,9 +510,6 @@ const BaseConfigSchema = z.looseObject({
 		.enum(stagesList)
 		.optional()
 		.describe('目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤'),
-	torchServerPort: z.number().default(19109).optional(),
-	torchServerIdleTimeout: z.number().default(300).optional(),
-	torchServerAction: z.enum(['start', 'status', 'stop']).default('start').optional(),
 	stages: StagesSchema.optional(),
 });
 export type BaseConfigInput = z.input<typeof BaseConfigSchema>;
@@ -530,7 +527,7 @@ const TaskSchema = z.looseObject({
 		5. taskStatus: 显示某任务状态
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
 		7. deviceInfo: 显示设备信息
-		8. torchServer: 启动 Torch server (torchServerAction=status 查状态, stop 停止)
+		8. torchServer: 启动 Torch server (torchServer.action=status 查状态, stop 停止)
 		9. listModels: 列出 openai 兼容端点的 可用模型
 		`),
 	createTask: z
@@ -568,6 +565,11 @@ const TaskSchema = z.looseObject({
 			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),
+	torchServer: z.looseObject({
+		port: z.number().default(19109).optional().describe('Torch server 端口'),
+		idleTimeout: z.number().default(300).optional().describe('空闲超时秒数, 超时后自动关闭'),
+		action: z.enum(['start', 'status', 'stop']).default('start').optional().describe('服务器操作'),
+	}).optional(),
 });
 
 export const ConfigSchema = TaskSchema.and(BaseConfigSchema);

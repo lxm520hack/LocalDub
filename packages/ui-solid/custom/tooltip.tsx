@@ -7,17 +7,15 @@ import {
 
 //  ComponentProps<typeof Tooltip> &
 // ComponentProps<typeof TooltipContent> &
-export function TooltipX({
-	children,
-	content,
-}: {
+export function TooltipX(p: {
 	content: JSX.Element;
 	children: JSX.Element;
+	class?: string;
 }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger>{children}</TooltipTrigger>
-			<TooltipContent>{content}</TooltipContent>
+			<TooltipTrigger class={p.class}>{p.children}</TooltipTrigger>
+			<TooltipContent>{p.content}</TooltipContent>
 		</Tooltip>
 	);
 }

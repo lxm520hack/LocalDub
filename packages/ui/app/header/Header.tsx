@@ -1,0 +1,25 @@
+import { cn } from "@repo/shared/lib/utils";
+import { Button, buttonVariants } from "@repo/ui-solid/base/button";
+import { TooltipX } from "@repo/ui-solid/custom/tooltip";
+import { SquareTerminal } from "lucide-solid";
+
+export const Header = () => {
+  return <header class="px-3 h-12 py-3 border-b">
+
+  <div class=" flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+    <div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">activeSessionTitle
+    
+    </div>
+    <div
+      data-header-actions
+      class={cn(
+        "flex shrink-0 items-center justify-end gap-2 @3xl/header-actions:gap-3",
+      )}
+    >
+      <TooltipX content={`Toggle terminal drawer`} class={buttonVariants({ variant: 'icon', size: 'xs'})} >
+        <SquareTerminal size={16} />
+      </TooltipX>
+    </div>
+  </div>
+  </header> 
+}

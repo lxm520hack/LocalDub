@@ -8,10 +8,12 @@
   "dependencies": {
     "@repo/shared": "workspace:*",
     "@repo/ui-solid": "workspace:*",
-    "@tanstack/solid-router": "^1.170.16",
     "@tanstack/solid-query": "^5.101.1",
+    "@tanstack/solid-router": "^1.170.16",
     "lucide-solid": "^1.21.0",
-    "solid-js": "^1.9.13"
+    "solid-js": "^1.9.13",
+    "tailwindcss": "^4.3.1",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

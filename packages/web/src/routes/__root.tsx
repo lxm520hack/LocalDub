@@ -1,7 +1,7 @@
 import { SidebarProvider } from '@repo/ui-solid/base/sidebar';
 import { ThemeProvider, themeScript } from '@repo/ui-solid/theme';
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/solid-router';
-import { AppSidebar } from '@repo/ui';
+import { AppSidebar, ClientApiProvider } from '@repo/ui';
 import { ModalRenderer } from '@repo/ui-solid/custom/modal/renderer';
 import { Toaster } from '@repo/ui-solid/base/sonner';
 import type { JSX } from 'solid-js';
@@ -13,6 +13,7 @@ import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
 import { Devtools } from '@repo/ui-solid/app/devtools';
+import * as torchApi from '../fn/torch';
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -49,6 +50,13 @@ function RootDocument({ children }: { children: JSX.Element }) {
         <HeadContent />
       </head>
       <body class="h-svh">
+<ClientApiProvider value={{
+  serversManagerApi: {
+    startTorch: torchApi.startTorch,
+    stopTorch: torchApi.stopTorch,
+    restartTorch: torchApi.restartTorch,
+  },
+}}>
             <ThemeProvider>
 <SidebarProvider>
   <AppSidebar />
@@ -60,6 +68,7 @@ function RootDocument({ children }: { children: JSX.Element }) {
   
 </SidebarProvider>
     </ThemeProvider>
+</ClientApiProvider>
     <Devtools />
         <Scripts />
       </body>
