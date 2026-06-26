@@ -3,8 +3,10 @@ import { EditorView, basicSetup } from 'codemirror';
 import { EditorState } from '@codemirror/state';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
+import { autocompletion } from '@codemirror/autocomplete';
 import { useClientApi } from '../api/context';
 import { getAutoSaveMode } from './editorPrefs';
+import { schemaCompletions } from './schemaCompletions';
 
 const AUTO_SAVE_DELAY = 2000;
 
@@ -50,6 +52,7 @@ export function InputEditor() {
       basicSetup,
       json(),
       linter(jsonParseLinter()),
+      autocompletion({ override: schemaObj ? [schemaCompletions(schemaObj)] : undefined }),
       updateListener,
       EditorView.theme({
         '&': { height: '400px', 'font-size': '13px' },
