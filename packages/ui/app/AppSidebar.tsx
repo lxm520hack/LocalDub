@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/solid-router';
-import packageJson from '../../../package.json';
+import packageJson from '../../package.json';
 import {
 	Sidebar,
 	SidebarContent,

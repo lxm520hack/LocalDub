@@ -22,6 +22,7 @@
         "@inlang/paraglide-js": "^2.20.2",
         "@repo/config": "workspace:*",
         "@repo/shared": "workspace:*",
+        "@repo/ui": "workspace:*",
         "@repo/ui-solid": "workspace:*",
         "@tailwindcss/vite": "^4.3.1",
         "@tanstack/devtools-vite": "^0.8.1",
@@ -118,6 +119,20 @@
         "pngjs": "^7.0.0",
       },
     },
+    "packages/ui": {
+      "name": "@repo/ui",
+      "dependencies": {
+        "@repo/shared": "workspace:*",
+        "@repo/ui-solid": "workspace:*",
+        "@tanstack/solid-query": "^5.101.1",
+        "@tanstack/solid-router": "^1.170.16",
+        "lucide-solid": "^1.21.0",
+        "solid-js": "^1.9.13",
+      },
+      "devDependencies": {
+        "typescript": "^6.0.3",
+      },
+    },
     "packages/ui-solid": {
       "name": "@repo/ui-solid",
       "dependencies": {
@@ -161,6 +176,7 @@
       "dependencies": {
         "@inlang/paraglide-js": "^2.20.2",
         "@repo/shared": "workspace:*",
+        "@repo/ui": "workspace:*",
         "@repo/ui-solid": "workspace:*",
         "@tailwindcss/vite": "^4.3.1",
         "@tanstack/devtools-vite": "^0.8.1",
@@ -504,6 +520,8 @@
     "@repo/shared": ["@repo/shared@workspace:packages/shared"],
 
     "@repo/subtitle-ocr": ["@repo/subtitle-ocr@workspace:packages/subtitle-ocr"],
+
+    "@repo/ui": ["@repo/ui@workspace:packages/ui"],
 
     "@repo/ui-solid": ["@repo/ui-solid@workspace:packages/ui-solid"],
 

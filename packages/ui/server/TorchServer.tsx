@@ -1,8 +1,8 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { startTorch, stopTorch, restartTorch } from '../-fn/torch';
 import { useMutation } from '@tanstack/solid-query';
 import { Button } from '@repo/ui-solid/base/button';
 import { toastError } from '@repo/ui-solid/custom/toast';
+import type { TorchStatus } from './types';
 
 interface HealthData {
   status: string;
@@ -18,14 +18,21 @@ function fmtUptime(s: number): string {
   return `${hh}h ${mm}m ${ss}s`;
 }
 
-export function TorchServer() {
+interface Props {
+  startTorch: () => Promise<TorchStatus>;
+  stopTorch: () => Promise<TorchStatus>;
+  restartTorch: () => Promise<TorchStatus>;
+  sseUrl: string;
+}
+
+export function TorchServer(props: Props) {
   const [health, setHealth] = createSignal<HealthData | null>(null);
   const [logs, setLogs] = createSignal('');
   const [errMsg, setErrMsg] = createSignal('');
   let lastLineCount = 0;
 
   onMount(() => {
-    const es = new EventSource('/torch_server/api/events');
+    const es = new EventSource(props.sseUrl);
     es.addEventListener('health', (e) => {
       try { setHealth(JSON.parse(e.data)); } catch {}
     });
@@ -42,7 +49,6 @@ export function TorchServer() {
           const newLines = lines.slice(-newCount).join('\n');
           setLogs(prev => {
             const next = prev + '\n' + newLines;
-            // cap at 5000 lines to avoid unbounded memory
             const all = next.split('\n');
             return all.length > 5000 ? all.slice(-5000).join('\n') : next;
           });
@@ -55,7 +61,7 @@ export function TorchServer() {
   });
 
   const startMutation = useMutation(() => ({
-    mutationFn: () => startTorch(),
+    mutationFn: () => props.startTorch(),
     onMutate: () => setErrMsg(''),
     onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
@@ -64,14 +70,14 @@ export function TorchServer() {
   }));
 
   const stopMutation = useMutation(() => ({
-    mutationFn: () => stopTorch(),
+    mutationFn: () => props.stopTorch(),
     onMutate: () => setErrMsg(''),
     onSuccess: () => setHealth(null),
     onError: (e) => toastError(e),
   }));
 
   const restartMutation = useMutation(() => ({
-    mutationFn: () => restartTorch(),
+    mutationFn: () => props.restartTorch(),
     onMutate: () => setErrMsg(''),
     onSuccess: (s) => {
       if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });

@@ -1,7 +1,7 @@
 import { SidebarProvider } from '@repo/ui-solid/base/sidebar';
 import { ThemeProvider, themeScript } from '@repo/ui-solid/theme';
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/solid-router';
-import { AppSidebar } from '../components/app/AppSidebar';
+import { AppSidebar } from '@repo/ui';
 import { ModalRenderer } from '@repo/ui-solid/custom/modal/renderer';
 import { Toaster } from '@repo/ui-solid/base/sonner';
 import type { JSX } from 'solid-js';
