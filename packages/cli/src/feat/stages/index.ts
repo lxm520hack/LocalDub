@@ -1,4 +1,3 @@
-import type { TorchServerConnection } from '../../ml/server/client.ts';
 import { stageDownload } from './download.ts';
 import { stageSeparate } from './separate/separate.ts';
 import { stageSeparateAfter } from './separate_after.ts';
@@ -35,24 +34,24 @@ export { stageMergeAudio };
 export { stageMergeVideo };
 
 
-export type StageHandler = (taskId: string, sessionPath: string, task: Task, torchServer?: TorchServerConnection) => Promise<void>;
+export type StageHandler = (taskId: string, sessionPath: string, task: Task) => Promise<void>;
 
 export const STAGE_HANDLERS: Record<string, StageHandler> = {
   download: async (id, sp, task) => {
     const ctx = readCtx(sp)
     return stageDownload(ctx)
   },
-  separate: (id, sp, _task, d) => {
+  separate: (id, sp, _task) => {
     const ctx = readCtx(sp)
-    return stageSeparate(ctx, d)
+    return stageSeparate(ctx)
   },
   separate_after: (id, sp) => {
     const ctx = readCtx(sp)
     return stageSeparateAfter(ctx)
   },
-  asr: (id, sp, _task, d) => { 
+  asr: (id, sp, _task) => { 
     const ctx = readCtx(sp)
-    return stageAsr(ctx, d)
+    return stageAsr(ctx)
   },
   asr_fix: (id, sp, _task) => {
     const ctx = readCtx(sp)
@@ -86,9 +85,9 @@ export const STAGE_HANDLERS: Record<string, StageHandler> = {
       ctx,
     })
   },
-  tts: (id, sp, _task, d) => {
+  tts: (id, sp, _task) => {
     const ctx = readCtx(sp)
-    return stageTts(ctx, d)
+    return stageTts(ctx)
   },
   merge_audio: (id, sp, _task) => {
     const ctx = readCtx(sp)

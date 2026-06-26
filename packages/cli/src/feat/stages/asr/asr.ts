@@ -3,7 +3,7 @@ import { readJson, writeJson, ensureDir, removeFile } from '../utils/fileOps.ts'
 import { copyFileSync, existsSync, renameSync } from 'node:fs';
 import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { runStage, type TorchServerConnection } from '../../../ml/server/client.ts';
+import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
@@ -61,7 +61,6 @@ function resolveVadModel(name: string): string {
 
 export async function stageAsr(
 	ctx: Context,
-	torchServer?: TorchServerConnection,
 ) {
 	const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
@@ -102,9 +101,10 @@ export async function stageAsr(
 	const pyBin = pythonBin();
 	const { asrLanguage } = readTaskLanguages(ctx);
 
-	if (runtime === 'pytorch' && torchServer) {
+	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[ASR] Using Torch server (device=${device})`);
-		const result = await runStage(torchServer, 'asr', taskId, {
+		const asrUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+		const result = await runStage(asrUrl, 'asr', taskId, {
 			vocals_path: audioPath,
 			session_path: sessionPath,
 			language: asrLanguage || 'auto',
@@ -142,8 +142,6 @@ export async function stageAsr(
 				`[ASR] Audio duration ${Number(r.audio_duration_s).toFixed(1)}s`,
 			);
 		if (r.rtf) emitLog(sessionPath, `[ASR] RTF ${r.rtf}`);
-	} else if (runtime === 'pytorch') {
-		await asrPytorch({ ctx,taskId, audioPath, sessionPath: sessionPath, language: asrLanguage, device, pythonBin: pyBin });
 	} else if (runtime === 'ggml') {
 		await asrWhisperCpp(ctx, audioPath, sessionPath, asrLanguage || 'auto');
 	} else {

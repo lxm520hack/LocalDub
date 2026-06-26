@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { runStage, type TorchServerConnection } from '../../../ml/server/client.ts';
+import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
 import {
@@ -16,7 +16,6 @@ import { startLog } from '../utils/log.ts';
 
 export async function stageSeparate(
 	ctx: Context,
-	torchServer?: TorchServerConnection,
 ) {
 	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
@@ -49,7 +48,7 @@ export async function stageSeparate(
 	const runtime = sepCfg?.runtime ?? 'pytorch';
 	const device = sepCfg?.device ?? 'cuda';
 
-	if (runtime === 'pytorch' && torchServer) {
+	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[Separate] Using Torch server (device=${device})`);
 		const absVideo = resolve(
 			REPO_ROOT,
@@ -57,7 +56,8 @@ export async function stageSeparate(
 			'download',
 			'video_source.mp4',
 		);
-		const result = await runStage(torchServer,
+		const sepUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+		const result = await runStage(sepUrl,
 			'separate',
 			taskId,
 			{
@@ -85,8 +85,6 @@ export async function stageSeparate(
 				`[Separate] Audio duration ${sr.audio_duration_s.toFixed(1)}s`,
 			);
 		if (sr.rtf) emitLog(sessionPath, `[Separate] RTF ${sr.rtf}`);
-	} else if (runtime === 'pytorch') {
-		await separatePytorch(taskId, sessionPath, videoPath, device);
 	} else if (runtime === 'ggml') {
 		await separateGgml(taskId, sessionPath, videoPath, device);
 	} else {

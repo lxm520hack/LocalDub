@@ -15,19 +15,19 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { startTorchServer, type TorchServerConnection } from './src/ml/server/client.ts';
+import { startTorchServer } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
 
 async function withTorchServer<T>(
 	taskId: string,
-	fn: (torchServer: TorchServerConnection) => Promise<T>,
+	fn: (torchServer: string) => Promise<T>,
 ): Promise<T> {
 	const config = readConfig();
 	const TORCH_SERVER_PORT = config.torchServer?.port ?? 19109;
-	const torchServer = await startTorchServer(TORCH_SERVER_PORT);
-	return await fn(torchServer);
+	const baseUrl = await startTorchServer(TORCH_SERVER_PORT);
+	return await fn(baseUrl);
 }
 
 const config = readConfig();
@@ -128,7 +128,7 @@ switch (cmd) {
 			);
 
 			console.log(`\n[CLI] Running pipeline for task ${taskId} (${ctx.task.session_path})...`);
-			await withTorchServer(taskId, (d) => runPipeline(ctx, d));
+			await withTorchServer(taskId, () => runPipeline(ctx));
 			console.log('[CLI] Pipeline completed');
 			process.exit(0);
 		} catch (err) {
@@ -156,8 +156,8 @@ switch (cmd) {
 
 		console.log(`[CLI] Resuming pipeline for task ${sessionPath}${label}...`);
 		try {
-			await withTorchServer(taskId, (d) =>
-				resumePipeline(ctx, resumeFrom, config.stages, d),
+			await withTorchServer(taskId, () =>
+				resumePipeline(ctx, resumeFrom, config.stages),
 			);
 			console.log('[CLI] Pipeline completed');
 			process.exit(0);
@@ -181,8 +181,8 @@ switch (cmd) {
 		const taskId = ctx.task.id;
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
-			await withTorchServer(taskId, (d) =>
-				rerunSingleStage(ctx, stageName, config.stages, d),
+			await withTorchServer(taskId, () =>
+				rerunSingleStage(ctx, stageName, config.stages),
 			);
 			console.log('[CLI] Stage completed');
 			process.exit(0);
@@ -275,7 +275,7 @@ switch (cmd) {
 		const taskId = ctx.task.id;
 		console.log(`[CLI] Starting pipeline for task ${taskId}...`);
 		try {
-			await withTorchServer(taskId, (d) => runPipeline(ctx, d));
+			await withTorchServer(taskId, () => runPipeline(ctx));
 			console.log('[CLI] Pipeline completed');
 			process.exit(0);
 		} catch (err) {

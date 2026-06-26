@@ -5,10 +5,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
 import { getStages } from './../../feat/tasks/stages.ts';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import type { TorchServerConnection } from '../../ml/server/client.ts';
-import {
-	readConfig,
-} from '../config/config.ts';
+import { readConfig } from '../config/config.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
 import { Context, 	readCtx,
 	readPipeline,
@@ -39,7 +36,7 @@ function snapshotConfig(sessionPath: string) {
 	setCtx(sessionPath, { input: snap });
 }
 
-export async function runPipeline(ctx: Context, torchServer?: TorchServerConnection) {
+export async function runPipeline(ctx: Context) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	let task = readTask(sessionPath);
@@ -74,7 +71,7 @@ export async function runPipeline(ctx: Context, torchServer?: TorchServerConnect
 		});
 
 		try {
-			await handler(taskId, sessionPath, task, torchServer);
+			await handler(taskId, sessionPath, task);
 			if (targetStage && stage.name === targetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
 				break;
@@ -109,7 +106,6 @@ export async function resumePipeline(
 	ctx: Context,
 	resumeFrom?: string,
 	stageOverrides?: Record<string, any>,
-	torchServer?: TorchServerConnection,
 ) {
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
@@ -226,7 +222,7 @@ export async function resumePipeline(
 		});
 
 		try {
-			await handler(taskId, sessionPath, task, torchServer);
+			await handler(taskId, sessionPath, task);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
 				break;
@@ -261,7 +257,6 @@ export async function rerunSingleStage(
 	ctx: Context,
 	stageName: string,
 	stageOverrides?: Record<string, any>,
-	torchServer?: TorchServerConnection,
 ) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
@@ -290,7 +285,7 @@ export async function rerunSingleStage(
 	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
 	try {
-		await handler(taskId, sessionPath, task, torchServer);
+		await handler(taskId, sessionPath, task);
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
 		emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);

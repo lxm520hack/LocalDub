@@ -6,7 +6,7 @@ import {
 	writeWav,
 } from '@repo/voxlab';
 import { VoxCPMEngine } from '../../ml/voxcpm/voxcpm.ts';
-import { runStage, type TorchServerConnection } from '../../ml/server/client.ts';
+import { runStage, getTorchServerUrl } from '../../ml/server/client.ts';
 import { pythonBin, REPO_ROOT, } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath, } from './utils/utils.ts';
@@ -113,7 +113,6 @@ async function runPytorchBatch(
 
 export async function stageTts(
 	ctx: Context,
-	torchServer?: TorchServerConnection,
 ) {
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path
@@ -142,7 +141,7 @@ export async function stageTts(
 		}
 	}
 
-	if (ttsCfg.runtime === 'pytorch' && torchServer) {
+	if (ttsCfg.runtime === 'pytorch') {
 		emitLog(sessionPath, `[TTS] Using Torch server (device=${ttsCfg.device})`);
 		const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
 		const ensureScript = join(REPO_ROOT, 'packages', 'cli', 'src', 'ml', 'voxcpm', 'ensure_voxcpm.py');
@@ -153,7 +152,8 @@ export async function stageTts(
 			procEnsure.on('error', reject);
 		});
 		const tqdmStart = Date.now();
-		const result = await runStage(torchServer,
+		const ttsUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+		const result = await runStage(ttsUrl,
 			'tts',
 			taskId,
 			{
