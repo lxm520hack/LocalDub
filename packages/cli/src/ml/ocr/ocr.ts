@@ -1,13 +1,18 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { REPO_ROOT } from '../../feat/config/config.ts';
 import { ocrFrameOpenCvCpp, ocrFramesOpenCvCpp } from './runtimes/ort-cpp.ts';
-import { join } from 'node:path';
-import { ocrFrameNode, createNodeSessions, releaseNodeSessions, type NodeSessions, type OCRDevice } from './runtimes/ort-node.ts';
 import { ocrFramePy } from './runtimes/ort-py.ts';
 import { runOcrFrame as runOcrFrameRust } from '../../../../subtitle-rust/ts/ocr.ts';
+import {
+	ocrFrameWithSessions,
+	createSessions,
+	releaseSessions,
+	type OCRSessions,
+} from '@repo/subtitle-ocr/subtitle-node';
 
-export type { NodeSessions } from './runtimes/ort-node.ts';
+export type { OCRSessions } from '@repo/subtitle-ocr/subtitle-node';
+export type OCRDevice = 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
 
 export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py' | 'ort-rust';
 
@@ -41,7 +46,7 @@ export function ocrOrtDir(): string {
 export class OCREngine {
 	private runtime: OCRRuntime;
 	private device: OCRDevice;
-	private nodeSessions: NodeSessions | null = null;
+	private nodeSessions: OCRSessions | null = null;
 
 	constructor(runtime: OCRRuntime, device: OCRDevice = 'cpu') {
 		this.runtime = runtime;
@@ -50,7 +55,7 @@ export class OCREngine {
 
 	async init(): Promise<void> {
 		if (this.runtime === 'ort-node') {
-			this.nodeSessions = await createNodeSessions(this.device);
+			this.nodeSessions = await createSessions(this.device);
 		}
 	}
 
@@ -60,7 +65,8 @@ export class OCREngine {
 				return ocrFrameOpenCvCpp(framePath, { ...opts, device: this.device });
 			case 'ort-node':
 				if (!this.nodeSessions) throw new Error('Node sessions not initialized');
-				return ocrFrameNode(framePath, this.nodeSessions, opts);
+				const nodeResult = await ocrFrameWithSessions(framePath, this.nodeSessions, opts);
+				return nodeResult.segments;
 			case 'ort-py':
 				return ocrFramePy(framePath, { ...opts, device: this.device });
 			case 'ort-rust':
@@ -88,7 +94,7 @@ export class OCREngine {
 
 	async release(): Promise<void> {
 		if (this.runtime === 'ort-node' && this.nodeSessions) {
-			await releaseNodeSessions(this.nodeSessions);
+			await releaseSessions(this.nodeSessions);
 			this.nodeSessions = null;
 		}
 	}

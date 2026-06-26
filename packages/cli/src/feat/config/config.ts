@@ -1,21 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER } from '@repo/config';
+import { env, REPO_ROOT, WORKFOLDER, pythonBin } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
 import { type BaseConfigInput, ConfigSchema,  } from './types.ts';
 import { fileLog } from '../stages/utils/fileOps.ts';
 
-export { delimiter, REPO_ROOT };
-
-export function pythonBin(): string {
-	const isWin = process.platform === 'win32';
-	return join(
-		REPO_ROOT,
-		'.venv',
-		isWin ? 'Scripts' : 'bin',
-		isWin ? 'python.exe' : 'python',
-	);
-}
+export { delimiter, REPO_ROOT, pythonBin };
 
 const CONFIG_PATH = join(REPO_ROOT, 'packages', 'cli', 'config.json');
 

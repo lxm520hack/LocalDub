@@ -2,6 +2,16 @@ import { join } from 'node:path';
 import { env } from './env.ts';
 import { REPO_ROOT } from './root.ts';
 
+export function pythonBin(): string {
+	const isWin = process.platform === 'win32';
+	return join(
+		REPO_ROOT,
+		'.venv',
+		isWin ? 'Scripts' : 'bin',
+		isWin ? 'python.exe' : 'python',
+	);
+}
+
 export const WORKFOLDER = env.WORKFOLDER;
 export const DATA_DIR = join(REPO_ROOT, 'data');
 export const MODEL_CACHE_DIR = env.MODEL_CACHE_DIR;

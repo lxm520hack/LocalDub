@@ -5,12 +5,11 @@ import { readFileSync, writeFileSync, rmSync, mkdtempSync, existsSync, readdirSy
 import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
-import { REPO_ROOT } from '@repo/config';
+import { REPO_ROOT, pythonBin } from '@repo/config';
 import { findRapidOcrModelsDir } from './utils';
 
 
 const MODEL_DIR = findRapidOcrModelsDir();
-const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const POSTPROCESS_PY = resolve(__dirname, 'postprocess_det.py');
 const KEYS_PATH = resolve(__dirname, 'ppocr_keys.json');
 const TMP_DIR = join(REPO_ROOT, 'packages', 'tmp');
@@ -217,6 +216,12 @@ export async function releaseSessions(s: OCRSessions): Promise<void> {
 	await Promise.all([s.det.release(), s.cls.release(), s.rec.release()]);
 }
 
+export interface OCRLine {
+	text: string;
+	confidence: number;
+	box: number[][];
+}
+
 export interface OCRNodeResult {
 	text: string;
 	segments: { text: string; confidence: number; box: number[][] }[];
@@ -255,7 +260,7 @@ export async function ocrFrameWithSessions(
 	writeFileSync(heatmapPath, Buffer.from(heatmapData.buffer, heatmapData.byteOffset, heatmapData.byteLength));
 
 	t0 = performance.now();
-	const pp = spawnSync(PYTHON_BIN, [
+	const pp = spawnSync(pythonBin(), [
 		POSTPROCESS_PY,
 		heatmapPath,
 		String(resizedH),
@@ -320,7 +325,7 @@ export async function ocrFrameWithSessions(
 
 		if (subtitleOnly) {
 			const yCenter = (Math.min(...ys) + Math.max(...ys)) / 2;
-			if (yCenter < 620 || yCenter > 700) continue;
+			if (yCenter < fullH * 0.55) continue;
 		}
 
 		const absBox = pts.map((p: number[]) => [p[0], p[1] + yOffset]);
