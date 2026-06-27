@@ -70,7 +70,7 @@ export async function runPipeline(ctx: Context) {
 		});
 
 		try {
-			await handler(ctx);
+			await handler(sessionPath);
 			if (targetStage && stage.name === targetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
 				break;
@@ -220,7 +220,7 @@ export async function resumePipeline(
 		});
 
 		try {
-			await handler(ctx);
+			await handler(sessionPath);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
 				break;
@@ -283,7 +283,7 @@ export async function rerunSingleStage(
 	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
 	try {
-		await handler(ctx);
+		await handler(sessionPath);
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
 		emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);
