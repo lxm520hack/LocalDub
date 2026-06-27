@@ -1,0 +1,104 @@
+import { spawnSync } from 'node:child_process';
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
+import { basename, join, relative } from 'node:path';
+import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
+import { sanitizeText } from '../../../tasks/fn.ts';
+import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
+import {
+	emitLog,
+	ffmpeg,
+	nowISO,
+} from '../../../stages/utils/utils.ts';
+import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '../../../context/context.ts';
+import { to } from '@repo/shared/lib/utils/try.ts';
+import { startLog } from '../../../stages/utils/log.ts';
+import { copyFileSync } from '../../../stages/utils/fileOps.ts';
+import { getStages } from '../../../tasks/stages.ts';
+import { InputArgs } from '../../../config/config.ts';
+
+
+function parseDirAndId(filePath: string): { dir: string; id: string } {
+	const parts = filePath.split(/[/\\]/).filter(Boolean);
+	if (parts.length === 0) return { dir: 'default', id: 'video' };
+	const fileName = parts.pop() || 'video';
+	const id = fileName.replace(/\.[^.]+$/, '');
+	const parentDir = parts.pop() || 'default';
+	const genericDirs = new Set([
+		'videos', 'video', 'downloads', 'download', 'media',
+		'tmp', 'temp', 'uploads', 'upload', 'files', 'workfolder', 'local'
+	]);
+	if (genericDirs.has(parentDir.toLowerCase()) && parts.length > 0) {
+		const grandParentDir = parts.pop();
+		if (grandParentDir && !genericDirs.has(grandParentDir.toLowerCase())) {
+			return { dir: grandParentDir, id };
+		}
+	}
+	return { dir: parentDir || 'root', id };
+}
+
+export const copyFileToPath = (src: string, target: string) => copyFileSync(src, target);
+export const autoProjectIdAndVideoId = async (url: string) => {
+	const source = await classifySource(url)
+	const ret = { projectId: 'root', taskId: 'unset', source, info: {} as any}
+	if (source === 'local' || source === 'remote') {
+		const { dir: projectId, id: taskId } = parseDirAndId(url);
+		ret.projectId = projectId;
+		ret.taskId = taskId;
+	} else if (source === 'youtube' || source === 'bilibili') {
+		// YouTube/Bilibili URL — download via yt-dlp
+		const isYT = source === 'youtube'
+		const authArgs: string[] = [];
+		if (isYT && existsSync(YOUTUBE_COOKIE_PATH))
+			{ authArgs.push('--cookies', YOUTUBE_COOKIE_PATH);}
+		if (isYT && env.YTDLP_PROXY_PORT) {
+	authArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
+		}
+		const infoArgs = ['--dump-json', ...authArgs, url];
+		const infoR = spawnSync('yt-dlp', infoArgs, {
+			stdio: ['pipe', 'pipe', 'pipe'],
+			timeout: 30_000,
+		});
+		if (infoR.status === 0 && infoR.stdout.length > 0) {
+			const info = JSON.parse(infoR.stdout.toString());
+			info.authArgs = authArgs;
+			const uploader = sanitizeText(info.uploader || '', 'unknown');
+			const videoId: string = info.id || extractVideoId(url);
+			ret.projectId = uploader;
+			ret.taskId = videoId;
+			ret.info = info;
+		} else {
+			ret.taskId = extractVideoId(url);
+		}
+	}
+	return ret;
+}
+export const downloadRemoteVideo = async (url: string, sessionPath: string) => {
+				const urlO = new URL(url);
+			const filename = basename(urlO.pathname) || 'video.mp4';
+			const resp = await fetch(url);
+			if (!resp.ok)
+				throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
+			const buf = Buffer.from(await resp.arrayBuffer());
+			writeFileSync(join(sessionPath, filename), buf);
+}
+/**
+ * 重新编码视频为 H.264 + AAC 格式的
+MP4
+ */
+export const encodeToMp4 = (inputPath: string, outputPath: string) => ffmpeg([
+	'-i', inputPath,
+	'-map', '0:v:0', // 选择第一个视频流
+	'-map', '0:a:0?', // 选择第一个音频流（如果存在）
+	'-c:v', 'libx264', // 视频编码器 H.264
+	'-preset', 'fast', // 编码速度/压缩比平衡: fast
+	'-crf', '23', // 视频质量控制参数，范围 0-51，越小质量越好，文件越大
+	'-c:a', 'aac', // 音频编码器 AAC
+	'-movflags', '+faststart', // 允许视频在未完全下载时播放
+	outputPath,
+]);

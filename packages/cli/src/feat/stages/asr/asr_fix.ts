@@ -1,7 +1,7 @@
 import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readConfig } from '../../config/config.ts';
+import { readInputArgs } from '../../config/config.ts';
 import { emitLog, nowISO, srtTime, } from '../utils/utils.ts';
 import { segmentsToPrompt, parseLines, fixWithLLM } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';
@@ -65,7 +65,7 @@ export async function stageAsrFix(ctx: Context) {
 
   if (!segments.length) throw new Error('ASR result has no segments.');
 
-  const cfg = readConfig().stages?.asr_fix;
+  const cfg = readInputArgs().stages?.asr_fix;
   const llmFix = cfg?.llmFix ?? false;
   const segmentPad = cfg?.segmentPad ?? true;
 

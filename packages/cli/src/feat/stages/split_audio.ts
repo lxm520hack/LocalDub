@@ -98,13 +98,8 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   });
 }
 
-export interface StageSplitAudioInput {
-  ctx: Context;
-}
-export async function stageSplitAudio({
-  ctx,
-  
-}: StageSplitAudioInput) {
+
+export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
   const srtFilePath = subtitleFilePath(sessionPath, ctx.input?.subtitleSource);

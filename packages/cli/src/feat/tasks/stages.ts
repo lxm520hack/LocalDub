@@ -1,4 +1,4 @@
-import { readConfig } from '../config/config.ts';
+import { readInputArgs } from '../config/config.ts';
 
 export interface StageSpec {
 	name: string;
@@ -6,7 +6,6 @@ export interface StageSpec {
 }
 
 export const DUB_STAGES: StageSpec[] = [
-	{ name: 'download', label: 'Download' },
 	{ name: 'separate', label: 'Demucs' },
 	{ name: 'separate_after', label: 'Mix BGM' },
 	{ name: 'asr', label: 'Whisper' },
@@ -19,7 +18,6 @@ export const DUB_STAGES: StageSpec[] = [
 ];
 
 export const SUBTITLE_STAGES: StageSpec[] = [
-	{ name: 'download', label: 'Download' },
 	{ name: 'separate', label: 'Demucs' },
 	{ name: 'separate_after', label: 'Mix BGM' },
 	{ name: 'asr', label: 'Whisper' },
@@ -65,7 +63,7 @@ function withAsrOcrStages(stages: StageSpec[], _pipeline?: string): StageSpec[] 
 export function getStages(pipeline?: string): StageSpec[] {
 	let stages = pipeline === 'subtitle' ? SUBTITLE_STAGES : DUB_STAGES;
 	try {
-		const cfg = readConfig();
+		const cfg = readInputArgs();
 		const src = cfg.subtitleSource ?? 'asr';
 		if (src === 'ocr') stages = withOcrStages(stages, pipeline);
 		else if (src === 'asr_ocr') stages = withAsrOcrStages(stages, pipeline);

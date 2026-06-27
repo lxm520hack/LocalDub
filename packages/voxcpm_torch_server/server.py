@@ -104,6 +104,10 @@ def build_app() -> "FastAPI":
 
     fastapi_app = FastAPI(title="VoxCPM Torch Gradio")
 
+    @fastapi_app.on_event("startup")
+    async def on_startup():
+        print("[VoxCPM] Ready", flush=True)
+
     @fastapi_app.get("/status")
     async def status():
         return {

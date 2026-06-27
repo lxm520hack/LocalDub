@@ -51,7 +51,7 @@ export function defaultFont(dstLang: string): string {
 	}
 }
 import type { SubtitleSource, TargetLang } from '../../config/types.ts';
-import {  readConfig } from '../../config/config.ts';
+import {  readInputArgs } from '../../config/config.ts';
 import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';
 
 export function nowISO(): string {

@@ -1,6 +1,6 @@
 import { pythonBin, REPO_ROOT } from "@repo/config";
 import { InputArgs } from "../config/config";
-import { stopTorchServer } from "../../ml/server/client";
+import { startTorchServer, stopTorchServer } from "../../ml/server/client";
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { startVoxCPMTorchGradioServer, stopVoxCPMTorchGradioServer, voxcpmTorchGradioStatus } from "../../ml/voxcpm/runtime/VoxCPMPyTTorchGradio";
@@ -27,18 +27,12 @@ export const cmdServers = async (input: InputArgs) => {
 			}
 		} else if (action === 'start') {
 			if (!name || name === 'torch') {
-				const scriptPath = join(REPO_ROOT, 'packages', 'torch_server', 'pytorch_server.py');
-				const proc = spawn(pythonBin(), [scriptPath, '--http-port', String(TORCH_PORT)], {
-					env: { ...process.env as Record<string, string> },
-					detached: true, stdio: 'inherit',
-				});
-				proc.unref();
-				console.log(`[Servers] Torch server started (pid ${proc.pid})`);
+        await startTorchServer(TORCH_PORT);
+        console.log(`[Servers] Torch server ready on port ${TORCH_PORT}`);
 			}
 			if (!name || name === 'voxcpm_torch_gradio') {
-				const serverScript = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
-				const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
-        await startVoxCPMTorchGradioServer({port: voxcpmTorchGradioPort, mainPath: serverScript, modelDir});
+        const { url } = await startVoxCPMTorchGradioServer({port: voxcpmTorchGradioPort, waitForReady: true});
+        console.log(`[Servers] VoxCPM Gradio server ready at ${url}`);
 			}
 		} else {
 			const result: Record<string, unknown> = {};

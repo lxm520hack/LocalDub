@@ -1,7 +1,7 @@
 import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readConfig } from '../../config/config.ts';
+import { readInputArgs } from '../../config/config.ts';
 import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
 import { buildSystemPrompt, segmentsToPrompt, fixWithLLM, parseLines } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';
@@ -27,7 +27,7 @@ export async function stageOcrFix(ctx: Context) {
 
   if (!segments.length) throw new Error('OCR result has no segments.');
 
-  const cfg = readConfig().stages?.ocr_fix;
+  const cfg = readInputArgs().stages?.ocr_fix;
   const llmFix = cfg?.llmFix ?? false;
 
   emitLog(sessionPath, `[OCR Fix] ${segments.length} segs, llmFix=${llmFix}`);

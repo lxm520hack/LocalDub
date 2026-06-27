@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir } from './utils/fileOps.ts';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config';
-import { readConfig, } from '../config/config.ts';
+import { readInputArgs, } from '../config/config.ts';
 import {
 	emitLog,
 	LANG_NAMES,
@@ -36,7 +36,7 @@ export async function stageTranslate(ctx: Context) {
 	const sessionPath = ctx.task.session_path
 	const subtitleSource = ctx.input?.subtitleSource;
 	// 解析目标语言: config > auto 推断
-	const configTargetLang = readConfig().stages?.translate?.targetLang;
+	const configTargetLang = readInputArgs().stages?.translate?.targetLang;
 	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =
 		readTaskLanguages(ctx);
 	const resolvedDstLang =
@@ -64,7 +64,7 @@ export async function stageTranslate(ctx: Context) {
 		meta = readJson(ytdlpPath, ctx);
 	}
 
-	const transCfg = readConfig().stages?.translate;
+	const transCfg = readInputArgs().stages?.translate;
 	const apiKey = env.OPENAI_API_KEY;
 	if (!apiKey) throw new Error('OPENAI_API_KEY not configured');
 	const api = {

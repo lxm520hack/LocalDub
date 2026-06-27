@@ -7,7 +7,7 @@ import type { Stem } from '../../../ml/demucs/load.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
-	readConfig,
+	readInputArgs,
 } from '../../config/config.ts';
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
@@ -106,7 +106,7 @@ async function separateOrt(
 	device: string,
 ) {
 	const ep = device === 'webgpu' ? 'webgpu' : 'cpu';
-	const sepCfg = readConfig().stages?.separate;
+	const sepCfg = readInputArgs().stages?.separate;
 	const targetStems: Stem[] = sepCfg && 'stems' in sepCfg ? (sepCfg as { stems?: Stem[] }).stems ?? ['vocals'] : ['vocals'];
 	emitLog(
 		sessionPath,

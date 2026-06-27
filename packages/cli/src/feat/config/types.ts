@@ -30,11 +30,8 @@ export type TargetLang = (typeof targetLangList)[number];
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];
 export const commandList = [
-	'startTask', // 开始任务
-	'resumeTask', // 继续任务
-	'rerunStage', // 重新运行某个步骤
+	'task',
 	'check',
-	'taskStatus', // 显示某任务状态
 	'createTask', // 创建任务(完成后会自动开始任务)
 	'deviceInfo', // 显示设备信息
 	'servers', // 统一状态/启停所有服务器
@@ -43,7 +40,6 @@ export const commandList = [
 export type Command = (typeof commandList)[number];
 // 各 command 的参数
 const stagesList = [
-	'download',
 	'separate',
 	'separate_after',
 	'asr',
@@ -313,20 +309,15 @@ const alignmentList = [
 type Alignment = (typeof alignmentList)[number];
 const AlignmentSchema = z.enum(alignmentList).default('bottom-center');
 
-const ALIGNMENT_MAP: Record<Alignment, number> = {
-	'bottom-left': 1,
-	'bottom-center': 2,
-	'bottom-right': 3,
-	'middle-left': 4,
-	center: 5,
-	'middle-right': 6,
-	'top-left': 7,
-	'top-center': 8,
-	'top-right': 9,
-};
+const ALIGNMENT_MAP: Record<Alignment, number> = Object.fromEntries(
+alignmentList.map((key, i) => [key, i + 1])
+) as Record<Alignment, number>;
+
+
 export function alignmentToFfmpeg(alignment: Alignment): number {
 	return ALIGNMENT_MAP[alignment] ?? 2;
 }
+
 const MergeVideoSchema = z
 	.object({
 		fontSize: z
@@ -520,8 +511,8 @@ const TaskIdSchema = z
 		'任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) ',
 	);
 const TaskSchema = z.looseObject({
-	command: z.enum(commandList).describe(`1. createTask: 完成后会自动开始任务
-		2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)
+	command: z.enum(commandList).describe(`
+		1. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)
 		3. resumeTask: 继续任务
 		4. rerunStage: 重新运行某个步骤
 		5. taskStatus: 显示某任务状态
@@ -530,35 +521,15 @@ const TaskSchema = z.looseObject({
 		8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)
 		9. listModels: 列出 openai 兼容端点的 可用模型
 		`),
-	createTask: z
-		.object({
-			url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),
-			sourceLang: z.string().optional(),
-			targetLang: z.enum(targetLangList).optional(),
-		})
-		.optional().describe(`创建任务, 需要指定 url/sourceLang/targetLang, 其他参数可在 config 中指定`),
-	startTask: z
-		.object({
-			sessionPath: z.string(),
-		})
-		.optional(),
-	resumeTask: z
-		.object({
-			sessionPath: z.string(),
-			resumeFrom: z.enum(stagesList).optional(),
-		})
-		.optional().describe(`继续任务, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
-	rerunStage: z
-		.object({
-			sessionPath: z.string(),
-			stageName: z.enum(stagesList),
-		})
-		.optional(),
-	taskStatus: z
-		.object({
-			sessionPath: z.string(),
-		})
-		.optional(),
+	task: z.looseObject({
+		action: z.enum(['start', 'resume', 'rerunStage', 'status']).optional().describe('任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态'),
+		url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),
+		sourceLang: z.string().optional(),
+		targetLang: z.enum(targetLangList).optional(),
+		resumeFrom: z.enum(stagesList).optional().describe(`继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
+		sessionPath: z.string().optional(),
+		stageName: z.enum(stagesList).optional().describe(`rerunStage 专业参数, 指定要重新运行的步骤`),
+	}),
 	check: z
 		.object({
 			sessionPath: z.string().optional(),

@@ -7,14 +7,14 @@ import { fileLog } from '../stages/utils/fileOps.ts';
 
 export { delimiter, REPO_ROOT, pythonBin };
 
-const CONFIG_PATH = join(REPO_ROOT, 'packages', 'cli', 'input.json');
+const INPUT_ARGS_PATH = join(REPO_ROOT, 'packages', 'cli', 'input.json');
 
 /**
  * 优先级 input.json > env > auto > defaults
  * 不处理错误, 如果错误, 使用者应该立即知道 并做出调整
  */
-export const readConfig = (path?: string) => {
-	const configPath = path ?? CONFIG_PATH;
+export const readInputArgs = (path?: string) => {
+	const configPath = path ?? INPUT_ARGS_PATH;
 	const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
 	const config = TaskInputSchema.parse(raw);
 	return {
@@ -29,5 +29,5 @@ export const readConfig = (path?: string) => {
 		},
 	};
 };
-export type InputArgs = ReturnType<typeof readConfig>;
+export type InputArgs = ReturnType<typeof readInputArgs>;
 

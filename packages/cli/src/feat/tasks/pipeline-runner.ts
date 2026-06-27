@@ -5,7 +5,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
 import { getStages } from './../../feat/tasks/stages.ts';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import { readConfig } from '../config/config.ts';
+import { readInputArgs } from '../config/config.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
 import { Context, 	readCtx,
 	readPipeline,
@@ -23,10 +23,9 @@ import {
 	// updateTaskDB,
 } from '../stages/utils/utils.ts';
 
-export { getStageStatuses };
 
 function snapshotConfig(sessionPath: string) {
-	const cfg = readConfig();
+	const cfg = readInputArgs();
 	const snap: NonNullable<Context['input']> = {
 		...cfg,
 		timestamp: new Date().toISOString(),
@@ -44,7 +43,7 @@ export async function runPipeline(ctx: Context) {
 
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);
-	const targetStage = readConfig().targetStage;
+	const targetStage = readInputArgs().targetStage;
 	if (targetStage && !stages.find((s) => s.name === targetStage)) {
 		emitLog(sessionPath, `[WARN] targetStage "${targetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
@@ -71,7 +70,7 @@ export async function runPipeline(ctx: Context) {
 		});
 
 		try {
-			await handler(taskId, sessionPath, task);
+			await handler(ctx);
 			if (targetStage && stage.name === targetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${targetStage}"，停止`);
 				break;
@@ -104,9 +103,8 @@ export async function runPipeline(ctx: Context) {
 
 export async function resumePipeline(
 	ctx: Context,
-	resumeFrom?: string,
-	stageOverrides?: Record<string, any>,
 ) {
+	const resumeFrom = ctx.input?.task?.resumeFrom
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	let task = readTask(sessionPath);
@@ -196,7 +194,7 @@ export async function resumePipeline(
 		}
 	}
 
-	const resumeTargetStage = readConfig().targetStage;
+	const resumeTargetStage = readInputArgs().targetStage;
 	if (resumeTargetStage && !stages.find((s) => s.name === resumeTargetStage)) {
 		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
@@ -222,7 +220,7 @@ export async function resumePipeline(
 		});
 
 		try {
-			await handler(taskId, sessionPath, task);
+			await handler(ctx);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
 				emitLog(sessionPath, `[Pipeline] 达到目标步骤 "${resumeTargetStage}"，停止`);
 				break;
@@ -285,7 +283,7 @@ export async function rerunSingleStage(
 	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
 	try {
-		await handler(taskId, sessionPath, task);
+		await handler(ctx);
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
 		emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);

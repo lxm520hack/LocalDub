@@ -7,7 +7,7 @@ import { fileLog, getLastSegment } from '../stages/utils/fileOps.ts';
 
 export const getTaskId = (sessionPath: string) => getLastSegment(sessionPath)
 
-export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote'
+export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote' | 'unknown';
 export interface Task {
   id: string;
   source: VideoSource

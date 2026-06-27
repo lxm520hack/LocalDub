@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { REPO_ROOT, WORKFOLDER } from '@repo/config';
-import { readConfig } from '../config/config.ts';
+import { readInputArgs } from '../config/config.ts';
 
 export async function cmdCheck(opts: {
 	type: 'video' | 'asr' | 'font' | undefined;
@@ -119,7 +119,7 @@ export async function cmdCheck(opts: {
 	}
 
 	if (type === 'font') {
-		const cfg = readConfig();
+		const cfg = readInputArgs();
 		const configuredFont = cfg.stages?.merge_video?.font ?? 'Noto Sans CJK SC';
 
 		const result: Record<string, unknown> = {
