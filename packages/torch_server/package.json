@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "server": "uv run python pytorch_server.py",
-    "dev": "uv run python pytorch_server.py",
+    "dev": "uv run python pytorch_server.py --reload",
     "install": "uv pip install fastapi uvicorn"
   }
 }

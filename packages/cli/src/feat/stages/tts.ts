@@ -3,7 +3,7 @@ import { readJson, writeFile, ensureDir, writeFileSync } from './utils/fileOps.t
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { writeWav } from '@repo/voxlab';
-import { VoxCPMEngine } from '../../ml/voxcpm/voxcpm.ts';
+import { newVoxCPMEngine,  } from '../../ml/voxcpm/voxcpm.ts';
 import { pythonBin, REPO_ROOT } from '../config/config.ts';
 import type { Device, TTSConfig } from '../config/types.ts';
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath } from './utils/utils.ts';
@@ -73,7 +73,7 @@ export async function stageTts(
 	// ------ Unified engine (handles all runtimes via createBackend) ------
 
 	emitLog(sessionPath, `[TTS] Using ${ttsCfg.runtime} backend`);
-	const engine = new VoxCPMEngine(ttsCfg);
+	const engine = newVoxCPMEngine(ttsCfg);
 	await engine.load();
 
 	// ------ Generation loop ------

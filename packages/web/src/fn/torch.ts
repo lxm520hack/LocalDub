@@ -15,7 +15,7 @@ interface TorchStatus {
 
 async function fetchHealth(): Promise<TorchStatus> {
 	try {
-		const res = await fetch(`http://127.0.0.1:${PORT}/api/health`, {
+		const res = await fetch(`http://127.0.0.1:${PORT}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
 		if (!res.ok) return { running: false, uptime_s: 0, models: {} }
@@ -32,7 +32,7 @@ async function fetchHealth(): Promise<TorchStatus> {
 
 async function ping(): Promise<boolean> {
 	try {
-		const res = await fetch(`http://127.0.0.1:${PORT}/api/health`, {
+		const res = await fetch(`http://127.0.0.1:${PORT}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
 		return res.ok

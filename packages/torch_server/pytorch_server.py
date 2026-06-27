@@ -129,9 +129,10 @@ app.add_middleware(
 _shutdown = False
 _start_time = time.time()
 _executor = ThreadPoolExecutor(max_workers=1)
+_SERVER_PORT: int = 19109
 
 # Track which models have been loaded
-_models: dict[str, bool] = {"asr": False, "separate": False}
+_models: dict[str, str] = {"asr": "unloaded", "separate": "unloaded"}
 
 
 # ---------------------------------------------------------------------------
@@ -160,18 +161,22 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
     def worker() -> None:
         try:
             if stage == "asr":
-                _models["asr"] = True
+                _models["asr"] = "loading"
                 output = handle_asr(params)
+                _models["asr"] = "ready"
                 emit({"type": "complete", "output": output})
             elif stage == "separate":
-                _models["separate"] = True
+                _models["separate"] = "loading"
                 output = handle_separate(params, task_id, emit=emit)
+                _models["separate"] = "ready"
                 emit({"type": "complete", "output": output})
             else:
                 emit({"type": "error", "message": f"Unknown stage: {stage}"})
         except Exception:
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
+            if stage in _models:
+                _models[stage] = "error"
             emit({"type": "error", "message": traceback.format_exc()})
 
     loop = asyncio.get_event_loop()
@@ -207,12 +212,12 @@ async def get_logs(n: int = 100):
     return {"lines": "\n".join(_log_buffer.get_lines(n))}
 
 
-@app.get("/api/health")
+@app.get("/status")
 async def health():
     return {
-        "status": "ok",
-        "uptime_s": round(time.time() - _start_time, 1),
-        "models": _models,
+        "status": "running",
+        "port": _SERVER_PORT,
+        "models": {name: {"status": status} for name, status in _models.items()},
     }
 
 
@@ -236,9 +241,9 @@ async def events():
         while not _shutdown:
             # health event every tick
             health_data = {
-                "status": "ok",
-                "uptime_s": round(time.time() - _start_time, 1),
-                "models": _models,
+                "status": "running",
+                "port": _SERVER_PORT,
+                "models": {name: {"status": status} for name, status in _models.items()},
             }
             yield f"event: health\ndata: {json.dumps(health_data)}\n\n"
 
@@ -289,13 +294,21 @@ def main() -> None:
     parser.add_argument(
         "--host", type=str, default="127.0.0.1", help="Bind address (default: 127.0.0.1)"
     )
+    parser.add_argument("--reload", action="store_true", help="Enable hot reload for development")
     args = parser.parse_args()
+    global _SERVER_PORT
+    _SERVER_PORT = args.http_port
 
     print(
         f"[TorchServer] Starting HTTP server on {args.host}:{args.http_port}",
         flush=True,
     )
-    uvicorn.run(app, host=args.host, port=args.http_port, log_level="info")
+    if args.reload:
+        import sys
+        sys.modules[__name__]._uvicorn_app = app
+        uvicorn.run("pytorch_server:_uvicorn_app", host=args.host, port=args.http_port, log_level="info", reload=True)
+    else:
+        uvicorn.run(app, host=args.host, port=args.http_port, log_level="info")
 
 
 if __name__ == "__main__":

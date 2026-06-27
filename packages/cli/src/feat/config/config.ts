@@ -29,4 +29,5 @@ export const readConfig = (path?: string) => {
 		},
 	};
 };
+export type InputArgs = ReturnType<typeof readConfig>;
 

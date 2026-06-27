@@ -77,7 +77,7 @@ function readSSE(
 
 async function healthCheck(baseUrl: string): Promise<boolean> {
 	try {
-		const res = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(2000) });
+		const res = await fetch(`${baseUrl}/status`, { signal: AbortSignal.timeout(2000) });
 		return res.ok;
 	} catch {
 		return false;
