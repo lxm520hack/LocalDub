@@ -2,6 +2,7 @@ import { InputArgs } from "../../input/input";
 import { readCtx, setCtx } from "../../context/context";
 import { resumePipeline } from "../../tasks/pipeline-runner";
 import { withTorchServer } from "../utils/utils";
+import { playTaskFail, playTaskSuccess } from "./utils";
 
 export const cmdResumeTask = async (input: InputArgs) => {
   const sessionPath = input.task?.sessionPath;
@@ -18,9 +19,11 @@ export const cmdResumeTask = async (input: InputArgs) => {
 		try {
 			await	resumePipeline(ctx),
 			console.log('[CLI] Pipeline completed');
+			playTaskSuccess()
 			process.exit(0);
 		} catch (err) {
 			console.error('[CLI] Pipeline failed:', err);
+			playTaskFail()
 			process.exit(1);
 		}
 }

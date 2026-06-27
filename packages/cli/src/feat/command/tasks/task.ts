@@ -5,7 +5,6 @@ import { cmdStartTask } from "./startTask";
 import { cmdTaskStatus } from "./taskStatus";
 
 export const cmdTask = async (input: InputArgs) => {
-
   if (input.task.action === 'resume') {
     await cmdResumeTask(input);
   } else if (input.task.action === 'start') {

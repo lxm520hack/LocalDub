@@ -10,6 +10,7 @@ import { InputArgs } from '../../input/input.ts';
 import { withTorchServer } from '../utils/utils.ts';
 import { runPipeline } from '../../tasks/pipeline-runner.ts';
 import { downloadVideo, importVideo } from './import/download.ts';
+import { playTaskFail, playTaskSuccess } from './utils.ts';
 
 
 export const cmdStartTask = async (input: InputArgs) => {
@@ -25,9 +26,11 @@ export const cmdStartTask = async (input: InputArgs) => {
 		console.log(`\n[CLI] Running pipeline ...`);
 		await runPipeline(ctx)
 		console.log('[CLI] Pipeline success');
+		playTaskSuccess()
 		process.exit(0);
 	} catch (err) {
 		console.error('cmdCreateTask failed:', err);
+		playTaskFail()
 		process.exit(1);
 	}
 }
