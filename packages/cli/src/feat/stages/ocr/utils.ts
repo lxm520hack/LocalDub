@@ -1,5 +1,6 @@
 import type { OCRLine } from '../../../ml/ocr/ocr.ts';
-import type { FrameResult, Segment } from '../utils/ocrMerge.ts';
+import { OcrAfterAdjustArgs } from '../../input/types.ts';
+import type { FrameResult, Segment, SegmentWithAdjusted } from './ocrMerge.ts';
 
 function polygonToBbox(box: number[][]): { left: number; top: number; right: number; bottom: number } {
 	if (!box || box.length < 2) return { left: 0, top: 0, right: 0, bottom: 0 };
@@ -86,11 +87,13 @@ export function computeSegmentAdjustments(
 	frameResults: FrameResult[],
 	yStats: { avg: [number, number]; mode: [number, number] },
 	videoHeight: number,
+	{
 	isoThresholdMs = 1500,
 	adjustYWeight = 0.8,
 	adjustIsoWeight = 0.2,
 	adjustYFactor = 0.08,
-): Segment[] {
+	}: OcrAfterAdjustArgs,
+): SegmentWithAdjusted[] {
 	if (segments.length === 0 || !yStats.avg[0] && yStats.avg[1] === 0) return segments;
 
 	const avgCentroid = (yStats.avg[0] + yStats.avg[1]) / 2;

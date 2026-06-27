@@ -1,8 +1,9 @@
+import { srtTime } from "../utils/utils";
+
 export interface FrameResult {
 	text: string;
 	timestamp: number;
 	confidence: number;
-	box?: number[][];
 	bbox?: { left: number; top: number; right: number; bottom: number };
 	lines?: { text: string; confidence: number; box: number[][]; bbox: { left: number; top: number; right: number; bottom: number } }[];
 }
@@ -11,9 +12,14 @@ export interface Segment {
 	text: string;
 	start: number;
 	end: number;
+	start_fmt?: string;
+	end_fmt?: string;
 	box_y?: [number, number];
 	confidence?: number;
 	frameCount?: number;
+}
+
+export interface SegmentWithAdjusted extends Segment {
 	adjustedConfidence?: number;
 	yPenalty?: number;
 	isoPenalty?: number;
@@ -58,7 +64,10 @@ function mergeConfidence(a?: number, b?: number): number | undefined {
 
 const normalize = (s: string) => s.replace(/\s+/g, '');
 
-export function mergeFrames(frames: FrameResult[]): Segment[] {
+export function mergeFrames(frames: FrameResult[]): {
+	text: string;
+	segments: Segment[];
+} {
 	const segments: Segment[] = [];
 	let currentText = "";
 	let currentStart = 0;
@@ -113,8 +122,14 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 	for (let i = segments.length - 1; i > 0; i--) {
 		const prev = segments[i - 1];
 		const cur = segments[i];
-		if (overlap(prev.box_y, cur.box_y) && isSubstringOf(prev.text, cur.text)) {
+		if (!overlap(prev.box_y, cur.box_y)) continue;
+		if (isSubstringOf(prev.text, cur.text)) {
+			// prev is substring of cur → keep cur (longer)
 			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence), frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1) };
+			segments.splice(i, 1);
+		} else if (isSubstringOf(cur.text, prev.text)) {
+			// cur is substring of prev → keep prev (longer)
+			segments[i - 1] = { text: prev.text, start: prev.start, end: cur.end, box_y: prev.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence), frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1) };
 			segments.splice(i, 1);
 		}
 	}
@@ -165,7 +180,14 @@ export function mergeFrames(frames: FrameResult[]): Segment[] {
 		segments.splice(i, 1);
 	}
 
-	return segments;
+	return {	 
+		text: segments.map(s => s.text).join(' '),
+		segments: segments.map(s => ({
+			...s,
+			start_fmt: srtTime(s.start),
+			end_fmt: srtTime(s.end),
+		})) 
+	};
 }
 
 export function dedupOverlap(segments: Segment[]): Segment[] {

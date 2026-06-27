@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
-import { FrameResult, mergeFrames } from '../utils/ocrMerge.ts';
+import { FrameResult, mergeFrames } from '../ocr/ocrMerge.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { startLog } from '../utils/log.ts';
@@ -52,8 +52,6 @@ export async function stageAsrOcr(ctx: Context) {
 
 	// Merge frames into OCR segments
 	const ocrSegments = mergeFrames(frameResults);
-	const ocrText = ocrSegments.map(s => s.text).join(' ');
-	const audioDurMs = ocrSegments.length > 0 ? ocrSegments[ocrSegments.length - 1].end : 0;
 
 	// probe video duration fallback
 	const probe = spawnSync('ffprobe', [
@@ -66,42 +64,19 @@ export async function stageAsrOcr(ctx: Context) {
 
 	const yStats = computeBoxYStats(frameResults);
 
-	const ocrSegmentsOut = ocrSegments.map(s => ({
-		text: s.text,
-		start: s.start,
-		end: s.end,
-		start_fmt: srtTime(s.start),
-		end_fmt: srtTime(s.end),
-		confidence: s.confidence,
-		...(s.box_y ? { box_y: s.box_y } : {}),
-		...(s.frameCount !== undefined ? { frameCount: s.frameCount } : {}),
-	}));
-
 	// Write ocr_frames.json — raw frame data for debugging/reproducibility
 	writeJson(
 		join(asrOcrDir, 'ocr_frames.json'),
 		{
 			_frames_raw: frameResults,
 			_y_stats: yStats,
-			_ocr_segments: ocrSegmentsOut,
-		},
-		ctx,
-	);
-
-	// Write asr_ocr.json — pure OCR-boundary segments (from mergeFrames)
-	writeJson(
-		join(asrOcrDir, 'asr_ocr.json'),
-		{
-			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
+			audio_info: { duration:  Math.round(videoDurationS * 1000) },
 			_source: 'asr_ocr',
 			_engine: runtime,
 			_device: device,
-			result: { text: ocrText, segments: ocrSegmentsOut },
 		},
 		ctx,
 	);
-
-	emitLog(sessionPath, `[asr_ocr] ${frameFiles.length} OCR frames → ${ocrSegments.length} OCR segments`);
 
 	// Cleanup frames (optional)
 	if (cleanupFrames) {

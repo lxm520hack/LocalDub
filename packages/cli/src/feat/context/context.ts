@@ -98,9 +98,10 @@ export const _setCtx = (
 export const setCtx = (
 	sessionPath: string,
 	patch: Partial<Context>,
-): void => {
+) => {
 	const ctx = _setCtx(sessionPath,patch)
 	console.log(`[${ctx.task.current_stage}] setCtx ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
+	return ctx;
 };
 export const readTask = (sessionPath: string) => {
 	const path = ctxPath(sessionPath);

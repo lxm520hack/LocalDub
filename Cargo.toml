@@ -1,0 +1,2 @@
+[workspace]
+members = ["packages/separate/demucs_burn", "packages/subtitle-rust"]

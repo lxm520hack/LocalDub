@@ -10,7 +10,9 @@ export const cmdResumeTask = async (input: InputArgs) => {
 			console.error('task.sessionPath required in input.json');
 			process.exit(1);
 		}
-		const ctx = await readCtx(sessionPath);
+		const ctx =  setCtx(sessionPath, {
+			input: input,
+		});
 		const taskId = ctx.task.id;
 		const resumeFrom = input.task?.resumeFrom;
 		const label = resumeFrom ? ` from "${resumeFrom}"` : '';

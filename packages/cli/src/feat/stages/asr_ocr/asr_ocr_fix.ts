@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
-import { FrameResult, Segment, fixOverlap, toOcrFiltered } from '../utils/ocrMerge.ts';
+import { FrameResult, Segment, fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
 import { computeBoxYStats, computeSegmentAdjustments } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 
@@ -22,19 +22,17 @@ export async function stageAsrOcrFix(ctx: Context) {
 	const asrFile = join(sessionPath, 'asr', 'asr.json');
 	const asrSplitFile = join(asrOcrPreDir, 'asr_split.json');
 	const ocrFramesFile = join(asrOcrDir, 'ocr_frames.json');
-	const ocrFile = join(asrOcrDir, 'asr_ocr.json');
 
 	if (!existsSync(asrFile)) throw new Error(`asr.json not found: ${asrFile}`);
 	if (!existsSync(asrSplitFile)) throw new Error(`asr_split.json not found, run asr_ocr_pre first`);
 	if (!existsSync(ocrFramesFile)) throw new Error(`ocr_frames.json not found, run asr_ocr first`);
-	if (!existsSync(ocrFile)) throw new Error(`asr_ocr.json not found, run asr_ocr first`);
 
 	ensureDir(asrOcrFixDir, ctx);
 
 	const asrData = await readJson(asrFile, ctx);
 	const asrSplitData = await readJson(asrSplitFile, ctx);
 	const ocrFramesData = await readJson(ocrFramesFile, ctx);
-	const ocrData = await readJson(ocrFile, ctx);
+
 
 	const asrSegsRaw: { text: string; start: number; end: number; words?: { word: string; start: number; end: number; probability: number }[] }[] =
 		(asrData.result?.segments ?? []).map((s: any) => ({
@@ -50,17 +48,9 @@ export async function stageAsrOcrFix(ctx: Context) {
 		end: Math.round(s.end),
 	}));
 
-	const ocrSegs: Segment[] = (ocrData.result?.segments ?? []).map((s: any) => ({
-		text: s.text,
-		start: Math.round(s.start),
-		end: Math.round(s.end),
-		confidence: s.confidence,
-		box_y: s.box_y,
-		frameCount: s.frameCount,
-	}));
-
 	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
 	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
+	const { segments: ocrSegs, text: ocrText } = mergeFrames(rawFrames)
 
 	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
 	const textScore = asrOcrFixCfg?.textScore ?? 0.45;
@@ -68,14 +58,16 @@ export async function stageAsrOcrFix(ctx: Context) {
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!ocrSegs.length) throw new Error('No OCR segments found (empty asr_ocr.json)');
 
-	// ========== ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） ==========
+	// ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） 
 	const yStats = computeBoxYStats(rawFrames);
 	const { height: videoHeight } = probeVideoResolution(videoSourcePath(ctx));
 	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
 	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
 	const adjustIsoWeight = asrOcrFixCfg?.adjustIsoWeight ?? 0.2;
 	const adjustYFactor = asrOcrFixCfg?.adjustYFactor ?? 0.08;
-	const adjustedSegs = computeSegmentAdjustments(ocrSegs, rawFrames, yStats, videoHeight, isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor);
+	const adjustedSegs = computeSegmentAdjustments(ocrSegs, rawFrames, yStats, videoHeight, {
+		...asrOcrFixCfg
+	});
 
 	writeJson(
 		join(asrOcrFixDir, 'ocr_merged.json'),
@@ -84,19 +76,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 			_fusion_params: { strategy: 'end2fps', isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor },
 			result: {
 				text: adjustedSegs.map(s => s.text).join(' '),
-				segments: adjustedSegs.map(s => ({
-					text: s.text,
-					start: s.start,
-					end: s.end,
-					start_fmt: srtTime(s.start),
-					end_fmt: srtTime(s.end),
-					confidence: s.confidence,
-					...(s.box_y ? { box_y: s.box_y } : {}),
-					frameCount: s.frameCount,
-					adjustedConfidence: s.adjustedConfidence,
-					yPenalty: s.yPenalty,
-					isoPenalty: s.isoPenalty,
-				})),
+				segments: adjustedSegs,
 			},
 		},
 		ctx,

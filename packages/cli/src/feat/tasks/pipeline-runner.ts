@@ -198,7 +198,11 @@ export async function resumePipeline(
 		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
-	console.log(`[Pipeline] Resuming pipeline for stages:`, stages);
+	// 计算出目标步骤的索引
+	const targetIdx = resumeTargetStage ? stages.findIndex((s) => s.name === resumeTargetStage) : -1;
+	// 计算出 要运行的 stage 列表
+	const runStages = targetIdx >= 0 ? stages.slice(startIdx, targetIdx + 1) : stages.slice(startIdx);
+	console.log(`[Pipeline] Running runStages:` , runStages);
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
 		const handler = STAGE_HANDLERS[stage.name];

@@ -179,6 +179,29 @@ const ocrRuntimeSchema = z
 			.default('ort-cpp')
 			.describe('OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)')
 			.optional()
+export const ocrAfterAdjustArgsSchema = z.object({
+				isoThresholdMs: z
+				.number()
+				.default(1500)
+				.describe('单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500')
+				.optional(),
+			adjustYWeight: z
+				.number()
+				.default(0.8)
+				.describe('Y 偏移在调整置信度中的权重 (0~1); 默认 0.8')
+				.optional(),
+			adjustIsoWeight: z
+				.number()
+				.default(0.2)
+				.describe('孤立程度在调整置信度中的权重 (0~1); 默认 0.2')
+				.optional(),
+			adjustYFactor: z
+				.number()
+				.default(0.08)
+				.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
+				.optional(),
+})
+export type OcrAfterAdjustArgs = z.output<typeof ocrAfterAdjustArgsSchema>;
 const OcrTaskInputSchema = z
 	.looseObject({
 		runtime: ocrRuntimeSchema,
@@ -207,26 +230,7 @@ const OcrTaskInputSchema = z
 			.default(false)
 			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
 			.optional(),
-		isoThresholdMs: z
-			.number()
-			.default(1500)
-			.describe('单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500')
-			.optional(),
-		adjustYWeight: z
-			.number()
-			.default(0.8)
-			.describe('Y 偏移在调整置信度中的权重 (0~1); 默认 0.8')
-			.optional(),
-		adjustIsoWeight: z
-			.number()
-			.default(0.2)
-			.describe('孤立程度在调整置信度中的权重 (0~1); 默认 0.2')
-			.optional(),
-		adjustYFactor: z
-			.number()
-			.default(0.08)
-			.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
-			.optional(),
+		...ocrAfterAdjustArgsSchema.shape,
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 	.optional();
@@ -372,6 +376,8 @@ const MergeVideoSchema = z
 
 export type MergeVideoConfig = z.output<typeof MergeVideoSchema>;
 
+
+
 const StagesSchema = z.object({
 	download: z.object({}).optional(),
 	separate: SeparateTaskInputSchema,
@@ -417,26 +423,7 @@ const StagesSchema = z.object({
 				.default(0.5)
 				.optional()
 				.describe('OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃'),
-			isoThresholdMs: z
-				.number()
-				.default(1500)
-				.describe('单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500')
-				.optional(),
-			adjustYWeight: z
-				.number()
-				.default(0.8)
-				.describe('Y 偏移在调整置信度中的权重 (0~1); 默认 0.8')
-				.optional(),
-			adjustIsoWeight: z
-				.number()
-				.default(0.2)
-				.describe('孤立程度在调整置信度中的权重 (0~1); 默认 0.2')
-				.optional(),
-			adjustYFactor: z
-				.number()
-				.default(0.08)
-				.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
-				.optional(),
+			...ocrAfterAdjustArgsSchema.shape,
 			llmFix: z
 				.boolean()
 				.default(false)

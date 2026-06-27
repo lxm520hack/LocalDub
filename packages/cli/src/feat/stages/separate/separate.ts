@@ -57,6 +57,7 @@ export async function stageSeparate(
 			'video_source.mp4',
 		);
 		const sepUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+		let lastTorchPct = -1;
 		const result = await runStage(sepUrl,
 			'separate',
 			taskId,
@@ -66,6 +67,8 @@ export async function stageSeparate(
 				device,
 			},
 			(current, _total) => {
+				if (current === lastTorchPct) return;
+				lastTorchPct = current;
 				emitLog(sessionPath, `[Separate] ${current}%`);
 				setStage(sessionPath, 'separate', {
 					progress: current,
@@ -170,15 +173,19 @@ async function separatePytorch(
 		});
 
 		let stderr = '';
+		let lastPyPct = -1;
 
 		proc.stdout.on('data', (chunk: Buffer) => {
 			const lines = chunk.toString().split('\n').filter(Boolean);
 			for (const line of lines) {
 				const m = line.match(/^\[PROGRESS\] (\d+)$/);
 				if (m) {
+					const pct = parseInt(m[1]);
+					if (pct === lastPyPct) continue;
+					lastPyPct = pct;
 					setStage(sessionPath, 'separate', {
-						progress: parseInt(m[1]),
-						last_message: `Separating ${m[1]}%`,
+						progress: pct,
+						last_message: `Separating ${pct}%`,
 					});
 				}
 			}
@@ -256,12 +263,15 @@ async function separateGgml(
 			reject(new Error('GGML separate timed out after 600s'));
 		}, 600_000);
 
+		let lastGgmlPct = -1;
 		proc.stdout?.on('data', (chunk) => {
 			const lines = chunk.toString().split('\n');
 			for (const line of lines) {
 				const m = line.match(/\((\s*\d+(?:\.\d+)?)%\)/);
 				if (m) {
 					const pct = Math.min(100, Math.max(0, Math.round(Number(m[1]))));
+					if (pct === lastGgmlPct) continue;
+					lastGgmlPct = pct;
 					setStage(sessionPath, 'separate', {
 						progress: pct,
 						last_message: `Separating ${pct}%`,
