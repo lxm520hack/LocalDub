@@ -32,8 +32,8 @@ struct Cli {
     #[arg(short, long, default_value = "htdemucs")]
     model: String,
 
-    /// Wgpu tasks_max (CPU threads for command recording). Default 1.
-    #[arg(long, default_value = "1")]
+    /// Wgpu tasks_max (CPU threads for command recording). Default 128.
+    #[arg(long, default_value = "128")]
     tasks_max: u32,
 }
 
