@@ -40,30 +40,40 @@ class VoxCPMGradio implements TTSBackend {
 			procEnsure.on('error', reject);
 		});
 
-		// Start Gradio server
-		const serverScript = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
-		const proc = spawn(pythonBin(), [
-			serverScript, '--port', String(this.port),
-			'--device', this.device, '--model-dir', this.modelDir,
-		], {
-			env: { ...process.env as Record<string, string> },
-			stdio: ['ignore', 'pipe', 'pipe'],
-		});
-		this.proc = proc;
+		// Try existing server first
+		const baseUrl = `http://127.0.0.1:${this.port}`;
+		let url: string | null = null;
+		try {
+			const res = await fetch(`${baseUrl}/gradio_api/api_info`, { signal: AbortSignal.timeout(2000) });
+			if (res.ok) url = baseUrl;
+		} catch { /* not running */ }
 
-		const url = await new Promise<string>((resolve, reject) => {
-			const deadline = Date.now() + 120_000;
-			let stdout = '';
-			proc.stdout?.on('data', (chunk: Buffer) => {
-				stdout += chunk.toString();
-				const m = stdout.match(/Running on local URL:\s*(\S+)/);
-				if (m) resolve(m[1].replace(/\/+$/, ''));
+		if (!url) {
+			// Spawn Gradio server
+			const serverScript = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
+			const proc = spawn(pythonBin(), [
+				serverScript, '--port', String(this.port),
+				'--device', this.device, '--model-dir', this.modelDir,
+			], {
+				env: { ...process.env as Record<string, string> },
+				stdio: ['ignore', 'pipe', 'pipe'],
 			});
-			proc.stderr?.on('data', (chunk: Buffer) => process.stderr.write(chunk));
-			proc.on('error', reject);
-			proc.on('exit', (code) => reject(new Error(`VoxCPM Gradio exited ${code}`)));
-			setTimeout(() => reject(new Error('VoxCPM Gradio startup timeout')), deadline - Date.now());
-		});
+			this.proc = proc;
+
+			url = await new Promise<string>((resolve, reject) => {
+				const deadline = Date.now() + 120_000;
+				let stdout = '';
+				proc.stdout?.on('data', (chunk: Buffer) => {
+					stdout += chunk.toString();
+					const m = stdout.match(/Running on local URL:\s*(\S+)/);
+					if (m) resolve(m[1].replace(/\/+$/, ''));
+				});
+				proc.stderr?.on('data', (chunk: Buffer) => process.stderr.write(chunk));
+				proc.on('error', reject);
+				proc.on('exit', (code) => reject(new Error(`VoxCPM Gradio exited ${code}`)));
+				setTimeout(() => reject(new Error('VoxCPM Gradio startup timeout')), deadline - Date.now());
+			});
+		}
 
 		this.cloud = new VoxCPMCloud({ apiUrl: url });
 		await this.cloud.load();
