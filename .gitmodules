@@ -20,3 +20,6 @@
 [submodule "submodule/vcpkg"]
 	path = submodule/vcpkg
 	url = https://github.com/microsoft/vcpkg.git
+[submodule "submodule/demucs-rs"]
+	path = submodule/demucs-rs
+	url = https://github.com/nikhilunni/demucs-rs
