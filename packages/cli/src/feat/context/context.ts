@@ -151,7 +151,7 @@ export const setStage = (sessionPath: string, stage: string, patch: Partial<Task
 	const updated = { ...existing, ...patch };
 	if (updated.status === 'succeeded') updated.error_message = null as any;
 	writeStage(sessionPath, stage, updated);
-	console.log(`[${_readCtx(sessionPath).task.current_stage}] setStage :`, JSON.stringify(patch));
+	console.log(`[${_readCtx(sessionPath).task.current_stage}] setStage: ${stage}`, JSON.stringify(patch));
 }
 
 export const readPipeline = (sessionPath: string) =>

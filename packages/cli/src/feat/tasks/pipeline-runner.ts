@@ -14,7 +14,8 @@ import { Context, 	readCtx,
 	setStage,
 	setTask,
 	writeCtx,
-    writeStages,  listStage, } from '../context/context.ts';
+    writeStages,  listStage,
+    _writeCtx, } from '../context/context.ts';
 import {
 	emitLog,
 	getStageStatuses,
@@ -67,7 +68,7 @@ export async function runPipeline(ctx: Context) {
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-
+		setTask(sessionPath, { status: 'running', current_stage: stage.name, started_at: nowISO(),  });
 		try {
 			await handler(sessionPath);
 			if (targetStage && stage.name === targetStage) {
@@ -104,6 +105,7 @@ export async function resumePipeline(
 	ctx: Context,
 ) {
 	const resumeFrom = ctx.input?.task?.resumeFrom
+	ctx.task.current_stage = 'resumePipeline'
 	setTask(ctx.task.session_path, { current_stage: 'resumePipeline' });
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
@@ -145,7 +147,7 @@ export async function resumePipeline(
 
 	}
 
-	writeCtx(ctx);
+	_writeCtx(ctx);
 
 	snapshotConfig(sessionPath);
 
@@ -213,7 +215,7 @@ export async function resumePipeline(
 			started_at: nowISO(),
 			last_message: `Starting ${stage.label}...`,
 		});
-
+		setTask(sessionPath, { status: 'running', current_stage: stage.name, started_at: nowISO(),  });
 		try {
 			await handler(sessionPath);
 			if (resumeTargetStage && stage.name === resumeTargetStage) {
@@ -274,7 +276,7 @@ export async function rerunSingleStage(
 		progress: 0,
 		last_message: `Rerunning ${stage.label}...`,
 	});
-
+	setTask(sessionPath, { status: 'running', current_stage: stage.name, started_at: nowISO(),  });
 	try {
 		await handler(sessionPath);
 	} catch (err: any) {

@@ -14,14 +14,9 @@ export const cmdResumeTask = async (input: InputArgs) => {
 		const resumeFrom = input.task?.resumeFrom;
 		const label = resumeFrom ? ` from "${resumeFrom}"` : '';
 
-		// Allow pipeline switch on resume (e.g. subtitle → dub)
-		if (input.pipeline) {
-				setCtx(sessionPath, { pipeline: input.pipeline });
-		}
-
 		console.log(`[CLI] Resuming pipeline for task ${sessionPath}${label}...`);
 		try {
-			resumePipeline(ctx),
+			await	resumePipeline(ctx),
 			console.log('[CLI] Pipeline completed');
 			process.exit(0);
 		} catch (err) {

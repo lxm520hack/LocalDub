@@ -14,7 +14,10 @@ export function defaultWhisperCppModelPath(): string {
 
 /** Get the downloaded video source path for a session. */
 export function videoSourcePath(ctx: Context): string {
-	return ctx.videoSourcePath!
+	if (!ctx.videoSourcePath) {
+		throw new Error(`videoSourcePath not set in context for session ${ctx.task.session_path}`);
+	}
+	return ctx.videoSourcePath
 }
 
 /** Get the vocals stem path from separate stage. */

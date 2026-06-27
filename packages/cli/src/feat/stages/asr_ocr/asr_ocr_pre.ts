@@ -59,20 +59,22 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 
 export async function stageAsrOcrPre(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
-	setTask(sessionPath, { status: 'running', current_stage: 'asr_ocr_pre', started_at: nowISO(),  });
 
-	await setStage(sessionPath, 'asr_ocr_pre', {
+
+	setStage(sessionPath, 'asr_ocr_pre', {
 		last_message: 'Splitting ASR segments by punctuation...',
 		progress: 0,
 	});
 
 	const videoPath = videoSourcePath(ctx);
 	if (!existsSync(videoPath)) {
+		console.error(`[asr_ocr_pre] Video not found: ${videoPath}`);
 		throw new Error(`Video not found: ${videoPath}`);
 	}
 
 	const asrFile = join(sessionPath, 'asr', 'asr.json');
 	if (!existsSync(asrFile)) {
+		console.error(`[asr_ocr_pre] asr.json not found: ${asrFile}`);
 		throw new Error(`asr.json not found: ${asrFile}`);
 	}
 
@@ -88,9 +90,10 @@ export async function stageAsrOcrPre(ctx: Context) {
 	if (!asrSegsRaw.length) throw new Error('No ASR segments found');
 
 	// Step 1: Split ASR segments by punctuation
+	console.log(`[asr_ocr_pre] ${asrSegsRaw.length} Split ASR segments by punctuation`);
 	const asrSegs = splitAsrByWords(asrSegsRaw);
 
-	const preDir = resolve(sessionPath, 'asr_ocr_pre');
+	const preDir = join(sessionPath, 'asr_ocr_pre');
 	ensureDir(preDir, ctx);
 
 	// Write asr_split.json
