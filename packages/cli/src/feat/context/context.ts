@@ -1,4 +1,4 @@
-import { RawInputInput, TargetLang } from "../input/types";
+import { RawInputInput, StageName, TargetLang } from "../input/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER } from '@repo/config';
@@ -123,7 +123,7 @@ export const setTask = (sessionPath: string, patch: Partial<Task>) => {
 	const existing = readTask(sessionPath) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
 	_writeTask(updated);
-	console.log(`[${updated.current_stage}] setTask ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
+	console.log(`[${updated.current_stage}] setTask:`, JSON.stringify(patch));
 }
 
 export const listStage = (sessionPath: string) => _readCtx(sessionPath).stages ?? [];

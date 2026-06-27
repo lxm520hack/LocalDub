@@ -53,7 +53,6 @@ export async function runPipeline(ctx: Context) {
 	await setTask(sessionPath, { status: 'running', started_at: nowISO() });
 
 	for (const stage of stages) {
-		setTask(sessionPath, { current_stage: stage.name });
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -105,7 +104,7 @@ export async function resumePipeline(
 	ctx: Context,
 ) {
 	const resumeFrom = ctx.input?.task?.resumeFrom
-	setTask(ctx.task.session_path, { current_stage: resumeFrom });
+	setTask(ctx.task.session_path, { current_stage: 'resumePipeline' });
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	let task = readTask(sessionPath);
@@ -197,11 +196,9 @@ export async function resumePipeline(
 		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
-	setTask(sessionPath, { status: 'running', started_at: nowISO() });
 	console.log(`[Pipeline] Resuming pipeline for stages:`, stages);
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
-		setTask(sessionPath, { current_stage: stage.name });
 		const handler = STAGE_HANDLERS[stage.name];
 		if (!handler) {
 			emitLog(
@@ -277,8 +274,6 @@ export async function rerunSingleStage(
 		progress: 0,
 		last_message: `Rerunning ${stage.label}...`,
 	});
-
-	setTask(sessionPath, { status: 'running', current_stage: stageName });
 
 	try {
 		await handler(sessionPath);

@@ -55,6 +55,22 @@ const stagesList = [
 	'merge_audio',
 	'merge_video',
 ] as const;
+export enum StageNameEnum {
+	separate='separate',
+	separate_after='separate_after',
+	asr='asr',
+	asr_fix='asr_fix',
+	ocr='ocr',
+	ocr_fix='ocr_fix',
+	asr_ocr_pre='asr_ocr_pre',
+	asr_ocr='asr_ocr',
+	asr_ocr_fix='asr_ocr_fix',
+	translate='translate',
+	split_audio='split_audio',
+	tts='tts',
+	merge_audio='merge_audio',
+	merge_video='merge_video',
+}
 export type StageName = (typeof stagesList)[number];
 
 const SeparateTaskInputSchema = z.object({

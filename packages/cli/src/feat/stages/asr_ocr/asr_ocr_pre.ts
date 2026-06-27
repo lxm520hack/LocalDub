@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
 import type { Segment } from '../utils/ocrMerge.ts';
-import { Context, setStage } from '../../context/context.ts';
+import { Context, setStage, setTask } from '../../context/context.ts';
 
 // Split long ASR segments by punctuation using word-level timestamps
 const SPLIT_PAT = /[，,。！？.!?]/;
@@ -59,6 +59,7 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 
 export async function stageAsrOcrPre(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
+	setTask(sessionPath, { status: 'running', current_stage: 'asr_ocr_pre', started_at: nowISO(),  });
 
 	await setStage(sessionPath, 'asr_ocr_pre', {
 		last_message: 'Splitting ASR segments by punctuation...',
