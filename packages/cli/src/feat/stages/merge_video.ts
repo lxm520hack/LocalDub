@@ -216,7 +216,7 @@ export async function stageMergeVideo(ctx: Context) {
 	startLog('merge_video', ctx.task.id);
 	const taskId = ctx.task.id;
 	const sessionPath = ctx.task.session_path;
-	const video_file_path = ctx.video_file_path ?? videoSourcePath(sessionPath);
+	const video_file_path = videoSourcePath(ctx)
 	const mergeVideoDir = join(sessionPath, 'merge_video');
 	ensureDir(mergeVideoDir, ctx);
 	const tmpDir = join(sessionPath, 'tmp');

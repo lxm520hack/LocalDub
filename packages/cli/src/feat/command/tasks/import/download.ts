@@ -54,7 +54,8 @@ export const importVideo = async (input: InputArgs) => {
 			label: stage.label,
 			status: 'pending',
 		})),
-		video_file_path: join(sessionPath, 'video_source.mp4')
+		videoSourcePath: join(sessionPath, 'video_source.mp4'),
+		audioSourcePath: join(sessionPath, 'audio_source.wav')
 	}
 
 	writeCtx(ctx);
@@ -64,16 +65,17 @@ export async function downloadVideo(
 	ctx: Context,
 	info: any
 ) {
-	const videoPath = ctx.video_file_path!
+	const videoPath = ctx.videoSourcePath!
 	const url = ctx.task.url
 	const sessionPath = ctx.task.session_path
+	let rawVideoPath = join(sessionPath, `${ctx.task.id}.mp4`);
 	// Extract audio for downstream stages
-	const audioPath = join(sessionPath, 'audio_source.wav');
+	const audioPath = ctx.audioSourcePath!
 	if (ctx.task.source === 'local' || ctx.task.source === 'remote') {
 		if (ctx.task.source === 'local') {
-			copyFileToPath(url, join(sessionPath, basename(url)));
+			copyFileToPath(url, rawVideoPath);
 		} else if (ctx.task.source === 'remote') {
-			await	downloadRemoteVideo(url, sessionPath);
+		  rawVideoPath =	await	downloadRemoteVideo(url, sessionPath);
 		}
 		
 		emitLog(sessionPath, '[Download] Importing local video...');
@@ -83,7 +85,7 @@ export async function downloadVideo(
 		});
 
 		const t0 = Date.now();
-		encodeToMp4(videoPath, videoPath);
+		encodeToMp4(rawVideoPath, videoPath);
 
 		const elapsedSec = (Date.now() - t0) / 1000;
 

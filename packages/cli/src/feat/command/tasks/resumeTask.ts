@@ -6,7 +6,7 @@ import { withTorchServer } from "../utils/utils";
 export const cmdResumeTask = async (input: InputArgs) => {
   const sessionPath = input.task?.sessionPath;
 		if (!sessionPath) {
-			console.error('resumeTask.sessionPath required in input.json');
+			console.error('task.sessionPath required in input.json');
 			process.exit(1);
 		}
 		const ctx = await readCtx(sessionPath);

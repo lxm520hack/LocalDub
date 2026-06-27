@@ -17,7 +17,7 @@ export async function stageOcr(ctx: Context) {
 		progress: 0,
 	});
 
-	const videoPath = videoSourcePath(sessionPath);
+	const videoPath = videoSourcePath(ctx);
 	if (!existsSync(videoPath)) {
 		throw new Error(`OCR input not found: ${videoPath}`);
 	}

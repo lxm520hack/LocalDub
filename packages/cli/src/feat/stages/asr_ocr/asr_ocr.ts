@@ -57,7 +57,7 @@ export async function stageAsrOcr(ctx: Context) {
 
 	// probe video duration fallback
 	const probe = spawnSync('ffprobe', [
-		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoSourcePath(sessionPath),
+		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoSourcePath(ctx),
 	], { timeout: 15_000, encoding: 'utf-8' });
 	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
 

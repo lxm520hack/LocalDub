@@ -105,24 +105,22 @@ export async function resumePipeline(
 	ctx: Context,
 ) {
 	const resumeFrom = ctx.input?.task?.resumeFrom
+	setTask(ctx.task.session_path, { current_stage: resumeFrom });
 		const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	let task = readTask(sessionPath);
 
-	const [info, err] = to(() => readCtx(sessionPath));
-	if (err) {
-		throw new Error(`Failed to read local info: ${err.message}`);
-	}
+
 	// Mode transition handling
-	const lastRunMode = info.lastRunPipeline;
-	if (lastRunMode && lastRunMode !== info.pipeline) {
-		info.lastRunPipeline = info.pipeline;
+	const lastRunMode = ctx.lastRunPipeline;
+	if (lastRunMode && lastRunMode !== ctx.pipeline) {
+		ctx.lastRunPipeline = ctx.pipeline;
 		emitLog(
 			sessionPath,
-			`[Pipeline] switched from "${lastRunMode}" to "${info.pipeline}"`,
+			`[Pipeline] switched from "${lastRunMode}" to "${ctx.pipeline}"`,
 		);
 
-		const stages = getStages(info.pipeline);
+		const stages = getStages(ctx.pipeline);
 		const existing = listStage(sessionPath);
 		const existingNames = new Set(existing.map((r) => r.name));
 		const newStages = stages.filter((s) => !existingNames.has(s.name));
@@ -148,11 +146,11 @@ export async function resumePipeline(
 
 	}
 
-	writeCtx(info);
+	writeCtx(ctx);
 
 	snapshotConfig(sessionPath);
 
-	const pipeline = info.pipeline || 'dub';
+	const pipeline = ctx.pipeline || 'dub';
 	const stages = getStages(pipeline);
 
 	let startIdx = 0;
@@ -194,13 +192,13 @@ export async function resumePipeline(
 		}
 	}
 
-	const resumeTargetStage = readInputArgs().targetStage;
+	const resumeTargetStage = ctx.input?.targetStage;
 	if (resumeTargetStage && !stages.find((s) => s.name === resumeTargetStage)) {
 		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
 
 	setTask(sessionPath, { status: 'running', started_at: nowISO() });
-
+	console.log(`[Pipeline] Resuming pipeline for stages:`, stages);
 	for (let i = startIdx; i < stages.length; i++) {
 		const stage = stages[i];
 		setTask(sessionPath, { current_stage: stage.name });

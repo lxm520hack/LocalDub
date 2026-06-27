@@ -13,8 +13,8 @@ export function defaultWhisperCppModelPath(): string {
 }
 
 /** Get the downloaded video source path for a session. */
-export function videoSourcePath(sessionPath: string): string {
-	return join(sessionPath, 'download', 'video_source.mp4');
+export function videoSourcePath(ctx: Context): string {
+	return ctx.videoSourcePath!
 }
 
 /** Get the vocals stem path from separate stage. */
@@ -107,13 +107,7 @@ function ffmpegInstallHint(): string {
 	}
 }
 
-import { fileLog, readJson } from './fileOps.ts';
-import { to } from '@repo/shared/lib/utils/try.ts';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function broadcastUpdate(_table: string, _mutations: any[]) {
-	// CLI 模式下不发送 socket 事务
-}
 
 // export async function updateTaskDB(
 // 	taskId: string,

@@ -42,7 +42,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = videoSourcePath(sessionPath);
+	const videoPath = ctx.videoSourcePath!
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 
 	const runtime = sepCfg?.runtime ?? 'pytorch';
@@ -86,7 +86,7 @@ export async function stageSeparate(
 			);
 		if (sr.rtf) emitLog(sessionPath, `[Separate] RTF ${sr.rtf}`);
 	} else if (runtime === 'ggml') {
-		await separateGgml(taskId, sessionPath, videoPath, device);
+		await separateGgml(taskId, sessionPath, ctx.audioSourcePath!, device);
 	} else {
 		await separateOrt(taskId, sessionPath, videoPath, device);
 	}
@@ -205,7 +205,7 @@ async function separatePytorch(
 async function separateGgml(
 	taskId: string,
 	sessionPath: string,
-	videoPath: string,
+	audioPath: string,
 	device: string,
 ) {
 	const ggmlBin = join(
@@ -219,8 +219,7 @@ async function separateGgml(
 
 	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
-	// Extract audio to WAV
-	const audioPath = join(sessionPath, 'download', 'audio_source.wav');
+	// Extract audio to WAV 
 	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found (run download stage)');
 
 	const isWin = process.platform === 'win32';

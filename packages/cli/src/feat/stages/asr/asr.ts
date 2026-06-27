@@ -69,7 +69,7 @@ export async function stageAsr(
 		progress: 0,
 	});
 	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? vocalsPath(sessionPath);
-	const videoSource = ctx.video_file_path ?? videoSourcePath(sessionPath);
+	const videoSource =  videoSourcePath(ctx);
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal

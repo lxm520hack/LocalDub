@@ -7,22 +7,28 @@
         "command": {
           "type": "string",
           "enum": [
-            "startTask",
-            "resumeTask",
-            "rerunStage",
+            "task",
             "check",
-            "taskStatus",
             "createTask",
             "deviceInfo",
             "servers",
             "listModels"
           ],
-          "description": "1. createTask: 完成后会自动开始任务\n\t\t2. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
+          "description": "\n\t\t1. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
         },
-        "createTask": {
-          "description": "创建任务, 需要指定 url/sourceLang/targetLang, 其他参数可在 config 中指定",
+        "task": {
           "type": "object",
           "properties": {
+            "action": {
+              "description": "任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态",
+              "type": "string",
+              "enum": [
+                "start",
+                "resume",
+                "rerunStage",
+                "status"
+              ]
+            },
             "url": {
               "description": "本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl",
               "type": "string"
@@ -57,33 +63,11 @@
                 "ur",
                 "bn"
               ]
-            }
-          },
-          "additionalProperties": false
-        },
-        "startTask": {
-          "type": "object",
-          "properties": {
-            "sessionPath": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "sessionPath"
-          ],
-          "additionalProperties": false
-        },
-        "resumeTask": {
-          "description": "继续任务, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始",
-          "type": "object",
-          "properties": {
-            "sessionPath": {
-              "type": "string"
             },
             "resumeFrom": {
+              "description": "继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始",
               "type": "string",
               "enum": [
-                "download",
                 "separate",
                 "separate_after",
                 "asr",
@@ -99,23 +83,14 @@
                 "merge_audio",
                 "merge_video"
               ]
-            }
-          },
-          "required": [
-            "sessionPath"
-          ],
-          "additionalProperties": false
-        },
-        "rerunStage": {
-          "type": "object",
-          "properties": {
+            },
             "sessionPath": {
               "type": "string"
             },
             "stageName": {
+              "description": "rerunStage 专业参数, 指定要重新运行的步骤",
               "type": "string",
               "enum": [
-                "download",
                 "separate",
                 "separate_after",
                 "asr",
@@ -133,23 +108,7 @@
               ]
             }
           },
-          "required": [
-            "sessionPath",
-            "stageName"
-          ],
-          "additionalProperties": false
-        },
-        "taskStatus": {
-          "type": "object",
-          "properties": {
-            "sessionPath": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "sessionPath"
-          ],
-          "additionalProperties": false
+          "additionalProperties": {}
         },
         "check": {
           "type": "object",
@@ -224,7 +183,8 @@
         }
       },
       "required": [
-        "command"
+        "command",
+        "task"
       ],
       "additionalProperties": {}
     },
@@ -254,7 +214,6 @@
           "description": "目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤",
           "type": "string",
           "enum": [
-            "download",
             "separate",
             "separate_after",
             "asr",

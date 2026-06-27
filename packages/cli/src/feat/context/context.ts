@@ -37,7 +37,8 @@ export interface Context {
 			fallbackToCpu?: boolean;
 		};
   }
-	video_file_path?: string; // join(mediaDir, 'video_source.mp4')
+	videoSourcePath?: string; //
+	audioSourcePath?: string; // 
   asr_language?: string; // ASR 自动检测的语言
 	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh
 }
@@ -122,7 +123,7 @@ export const setTask = (sessionPath: string, patch: Partial<Task>) => {
 	const existing = readTask(sessionPath) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
 	_writeTask(updated);
-		console.log(`[${updated.current_stage}] setTask ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
+	console.log(`[${updated.current_stage}] setTask ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
 }
 
 export const listStage = (sessionPath: string) => _readCtx(sessionPath).stages ?? [];
@@ -145,10 +146,12 @@ const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => 
 	_writeCtx(ctx);
 }
 export const setStage = (sessionPath: string, stage: string, patch: Partial<TaskStage>) => {
+	_readCtx(sessionPath)
 	const existing = readStage(sessionPath, stage) ?? ({} as TaskStage);
 	const updated = { ...existing, ...patch };
 	if (updated.status === 'succeeded') updated.error_message = null as any;
 	writeStage(sessionPath, stage, updated);
+	console.log(`[${_readCtx(sessionPath).task.current_stage}] setStage :`, JSON.stringify(patch));
 }
 
 export const readPipeline = (sessionPath: string) =>

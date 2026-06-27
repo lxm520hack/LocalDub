@@ -80,11 +80,13 @@ export const autoProjectIdAndVideoId = async (url: string) => {
 export const downloadRemoteVideo = async (url: string, sessionPath: string) => {
 				const urlO = new URL(url);
 			const filename = basename(urlO.pathname) || 'video.mp4';
+			const rawVideoPath = join(sessionPath, filename);
 			const resp = await fetch(url);
 			if (!resp.ok)
 				throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
 			const buf = Buffer.from(await resp.arrayBuffer());
-			writeFileSync(join(sessionPath, filename), buf);
+			writeFileSync(rawVideoPath, buf);
+	return rawVideoPath
 }
 /**
  * 重新编码视频为 H.264 + AAC 格式的

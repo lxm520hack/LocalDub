@@ -103,7 +103,7 @@ export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
   const srtFilePath = subtitleFilePath(sessionPath, ctx.input?.subtitleSource);
-  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(sessionPath);
+  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(ctx);
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 	const splitAudioDir = join(sessionPath, 'split_audio');
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
