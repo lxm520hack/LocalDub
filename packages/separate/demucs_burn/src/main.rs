@@ -31,6 +31,10 @@ struct Cli {
     /// Model variant
     #[arg(short, long, default_value = "htdemucs")]
     model: String,
+
+    /// Wgpu tasks_max (CPU threads for command recording). Default 1.
+    #[arg(long, default_value = "1")]
+    tasks_max: u32,
 }
 
 fn resolve_model_info(model_id: &str) -> Result<&'static ModelInfo> {
@@ -87,7 +91,7 @@ fn run() -> Result<()> {
         use burn::backend::wgpu::{graphics::AutoGraphicsApi, init_setup, RuntimeOptions};
         let d = Default::default();
         let options = RuntimeOptions {
-            tasks_max: 1,
+            tasks_max: cli.tasks_max as usize,
             ..Default::default()
         };
         init_setup::<AutoGraphicsApi>(&d, options);
