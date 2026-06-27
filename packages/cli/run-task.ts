@@ -15,7 +15,7 @@ import {
 	runPipeline,
 } from './src/feat/tasks/pipeline-runner.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
-import { startTorchServer } from './src/ml/server/client.ts';
+import { startTorchServer, stopTorchServer } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
 import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { createTask } from './src/feat/command/createTask.ts';
@@ -193,73 +193,72 @@ switch (cmd) {
 		break;
 	}
 
-	case 'torchServer': {
-		const action = config.torchServer?.action ?? 'start';
-		const TORCH_SERVER_PORT = config.torchServer?.port ?? 19109;
-		if (action === 'status') {
+	case 'servers': {
+		const action = config.servers?.action ?? 'status';
+		const name = config.servers?.name;
+		const TORCH_PORT = 19109;
+		const VOXCPM_PORT = 19112;
+
+		async function torchStatus(): Promise<Record<string, unknown>> {
 			try {
-				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/api/health`, { signal: AbortSignal.timeout(2000) });
+				const res = await fetch(`http://127.0.0.1:${TORCH_PORT}/api/health`, { signal: AbortSignal.timeout(2000) });
 				const data = await res.json();
-				console.log(JSON.stringify({ alive: true, port: TORCH_SERVER_PORT, ...data }));
+				return { alive: true, port: TORCH_PORT, ...data };
 			} catch {
-				console.log(
-					JSON.stringify({
-						alive: false,
-						port: TORCH_SERVER_PORT,
-						message: 'Connection failed (torch server not running)',
-					}),
-				);
+				return {
+					alive: false, port: TORCH_PORT, message: 'Not running',
+					models: { asr: false, separate: false },
+				};
 			}
-		} else if (action === 'stop') {
+		}
+
+		async function voxcpmStatus(): Promise<Record<string, unknown>> {
 			try {
-				const res = await fetch(`http://127.0.0.1:${TORCH_SERVER_PORT}/api/shutdown`, {
-					method: 'POST',
+				const res = await fetch(`http://127.0.0.1:${VOXCPM_PORT}/gradio_api/startup-events`, {
 					signal: AbortSignal.timeout(2000),
 				});
-				const data = await res.json();
-				console.log(JSON.stringify({ stopped: true, port: TORCH_SERVER_PORT, ...data }));
+				return { alive: true, port: VOXCPM_PORT, models: { voxcpm: true } };
 			} catch {
-				console.log(
-					JSON.stringify({
-						stopped: false,
-						port: TORCH_SERVER_PORT,
-						message: 'Connection failed (torch server not running)',
-					}),
-				);
+				return { alive: false, port: VOXCPM_PORT, message: 'Not running', models: { voxcpm: false } };
+			}
+		}
+
+		if (action === 'stop') {
+			if (!name || name === 'torch') {
+				await stopTorchServer(`http://127.0.0.1:${TORCH_PORT}`);
+				console.log('[Servers] Torch server stopped');
+			}
+			if (!name || name === 'voxcpm_torch_gradio') {
+				await fetch(`http://127.0.0.1:${VOXCPM_PORT}/shutdown`, {
+					method: 'POST', signal: AbortSignal.timeout(2000),
+				}).catch(() => {});
+				console.log('[Servers] VoxCPM Gradio server stopped');
+			}
+		} else if (action === 'start') {
+			if (!name || name === 'torch') {
+				const scriptPath = join(REPO_ROOT, 'packages', 'torch_server', 'pytorch_server.py');
+				const proc = spawn(pythonBin(), [scriptPath, '--http-port', String(TORCH_PORT)], {
+					env: { ...process.env as Record<string, string> },
+					detached: true, stdio: 'inherit',
+				});
+				proc.unref();
+				console.log(`[Servers] Torch server started (pid ${proc.pid})`);
+			}
+			if (!name || name === 'voxcpm_torch_gradio') {
+				const serverScript = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
+				const modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2');
+				const proc = spawn(pythonBin(), [serverScript, '--port', String(VOXCPM_PORT), '--device', 'cpu', '--model-dir', modelDir], {
+					env: { ...process.env as Record<string, string> },
+					detached: true, stdio: 'inherit',
+				});
+				proc.unref();
+				console.log(`[Servers] VoxCPM Gradio server started (pid ${proc.pid})`);
 			}
 		} else {
-			const scriptPath = join(
-				REPO_ROOT,
-				'packages',
-				'cli',
-				'src',
-				'ml',
-				'server',
-				'pytorch_server.py',
-			);
-			const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
-
-			const pyEnv: Record<string, string> = {
-				...(process.env as Record<string, string>),
-			};
-			const existing = pyEnv.PYTHONPATH || '';
-			pyEnv.PYTHONPATH = existing ? `${voxcpmSrc}:${existing}` : voxcpmSrc;
-
-			const proc = spawn(
-				pythonBin(),
-				[scriptPath, '--http-port', String(TORCH_SERVER_PORT)],
-				{
-					env: pyEnv,
-					detached: true,
-					stdio: 'inherit',
-				},
-			);
-			proc.unref();
-			console.log(
-				`[TorchServer] Spawned torch server (pid ${proc.pid}) on port ${TORCH_SERVER_PORT}`,
-			);
-			process.stdin.resume();
-			await new Promise(() => {});
+			const result: Record<string, unknown> = {};
+			if (!name || name === 'torch') result.torch = await torchStatus();
+			if (!name || name === 'voxcpm_torch_gradio') result.voxcpm_torch_gradio = await voxcpmStatus();
+			console.log(JSON.stringify(result, null, 2));
 		}
 		break;
 	}

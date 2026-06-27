@@ -98,7 +98,7 @@ export async function startTorchServer(port: number = DEFAULT_PORT): Promise<str
 	console.log('[TorchServer] Spawning ML torch server...');
 	const pyBin = pythonBin();
 	const scriptPath = join(
-		REPO_ROOT, 'packages', 'cli', 'src', 'ml', 'server', 'pytorch_server.py',
+		REPO_ROOT, 'packages', 'torch_server', 'pytorch_server.py',
 	);
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 

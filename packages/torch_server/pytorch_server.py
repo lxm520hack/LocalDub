@@ -20,7 +20,7 @@ SSE events from /api/run/{stage}:
   data: {"message":"..."}
 
 Usage (detached, spawned by TS):
-  .venv/bin/python packages/cli/src/ml/server/pytorch_server.py --http-port 19109
+  .venv/bin/python packages/torch_server/pytorch_server.py --http-port 19109
 
 Check health:
   curl http://127.0.0.1:19109/api/health
@@ -107,14 +107,12 @@ sys.stderr = _Tee(sys.stderr, _log_buffer)
 # ---------------------------------------------------------------------------
 # Model handler imports
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path(__file__).resolve().parents[5]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "whisper"))
-sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "voxcpm"))
 
 from torch_server_separate import handle_separate  # noqa: PLC0414,E402
 from torch_server_asr import handle_asr  # noqa: PLC0414,E402
-from torch_server_tts import handle_tts  # noqa: PLC0414,E402
 
 # ---------------------------------------------------------------------------
 # FastAPI app
@@ -133,7 +131,7 @@ _start_time = time.time()
 _executor = ThreadPoolExecutor(max_workers=1)
 
 # Track which models have been loaded
-_models: dict[str, bool] = {"asr": False, "tts": False, "separate": False}
+_models: dict[str, bool] = {"asr": False, "separate": False}
 
 
 # ---------------------------------------------------------------------------
@@ -164,10 +162,6 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
             if stage == "asr":
                 _models["asr"] = True
                 output = handle_asr(params)
-                emit({"type": "complete", "output": output})
-            elif stage == "tts":
-                _models["tts"] = True
-                output = handle_tts(params, task_id, emit=emit)
                 emit({"type": "complete", "output": output})
             elif stage == "separate":
                 _models["separate"] = True
