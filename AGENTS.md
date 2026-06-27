@@ -21,7 +21,8 @@
 | 模型 | 设备 | 说明 |
 |------|------|------|
 | whisper.cpp ASR | Vulkan (RADV) | **实际路径**，RTF ~0.09-0.11 (参数相关)，large-v3-turbo |
-| Demucs (ONNX, onnxruntime-node) | CPU | **实际路径**，RTF ~1.0 |
+| Demucs (Burn Vulkan) | Vulkan (RADV) | **实际路径**，RTF short 1.41, medium 0.78, long 0.75 |
+| Demucs (ONNX, onnxruntime-node) | CPU | **fallback**，RTF ~1.0（无 Vulkan 时的备选）|
 | CosyVoice3 TTS | CPU | 无可用 GPU EP |
 | 翻译 | CUDA | 正常 |
 
@@ -82,6 +83,7 @@ Key: `temp-*` params are extremely sensitive to BGM interference; sidechain is r
 
 - **OOM**: torch server RSS > 9.5GB 时可能 OOM。详情 → `packages/research/model-load-benchmarks.md`
 - **Dawn WebGPU**：≥3 sessions → `VK_ERROR_DEVICE_LOST`，限制 ≤2 个 WebGPU session
+- **Demucs Burn Vulkan**：CubeCL autotune 在 RADV 上导致 GPU driver hang（`elemwise_fuse` pipeline 失效）。解决：禁用 autotune（移除 `AutotuneConfig` 配置）+ `tasks_max: 1`。每次启动需 ~50s 首次 shader 编译（RADV 会缓存编译结果）。60s 音频可稳定分离，120s+ 可能存在 GPU timeout 风险
 - **ffmpeg swresample whisper 幻觉循环**：sidechain 混音音频在 ffmpeg `-ar 16000` 后尾段产生 x68+ 幻觉循环。已去掉该冗余重采样，让 miniaudio 内部处理。详情 → `.agents/asr-loop-fix.md`
 - **whisper.cpp 无法检测短语音**：0.5s+ 的短叹（"唉" 71.20）和轻笑（"哈哈哈" 115.42）在 38 个参数组合中几乎全部 miss。silero VAD v6 能捕获"唉"但 CER 涨 3-4ppt 且时间戳左漂 0.8-1.2s；"啊+哈哈哈"则没有任何参数能捕获——whisper 语言模型解码偏好将短语音合并入相邻段。详情 → `packages/benchmark/asr/whisper/results/FINDINGS.md`
 - **VAD 变体时间戳偏移**：所有 VAD 模式都系统性地将分段边界左移（s_off_mean -0.75~-1.85s），导致字幕 timing 不准。CER 最低的 sidechain+vad-v6-th02（8.41%）偏移 -534ms。最佳平衡参数是 sidechain+temp-02（CER 9.48%，s_off +203ms，94.7% 检测率）

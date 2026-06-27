@@ -1,0 +1,27 @@
+[package]
+name = "demucs-burn"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "demucs-burn-wgpu"
+path = "src/main.rs"
+required-features = ["wgpu"]
+
+[[bin]]
+name = "demucs-burn-cpu"
+path = "src/main.rs"
+required-features = ["cpu"]
+
+[features]
+default = ["wgpu"]
+wgpu = ["demucs-core/wgpu", "burn/wgpu"]
+cpu = ["demucs-core/ndarray", "burn/ndarray"]
+
+[dependencies]
+demucs-core = { path = "../../../submodule/demucs-rs/demucs-core", default-features = false }
+burn = { version = "0.20.1", default-features = false }
+clap = { version = "4", features = ["derive"] }
+hound = "3"
+anyhow = "1"
+pollster = "0.4"
