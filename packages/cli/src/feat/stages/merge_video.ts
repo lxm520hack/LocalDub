@@ -2,7 +2,7 @@ import { readJson, writeFile, ensureDir, fileLog } from './utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Context, readCtx, setStage, setTask, } from '../context/context.ts';
-import { alignmentToFfmpeg } from '../config/types.ts';
+import { alignmentToFfmpeg } from '../input/types.ts';
 import {
 	ffmpeg,
 	nowISO,

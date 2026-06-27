@@ -1,6 +1,6 @@
-export { REPO_ROOT, readInputArgs } from './feat/config/config.ts';
+export { REPO_ROOT, readInputArgs } from './feat/input/input.ts';
 export type {
 	TaskInputSchema,
 	RawInput,
 	RawInputInput,
-} from './feat/config/types.ts';
+} from './feat/input/types.ts';

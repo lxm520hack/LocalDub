@@ -7,7 +7,7 @@ import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 import {
 	pythonBin,
 	REPO_ROOT,
-} from '../../config/config.ts';
+} from '../../input/input.ts';
 import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
 import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';

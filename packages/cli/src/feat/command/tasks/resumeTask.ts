@@ -1,4 +1,4 @@
-import { InputArgs } from "../../config/config";
+import { InputArgs } from "../../input/input";
 import { readCtx, setCtx } from "../../context/context";
 import { resumePipeline } from "../../tasks/pipeline-runner";
 import { withTorchServer } from "../utils/utils";

@@ -1,5 +1,5 @@
 import { pythonBin, REPO_ROOT } from "@repo/config";
-import { InputArgs } from "../config/config";
+import { InputArgs } from "../input/input";
 import { startTorchServer, stopTorchServer } from "../../ml/server/client";
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { REPO_ROOT } from '../../feat/config/config.ts';
+import { REPO_ROOT } from '../../feat/input/input.ts';
 import { ocrFrameOpenCvCpp, ocrFramesOpenCvCpp } from './runtimes/ort-cpp.ts';
 import { ocrFramePy } from './runtimes/ort-py.ts';
 import { runOcrFrame as runOcrFrameRust } from '../../../../subtitle-rust/ts/ocr.ts';

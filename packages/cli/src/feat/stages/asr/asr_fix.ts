@@ -1,7 +1,7 @@
 import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readInputArgs } from '../../config/config.ts';
+import { readInputArgs } from '../../input/input.ts';
 import { emitLog, nowISO, srtTime, } from '../utils/utils.ts';
 import { segmentsToPrompt, parseLines, fixWithLLM } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';

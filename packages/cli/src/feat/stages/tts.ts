@@ -4,8 +4,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { writeWav } from '@repo/voxlab';
 import { newVoxCPMEngine,  } from '../../ml/voxcpm/voxcpm.ts';
-import { pythonBin, REPO_ROOT } from '../config/config.ts';
-import type { Device, TTSConfig } from '../config/types.ts';
+
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';

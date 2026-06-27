@@ -7,8 +7,7 @@ import {
 import type { TTSBackend } from '@repo/voxlab';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
-import { pythonBin, REPO_ROOT } from '../../feat/config/config.ts';
-import type { TTSConfig } from '../../feat/config/types.ts';
+import type { TTSConfig } from '../../feat/input/types.ts';
 import { to } from '@repo/shared/lib/utils/try.ts';
 import { startVoxCPMTorchGradioServer, voxcpmTorchGradioStatus, loadVoxCPMTorchGradioModel, connectToVoxCPMTorchGradioServer } from './runtime/VoxCPMPyTTorchGradio.ts';
 

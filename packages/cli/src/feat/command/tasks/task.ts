@@ -1,4 +1,4 @@
-import { InputArgs } from "../../config/config";
+import { InputArgs } from "../../input/input";
 import { cmdRerunStage } from "./rerunStage";
 import { cmdResumeTask } from "./resumeTask";
 import { cmdStartTask } from "./startTask";

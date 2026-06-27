@@ -5,7 +5,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
 import { getStages } from './../../feat/tasks/stages.ts';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
-import { readInputArgs } from '../config/config.ts';
+import { readInputArgs } from '../input/input.ts';
 import { STAGE_HANDLERS } from '../stages/index.ts';
 import { Context, 	readCtx,
 	readPipeline,

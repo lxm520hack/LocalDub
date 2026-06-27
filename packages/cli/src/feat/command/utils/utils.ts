@@ -1,5 +1,5 @@
 import { startTorchServer } from "../../../ml/server/client";
-import { readInputArgs } from "../../config/config";
+import { readInputArgs } from "../../input/input";
 
 export async function withTorchServer<T>(
 	taskId: string,

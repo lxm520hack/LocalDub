@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { delimiter, pythonBin, REPO_ROOT } from '../../feat/config/config.ts';
+import { delimiter, pythonBin, REPO_ROOT } from '../../feat/input/input.ts';
 
 const DEFAULT_PORT = 19109;
 let _torchServerUrl = ''

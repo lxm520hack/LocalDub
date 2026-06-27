@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { REPO_ROOT } from '../../feat/config/config.ts';
+import { REPO_ROOT } from '../../feat/input/input.ts';
 import { emitLog } from '../../feat/stages/utils/utils.ts';
 
 const HF_BASE = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';

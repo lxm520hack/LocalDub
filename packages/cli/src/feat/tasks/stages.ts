@@ -1,4 +1,4 @@
-import { readInputArgs } from '../config/config.ts';
+import { readInputArgs } from '../input/input.ts';
 
 export interface StageSpec {
 	name: string;

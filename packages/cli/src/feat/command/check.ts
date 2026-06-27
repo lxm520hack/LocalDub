@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { REPO_ROOT, WORKFOLDER } from '@repo/config';
-import { readInputArgs } from '../config/config.ts';
+import { readInputArgs } from '../input/input.ts';
 
 export async function cmdCheck(opts: {
 	type: 'video' | 'asr' | 'font' | undefined;

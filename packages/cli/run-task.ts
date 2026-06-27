@@ -6,8 +6,7 @@ import { timeId } from '../shared/db/timeId.ts';
 import {
 	pythonBin,
 	readInputArgs,
-} from './src/feat/config/config.ts';
-import type { RawInput } from './src/feat/config/types.ts';
+} from './src/feat/input/input.ts';
 import {
 
 	resumePipeline,

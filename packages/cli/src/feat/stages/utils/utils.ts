@@ -50,8 +50,8 @@ export function defaultFont(dstLang: string): string {
 		default: return 'Noto Sans CJK SC';
 	}
 }
-import type { SubtitleSource, TargetLang } from '../../config/types.ts';
-import {  readInputArgs } from '../../config/config.ts';
+import type { SubtitleSource, TargetLang } from '../../input/types.ts';
+
 import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';
 
 export function nowISO(): string {

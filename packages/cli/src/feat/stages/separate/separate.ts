@@ -8,7 +8,7 @@ import {
 	pythonBin,
 	REPO_ROOT,
 	readInputArgs,
-} from '../../config/config.ts';
+} from '../../input/input.ts';
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
