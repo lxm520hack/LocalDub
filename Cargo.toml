@@ -1,2 +1,11 @@
 [workspace]
-members = ["packages/separate/demucs_burn", "packages/subtitle-rust"]
+members = ["packages/separate/demucs_burn", "packages/subtitle-rust", "packages/voxcpm-burn"]
+resolver = "3"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
+[patch.crates-io]
+burn-cubecl = { path = "submodule/voxcpm-rs/vendor/patched/burn-cubecl" }
+cubecl-spirv = { path = "submodule/voxcpm-rs/vendor/patched/cubecl-spirv" }

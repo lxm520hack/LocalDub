@@ -5,6 +5,7 @@
   "js/ts.experimental.useTsgo": true,
   "explorer.fileNesting.patterns": {
     "package.json": "package.*, bun.lock, bunfig.toml, tsconfig*.json, pnpm-lock.yaml, yarn.lock, package-lock.json",
+    "Cargo.toml": "Cargo.*, Cargo.lock",
     ".gitignore": ".gitignore, .gitmodules, .gitattributes",
 		".env": ".env.*",
 		".env.local": ".env.*",
