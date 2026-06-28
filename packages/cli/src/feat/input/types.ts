@@ -74,11 +74,11 @@ export enum StageNameEnum {
 export type StageName = (typeof stagesList)[number];
 
 const SeparateTaskInputSchema = z.object({
-	runtime: z.enum(['ggml', 'ort', 'pytorch', 'burn']),
+	runtime: z.enum(['ggml', 'ort', 'pytorch', 'burn', 'burn-tch']),
 	device: z
 		.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
 		.default('cuda')
-		.describe('cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
+		.describe('pytorch:cuda (NVIDIA/ROCm), mps (Apple Silicon)'),
 	always: z
 		.boolean()
 		.default(false)

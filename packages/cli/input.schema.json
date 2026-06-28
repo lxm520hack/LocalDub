@@ -251,12 +251,14 @@
                   "enum": [
                     "ggml",
                     "ort",
-                    "pytorch"
+                    "pytorch",
+                    "burn",
+                    "burn-tch"
                   ]
                 },
                 "device": {
                   "default": "cuda",
-                  "description": "cuda (NVIDIA/ROCm), mps (Apple Silicon)",
+                  "description": "pytorch:cuda (NVIDIA/ROCm), mps (Apple Silicon)",
                   "type": "string",
                   "enum": [
                     "vulkan",
