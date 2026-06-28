@@ -4,16 +4,25 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use clap::Parser;
 use demucs_core::listener::{ForwardEvent, ForwardListener};
-use demucs_core::model::metadata::{ModelInfo, ALL_MODELS};
+use demucs_core::model::metadata::{ModelInfo, ALL_MODELS, HTDEMUCS_FT_ID, HTDEMUCS_6S_ID, HTDEMUCS_ID};
 use demucs_core::provider::fs::FsProvider;
 use demucs_core::provider::ModelProvider;
 use demucs_core::{Demucs, ModelOptions};
 
-#[cfg(feature = "cpu")]
-type B = burn::backend::NdArray<f32>;
+#[cfg(feature = "cubecl-cpu")]
+type B = burn::backend::Cpu;
 
-#[cfg(not(feature = "cpu"))]
+#[cfg(feature = "cubecl-wgpu")]
 type B = burn::backend::wgpu::Wgpu;
+
+#[cfg(feature = "cubecl-rocm")]
+type B = burn::backend::Rocm;
+
+#[cfg(feature = "cubecl-cuda")]
+type B = burn::backend::Cuda;
+
+#[cfg(feature = "tch")]
+type B = burn::backend::LibTorch;
 
 #[derive(Parser)]
 #[command(name = "demucs-burn")]
@@ -29,12 +38,16 @@ struct Cli {
     output: Option<PathBuf>,
 
     /// Model variant
-    #[arg(short, long, default_value = "htdemucs")]
+    #[arg(short, long, default_value = "htdemucs_ft")]
     model: String,
 
-    /// Wgpu tasks_max (CPU threads for command recording). Default 128.
-    #[arg(long, default_value = "128")]
+    /// Wgpu tasks_max (CPU threads for command recording). Default 1 for stability.
+    #[arg(long, default_value = "1")]
     tasks_max: u32,
+
+    /// Run warmup inference to pre-compile GPU shaders.
+    #[arg(long)]
+    warmup: bool,
 }
 
 fn resolve_model_info(model_id: &str) -> Result<&'static ModelInfo> {
@@ -43,6 +56,15 @@ fn resolve_model_info(model_id: &str) -> Result<&'static ModelInfo> {
         .find(|m| m.id == model_id)
         .copied()
         .with_context(|| format!("Unknown model: {}", model_id))
+}
+
+fn model_options(info: &ModelInfo) -> ModelOptions {
+    match info.id {
+        HTDEMUCS_ID => ModelOptions::FourStem,
+        HTDEMUCS_6S_ID => ModelOptions::SixStem,
+        HTDEMUCS_FT_ID => ModelOptions::FineTuned(info.stems.to_vec()),
+        _ => ModelOptions::FourStem,
+    }
 }
 
 struct BenchListener;
@@ -64,19 +86,13 @@ impl ForwardListener for BenchListener {
 }
 
 fn main() -> Result<()> {
-    std::thread::Builder::new()
-        .name("demucs-burn".into())
-        .stack_size(8 * 1024 * 1024)
-        .spawn(run)
-        .expect("failed to spawn main thread")
-        .join()
-        .unwrap()
+    run()
 }
 
 fn run() -> Result<()> {
     let cli = Cli::parse();
     let info = resolve_model_info(&cli.model)?;
-    let opts = ModelOptions::FourStem;
+    let opts = model_options(info);
 
     let provider = FsProvider::new().context("Failed to initialize model cache")?;
     let bytes = if provider.is_cached(info) {
@@ -86,7 +102,7 @@ fn run() -> Result<()> {
         anyhow::bail!("Model '{}' not cached. Run demucs-cli first to download it.", info.id);
     };
 
-    #[cfg(not(feature = "cpu"))]
+    #[cfg(feature = "cubecl-wgpu")]
     let device = {
         use burn::backend::wgpu::{graphics::AutoGraphicsApi, init_setup, RuntimeOptions};
         let d = Default::default();
@@ -98,22 +114,31 @@ fn run() -> Result<()> {
         d
     };
 
-    #[cfg(feature = "cpu")]
+    #[cfg(not(feature = "cubecl-wgpu"))]
     let device = Default::default();
 
     let load_start = Instant::now();
     let model = Demucs::<B>::from_bytes(opts, &bytes, device)
         .context("Failed to load model weights")?;
     let load_time = load_start.elapsed();
+    eprintln!("Model loaded in {:.3}s", load_time.as_secs_f64());
+    println!("Benchmark-Load-Time: {:.3}", load_time.as_secs_f64());
 
-    #[cfg(not(feature = "cpu"))]
-    {
-        eprintln!("Pre-compiling GPU shaders (first run only)...");
-        pollster::block_on(model.warmup());
+    if cli.warmup {
+        #[cfg(feature = "cubecl-wgpu")]
+        {
+            eprintln!("Pre-compiling GPU shaders (first run only)...");
+            let warmup_start = Instant::now();
+            pollster::block_on(model.warmup());
+            let t = warmup_start.elapsed();
+            eprintln!("Warmup done in {:.1}s", t.as_secs_f64());
+            println!("Benchmark-Warmup-Time: {:.3}", t.as_secs_f64());
+        }
+        #[cfg(not(feature = "cubecl-wgpu"))]
+        eprintln!("Skipping GPU warmup (not wgpu backend)");
     }
 
     if cli.benchmark_load {
-        println!("Benchmark-Load-Time: {:.3}", load_time.as_secs_f64());
         return Ok(());
     }
 
@@ -126,9 +151,13 @@ fn run() -> Result<()> {
     eprintln!("  {} samples, {:.1}s, {} Hz, stereo", left.len(), duration_secs, sample_rate);
 
     eprintln!("Separating...");
+    let sep_start = Instant::now();
     let stems = pollster::block_on(model.separate_with_listener(
         &left, &right, sample_rate, &mut BenchListener,
     ))?;
+    let sep_time = sep_start.elapsed();
+    eprintln!("Generate: {:.3}s", sep_time.as_secs_f64());
+    println!("Benchmark-Gen-Time: {:.3}", sep_time.as_secs_f64());
 
     std::fs::create_dir_all(&out_dir)?;
     for stem in &stems {

@@ -2,13 +2,16 @@
 
 ## Backend comparison
 
-| Backend | Device | Audio | RTF |
-|---------|--------|-------|:---:|
-| Burn wgpu | wgpu (RADV) | short (10s) | 1.465 |
-| Burn wgpu | wgpu (RADV) | medium (60s) | 0.794 |
-| Burn wgpu | wgpu (RADV) | long (120s) | 0.786 |
-| ONNX (onnxruntime-node) | CPU | any (4-stems) | ~6.2 |
-| ONNX (onnxruntime-node) | CPU | any (vocals-only) | ~2.2 |
+All benchmarks on `htdemucs_ft`, `tasks_max=1`. CPU: Ryzen 7 7840HS. GPU: Radeon 780M (RADV). RTF computed from generation time only (excluding load & warmup).
+
+| Backend | Device | Audio | RTF (gen only) |
+|---------|--------|-------|:--------------:|
+| Burn wgpu | wgpu (RADV) | short (10s) | **2.77** |
+| Burn wgpu | wgpu (RADV) | medium (60s) | **2.37** |
+| Burn tch | libtorch CPU | short (10s) | **1.66** |
+| Burn tch | libtorch CPU | medium (60s) | **1.26** |
+| ONNX (onnxruntime-node) | Node CPU | any (4-stems) | ~6.2 | — |
+| ONNX (onnxruntime-node) | Node CPU | any (vocals) | ~2.2 | — |
 
 ## Burn wgpu
 
@@ -17,39 +20,56 @@
 ### Build
 
 ```bash
+# cubecl-wgpu (GPU via Vulkan/Metal/DX12, default) — works
 cargo build --release --bin demucs-burn-wgpu
-cargo build --release --bin demucs-burn-cpu --no-default-features --features cpu
+
+# cubecl-cpu (CubeCL CPU via MLIR — experimental, very slow for demucs)
+cargo build --release --bin demucs-burn-cpu --no-default-features --features cubecl-cpu
+
+# cubecl-rocm (AMD ROCm HIP — MES hang on 780M, requires gfx9+ with stable ROCm)
+cargo build --release --bin demucs-burn-rocm --no-default-features --features cubecl-rocm
+
+# tch (libtorch CPU via MKL — best CPU path, requires LD_LIBRARY_PATH)
+LIBTORCH_DIR=$(find target/release/build/torch-sys-*/out/libtorch/libtorch/lib -maxdepth 0)
+LIBTORCH_DIR=$LIBTORCH_DIR cargo build --release --bin demucs-burn-tch --no-default-features --features tch
 ```
 
-Binaries: `target/release/demucs-burn-wgpu` (37MB) / `demucs-burn-cpu` (7MB).
+| Binary | Size | RTF (short infer) | Notes |
+|--------|:----:|:-----------------:|-------|
+| `demucs-burn-wgpu` | 37MB | 2.83 | GPU via Vulkan, +16s warmup first run |
+| `demucs-burn-tch` | 4.0MB | **1.66** | CPU via MKL, no warmup overhead, needs `LD_LIBRARY_PATH` |
+| `demucs-burn-cpu` | 177MB | — | CubeCL MLIR, per-kernel JIT too slow for demucs |
+| `demucs-burn-rocm` | 32MB | — | `GPU Hang` on 780M MES, needs gfx9+ ROCm |
 
 ### Runtime
 
-- warmup: ~50s on first run (CubeCL shader compilation via RADV), cached by driver thereafter
-- model load: ~0.4s
+- model load: ~1.0s (tch), ~1.2s (wgpu)
+- warmup (`--warmup`): ~16s wgpu, pre-compiles CubeCL shaders for all 4 htdemucs_ft models. Reduces first-inference RTF by ~15%.
+  Without warmup, shader compilation happens lazily during inference, increasing first-run RTF (short 3.44, medium 2.68).
+  With warmup, inference-only RTF is 2.83 (short) / 2.34 (medium).
+- CUDA GPU: tch can use CUDA if available (not tested here)
+- Real CPU production path: **tch** (RTF 1.26-1.66) or **ggml** (RTF 1.44-2.91)
+- Default model: `htdemucs_ft` (4 per-stem specialist models, 333MB). Change with `--model htdemucs`.
 
 ### Known issues
 
-- **CubeCL autotune** (已禁用): causes `elemwise_fuse` pipeline failure → GPU driver hang on RADV. Fix: remove `AutotuneConfig`, disable `burn/fusion`. Note: autotune was the root cause — `tasks_max` default (128) is stable without it.
+- **CubeCL autotune** (wgpu 已禁用): causes `elemwise_fuse` pipeline failure → GPU driver hang on RADV. Fix: remove `AutotuneConfig`. We keep `fusion = ["burn/fusion"]` available but not in default features.
 - **wgpu ≠ Vulkan**: wgpu is cross-platform; on Linux this uses Vulkan via RADV.
-- **GPU memory**: 780M iGPU has 5.86 GiB device-local + 11.73 GiB host-visible. 120s stable, longer may timeout.
+- **GPU memory on 780M**: 5.86 GiB device-local + 11.73 GiB host-visible. 120s wgpu stable.
+- **tch libtorch**: needs `LD_LIBRARY_PATH` pointing to libtorch lib dir at runtime.
+- **cubecl-cpu**: impractical for demucs — MLIR JIT compiles each kernel individually, conv/matmul unoptimized per Burn 0.20 notes.
+- **cubecl-rocm**: `GPU Hang` on 780M (MES firmware issue), requires gfx9+ with stable ROCm.
 
-### tasks_max tuning
+### tasks_max tuning (wgpu only)
 
-`--tasks-max` controls CPU threads for wgpu command recording. Benchmark results (short/10s, AMD 780M RADV):
+`--tasks-max` controls CPU threads for wgpu command recording. Default 1 for stability with `htdemucs_ft`:
 
-| tasks_max | Time (10s) | vs 1 |
-|:---------:|:----------:|:----:|
-|    1      |   14.83s   |  —   |
-|    2      |   13.54s   | -8.7% |
-|    4      |   12.87s   | -13.2% |
-|    8      |   12.82s   | -13.6% |
-|   16      |   12.50s   | -15.7% |
-|   32      |   12.82s   | -13.6% |
-|   64      |   13.06s   | -11.9% |
-|  128      |   12.45s   | -16.1% |
+| tasks_max | short (10s) | vs 1 |
+|:---------:|:-----------:|:----:|
+|    1      |   34.4s     |  —   |
+|   128     |   crash     |  —   |
 
-Default 128 gives best perf. All values stable without CubeCL autotune.
+Higher values may work with the single-model `htdemucs` but are unstable with `htdemucs_ft` on 780M.
 
 ## ONNX (onnxruntime-node)
 

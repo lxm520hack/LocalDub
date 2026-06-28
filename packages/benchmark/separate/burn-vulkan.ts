@@ -13,8 +13,8 @@ const REPO_ROOT = resolve(__dirname, '..', '..', '..');
 const BURN_BIN = join(REPO_ROOT, 'target', 'release', 'demucs-burn-wgpu');
 const REF_DIR = join(REPO_ROOT, 'packages', 'benchmark', 'ref');
 
-function parseLoadTime(stdout: string): number {
-  const m = stdout.match(/Benchmark-Load-Time:\s*([\d.]+)/);
+function parseStdout(stdout: string, key: string): number {
+  const m = stdout.match(new RegExp(`${key}:\\s*([\\d.]+)`));
   return m ? parseFloat(m[1]) : 0;
 }
 
@@ -22,17 +22,16 @@ export async function benchmarkBurnVulkan(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
 
   if (!existsSync(BURN_BIN)) {
-    console.error(`[Burn] Binary not found at ${BURN_BIN}. Build with: cargo build --release (in packages/separate/demucs_burn/)`);
+    console.error(`[Burn] Binary not found at ${BURN_BIN}. Build with: cargo build --release --bin demucs-burn-wgpu`);
     return results;
   }
 
   console.log('[Burn] Loading model...');
-  const t0 = performance.now();
   const loadResult = spawnSync(BURN_BIN, ['--benchmark-load'], { timeout: 120_000 });
   const stdout = loadResult.stdout?.toString() ?? '';
   const loadTimeS = loadResult.status === 0
-    ? parseLoadTime(stdout)
-    : (performance.now() - t0) / 1000;
+    ? parseStdout(stdout, 'Benchmark-Load-Time')
+    : 0;
   console.log(`[Burn] Model loaded in ${loadTimeS.toFixed(3)}s`);
 
   for (const key of AUDIO_KEYS) {
@@ -47,8 +46,7 @@ export async function benchmarkBurnVulkan(): Promise<BenchmarkResult[]> {
     const outDir = join(RESULTS_DIR, `burn-${key}-${Date.now()}`);
     mkdirSync(outDir, { recursive: true });
 
-    const t1 = performance.now();
-    const result = spawnSync(BURN_BIN, [audioPath, outDir], { timeout: 600_000 });
+    const result = spawnSync(BURN_BIN, ['--warmup', audioPath, outDir], { timeout: 600_000 });
 
     if (result.status !== 0) {
       console.error(`[Burn] ${key} failed:`, result.stderr?.toString().slice(-300));
@@ -56,8 +54,8 @@ export async function benchmarkBurnVulkan(): Promise<BenchmarkResult[]> {
       continue;
     }
 
-    const totalTimeS = (performance.now() - t1) / 1000;
-    const processTimeS = round(totalTimeS - loadTimeS, 3);
+    const resultStdout = result.stdout?.toString() ?? '';
+    const genTimeS = parseStdout(resultStdout, 'Benchmark-Gen-Time');
 
     results.push({
       engine: 'burn',
@@ -65,9 +63,9 @@ export async function benchmarkBurnVulkan(): Promise<BenchmarkResult[]> {
       audioKey: key,
       audioDurationS: round(durationS, 3),
       loadTimeS: round(loadTimeS, 3),
-      processTimeS,
-      totalTimeS: round(totalTimeS, 3),
-      rtf: round(processTimeS / durationS, 3),
+      processTimeS: round(genTimeS, 3),
+      totalTimeS: round(loadTimeS + genTimeS, 3),
+      rtf: round(genTimeS / durationS, 3),
     });
 
     console.log(`  RTF: ${results[results.length - 1].rtf}`);
@@ -85,7 +83,7 @@ async function main() {
     process.exit(1);
   }
   console.log('\n--- Results ---');
-  console.log('Engine\tDevice\t\tAudio\t\tDur(s)\tLoad(s)\tProc(s)\tRTF');
+  console.log('Engine\tDevice\t\tAudio\t\tDur(s)\tLoad(s)\tGen(s)\tRTF');
   for (const r of results) {
     console.log(`${r.engine.padEnd(6)}\t${r.device.padEnd(8)}\t${r.audioKey.padEnd(8)}\t${r.audioDurationS.toFixed(1)}\t${r.loadTimeS.toFixed(1)}\t${r.processTimeS.toFixed(1)}\t${r.rtf.toFixed(3)}`);
   }
