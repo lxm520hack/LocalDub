@@ -12,7 +12,7 @@ let _voxcpm_proc: ChildProcess | null = null
 interface TorchStatus {
 	running: boolean
 	uptime_s: number
-	models: Record<string, boolean>
+	models: Record<string, { status: string; device: string }>
 }
 
 async function fetchHealth(port: number): Promise<TorchStatus> {
@@ -21,11 +21,11 @@ async function fetchHealth(port: number): Promise<TorchStatus> {
 			signal: AbortSignal.timeout(2000),
 		})
 		if (!res.ok) return { running: false, uptime_s: 0, models: {} }
-		const data = (await res.json()) as { status?: string; uptime_s?: number; models?: Record<string, { status: string }> }
+		const data = (await res.json()) as { status?: string; uptime_s?: number; models?: Record<string, { status: string; device?: string }> }
 		return {
 			running: data.status === 'running',
 			uptime_s: data.uptime_s ?? 0,
-			models: Object.fromEntries(Object.entries(data.models ?? {}).map(([k, v]) => [k, v.status === 'ready'])),
+			models: Object.fromEntries(Object.entries(data.models ?? {}).map(([k, v]) => [k, { status: v.status, device: v.device ?? '' }])),
 		}
 	} catch {
 		return { running: false, uptime_s: 0, models: {} }
@@ -129,6 +129,7 @@ interface VoxCpmStatus {
 	running: boolean
 	model_loaded: boolean
 	model_status: string
+	model_device: string
 }
 
 async function fetchVoxCpmHealth(port: number): Promise<VoxCpmStatus> {
@@ -136,16 +137,17 @@ async function fetchVoxCpmHealth(port: number): Promise<VoxCpmStatus> {
 		const res = await fetch(`http://127.0.0.1:${port}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
-		if (!res.ok) return { running: false, model_loaded: false, model_status: 'stopped' }
-		const data = (await res.json()) as { status?: string; models?: Record<string, { status: string }> }
+		if (!res.ok) return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
+		const data = (await res.json()) as { status?: string; models?: Record<string, { status: string; device?: string }> }
 		const vox = Object.values(data.models ?? {})[0]
 		return {
 			running: data.status === 'running',
 			model_loaded: vox?.status === 'ready',
 			model_status: vox?.status ?? 'unknown',
+			model_device: vox?.device ?? '',
 		}
 	} catch {
-		return { running: false, model_loaded: false, model_status: 'stopped' }
+		return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
 	}
 }
 
@@ -184,7 +186,7 @@ export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStat
 		const p = readPortFromOutput(stdout, _voxcpmPort)
 		if (p !== _voxcpmPort) _voxcpmPort = p
 	}
-	return { running: false, model_loaded: false, model_status: 'timeout' }
+	return { running: false, model_loaded: false, model_status: 'timeout', model_device: '' }
 })
 
 export const checkVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
@@ -199,7 +201,7 @@ export const stopVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatu
 		_voxcpm_proc.stderr?.destroy()
 		_voxcpm_proc = null
 	}
-	return { running: false, model_loaded: false, model_status: 'stopped' }
+	return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
 })
 
 export const restartVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {

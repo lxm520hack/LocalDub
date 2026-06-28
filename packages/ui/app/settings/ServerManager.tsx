@@ -17,7 +17,7 @@ function ServerCard(props: {
   name: string;
   running: boolean;
   uptimeS: number;
-  models: Record<string, string>;
+  models: Record<string, { status: string; device: string }>;
   busy: boolean;
   onStart: () => void;
   onStop: () => void;
@@ -66,13 +66,13 @@ function ServerCard(props: {
       </div>
 
       <div class="flex flex-wrap gap-2">
-        {Object.entries(props.models).map(([name, status]) => (
+        {Object.entries(props.models).map(([name, m]) => (
           <span
             class={`text-xs px-2 py-0.5 rounded ${
-              status === 'ready' ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-gray-500'
+              m.status === 'ready' ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-gray-500'
             }`}
           >
-            {name}: {status}
+            {name}: {m.status}{m.device ? ` (${m.device})` : ''}
           </span>
         ))}
       </div>
@@ -94,7 +94,7 @@ export function ServerManager() {
           status: status.running ? 'running' : 'stopped',
           uptime_s: status.uptime_s,
           models: Object.fromEntries(
-            Object.entries(status.models).map(([k, v]) => [k, v ? 'ready' : 'unloaded'])
+            Object.entries(status.models).map(([k, m]) => [k, { status: m.status, device: m.device }])
           ),
         });
       } catch { setTorchHealth(null); }
@@ -108,7 +108,7 @@ export function ServerManager() {
         const status = await api.checkVoxCpm();
         setVoxCpmHealth({
           status: status.running ? 'running' : 'stopped',
-          models: { voxcpm: status.model_status },
+          models: { voxcpm: { status: status.model_status, device: status.model_device } },
         });
       } catch { setVoxCpmHealth(null); }
     }, 3000);
@@ -125,13 +125,13 @@ export function ServerManager() {
 
   const torchModels = () => {
     const m = torchHealth()?.models;
-    if (!m || Object.keys(m).length === 0) return { asr: 'unloaded', separate: 'unloaded' };
+    if (!m || Object.keys(m).length === 0) return { asr: { status: 'unloaded', device: '' }, separate: { status: 'unloaded', device: '' } };
     return m;
   };
 
   const vcModels = () => {
     const m = voxcpmHealth()?.models;
-    if (!m) return { voxcpm: 'unloaded' };
+    if (!m) return { voxcpm: { status: 'unloaded', device: '' } };
     return m;
   };
 
@@ -161,14 +161,13 @@ export function ServerManager() {
   );
 }
 
-// Local types mirroring api/context exports
 interface TorchHealth {
   status: string;
   uptime_s: number;
-  models: Record<string, string>;
+  models: Record<string, { status: string; device: string }>;
 }
 
 interface VoxCpmHealth {
   status: string;
-  models: Record<string, string>;
+  models: Record<string, { status: string; device: string }>;
 }

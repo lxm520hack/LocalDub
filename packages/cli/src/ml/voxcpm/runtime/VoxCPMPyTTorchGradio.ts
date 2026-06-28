@@ -3,20 +3,19 @@ import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config';
 import type { ModelServerStatus } from "../../server/type";
 import { spawn, type ChildProcess } from 'node:child_process';
+import { fetchStatsData } from "../../server/client";
+import { to } from "@repo/shared/lib/utils/try";
+
+
 
 export const voxcpmTorchGradioStatus = async ({
   port,
 }: {
   port: number;
 }): Promise<ModelServerStatus> => {
-  try {
-    const res = await fetch(`http://127.0.0.1:${port}/status`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    return await res.json() as ModelServerStatus;
-  } catch {
-    return { status: 'stopped', port, uptime_s: 0, message: 'Not running', models: { voxcpm: { status: 'unloaded', device: '' } } };
-  }
+  const [data, err] = await to(fetchStatsData(port));
+  if (err) return { status: 'stopped', port, uptime_s: 0, message: 'Not running', models: { voxcpm: { status: 'unloaded', device: '' } } };
+  return data;
 }
 
 export const startVoxCPMTorchGradioServer = async ({

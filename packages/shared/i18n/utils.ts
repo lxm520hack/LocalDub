@@ -13,7 +13,7 @@ export const mD = <K extends MessageKeys>(key: K) => {
 	return () => fallbackText;
 };
 
- const localeNameMap = {
+const localeNameMap = {
 	en: m.en(),
 	'zh-cn': m['zh-cn'](),
 }

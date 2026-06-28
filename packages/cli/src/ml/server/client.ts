@@ -2,6 +2,17 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { delimiter, pythonBin, REPO_ROOT } from '../../feat/input/input.ts';
 import { findServer } from '@repo/config/discovery';
+import { ModelServerStatus } from './type.ts';
+
+export const fetchStatsRes = (port: number) => fetch(`http://127.0.0.1:${port}/status`, {
+  signal: AbortSignal.timeout(2000),
+})
+
+export const fetchStatsData = async (port: number): Promise<ModelServerStatus> => {
+  const res = await fetchStatsRes(port);
+  if (!res.ok) throw new Error(`Failed to fetch status from port ${port}: ${res.status}`);
+  return await res.json() as ModelServerStatus;
+}
 
 const DEFAULT_PORT = 19109;
 let _torchServerUrl = ''
