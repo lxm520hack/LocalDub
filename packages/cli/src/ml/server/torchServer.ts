@@ -6,8 +6,8 @@ export async function torchStatus(port: number): Promise<ModelServerStatus> {
 		return await res.json() as ModelServerStatus;
 	} catch {
 		return {
-			status: 'stopped', port, message: 'Not running',
-			models: { asr: { status: 'unloaded' }, separate: { status: 'unloaded' } },
+			status: 'stopped', port, uptime_s: 0, message: 'Not running',
+			models: { asr: { status: 'unloaded', device: '' }, separate: { status: 'unloaded', device: '' } },
 		};
 	}
 }

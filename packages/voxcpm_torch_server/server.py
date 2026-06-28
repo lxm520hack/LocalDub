@@ -16,16 +16,22 @@ import numpy as np
 _VOXCPM: "VoxCPM | None" = None
 _VOXCPM_LOAD_TIME: float = 0.0
 _MODEL_STATUS: str = "unloaded"  # "unloaded" | "loading" | "ready" | "error"
+_MODEL_DEVICE: str = ""
+_START_TIME: float = time.time()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+sys.path.insert(0, str(REPO_ROOT / "packages" / "torch_server"))
+from mdns_server import register_service, unregister_service  # noqa: E402
+
 
 def load_model(model_dir: str, device: str) -> None:
-    global _VOXCPM, _VOXCPM_LOAD_TIME, _MODEL_STATUS
+    global _VOXCPM, _VOXCPM_LOAD_TIME, _MODEL_STATUS, _MODEL_DEVICE
     if _VOXCPM is not None:
         return
 
     _MODEL_STATUS = "loading"
+    _MODEL_DEVICE = device
     voxcpm_src = REPO_ROOT / "submodule" / "VoxCPM" / "src"
     if str(voxcpm_src) not in sys.path:
         sys.path.insert(0, str(voxcpm_src))
@@ -113,7 +119,8 @@ def build_app() -> "FastAPI":
         return {
             "status": "running",
             "port": _PORT,
-            "models": {"voxcpm": {"status": _MODEL_STATUS}},
+            "uptime_s": int(time.time() - _START_TIME),
+            "models": {"voxcpm": {"status": _MODEL_STATUS, "device": _MODEL_DEVICE}},
         }
 
     @fastapi_app.post("/load-model")
@@ -231,14 +238,21 @@ def main() -> None:
     _DEVICE = args.device
     _MODEL_DIR = args.model_dir
 
+    # Register mDNS so CLI/UI can discover the actual port
+    _mdns_zc = register_service("voxcpm", args.port)
+
     import uvicorn
 
+    print(f"PORT={args.port}", flush=True)
     print(f"[VoxCPM] Starting Gradio server on {args.host}:{args.port}", flush=True)
 
-    if args.reload:
-        uvicorn.run("server:_uvicorn_app", host=args.host, port=args.port, log_level="info", reload=True)
-    else:
-        uvicorn.run(_uvicorn_app, host=args.host, port=args.port, log_level="info")
+    try:
+        if args.reload:
+            uvicorn.run("server:_uvicorn_app", host=args.host, port=args.port, log_level="info", reload=True)
+        else:
+            uvicorn.run(_uvicorn_app, host=args.host, port=args.port, log_level="info")
+    finally:
+        unregister_service(_mdns_zc)
 
 
 if __name__ == "__main__":

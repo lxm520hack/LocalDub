@@ -4,9 +4,6 @@ import { useClientApi } from '../api/context';
 export function DeviceInfo() {
   const api = useClientApi().deviceInfoApi;
   const [data] = createResource(() => api?.fetchDeviceInfo());
-  createEffect(()=> {
-    console.log('DeviceInfo data', data())
-  })
 
   if (!api) return null;
 

@@ -51,6 +51,11 @@ function RootDocument({ children }: { children: JSX.Element }) {
     startTorch: torchApi.startTorch,
     stopTorch: torchApi.stopTorch,
     restartTorch: torchApi.restartTorch,
+    checkTorch: torchApi.checkTorch,
+    startVoxCpm: torchApi.startVoxCpm,
+    stopVoxCpm: torchApi.stopVoxCpm,
+    restartVoxCpm: torchApi.restartVoxCpm,
+    checkVoxCpm: torchApi.checkVoxCpm,
   },
   deviceInfoApi: {
     fetchDeviceInfo: deviceApi.fetchDeviceInfo,

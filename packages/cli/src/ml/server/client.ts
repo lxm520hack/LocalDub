@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { delimiter, pythonBin, REPO_ROOT } from '../../feat/input/input.ts';
+import { findServer } from '@repo/config/discovery';
 
 const DEFAULT_PORT = 19109;
 let _torchServerUrl = ''
@@ -9,7 +10,7 @@ let _serverProc: ChildProcess | null = null;
 type ProgressCallback = (current: number, total: number, message?: string) => void;
 type LogCallback = (line: string) => void;
 
-export const getTorchServerUrl = (port: number = DEFAULT_PORT) => `http://127.0.0.1:${port}`
+export const getTorchServerUrl = (port: number) => `http://127.0.0.1:${port}`
 
 function readSSE(
 	stream: ReadableStream<Uint8Array>,
@@ -84,10 +85,10 @@ async function healthCheck(baseUrl: string): Promise<boolean> {
 	}
 }
 
-export async function startTorchServer(port: number = DEFAULT_PORT): Promise<string> {
+export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Promise<string> {
+	// 1) Try mDNS discovery first
+	const { port } = await findServer('torch', preferredPort);
 	const baseUrl = getTorchServerUrl(port);
-
-	// 1) Try existing server
 	if (await healthCheck(baseUrl)) {
 		console.log(`[TorchServer] Connected to existing server at ${baseUrl}`);
 		_torchServerUrl = baseUrl;

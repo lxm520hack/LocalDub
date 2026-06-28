@@ -15,7 +15,7 @@ export const voxcpmTorchGradioStatus = async ({
     });
     return await res.json() as ModelServerStatus;
   } catch {
-    return { status: 'stopped', port, message: 'Not running', models: { voxcpm: { status: 'unloaded' } } };
+    return { status: 'stopped', port, uptime_s: 0, message: 'Not running', models: { voxcpm: { status: 'unloaded', device: '' } } };
   }
 }
 

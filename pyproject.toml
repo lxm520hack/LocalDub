@@ -18,6 +18,8 @@ dependencies = [
   "numpy",
   # 视频下载
   "yt-dlp[default]",
+  # 服务发现
+  "zeroconf",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +45,10 @@ voxcpm = [
 all = [
   "localdub[demucs,voxcpm]",
 ]
+
+[project.scripts]
+torch-server = "torch_server.pytorch_server:main"
+voxcpm-server = "voxcpm_torch_server.server:main"
 
 [tool.setuptools.packages.find]
 include = []

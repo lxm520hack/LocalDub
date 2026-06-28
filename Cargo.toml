@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/separate/demucs_burn", "packages/subtitle-rust", "packages/voxcpm-burn"]
+members = ["packages/separate/demucs_burn", "packages/subtitle-rust", "packages/voxcpm-burn", "packages/app/src-tauri"]
 resolver = "3"
 
 [profile.release]

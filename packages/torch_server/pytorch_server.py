@@ -111,6 +111,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs"))
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "whisper"))
 
+# mDNS service discovery
+from mdns_server import register_service, unregister_service  # noqa: E402
+
 from torch_server_separate import handle_separate  # noqa: PLC0414,E402
 from torch_server_asr import handle_asr  # noqa: PLC0414,E402
 
@@ -132,7 +135,10 @@ _executor = ThreadPoolExecutor(max_workers=1)
 _SERVER_PORT: int = 19109
 
 # Track which models have been loaded
-_models: dict[str, str] = {"asr": "unloaded", "separate": "unloaded"}
+_models: dict[str, dict[str, str]] = {
+    "asr": {"status": "unloaded", "device": ""},
+    "separate": {"status": "unloaded", "device": ""},
+}
 
 
 # ---------------------------------------------------------------------------
@@ -160,15 +166,16 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
 
     def worker() -> None:
         try:
+            dev = params.get("device", "cpu")
             if stage == "asr":
-                _models["asr"] = "loading"
+                _models["asr"] = {"status": "loading", "device": dev}
                 output = handle_asr(params)
-                _models["asr"] = "ready"
+                _models["asr"] = {"status": "ready", "device": dev}
                 emit({"type": "complete", "output": output})
             elif stage == "separate":
-                _models["separate"] = "loading"
+                _models["separate"] = {"status": "loading", "device": dev}
                 output = handle_separate(params, task_id, emit=emit)
-                _models["separate"] = "ready"
+                _models["separate"] = {"status": "ready", "device": dev}
                 emit({"type": "complete", "output": output})
             else:
                 emit({"type": "error", "message": f"Unknown stage: {stage}"})
@@ -176,7 +183,7 @@ async def _run_stage_events(stage: str, task_id: str, params: dict):
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
             if stage in _models:
-                _models[stage] = "error"
+                _models[stage] = {"status": "error", "device": _models[stage].get("device", "")}
             emit({"type": "error", "message": traceback.format_exc()})
 
     loop = asyncio.get_event_loop()
@@ -217,6 +224,7 @@ async def health():
     return {
         "status": "running",
         "port": _SERVER_PORT,
+        "uptime_s": int(time.time() - _start_time),
         "models": {name: {"status": status} for name, status in _models.items()},
     }
 
@@ -243,7 +251,7 @@ async def events():
             health_data = {
                 "status": "running",
                 "port": _SERVER_PORT,
-                "models": {name: {"status": status} for name, status in _models.items()},
+        "models": {name: {"status": info["status"], "device": info.get("device", "")} for name, info in _models.items()},
             }
             yield f"event: health\ndata: {json.dumps(health_data)}\n\n"
 
@@ -299,16 +307,22 @@ def main() -> None:
     global _SERVER_PORT
     _SERVER_PORT = args.http_port
 
+    # Register mDNS so CLI/UI can discover the actual port
+    _mdns_zc = register_service("torch", args.http_port)
+    print(f"PORT={args.http_port}", flush=True)
     print(
         f"[TorchServer] Starting HTTP server on {args.host}:{args.http_port}",
         flush=True,
     )
-    if args.reload:
-        import sys
-        sys.modules[__name__]._uvicorn_app = app
-        uvicorn.run("pytorch_server:_uvicorn_app", host=args.host, port=args.http_port, log_level="info", reload=True)
-    else:
-        uvicorn.run(app, host=args.host, port=args.http_port, log_level="info")
+    try:
+        if args.reload:
+            import sys
+            sys.modules[__name__]._uvicorn_app = app
+            uvicorn.run("pytorch_server:_uvicorn_app", host=args.host, port=args.http_port, log_level="info", reload=True)
+        else:
+            uvicorn.run(app, host=args.host, port=args.http_port, log_level="info")
+    finally:
+        unregister_service(_mdns_zc)
 
 
 if __name__ == "__main__":

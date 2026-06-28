@@ -5,14 +5,6 @@ import { CardX } from '@repo/ui-solid/custom/card';
 import { toastError } from '@repo/ui-solid/custom/toast';
 import { useClientApi } from '../api/context';
 
-const SSE_URL = 'http://127.0.0.1:19109/api/events';
-
-interface HealthData {
-  status: string;
-  uptime_s: number;
-  models: Record<string, boolean>;
-}
-
 function fmtUptime(s: number): string {
   if (!s) return '0s';
   const hh = Math.floor(s / 3600);
@@ -21,58 +13,29 @@ function fmtUptime(s: number): string {
   return `${hh}h ${mm}m ${ss}s`;
 }
 
-export function ServerManager() {
-  const [health, setHealth] = createSignal<HealthData | null>(null);
-  const api = useClientApi().serversManagerApi;
-  if (!api) return null;
-
-  onMount(() => {
-    const es = new EventSource(SSE_URL);
-    es.addEventListener('health', (e) => {
-      try { setHealth(JSON.parse(e.data)); } catch {}
-    });
-    es.addEventListener('error', () => {});
-    onCleanup(() => es.close());
-  });
-
-  const startMutation = useMutation(() => ({
-    mutationFn: () => api.startTorch(),
-    onSuccess: (s) => {
-      if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
-    },
-    onError: (e) => toastError(e),
-  }));
-
-  const stopMutation = useMutation(() => ({
-    mutationFn: () => api.stopTorch(),
-    onSuccess: () => setHealth(null),
-    onError: (e) => toastError(e),
-  }));
-
-  const restartMutation = useMutation(() => ({
-    mutationFn: () => api.restartTorch(),
-    onSuccess: (s) => {
-      if (s.running) setHealth({ status: 'ok', uptime_s: s.uptime_s, models: s.models });
-    },
-    onError: (e) => toastError(e),
-  }));
-
-  const busy = () => startMutation.isPending || stopMutation.isPending || restartMutation.isPending;
-  const running = () => health() !== null;
-
+function ServerCard(props: {
+  name: string;
+  running: boolean;
+  uptimeS: number;
+  models: Record<string, string>;
+  busy: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  onRestart: () => void;
+}) {
   return (
-    <div class="space-y-4">
+    <div class="space-y-3 p-4 border rounded-lg">
       <div class="flex items-center gap-3">
         <div
           class="w-3 h-3 rounded-full shrink-0"
-          style={{ 'background-color': running() ? '#22c55e' : '#ef4444' }}
+          style={{ 'background-color': props.running ? '#22c55e' : '#ef4444' }}
         />
-        <span class="font-medium">Torch Server</span>
+        <span class="font-medium">{props.name}</span>
         <span class="text-sm text-gray-500 ml-auto">
-          {busy()
+          {props.busy
             ? 'working...'
-            : running()
-              ? `uptime ${fmtUptime(health()!.uptime_s)}`
+            : props.running
+              ? `uptime ${fmtUptime(props.uptimeS)}`
               : 'stopped'}
         </span>
       </div>
@@ -80,41 +43,132 @@ export function ServerManager() {
       <div class="flex gap-2">
         <Button
           variant='ghost'
-          onClick={() => startMutation.mutate()}
-          disabled={busy() || running()}
+          onClick={props.onStart}
+          disabled={props.busy || props.running}
           class="font-medium bg-green-400 disabled:opacity-40"
         >
           Start
         </Button>
         <Button
-          onClick={() => restartMutation.mutate()}
-          disabled={busy() || !running()}
+          onClick={props.onRestart}
+          disabled={props.busy || !props.running}
           class="font-medium bg-amber-300 disabled:opacity-40"
         >
           Restart
         </Button>
         <Button
-          onClick={() => stopMutation.mutate()}
-          disabled={busy() || !running()}
+          onClick={props.onStop}
+          disabled={props.busy || !props.running}
           class="font-medium bg-red-400 disabled:opacity-40"
         >
           Stop
         </Button>
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
-        {Object.entries(health()?.models ?? {}).map(([name, loaded]) => (
-          <CardX
-            title={name}
-            size="sm"
-            Footer={
-              <span class={loaded ? 'text-green-400' : 'text-gray-500'}>
-                {loaded ? 'Loaded' : 'Idle'}
-              </span>
-            }
-          />
+      <div class="flex flex-wrap gap-2">
+        {Object.entries(props.models).map(([name, status]) => (
+          <span
+            class={`text-xs px-2 py-0.5 rounded ${
+              status === 'ready' ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-gray-500'
+            }`}
+          >
+            {name}: {status}
+          </span>
         ))}
       </div>
     </div>
   );
+}
+
+export function ServerManager() {
+  const [torchHealth, setTorchHealth] = createSignal<TorchHealth | null>(null);
+  const [voxcpmHealth, setVoxCpmHealth] = createSignal<VoxCpmHealth | null>(null);
+  const api = useClientApi().serversManagerApi;
+  if (!api) return null;
+
+  onMount(() => {
+    const iv = setInterval(async () => {
+      try {
+        const status = await api.checkTorch();
+        setTorchHealth({
+          status: status.running ? 'running' : 'stopped',
+          uptime_s: status.uptime_s,
+          models: Object.fromEntries(
+            Object.entries(status.models).map(([k, v]) => [k, v ? 'ready' : 'unloaded'])
+          ),
+        });
+      } catch { setTorchHealth(null); }
+    }, 3000);
+    onCleanup(() => clearInterval(iv));
+  });
+
+  onMount(() => {
+    const iv = setInterval(async () => {
+      try {
+        const status = await api.checkVoxCpm();
+        setVoxCpmHealth({
+          status: status.running ? 'running' : 'stopped',
+          models: { voxcpm: status.model_status },
+        });
+      } catch { setVoxCpmHealth(null); }
+    }, 3000);
+    onCleanup(() => clearInterval(iv));
+  });
+
+  const startTorch = useMutation(() => ({ mutationFn: () => api.startTorch(), onError: (e) => toastError(e) }));
+  const stopTorch = useMutation(() => ({ mutationFn: () => api.stopTorch(), onError: (e) => toastError(e) }));
+  const restartTorch = useMutation(() => ({ mutationFn: () => api.restartTorch(), onError: (e) => toastError(e) }));
+
+  const startVox = useMutation(() => ({ mutationFn: () => api.startVoxCpm(), onError: (e) => toastError(e) }));
+  const stopVox = useMutation(() => ({ mutationFn: () => api.stopVoxCpm(), onError: (e) => toastError(e) }));
+  const restartVox = useMutation(() => ({ mutationFn: () => api.restartVoxCpm(), onError: (e) => toastError(e) }));
+
+  const torchModels = () => {
+    const m = torchHealth()?.models;
+    if (!m || Object.keys(m).length === 0) return { asr: 'unloaded', separate: 'unloaded' };
+    return m;
+  };
+
+  const vcModels = () => {
+    const m = voxcpmHealth()?.models;
+    if (!m) return { voxcpm: 'unloaded' };
+    return m;
+  };
+
+  return (
+    <div class="space-y-4">
+      <ServerCard
+        name="Torch Server"
+        running={torchHealth() !== null}
+        uptimeS={torchHealth()?.uptime_s ?? 0}
+        models={torchModels()}
+        busy={startTorch.isPending || stopTorch.isPending || restartTorch.isPending}
+        onStart={() => startTorch.mutate()}
+        onStop={() => stopTorch.mutate()}
+        onRestart={() => restartTorch.mutate()}
+      />
+      <ServerCard
+        name="VoxCPM Server"
+        running={voxcpmHealth() !== null}
+        uptimeS={0}
+        models={vcModels()}
+        busy={startVox.isPending || stopVox.isPending || restartVox.isPending}
+        onStart={() => startVox.mutate()}
+        onStop={() => stopVox.mutate()}
+        onRestart={() => restartVox.mutate()}
+      />
+    </div>
+  );
+}
+
+// Local types mirroring api/context exports
+interface TorchHealth {
+  status: string;
+  uptime_s: number;
+  models: Record<string, string>;
+}
+
+interface VoxCpmHealth {
+  status: string;
+  models: Record<string, string>;
 }

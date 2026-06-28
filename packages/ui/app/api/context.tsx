@@ -5,13 +5,25 @@ export type { DeviceInfo };
 export interface TorchStatus {
   running: boolean;
   uptime_s: number;
-  models: Record<string, boolean>;
+  models: Record<string, { status: string; device: string }>;
+}
+
+export interface VoxCpmStatus {
+  running: boolean;
+  model_loaded: boolean;
+  model_status: string;
+  model_device: string;
 }
 
 export interface ServersManagerApi {
   startTorch: () => Promise<TorchStatus>;
   stopTorch: () => Promise<TorchStatus>;
   restartTorch: () => Promise<TorchStatus>;
+  checkTorch: () => Promise<TorchStatus>;
+  startVoxCpm: () => Promise<VoxCpmStatus>;
+  stopVoxCpm: () => Promise<VoxCpmStatus>;
+  restartVoxCpm: () => Promise<VoxCpmStatus>;
+  checkVoxCpm: () => Promise<VoxCpmStatus>;
 }
 
 export interface ClientApi {
