@@ -1,12 +1,9 @@
 import { createContext, useContext } from 'solid-js';
+import type { ModelServerStatus, ModelStatus } from '@repo/core/servers/type';
 import type { DeviceInfo } from '@repo/device';
-export type { DeviceInfo };
+export type { DeviceInfo, ModelServerStatus, ModelStatus };
 
-export interface TorchStatus {
-  running: boolean;
-  uptime_s: number;
-  models: Record<string, { status: string; device: string }>;
-}
+export type TorchStatus = ModelServerStatus;
 
 export interface VoxCpmStatus {
   running: boolean;

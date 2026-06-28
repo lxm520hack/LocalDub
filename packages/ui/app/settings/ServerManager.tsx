@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/solid-query';
 import { Button } from '@repo/ui-solid/base/button';
 import { CardX } from '@repo/ui-solid/custom/card';
 import { toastError } from '@repo/ui-solid/custom/toast';
-import { useClientApi } from '../api/context';
+import { useClientApi, type TorchStatus, type ModelStatus } from '../api/context';
 
 function fmtUptime(s: number): string {
   if (!s) return '0s';
@@ -81,7 +81,7 @@ function ServerCard(props: {
 }
 
 export function ServerManager() {
-  const [torchHealth, setTorchHealth] = createSignal<TorchHealth | null>(null);
+  const [torchHealth, setTorchHealth] = createSignal<TorchStatus | null>(null);
   const [voxcpmHealth, setVoxCpmHealth] = createSignal<VoxCpmHealth | null>(null);
   const api = useClientApi().serversManagerApi;
   if (!api) return null;
@@ -90,13 +90,7 @@ export function ServerManager() {
     const iv = setInterval(async () => {
       try {
         const status = await api.checkTorch();
-        setTorchHealth({
-          status: status.running ? 'running' : 'stopped',
-          uptime_s: status.uptime_s,
-          models: Object.fromEntries(
-            Object.entries(status.models).map(([k, m]) => [k, { status: m.status, device: m.device }])
-          ),
-        });
+        setTorchHealth(status);
       } catch { setTorchHealth(null); }
     }, 3000);
     onCleanup(() => clearInterval(iv));
@@ -139,7 +133,7 @@ export function ServerManager() {
     <div class="space-y-4">
       <ServerCard
         name="Torch Server"
-        running={torchHealth() !== null}
+        running={torchHealth()?.status === 'running'}
         uptimeS={torchHealth()?.uptime_s ?? 0}
         models={torchModels()}
         busy={startTorch.isPending || stopTorch.isPending || restartTorch.isPending}
@@ -159,12 +153,6 @@ export function ServerManager() {
       />
     </div>
   );
-}
-
-interface TorchHealth {
-  status: string;
-  uptime_s: number;
-  models: Record<string, { status: string; device: string }>;
 }
 
 interface VoxCpmHealth {

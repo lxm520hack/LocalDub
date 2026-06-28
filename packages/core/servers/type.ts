@@ -1,12 +1,12 @@
 export type ModelStatus = {
   status: 'ready' | 'loading' | 'error' | 'unloaded';
-  device?: string;
+  device: string;
 }
 export type ModelServerStatus = {
   status: 'running' | 'stopped' | 'error';
   port: number;
   uptime_s: number;
-  models: { // voxcpm, asr, separate, etc.
+  models: {
     [modelName: string]: ModelStatus;
   };
   message?: string;

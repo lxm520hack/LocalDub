@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { startVoxCPMTorchGradioServer, stopVoxCPMTorchGradioServer, voxcpmTorchGradioStatus } from "../../ml/voxcpm/runtime/VoxCPMPyTTorchGradio";
 import { torchStatus } from "../../ml/server/torchServer";
-import { findServer } from '@repo/config/discovery';
+import { findServer } from '../../../../core/servers/discovery';
 
 export const cmdServers = async (input: InputArgs) => {
   const action = input.servers?.action ?? 'status';

@@ -1,0 +1,11 @@
+{
+  "name": "@repo/core",
+  "private": true,
+  "type": "module",
+  "main": "./servers/type.ts",
+  "types": "./servers/type.ts",
+  "exports": {
+    "./*": "./*.ts",
+    "./*.ts": "./*.ts"
+  }
+}

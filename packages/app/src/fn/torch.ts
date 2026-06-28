@@ -1,15 +1,12 @@
 import { to } from '@repo/shared/lib/utils/try';
 import { invoke } from './invoke'
-import { findServer } from '@repo/config/discovery'
-// import {  } from '@repo/cli'
+import { findServer } from '../../../core/servers/discovery'
+import type { ModelServerStatus } from '@repo/core/servers/type'
+
 let _torchPort = 19109
 let _voxcpmPort = 19112
 
-export interface TorchStatus {
-	running: boolean
-	uptime_s: number
-	models: Record<string, { status: string; device: string }>
-}
+export type TorchStatus = ModelServerStatus
 
 async function fetchStatsRes(port: number) {
 	return await fetch(`http://127.0.0.1:${port}/status`, {
@@ -22,15 +19,11 @@ async function fetchHealth(port: number): Promise<TorchStatus> {
 		const res = await fetch(`http://127.0.0.1:${port}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
-		if (!res.ok) return { running: false, uptime_s: 0, models: {} }
-		const data = (await res.json()) as { status?: string; uptime_s?: number; models?: Record<string, { status: string; device?: string }> }
-		return {
-			running: data.status === 'running',
-			uptime_s: data.uptime_s ?? 0,
-			models: Object.fromEntries(Object.entries(data.models ?? {}).map(([k, v]) => [k, { status: v.status, device: v.device ?? '' }])),
-		}
+		if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: {} }
+		const data = await res.json() as TorchStatus
+		return { ...data, status: data.status === 'running' ? 'running' : 'error' }
 	} catch {
-		return { running: false, uptime_s: 0, models: {} }
+		return { status: 'stopped', port, uptime_s: 0, models: {} }
 	}
 }
 
@@ -45,7 +38,7 @@ async function waitForHealth(port: number, timeoutMs = 60_000): Promise<TorchSta
 	while (Date.now() < deadline) {
 		await new Promise((r) => setTimeout(r, 200))
 		const status = await fetchHealth(port)
-		if (status.running) return status
+		if (status.status === 'running') return status
 	}
 	throw new Error(`TorchServer startup timeout after ${timeoutMs}ms`)
 }
@@ -66,7 +59,7 @@ export async function stopTorch(): Promise<TorchStatus> {
 		// already gone
 	}
 	await invoke('stop_torch')
-	return { running: false, uptime_s: 0, models: {} }
+	return { status: 'stopped', port: _torchPort, uptime_s: 0, models: {} }
 }
 
 export async function restartTorch(): Promise<TorchStatus> {
@@ -102,8 +95,8 @@ async function fetchVoxCpmHealth(port: number): Promise<VoxCpmStatus> {
 			signal: AbortSignal.timeout(2000),
 		})
 		if (!res.ok) return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
-		const data = (await res.json()) as { status?: string; models?: Record<string, { status: string; device?: string }> }
-		const vox = Object.values(data.models ?? {})[0]
+		const data = await res.json() as ModelServerStatus
+		const vox = data.models ? Object.values(data.models)[0] : undefined
 		return {
 			running: data.status === 'running',
 			model_loaded: vox?.status === 'ready',

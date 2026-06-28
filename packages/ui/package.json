@@ -13,6 +13,7 @@
     "@codemirror/lint": "^6.9.7",
     "@codemirror/state": "^6.7.0",
     "@codemirror/view": "^6.43.3",
+    "@repo/core": "workspace:*",
     "@repo/device": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/ui-solid": "workspace:*",

@@ -12,6 +12,7 @@
   "dependencies": {
     "@napi-rs/image": "^1.12.0",
     "@repo/config": "workspace:*",
+    "@repo/core": "workspace:*",
     "@repo/device": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/subtitle-ocr": "workspace:*",

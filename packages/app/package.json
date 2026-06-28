@@ -27,6 +27,7 @@
     "@repo/ui": "workspace:*",
     "@repo/ui-solid": "workspace:*",
     "@repo/cli": "workspace:*",
+    "@repo/core": "workspace:*",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/devtools-vite": "^0.8.1",
     "@tanstack/router-plugin": "^1.168.18",
