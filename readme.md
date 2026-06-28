@@ -33,13 +33,13 @@ winget install Gyan.FFmpeg
 git clone https://github.com/Nahida-aa/LocalDub.git
 cd LocalDub
 git submodule update --init --recursive
-bash scripts/setup.sh
+bun scripts/setup/setup.ts
 ```
 
-Windows 用 PowerShell:
+Windows 用 PowerShell（已安装 Bun）:
 
 ```powershell
-.\scripts\setup.ps1
+bun scripts/setup/setup.ts
 ```
 
 安装脚本会自动：
@@ -53,7 +53,7 @@ Windows 用 PowerShell:
 ```bash
 uv venv
 source .venv/bin/activate
-uv pip install ".[demucs,voxcpm]"      # setup.sh 会自动选 GPU 索引，手动装需指定:
+uv pip install ".[demucs,voxcpm]"      # bun setup.ts 会自动选 GPU 索引，手动装需指定:
 # CPU 版:   uv pip install ".[demucs,voxcpm]" --index-url https://download.pytorch.org/whl/cpu
 # CUDA:     uv pip install ".[demucs,voxcpm]"   (默认)
 # ROCm:     uv pip install ".[demucs,voxcpm]"   (默认)
@@ -96,7 +96,7 @@ bun run run-task.ts
 
 ### NVIDIA (CUDA)
 
-`openai-whisper`（默认 ASR）自动使用 CUDA。Demucs 自动使用 CUDA。setup.sh 会安装 CUDA 版 PyTorch。
+`openai-whisper`（默认 ASR）自动使用 CUDA。Demucs 自动使用 CUDA。setup.ts 会安装 CUDA 版 PyTorch。
 
 ### AMD (ROCm)
 
