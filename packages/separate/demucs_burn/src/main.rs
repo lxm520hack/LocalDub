@@ -160,8 +160,8 @@ fn run() -> Result<()> {
     println!("Benchmark-Gen-Time: {:.3}", sep_time.as_secs_f64());
 
     std::fs::create_dir_all(&out_dir)?;
-    for stem in &stems {
-        let filename = format!("{}.wav", stem.id.as_str());
+    for (i, stem) in stems.iter().enumerate() {
+        let filename = format!("target_{}_{}.wav", i, stem.id.as_str());
         let path = out_dir.join(&filename);
         write_wav(&path, &stem.left, &stem.right, sample_rate)?;
         eprintln!("  Wrote {}", path.display());

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localdub"
+version = "0.1.0"
+description = "LocalDub Python ML dependencies"
+requires-python = ">=3.12"
+dependencies = [
+  # ASR
+  "openai-whisper",
+  "faster-whisper",
+  # 音频处理
+  "soundfile",
+  "pydub",
+  "librosa",
+  "numpy",
+  # 视频下载
+  "yt-dlp[default]",
+]
+
+[project.optional-dependencies]
+demucs = [
+  "dora-search>=0.1.12",
+  "julius>=0.2.3",
+  "einops",
+  "openunmix",
+  "lameenc>=1.2",
+  "tqdm",
+]
+voxcpm = [
+  "pydantic",
+  "transformers>=4.36.2",
+  "modelscope",
+  "inflect",
+  "wetext",
+  "simplejson",
+  "sortedcontainers",
+  "spaces",
+  "argbind",
+]
+all = [
+  "localdub[demucs,voxcpm]",
+]
+
+[tool.setuptools.packages.find]
+include = []

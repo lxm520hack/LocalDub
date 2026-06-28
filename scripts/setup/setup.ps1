@@ -15,12 +15,13 @@ $Missing = @()
 if (-not (Get-Command "bun" -ErrorAction SilentlyContinue))    { $Missing += "bun" }
 if (-not (Get-Command "ffmpeg" -ErrorAction SilentlyContinue))  { $Missing += "ffmpeg" }
 if (-not (Get-Command "python" -ErrorAction SilentlyContinue))  { $Missing += "python" }
+if (-not (Get-Command "uv" -ErrorAction SilentlyContinue))     { $Missing += "uv" }
 
 if ($Missing.Count -gt 0) {
   Write-Host "[ERROR] 缺少以下命令，请先安装: $($Missing -join ', ')" -ForegroundColor Red
   exit 1
 }
-Write-Host "[OK] bun / ffmpeg / python 均已安装" -ForegroundColor Green
+Write-Host "[OK] bun / ffmpeg / python / uv 均已安装" -ForegroundColor Green
 
 # ── GPU 检测 ──────────────────────────────────────
 $GpuMode = "cpu"
@@ -45,14 +46,11 @@ if (-not (Test-Path ".env")) {
 # ── Python venv ──────────────────────────────────
 if (-not (Test-Path ".venv")) {
   Write-Host "[PY] 创建虚拟环境..."
-  python -m venv .venv
+  uv venv
 }
 $activate = Join-Path $RepoRoot ".venv\Scripts\Activate.ps1"
 . $activate
 Write-Host "[PY] 虚拟环境: $(Get-Command python).Source"
-
-Write-Host "[PY] 升级 pip..."
-pip install --quiet --upgrade pip
 
 $TorchIndex = ""
 if ($GpuMode -eq "cpu") {
@@ -60,7 +58,7 @@ if ($GpuMode -eq "cpu") {
 }
 
 Write-Host "[PY] 安装 Python 依赖 ($GpuMode)..."
-pip install -r requirements.txt --quiet @($TorchIndex | Where-Object { $_ })
+uv pip install ".[demucs,voxcpm]" --quiet @($TorchIndex | Where-Object { $_ })
 
 Write-Host "[PY] 完成" -ForegroundColor Green
 

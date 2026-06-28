@@ -15,12 +15,13 @@ MISSING=""
 check_cmd bun   || MISSING="$MISSING bun"
 check_cmd ffmpeg || MISSING="$MISSING ffmpeg"
 check_cmd python3 || MISSING="$MISSING python3"
+check_cmd uv || MISSING="$MISSING uv"
 
 if [ -n "$MISSING" ]; then
   echo "[ERROR] 缺少以下命令，请先安装:$MISSING"
   exit 1
 fi
-echo "[OK] bun / ffmpeg / python3 均已安装"
+echo "[OK] bun / ffmpeg / python3 / uv 均已安装"
 
 # ── GPU 检测 ──────────────────────────────────────
 GPU_MODE=cpu
@@ -45,13 +46,10 @@ fi
 # ── Python venv ──────────────────────────────────
 if [ ! -d .venv ]; then
   echo "[PY] 创建虚拟环境..."
-  python3 -m venv .venv
+  uv venv
 fi
 source .venv/bin/activate
 echo "[PY] 虚拟环境: $(which python)"
-
-echo "[PY] 升级 pip..."
-pip install --quiet --upgrade pip
 
 # CPU 版 PyTorch 用单独索引，CUDA/ROCm 用默认
 TORCH_INDEX=""
@@ -60,7 +58,7 @@ if [ "$GPU_MODE" = "cpu" ]; then
 fi
 
 echo "[PY] 安装 Python 依赖 ($GPU_MODE)..."
-pip install -r requirements.txt --quiet $TORCH_INDEX
+uv pip install ".[demucs,voxcpm]" --quiet $TORCH_INDEX
 
 echo "[PY] 完成"
 

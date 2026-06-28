@@ -2,5 +2,13 @@
   "cSpell.words": [
     "bilibili"
   ],
-  "js/ts.experimental.useTsgo": true
+  "js/ts.experimental.useTsgo": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package.*, bun.lock, bunfig.toml, tsconfig*.json, pnpm-lock.yaml, yarn.lock, package-lock.json",
+    ".gitignore": ".gitignore, .gitmodules, .gitattributes",
+		".env": ".env.*",
+		".env.local": ".env.*",
+    "readme.md": "readme.*, AGENTS.md, todo.md",
+    "pyproject.toml": "pyproject.*, uv.lock, setup.cfg, setup.py, requirements*.txt",
+	},
 }

@@ -146,6 +146,9 @@ function checkPrerequisites() {
 	if (!Bun.which('python')) {
 		missing.push('python');
 	}
+	if (!Bun.which('uv')) {
+		missing.push('uv');
+	}
 
 	// 尝试自动安装 ffmpeg
 	if (!ffmpegPath) {
@@ -164,7 +167,7 @@ function checkPrerequisites() {
 
 	// 如果 ffmpeg 在 PATH 中，直接显示成功
 	if (ffmpegPath === 'ffmpeg') {
-		log('bun / ffmpeg / python 均已安装', 'green');
+		log('bun / ffmpeg / python / uv 均已安装', 'green');
 		return;
 	}
 
@@ -174,7 +177,7 @@ function checkPrerequisites() {
 	const ffmpegDir = resolve(ffmpegPath!, '..');
 	process.env.PATH = `${ffmpegDir}${isWindows ? ';' : ':'}${process.env.PATH}`;
 	log('已将 ffmpeg 路径添加到当前进程 PATH', 'green');
-	log('bun / ffmpeg / python 均已安装', 'green');
+	log('bun / ffmpeg / python / uv 均已安装', 'green');
 }
 
 // ---------------------------------------------------------------------------
@@ -211,25 +214,10 @@ function checkEnv() {
 // Python 虚拟环境
 // ---------------------------------------------------------------------------
 
-function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', skipPipUpgrade: boolean = false) {
+function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', _skipPipUpgrade: boolean = false) {
 	if (!existsSync(venv)) {
 		log('创建虚拟环境...', 'yellow');
-		run(['python', '-m', 'venv', venv], { cwd: repoRoot });
-	}
-
-	const pip = isWindows
-		? join(venv, 'Scripts', 'pip.exe')
-		: join(venv, 'bin', 'pip');
-
-	if (!skipPipUpgrade) {
-		log('升级 pip...', 'gray');
-		const python = isWindows
-			? join(venv, 'Scripts', 'python.exe')
-			: join(venv, 'bin', 'python');
-		run([python, '-m', 'pip', 'install', '--quiet', '--upgrade', 'pip'], { cwd: repoRoot });
-		log('pip 升级完成', 'gray');
-	} else {
-		log('跳过 pip 升级', 'gray');
+		run(['uv', 'venv'], { cwd: repoRoot });
 	}
 
 	// CUDA 时先安装 PyTorch CUDA 版本
@@ -237,7 +225,7 @@ function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', skipPipUpgrade: bool
 		const pytorchCu = join(repoRoot, 'requirements-pytorch-cu128.txt');
 		if (existsSync(pytorchCu)) {
 			log('安装 PyTorch CUDA 12.8...', 'yellow');
-			run([pip, 'install', '-r', pytorchCu, '--quiet'], { cwd: repoRoot });
+			run(['uv', 'pip', 'install', '-r', pytorchCu, '--quiet'], { cwd: repoRoot });
 			log('PyTorch CUDA 12.8 安装完成', 'gray');
 		}
 	}
@@ -248,7 +236,7 @@ function setupPython(venv: string, gpuMode: 'cuda' | 'cpu', skipPipUpgrade: bool
 		: [];
 
 	log(`安装 Python 依赖 (${gpuMode})...`, 'yellow');
-	const args = [pip, 'install', '-r', join(repoRoot, 'requirements.txt'), '--quiet'];
+	const args = ['uv', 'pip', 'install', '.[demucs,voxcpm]', '--quiet'];
 	if (torchIndex.length) args.push(...torchIndex);
 	run(args, { cwd: repoRoot });
 	log('Python 依赖完成', 'green');
@@ -323,26 +311,7 @@ function setupSubmodules(config: CliConfig, venv: string) {
 		? join(venv, 'Scripts', 'pip.exe')
 		: join(venv, 'bin', 'pip');
 
-	// demucs 核心依赖（通过 requirements-demucs.txt）
-	if (sepRuntime === 'pytorch' || sepRuntime === 'ggml') {
-		const demucsReq = join(repoRoot, 'requirements-demucs.txt');
-		if (existsSync(demucsReq)) {
-			log('安装 demucs 核心依赖...', 'yellow');
-			run([pip, 'install', '-r', demucsReq, '--quiet'], { cwd: repoRoot });
-			log('demucs 核心依赖安装完成', 'gray');
-		}
-	}
-
-	// VoxCPM 依赖
-	if (ttsRuntime === 'pytorch') {
-		const voxcpmReq = join(repoRoot, 'requirements-voxcpm.txt');
-		if (existsSync(voxcpmReq)) {
-			log('安装 VoxCPM 依赖...', 'yellow');
-			run([pip, 'install', '-r', voxcpmReq, '--quiet'], { cwd: repoRoot });
-			log('VoxCPM 依赖安装完成', 'gray');
-		}
-	}
-
+	// 子模块依赖（demucs/voxcpm 已在 pyproject.toml optional-dependencies 中，由上方 pip install ".[demucs,voxcpm]" 统一安装）
 	// GGML binary check
 	if (sepRuntime === 'ggml') {
 		const ggmlBin = join(repoRoot, 'submodule', 'demucs.cpp', 'build', 'demucs_mt.cpp.main.exe');

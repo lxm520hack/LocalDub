@@ -51,22 +51,20 @@ Windows 用 PowerShell:
 ### 手动安装
 
 ```bash
-python3 -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt      # setup.sh 会自动选 GPU 索引，手动装需指定:
-# CPU 版:   pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
-# CUDA:     pip install -r requirements.txt   (默认)
-# ROCm:     pip install -r requirements.txt   (默认)
+uv pip install ".[demucs,voxcpm]"      # setup.sh 会自动选 GPU 索引，手动装需指定:
+# CPU 版:   uv pip install ".[demucs,voxcpm]" --index-url https://download.pytorch.org/whl/cpu
+# CUDA:     uv pip install ".[demucs,voxcpm]"   (默认)
+# ROCm:     uv pip install ".[demucs,voxcpm]"   (默认)
 bun install
 ```
 
 ```powershell
 # Windows
-py -3.12 -m venv .venv
+uv venv
 .\.venv\Scripts\Activate.ps1
-pip install -U pip
-pip install -r requirements.txt
+uv pip install ".[demucs,voxcpm]"
 bun install
 ```
 
@@ -118,7 +116,7 @@ TTS 建议使用 `runtime: "cloud"`（VoxCPM Cloud API），避免本地加载 P
 所有组件均支持 CPU 运行，但 ASR 和分离会慢 2-10 倍。安装时使用 CPU 索引：
 
 ```bash
-pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
+uv pip install ".[demucs,voxcpm]" --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### macOS
