@@ -66,9 +66,9 @@ export async function findServer(
   return { host: defaultHost, port: defaultPort, foundVia: 'default' }
 }
 
-async function findServerViaMdnsAll(
+export async function findServerViaMdnsAll(
   type: ServerType,
-  timeoutMs: number,
+  timeoutMs: number=MDNS_TIMEOUT,
 ): Promise<{ host: string; port: number }[]> {
   const serviceType = SERVICE_MAP[type]
   if (!serviceType) return []

@@ -8,8 +8,7 @@ import { to } from "@repo/shared/lib/utils/try";
 import { fetchStatsData } from '@repo/core/servers/client';
 import { TTSInput } from '@repo/core/input/tts';
 import { VOXCPM_TORCH_GRADIO_MAIN } from '@repo/config/paths';
-
-
+import { findServer, readPortFromOutput } from '@repo/core/servers/discovery';
 
 export const voxcpmTorchGradioStatus = async ({
   port,
@@ -21,53 +20,72 @@ export const voxcpmTorchGradioStatus = async ({
   return data;
 }
 
+async function waitForHealth(port: number, timeoutMs = 120_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 500))
+    const [data] = await to(fetchStatsData(port))
+    if (data?.status === 'running') return
+  }
+  throw new Error(`VoxCPM Gradio server startup timeout after ${timeoutMs}ms`)
+}
+
 export const startVoxCPMTorchGradioServer = async ({
-  port,
+  port: hintPort,
   device = 'cpu',
   modelDir = VOXCPM_DIR,
-  waitForReady = false,
 }: {
-  port: number;
+  port?: number;
   device?: string;
   modelDir?: string;
-  /** When true, waits for "[VoxCPM] Ready" on stdout before resolving */
-  waitForReady?: boolean;
 }): Promise<{
   url: string;
   proc?: ChildProcess;
 }> => {
-  const url = `http://127.0.0.1:${port}`;
-
-  const proc = spawn(pythonBin(), [VOXCPM_TORCH_GRADIO_MAIN, '--port', String(port), '--device', device, '--model-dir', modelDir], {
-    env: { ...process.env as Record<string, string> },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  if (waitForReady) {
-    await new Promise<void>((resolve, reject) => {
-      const deadline = Date.now() + 120_000;
-      proc.stdout?.on('data', (chunk: Buffer) => {
-        if (chunk.toString().includes('[VoxCPM] Ready')) resolve();
-      });
-      proc.stderr?.on('data', (chunk: Buffer) => {
-        if (chunk.toString().includes('[VoxCPM] Ready')) resolve();
-      });
-      proc.on('error', reject);
-      proc.on('exit', (code) => reject(new Error(`VoxCPM Gradio exited ${code}`)));
-      setTimeout(() => reject(new Error('VoxCPM Gradio startup timeout')), deadline - Date.now());
-    });
+  // 1) Check if already running
+  const hint = hintPort ?? 19112
+  const { port } = await findServer('voxcpm_torch_gradio', hint)
+  {
+    const [data] = await to(fetchStatsData(port))
+    if (data?.status === 'running') {
+      return { url: `http://127.0.0.1:${port}` }
+    }
   }
 
-  return { url, proc };
+  // 2) Spawn
+  const proc = spawn(pythonBin(), [VOXCPM_TORCH_GRADIO_MAIN, '--port', String(hint), '--device', device, '--model-dir', modelDir], {
+    env: { ...process.env as Record<string, string> },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  // 3) Read PORT=N from stdout
+  let stdout = ''
+  proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+  proc.stderr?.pipe(process.stderr)
+
+  const actualPort = await new Promise<number>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('VoxCPM Gradio port discovery timeout')), 10000)
+    const iv = setInterval(() => {
+      const p = readPortFromOutput(stdout, 0)
+      if (p) {
+        clearTimeout(timer)
+        clearInterval(iv)
+        resolve(p)
+      }
+    }, 100)
+  })
+
+  // 4) Health polling
+  await waitForHealth(actualPort)
+
+  return { url: `http://127.0.0.1:${actualPort}`, proc }
 }
 
 export const stopVoxCPMTorchGradioServer = async ({port}:{port: number}): Promise<void> => {
-  await fetch(`http://127.0.0.1:${port}/shutdown`, {
+  const res = await fetch(`http://127.0.0.1:${port}/shutdown`, {
     method: 'POST', signal: AbortSignal.timeout(2000),
-  }).catch((err) => {
-    console.error('[servers] VoxCPM PyTorch Gradio server shutdown request failed:', err);
-  });
-  console.log('[servers] VoxCPM PyTorch Gradio server stopped');
+  })
+  if (!res.ok) throw new Error(`VoxCPM Gradio shutdown failed: ${res.status}`)
 }
 
 export const loadVoxCPMTorchGradioModel = async (baseUrl: string, device: string): Promise<void> => {
@@ -92,34 +110,32 @@ export const connectToVoxCPMTorchGradioServer = async ({baseUrl, device='cpu'}:{
     } else if (res.models.voxcpm.status === 'loading') {}
     else if (res.models.voxcpm.status === 'error') {}
   } else if (res.status === 'stopped') {
-    // Spawn Gradio server and wait for URL
-    const ret = await startVoxCPMTorchGradioServer({ port, device, waitForReady: true });
-    // Load model via dedicated endpoint
-		await loadVoxCPMTorchGradioModel(ret.url, device);
+    const ret = await startVoxCPMTorchGradioServer({ port, device });
+    await loadVoxCPMTorchGradioModel(ret.url, device);
     return ret;
   } else if (res.status === 'error') {}
 }
 
 export const newVoxCPMPyTorchGradio = (cfg: TTSInput): TTSBackend => {
-	let cloud: VoxCPMCloud | null = null;
-	let device = cfg && 'device' in cfg ? (cfg.device as string) : 'cpu';
-	let port = 19112;
-	return {
-		name: 'voxcpm_torch_gradio',
-		async load(): Promise<void> {
-			console.log(`[VoxCPM] connecting to Gradio server on port ${port}...`);
+  let cloud: VoxCPMCloud | null = null;
+  let device = cfg && 'device' in cfg ? (cfg.device as string) : 'cpu';
+  let port = 19112;
+  return {
+    name: 'voxcpm_torch_gradio',
+    async load(): Promise<void> {
+      console.log(`[VoxCPM] connecting to Gradio server on port ${port}...`);
 
-		const ret = await	connectToVoxCPMTorchGradioServer({ baseUrl: `http://127.0.0.1:${port}`, device });
+    const ret = await connectToVoxCPMTorchGradioServer({ baseUrl: `http://127.0.0.1:${port}`, device });
 
-			cloud = new VoxCPMCloud({ apiUrl: ret?.url });
-			await cloud.load();
-		},
-		async generate(options: Parameters<TTSBackend['generate']>[0]): ReturnType<TTSBackend['generate']> {
-			if (!cloud) throw new Error('VoxCPMGradio not loaded');
-			return cloud.generate(options);
-		},
-		async dispose(): Promise<void> {
-			await cloud?.dispose();
-		}
-	}
+      cloud = new VoxCPMCloud({ apiUrl: ret?.url });
+      await cloud.load();
+    },
+    async generate(options: Parameters<TTSBackend['generate']>[0]): ReturnType<TTSBackend['generate']> {
+      if (!cloud) throw new Error('VoxCPMGradio not loaded');
+      return cloud.generate(options);
+    },
+    async dispose(): Promise<void> {
+      await cloud?.dispose();
+    }
+  }
 }
