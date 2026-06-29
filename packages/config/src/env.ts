@@ -42,5 +42,3 @@ export const env = {
   CORS_ALLOW_ORIGINS: envStrUndefined('CORS_ALLOW_ORIGINS'),
   CORS_ALLOW_ORIGIN_REGEX: envStrUndefined('CORS_ALLOW_ORIGIN_REGEX'),
 } as const;
-
-export const locale = process.env.LANG?.startsWith('zh') ? 'zh' : 'en';

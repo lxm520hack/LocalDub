@@ -1,6 +1,10 @@
 {
   "name": "@repo/shared",
   "type": "module",
+  "exports": {
+    "./*": "./*.ts",
+    "./*.ts": "./*.ts"
+  },
   "devDependencies": {
     "vite": "^8.0.13"
   },

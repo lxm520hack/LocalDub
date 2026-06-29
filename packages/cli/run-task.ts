@@ -87,11 +87,13 @@ switch (cmd) {
 	}
 	case 'env': {
 		const envArgs = input.env ?? { action: 'check', targets: [] };
-		const { runCheck, runEnsure } = await import('@repo/core/cmd/env/index');
+		const { runCheck, runEnsure, formatResult } = await import('@repo/core/cmd/env/index');
 		const results = envArgs.action === 'ensure'
 			? await runEnsure(envArgs.targets)
 			: await runCheck(envArgs.targets);
-		console.log(JSON.stringify(results, null, 2));
+		for (const r of results) {
+			console.log(formatResult(r));
+		}
 		break;
 	}
 	default: {
