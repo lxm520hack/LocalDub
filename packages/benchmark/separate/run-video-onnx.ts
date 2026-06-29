@@ -11,7 +11,7 @@ const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadat
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const WER_PY = join(__dirname, 'wer.py');
 const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan');
-const MODEL = process.env.WHISPER_MODEL || join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+const MODEL = process.env.WHISPER_MODEL || join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-large-v3-turbo.bin');
 
 function extractAudio(): number {
   console.log('[ORT] Extracting audio...');

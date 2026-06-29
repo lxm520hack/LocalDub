@@ -7,7 +7,7 @@ const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
 const WER_PY = resolve(__dirname, 'wer.py');
 const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'srt_manual.json');
 const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan');
-const MODEL = process.env.WHISPER_MODEL || join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+const MODEL = process.env.WHISPER_MODEL || join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-large-v3-turbo.bin');
 
 const RESULTS_DIR = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1-sidechain');
 const MEDIA_DIR = resolve(REPO_ROOT, 'packages', 'benchmark', 'separate', 'results', 'ggml-s1', 'media');

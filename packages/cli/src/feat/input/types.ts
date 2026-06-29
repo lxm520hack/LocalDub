@@ -1,5 +1,6 @@
 import { TTSTaskInputSchema } from '@repo/core/input/tts';
 import { ServersArgsSchema } from '@repo/core/servers/input';
+import { EnvArgsSchema } from '@repo/core/cmd/envcheck/input';
 import { z } from 'zod';
 
 const targetLangList = [
@@ -34,9 +35,10 @@ export type Device = (typeof deviceList)[number];
 export const commandList = [
 	'task',
 	'check',
-	'deviceInfo', // 显示设备信息
-	'servers', // 统一状态/启停所有服务器
-	'listModels', // 列出 openai 兼容端点的 可用模型
+	'deviceInfo',
+	'servers',
+	'listModels',
+	'envcheck',
 ] as const;
 export type Command = (typeof commandList)[number];
 // 各 command 的参数
@@ -499,14 +501,11 @@ const TaskIdSchema = z
 	);
 const TaskSchema = z.looseObject({
 	command: z.enum(commandList).describe(`
-		1. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)
-		3. resumeTask: 继续任务
-		4. rerunStage: 重新运行某个步骤
-		5. taskStatus: 显示某任务状态
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
 		7. deviceInfo: 显示设备信息
 		8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)
 		9. listModels: 列出 openai 兼容端点的 可用模型
+		10. envcheck: 环境检查/修复 (check=诊断, ensure=尝试修复)
 		`),
 	task: z.looseObject({
 		action: z.enum(['start', 'resume', 'rerunStage', 'status']).optional().describe('任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态'),
@@ -523,12 +522,8 @@ const TaskSchema = z.looseObject({
 			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),
-	torchServer: z.looseObject({
-		port: z.number().default(19109).optional().describe('Torch server 端口'),
-		idleTimeout: z.number().default(300).optional().describe('空闲超时秒数, 超时后自动关闭'),
-		action: z.enum(['start', 'status', 'stop']).default('start').optional().describe('服务器操作'),
-	}).optional(),
 	servers: ServersArgsSchema,
+	envcheck: EnvArgsSchema.optional(),
 });
 
 export const TaskInputSchema = TaskSchema.and(BaseTaskInputSchema);

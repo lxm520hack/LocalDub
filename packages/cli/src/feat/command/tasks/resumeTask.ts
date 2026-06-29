@@ -1,7 +1,6 @@
 import { InputArgs } from "../../input/input";
 import { readCtx, setCtx } from "../../context/context";
 import { resumePipeline } from "../../tasks/pipeline-runner";
-import { withTorchServer } from "../utils/utils";
 import { playTaskFail, playTaskSuccess } from "./utils";
 
 export const cmdResumeTask = async (input: InputArgs) => {

@@ -4,10 +4,10 @@ import { join, resolve, extname } from 'node:path';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..');
 const WHISPER_CLI = join(REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-vulkan');
-const MODEL = process.env.WHISPER_MODEL || join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+const MODEL = process.env.WHISPER_MODEL || join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-large-v3-turbo.bin');
 const PYTHON_BIN = join(REPO_ROOT, '.venv', 'bin', 'python');
-const VAD_MODEL = join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-silero-v5.1.2.bin');
-const VAD_MODEL_V6 = join(process.env.HOME || '/root', '.cache', 'pywhispercpp', 'ggml-silero-v6.2.0.bin');
+const VAD_MODEL = join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-silero-v5.1.2.bin');
+const VAD_MODEL_V6 = join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-silero-v6.2.0.bin');
 const WER_PY = resolve(__dirname, '..', '..', '..', 'separate', 'compute', 'wer.py');
 const GROUND_TRUTH = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'metadata', 'asr_manual.json');
 const RESULTS_BASE = resolve(__dirname, '..', 'results');

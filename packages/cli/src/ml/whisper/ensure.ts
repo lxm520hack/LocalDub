@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { homedir } from 'node:os';
 import { REPO_ROOT } from '../../feat/input/input.ts';
 import { emitLog } from '../../feat/stages/utils/utils.ts';
+import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
 const HF_BASE = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 
@@ -11,19 +11,12 @@ function whisperCppDir(): string {
 	return join(REPO_ROOT, 'submodule', 'whisper.cpp');
 }
 
-function modelsDir(): string {
-	return join(whisperCppDir(), 'models');
-}
-
 function vadModelFilename(): string {
-	return 'ggml-silero-vad-v6.2.0.bin';
+	return 'ggml-silero-v6.2.0.bin';
 }
 
 function whisperModelPath(): string {
-	if (process.platform === 'win32') {
-		return join(homedir(), 'AppData', 'Local', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
-	}
-	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+	return join(WHISPER_MODEL_DIR, 'ggml-large-v3-turbo.bin');
 }
 
 export function whisperVulkanPath(): string {
@@ -113,10 +106,8 @@ export function ensureWhisperCppModel(sessionPath: string): boolean {
 }
 
 export function ensureVadModel(sessionPath: string): boolean {
-	const dest = join(modelsDir(), vadModelFilename());
+	const dest = join(WHISPER_MODEL_DIR, vadModelFilename());
 	if (existsSync(dest)) return true;
-
-	if (!ensureWhisperCppSubmodule(sessionPath)) return false;
 
 	const url = `${HF_BASE}/${vadModelFilename()}`;
 	emitLog(sessionPath, `[Whisper] VAD model not found at ${dest}`);

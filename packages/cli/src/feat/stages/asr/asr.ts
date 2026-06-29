@@ -13,6 +13,7 @@ import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
 import { pythonBin } from '@repo/config/path/exe';
+import { findServer } from '@repo/core/servers/discovery';
 
 const VAD_CANDIDATES: Record<string, string[]> = {
 	'silero-v5': [
@@ -103,7 +104,8 @@ export async function stageAsr(
 
 	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[ASR] Using Torch server (device=${device})`);
-		const asrUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+		const {port} = await findServer('torch')
+		const asrUrl = getTorchServerUrl(port);
 		const result = await runStage(asrUrl, 'asr', taskId, {
 			vocals_path: audioPath,
 			session_path: sessionPath,

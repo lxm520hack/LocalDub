@@ -3,7 +3,9 @@ import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { env } from '@repo/config';
-import { SHERPA_WHISPER_DIR } from '@repo/config/path/models';
+import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
+
+const SHERPA_MODEL_DIR = join(WHISPER_MODEL_DIR, 'sherpa_onnx');
 
 const VOCAB_SIZE = 51866;
 const DECODER_START_TOKEN = 50258;
@@ -19,13 +21,13 @@ let decoderSession: InferenceSession | null = null;
 async function loadSessions() {
 	if (!encoderSession) {
 		encoderSession = await InferenceSession.create(
-			join(SHERPA_WHISPER_DIR, 'turbo-encoder.int8.onnx'),
+			join(SHERPA_MODEL_DIR, 'turbo-encoder.int8.onnx'),
 			{ executionProviders: ['cpu'] },
 		);
 	}
 	if (!decoderSession) {
 		decoderSession = await InferenceSession.create(
-			join(SHERPA_WHISPER_DIR, 'turbo-decoder.int8.onnx'),
+			join(SHERPA_MODEL_DIR, 'turbo-decoder.int8.onnx'),
 			{ executionProviders: ['cpu'] },
 		);
 	}
@@ -125,7 +127,7 @@ let _tokenStrings: string[] | null = null;
 
 function loadTokens(): string[] {
 	if (!_tokenStrings) {
-		const text = readFileSync(join(SHERPA_WHISPER_DIR, 'turbo-tokens.txt'), 'utf-8');
+		const text = readFileSync(join(SHERPA_MODEL_DIR, 'turbo-tokens.txt'), 'utf-8');
 		_tokenStrings = text.trim().split('\n').map(l => l.split(' ')[0]);
 	}
 	return _tokenStrings;

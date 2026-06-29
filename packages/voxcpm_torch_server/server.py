@@ -100,7 +100,7 @@ def generate(
 _HOST = "127.0.0.1"
 _PORT = 19112
 _DEVICE = "cpu"
-_MODEL_DIR = str(REPO_ROOT / "data" / "modelscope" / "OpenBMB__VoxCPM2")
+_MODEL_DIR = str(REPO_ROOT / "data" / "models" / "voxcpm2")
 
 
 def build_app() -> "FastAPI":
@@ -227,7 +227,7 @@ def main() -> None:
     parser.add_argument(
         "--model-dir",
         type=str,
-        default=str(REPO_ROOT / "data" / "modelscope" / "OpenBMB__VoxCPM2"),
+        default=str(REPO_ROOT / "data" / "models" / "voxcpm2"),
         help="VoxCPM model directory",
     )
     args = parser.parse_args()

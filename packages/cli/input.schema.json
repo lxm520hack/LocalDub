@@ -9,12 +9,12 @@
           "enum": [
             "task",
             "check",
-            "createTask",
             "deviceInfo",
             "servers",
-            "listModels"
+            "listModels",
+            "envcheck"
           ],
-          "description": "\n\t\t1. startTask: 直接开始某个已存在的任务 (如之前创建但没有开始的任务)\n\t\t3. resumeTask: 继续任务\n\t\t4. rerunStage: 重新运行某个步骤\n\t\t5. taskStatus: 显示某任务状态\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t"
+          "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. envcheck: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
         },
         "task": {
           "type": "object",
@@ -131,32 +131,6 @@
           ],
           "additionalProperties": false
         },
-        "torchServer": {
-          "type": "object",
-          "properties": {
-            "port": {
-              "description": "Torch server 端口",
-              "default": 19109,
-              "type": "number"
-            },
-            "idleTimeout": {
-              "description": "空闲超时秒数, 超时后自动关闭",
-              "default": 300,
-              "type": "number"
-            },
-            "action": {
-              "description": "服务器操作",
-              "default": "start",
-              "type": "string",
-              "enum": [
-                "start",
-                "status",
-                "stop"
-              ]
-            }
-          },
-          "additionalProperties": {}
-        },
         "servers": {
           "type": "object",
           "properties": {
@@ -175,12 +149,33 @@
               "description": "指定操作的服务器，不传则操作所有",
               "type": "string",
               "enum": [
-                "torch",
-                "voxcpm_torch_gradio"
+                "voxcpm_torch_gradio",
+                "torch"
               ]
             }
           },
           "additionalProperties": {}
+        },
+        "envcheck": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "default": "check",
+              "type": "string",
+              "enum": [
+                "check",
+                "ensure"
+              ]
+            },
+            "targets": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
@@ -240,7 +235,7 @@
               "additionalProperties": false
             },
             "separate": {
-              "description": "separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 \n\t\tinput: media/video_source.mp4\n\t\t\toutput: media/target_3_vocals.wav 用于 ASR + TTS reference\n\t\t\t\t\t\tmedia/target_bgm.wav  用于 MergeVideo 背景\n\t",
+              "description": "separate: demucs 分离人声与背景声, 提升 tts-vc 的质量",
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda"

@@ -61,7 +61,7 @@ fn main() -> Result<()> {
             .parent().unwrap()
             .parent().unwrap()
             .to_path_buf();
-        repo_root.join("data/modelscope/OpenBMB__VoxCPM2")
+        repo_root.join("data/models/voxcpm2")
     } else {
         PathBuf::from(&cli.model_dir)
     };

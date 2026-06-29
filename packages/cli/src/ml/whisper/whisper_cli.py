@@ -53,7 +53,7 @@ def main() -> None:
                  "-c:a", "pcm_s16le", str(silent_wav)],
                 capture_output=True, check=True,
             )
-        model_path = os.environ.get("WHISPER_MODEL") or str(Path.home() / ".cache" / "pywhispercpp" / "ggml-large-v3-turbo.bin")
+        model_path = os.environ.get("WHISPER_MODEL") or str(REPO_ROOT / "data" / "models" / "whisper" / "ggml-large-v3-turbo.bin")
         result = subprocess.run(
             [str(WHISPER_CLI), "-m", model_path, str(silent_wav), "-l", "en", "-t", "4",
              *(["-ng"] if force_cpu else [])],
@@ -85,7 +85,7 @@ def main() -> None:
             capture_output=True, check=True,
         )
 
-    model_path = os.environ.get("WHISPER_MODEL") or str(Path.home() / ".cache" / "pywhispercpp" / "ggml-large-v3-turbo.bin")
+    model_path = os.environ.get("WHISPER_MODEL") or str(REPO_ROOT / "data" / "models" / "whisper" / "ggml-large-v3-turbo.bin")
 
     cmd = [
         str(WHISPER_CLI), "-m", model_path, str(wav_path),

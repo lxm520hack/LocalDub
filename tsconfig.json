@@ -2,6 +2,8 @@
   "compilerOptions": {
     "strict": true,
     "types": ["bun"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -12,8 +14,8 @@
   "exclude": [
     "**/build/**",
     "node_modules",
+    "submodule/demucs-rs/web",
     "dist",
-    "packages/tmp/**",
-    "packages/benchmark/**"
+    "packages/tmp/**"
   ]
 }

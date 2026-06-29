@@ -1,11 +1,11 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { homedir } from 'node:os';
 import { REPO_ROOT } from '@repo/config';
 import { emitLog, probeDuration, separateDir } from '../../../feat/stages/utils/utils';
 import { setStage } from '../../../feat/context/context';
 import { DemucsCliArgs } from './cli_types';
+import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 
 function findLibtorchPath(): string | null {
 	const buildDir = join(REPO_ROOT, 'target', 'release', 'build');
@@ -29,7 +29,7 @@ export async function separateBurn({
 	backend ??= device === 'cpu' ? 'tch' : 'wgpu';
 	const binName = `demucs-burn-${backend}`;
 	const binPath = join(REPO_ROOT, 'target', 'release', binName);
-	const modelPath = join(homedir(), '.cache', 'demucs-rs', 'htdemucs_ft.safetensors');
+	const modelPath = join(DEMUCS_MODEL_DIR, 'htdemucs_ft.safetensors');
 
 	if (!existsSync(binPath)) {
 		throw new Error(

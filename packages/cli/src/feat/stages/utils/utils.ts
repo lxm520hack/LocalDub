@@ -1,15 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { env, LOG_DIR, REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { getStages } from '../../tasks/stages.ts';
+import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
 export function defaultWhisperCppModelPath(): string {
-	if (process.platform === 'win32') {
-		return join(homedir(), 'AppData', 'Local', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
-	}
-	return join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+	return join(WHISPER_MODEL_DIR, 'ggml-large-v3-turbo.bin');
 }
 
 /** Get the downloaded video source path for a session. */

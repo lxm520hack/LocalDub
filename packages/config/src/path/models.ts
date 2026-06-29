@@ -11,6 +11,4 @@ export const WHISPER_MODEL_DIR = join(MODEL_CACHE_DIR, 'whisper');
 // openai-whisper 自己管理
 // export const OPENAI_WHISPER_MODEL_DIR = join(homedir(), '.cache', 'whisper');
  
-export const SHERPA_WHISPER_DIR = join(WHISPER_MODEL_DIR, 'sherpa_onnx');
-
 export const VOXCPM_MODEL_DIR = join(MODEL_CACHE_DIR, 'voxcpm2');

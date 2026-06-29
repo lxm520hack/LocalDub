@@ -22,16 +22,6 @@ import { cmdRerunStage } from './src/feat/command/tasks/rerunStage.ts';
 import { cmdTaskStatus } from './src/feat/command/tasks/taskStatus.ts';
 import { cmdTask } from './src/feat/command/tasks/task.ts';
 
-async function withTorchServer<T>(
-	taskId: string,
-	fn: (torchServer: string) => Promise<T>,
-): Promise<T> {
-	const config = readInputArgs();
-	const TORCH_SERVER_PORT = config.torchServer?.port ?? 19109;
-	const baseUrl = await startTorchServer(TORCH_SERVER_PORT);
-	return await fn(baseUrl);
-}
-
 const input = readInputArgs();
 const cmd = input.command;
 
@@ -94,6 +84,15 @@ switch (cmd) {
 	case 'task': {
 		await cmdTask(input);
 		break
+	}
+	case 'envcheck': {
+		const envArgs = input.envcheck ?? { action: 'check', targets: [] };
+		const { runCheck, runEnsure } = await import('@repo/core/cmd/envcheck/index');
+		const results = envArgs.action === 'ensure'
+			? await runEnsure(envArgs.targets)
+			: await runCheck(envArgs.targets);
+		console.log(JSON.stringify(results, null, 2));
+		break;
 	}
 	default: {
 	}

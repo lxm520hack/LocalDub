@@ -16,6 +16,7 @@ import { startLog } from '../utils/log.ts';
 import { separateBurn } from '../../../ml/demucs/cli/burn_cli.ts';
 import { separateGgml } from '../../../ml/demucs/cli/ggml_cli.ts';
 import { pythonBin } from '@repo/config/path/exe';
+import { findServer } from '@repo/core/servers/discovery';
 
 export async function stageSeparate(
 	ctx: Context,
@@ -55,17 +56,15 @@ export async function stageSeparate(
 
 	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[Separate] Using Torch server (device=${device})`);
-		const absVideo = resolve(
-			sessionPath,
-			'video_source.mp4',
-		);
-		const sepUrl = getTorchServerUrl(ctx.input?.torchServer?.port ?? 19109);
+
+		const {port} = await findServer('torch')
+		const sepUrl = getTorchServerUrl(port);
 		let lastTorchPct = -1;
 		const result = await runStage(sepUrl,
 			'separate',
 			taskId,
 			{
-				video_path: absVideo,
+				video_path: audioPath,
 				session_path: sessionPath,
 				device,
 			},

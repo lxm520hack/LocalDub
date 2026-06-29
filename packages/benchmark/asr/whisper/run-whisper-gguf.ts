@@ -12,7 +12,7 @@ import {
 } from './bench-shared';
 
 const SCRIPT = join(REPO_ROOT, 'packages', 'cli', 'scripts', 'asr', 'pywhispercpp_bench.py');
-const GGUF_MODEL = join(homedir(), '.cache', 'pywhispercpp', 'ggml-large-v3-turbo.bin');
+const GGUF_MODEL = join(REPO_ROOT, 'data', 'models', 'whisper', 'ggml-large-v3-turbo.bin');
 const N_THREADS = cpus().length;
 
 function measureLoadTime(): number {
