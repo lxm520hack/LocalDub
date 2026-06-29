@@ -34,17 +34,19 @@ export const startVoxCPMTorchGradioServer = async ({
   port: hintPort,
   device = 'cpu',
   modelDir = VOXCPM_DIR,
+  healthPolling = false
 }: {
   port?: number;
   device?: string;
   modelDir?: string;
+  healthPolling?: boolean
 }): Promise<{
   url: string;
   proc?: ChildProcess;
 }> => {
   // 1) Check if already running
   const hint = hintPort ?? 19112
-  const { port } = await findServer('voxcpm_torch_gradio', hint)
+  const { port } = await findServer('voxcpm_torch_gradio', hint);
   {
     const [data] = await to(fetchStatsData(port))
     if (data?.status === 'running') {
@@ -64,7 +66,7 @@ export const startVoxCPMTorchGradioServer = async ({
   proc.stderr?.pipe(process.stderr)
 
   const actualPort = await new Promise<number>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('VoxCPM Gradio port discovery timeout')), 10000)
+    const timer = setTimeout(() => reject(new Error('port discovery timeout')), 10000)
     const iv = setInterval(() => {
       const p = readPortFromOutput(stdout, 0)
       if (p) {
@@ -76,7 +78,7 @@ export const startVoxCPMTorchGradioServer = async ({
   })
 
   // 4) Health polling
-  await waitForHealth(actualPort)
+  if (healthPolling) await waitForHealth(actualPort)
 
   return { url: `http://127.0.0.1:${actualPort}`, proc }
 }
