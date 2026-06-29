@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { levenshtein, FrameResult, mergeFrames, dedupOverlap } from '../../../cli/src/feat/stages/utils/ocrMerge';
+import { levenshtein, FrameResult, mergeFrames, dedupOverlap } from '@repo/cli/feat/stages/ocr/ocrMerge';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const CPP_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build', 'subtitle_ocr_ort_cpp');
@@ -260,7 +260,7 @@ if (require.main === module) {
 
   // --- Pure OCR boundaries (from frame timestamps) ---
   rawFrames.sort((a, b) => a.timestamp - b.timestamp);
-  const ocrSegs_merged = mergeFrames(rawFrames).map((s) => ({ text: s.text, start: s.start, end: s.end }));
+  const ocrSegs_merged = mergeFrames(rawFrames).segments.map((s) => ({ text: s.text, start: s.start, end: s.end }));
 
   const elapsed = (Date.now() - ocrStart) / 1000;
   const hop = STRATEGY === 'end1fps' ? 'end-200ms 1fps clamped' : 'mid ±1fps clamped';

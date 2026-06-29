@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { REPO_ROOT } from '@repo/config';
+import { DEMUCS_GGML_FILE } from '@repo/config/path/models';
 import { emitLog, probeDuration, separateDir } from '../../../feat/stages/utils/utils';
 import { setStage } from '../../../feat/context/context';
 import { DemucsCliArgs } from './cli_types';
@@ -17,9 +18,7 @@ export async function separateGgml(
 	const ggmlBin = join(
 		REPO_ROOT, 'submodule', 'demucs.cpp', 'build', 'demucs_mt.cpp.main',
 	);
-	const ggmlModel = join(
-		REPO_ROOT, 'packages', 'tmp', 'demucs-ggml', 'ggml-model-htdemucs-4s-f16.bin',
-	);
+	const ggmlModel = DEMUCS_GGML_FILE;
 	const sepDir = separateDir(sessionPath);
 	mkdirSync(sepDir, { recursive: true });
 

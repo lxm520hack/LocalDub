@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { mergeFrames } from '../../../cli/src/feat/stages/utils/ocrMerge.ts';
+import { mergeFrames } from '@repo/cli/feat/stages/ocr/ocrMerge';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const VIDEO = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media', 'video_source.mp4');
@@ -49,13 +49,11 @@ for (let i = 0; i < frameFiles.length; i++) {
   if ((i + 1) % 50 === 0) console.log(`  OCR: ${i + 1}/${frameFiles.length}`);
 }
 
-const segs = mergeFrames(frames.map(f => ({ text: f.text, timestamp: f.timestamp, confidence: 0 })));
+const {segments: segs, text} = mergeFrames(frames.map(f => ({ text: f.text, timestamp: f.timestamp, confidence: 0 })));
 
 // filter short segments (< 500ms)
 const filtered = segs.filter(s => s.end - s.start >= 500);
 console.log(`${frameFiles.length} frames → ${segs.length} segs → ${filtered.length} after min-duration filter`);
-
-const text = filtered.map(s => s.text).join(' ');
 
 const ocrOutput = {
   audio_info: { duration: frames.length > 0 ? frames[frames.length - 1].timestamp : 0 },

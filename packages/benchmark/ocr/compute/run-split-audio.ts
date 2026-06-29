@@ -26,6 +26,6 @@ const ctx = {
 writeCtx(ctx);
 ensureDir(join(resultDir, 'segments', 'vocals'), ctx);
 
-await stageSplitAudio({ ctx });
+await stageSplitAudio(ctx);
 
 console.log(`Segments: ${resultDir}/segments/vocals/`);

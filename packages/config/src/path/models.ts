@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 export const MODEL_CACHE_DIR = env.MODEL_CACHE_DIR;
 
 export const DEMUCS_MODEL_DIR = join(MODEL_CACHE_DIR, 'demucs');
+export const DEMUCS_GGML_FILE = join(DEMUCS_MODEL_DIR, 'ggml-model-htdemucs-4s-f16.bin');
 
 export const WHISPER_MODEL_DIR = join(MODEL_CACHE_DIR, 'whisper');
 

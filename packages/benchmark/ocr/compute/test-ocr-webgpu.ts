@@ -1,8 +1,8 @@
-import * as ort from '/home/aa/repos/env_ls/LocalDub/packages/cli/node_modules/onnxruntime-node';
+import * as ort from 'onnxruntime-node';
 import { join, resolve } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
+import { REPO_ROOT } from '@repo/config/root';
 
-const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 
 /** Find rapidocr model directory dynamically. */
 function findRapidOCRModelsDir(): string {

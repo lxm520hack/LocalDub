@@ -1,7 +1,6 @@
 import { benchmarkGGMLGPU } from './ggml-gpu';
 import { printSummary, saveResults } from './bench-shared';
 
-const RESULTS_FILE = 'separate-ggml-gpu.json';
 
 async function main() {
   console.log('=== Demucs ggml (GPU) Benchmark ===\n');
@@ -9,7 +8,7 @@ async function main() {
   console.log('This benchmark verifies CPU-only performance under the GGML label.\n');
   const results = await benchmarkGGMLGPU();
   printSummary(results);
-  saveResults(results, RESULTS_FILE);
+  saveResults(results, );
 }
 
 main().catch((err) => {
