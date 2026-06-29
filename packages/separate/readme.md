@@ -34,10 +34,10 @@ LIBTORCH_DIR=$(find target/release/build/torch-sys-*/out/libtorch/libtorch/lib -
 LIBTORCH_DIR=$LIBTORCH_DIR cargo build --release --bin demucs-burn-tch --no-default-features --features tch
 ```
 
-| Binary | Size | RTF (short infer) | Notes |
-|--------|:----:|:-----------------:|-------|
-| `demucs-burn-wgpu` | 37MB | 2.83 | GPU via Vulkan, +16s warmup first run |
-| `demucs-burn-tch` | 4.0MB | **1.66** | CPU via MKL, no warmup overhead, needs `LD_LIBRARY_PATH` |
+| Binary | Size | RTF (medium, 60s) | Notes |
+|--------|:----:|:------------------:|-------|
+| `demucs-burn-wgpu` | 37MB | **2.34** | GPU via Vulkan, +16s warmup first run |
+| `demucs-burn-tch` | 4.0MB | **1.26** | CPU via MKL, no warmup overhead, needs `LD_LIBRARY_PATH` |
 | `demucs-burn-cpu` | 177MB | — | CubeCL MLIR, per-kernel JIT too slow for demucs |
 | `demucs-burn-rocm` | 32MB | — | `GPU Hang` on 780M MES, needs gfx9+ ROCm |
 
