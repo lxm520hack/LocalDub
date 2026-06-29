@@ -7,6 +7,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { to } from "@repo/shared/lib/utils/try";
 import { fetchStatsData } from '@repo/core/servers/client';
 import { TTSInput } from '@repo/core/input/tts';
+import { VOXCPM_TORCH_GRADIO_MAIN } from '@repo/config/paths';
 
 
 
@@ -35,10 +36,9 @@ export const startVoxCPMTorchGradioServer = async ({
   url: string;
   proc?: ChildProcess;
 }> => {
-  const mainPath = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
   const url = `http://127.0.0.1:${port}`;
 
-  const proc = spawn(pythonBin(), [mainPath, '--port', String(port), '--device', device, '--model-dir', modelDir], {
+  const proc = spawn(pythonBin(), [VOXCPM_TORCH_GRADIO_MAIN, '--port', String(port), '--device', device, '--model-dir', modelDir], {
     env: { ...process.env as Record<string, string> },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

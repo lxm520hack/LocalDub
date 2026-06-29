@@ -24,3 +24,5 @@ export const WHISPER_ONNX_DIR = join(MODEL_CACHE_DIR, 'whisper-large-v3-turbo');
 export const SHERPA_WHISPER_DIR = join(MODEL_CACHE_DIR, 'sherpa-whisper-turbo');
 export const DEMUCS_DIR = join(MODEL_CACHE_DIR, 'demucs');
 export const COSYVOICE_DIR = join(MODEL_CACHE_DIR, 'CosyVoice3-0.5B');
+
+export const VOXCPM_TORCH_GRADIO_MAIN = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
