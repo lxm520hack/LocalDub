@@ -1,8 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { DEMUCS_DIR as DEMUCS_MODEL_PATH } from '@repo/config';
-
-export { DEMUCS_MODEL_PATH };
+import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 
 export interface ModelStatus {
 	exists: boolean;
@@ -27,7 +25,7 @@ export async function checkDemucsStatus(stems?: readonly Stem[]): Promise<ModelS
 	let onnxReady = true;
 	for (const stem of targetStems) {
 		const file = STEM_FILE_NAMES[stem];
-		if (!existsSync(join(DEMUCS_MODEL_PATH, file))) {
+		if (!existsSync(join(DEMUCS_MODEL_DIR, file))) {
 			missingFiles.push(file);
 			onnxReady = false;
 		}

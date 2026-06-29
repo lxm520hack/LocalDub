@@ -13,10 +13,10 @@
 import { join } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { createVoxCPM, VoxCPMBackend, writeWav } from '../src/index.ts';
-import { VOXCPM_DIR } from '@repo/config';
+import { VOXCPM_MODEL_DIR } from '@repo/config/path/models';
 
 const args = parseArgs();
-const modelDir = VOXCPM_DIR;
+const modelDir = VOXCPM_MODEL_DIR;
 const outPath = args.out;
 
 async function main() {

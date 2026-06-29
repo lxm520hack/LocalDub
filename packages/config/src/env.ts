@@ -19,7 +19,7 @@ export const env = {
 
   // Paths
   WORKFOLDER: resolve(REPO_ROOT, envStr('WORKFOLDER', 'workfolder')),
-  MODEL_CACHE_DIR: resolve(REPO_ROOT, envStr('MODEL_CACHE_DIR', 'data/modelscope')),
+  MODEL_CACHE_DIR: resolve(REPO_ROOT, envStr('MODEL_CACHE_DIR', 'data/models')),
 
   // Device
   DEVICE: envStr('DEVICE', 'auto'),

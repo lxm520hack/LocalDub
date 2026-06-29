@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from './env.ts';
-import { DATA_DIR, COOKIE_DIR, LOG_DIR, YOUTUBE_COOKIE_PATH } from './paths.ts';
+import { DATA_DIR, COOKIE_DIR, LOG_DIR, YOUTUBE_COOKIE_PATH } from './path/paths.ts';
 
 export function device(): string {
   return env.CUDA_DEVICE ?? env.DEVICE;

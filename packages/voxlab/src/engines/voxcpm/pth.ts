@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { delimiter } from 'node:path';
 import { readWav } from '../../wav.ts';
 import type { TTSGenerateOptions, TTSGenerateResult, TTSBackend, VoxCPMPythonConfig, ModelStatus } from '../../types.ts';
-import { VOXCPM_DIR, REPO_ROOT } from '@repo/config';
+import { VOXCPM_MODEL_DIR,  } from '@repo/config/path/models';
+import { REPO_ROOT } from '@repo/config/root';
 
 let _scriptPath: string | null = null;
 function getScriptPath(): string {
@@ -21,7 +22,7 @@ export class VoxCPMPython implements TTSBackend {
   private pythonBin: string;
 
   constructor(config: VoxCPMPythonConfig = {}) {
-    this.modelDir = config.modelDir ?? VOXCPM_DIR;
+    this.modelDir = config.modelDir ?? VOXCPM_MODEL_DIR;
     if (config.python) {
       this.pythonBin = config.python;
     } else {

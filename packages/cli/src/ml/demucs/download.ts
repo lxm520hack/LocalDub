@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { mkdirSync, existsSync } from 'node:fs';
-import { DEMUCS_MODEL_PATH, STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
-
+import {  STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
+import { DEMUCS_MODEL_DIR } from '@repo/config/path/models'
 const HF_BASE_URL = 'https://huggingface.co/StemSplitio/htdemucs-ft-onnx/resolve/main';
 
 export async function downloadDemucs(
@@ -9,8 +9,8 @@ export async function downloadDemucs(
   stems?: Stem[]
 ) {
   const targetStems = stems ?? [...STEM_NAMES];
-  if (!existsSync(DEMUCS_MODEL_PATH)) {
-    mkdirSync(DEMUCS_MODEL_PATH, { recursive: true });
+  if (!existsSync(DEMUCS_MODEL_DIR)) {
+    mkdirSync(DEMUCS_MODEL_DIR, { recursive: true });
   }
 
   const totalFiles = targetStems.length;
@@ -18,7 +18,7 @@ export async function downloadDemucs(
 
   for (const stem of targetStems) {
     const fileName = STEM_FILE_NAMES[stem];
-    const filePath = join(DEMUCS_MODEL_PATH, fileName);
+    const filePath = join(DEMUCS_MODEL_DIR, fileName);
     const url = `${HF_BASE_URL}/${fileName}?download=true`;
 
     try {

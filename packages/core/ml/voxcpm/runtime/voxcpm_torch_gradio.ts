@@ -1,5 +1,4 @@
 import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
-import { pythonBin } from "@repo/config";
 import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config';
 import type { ModelServerStatus } from '@repo/core/servers/type';
@@ -7,7 +6,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { to } from "@repo/shared/lib/utils/try";
 import { fetchStatsData } from '@repo/core/servers/client';
 import { TTSInput } from '@repo/core/input/tts';
-import { VOXCPM_TORCH_GRADIO_MAIN } from '@repo/config/paths';
+import { pythonBin, VOXCPM_TORCH_GRADIO_MAIN } from '@repo/config/path/exe';
 import { findServer, readPortFromOutput } from '@repo/core/servers/discovery';
 
 export const voxcpmTorchGradioStatus = async ({

@@ -1,8 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { WHISPER_ONNX_DIR as WHISPER_MODEL_PATH } from '@repo/config';
-
-export { WHISPER_MODEL_PATH };
+import { WHISPER_MODEL_DIR as WHISPER_MODEL_PATH } from '@repo/config/path/models';
 
 const HF_BASE =
 	'https://huggingface.co/onnx-community/whisper-large-v3-turbo_timestamped/resolve/main';

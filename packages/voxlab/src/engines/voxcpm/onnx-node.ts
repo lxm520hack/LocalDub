@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readWav } from '../../wav.ts';
 import type { TTSGenerateOptions, TTSGenerateResult, TTSBackend, VoxCPMNodeConfig, ModelStatus } from '../../types.ts';
-import { VOXCPM_DIR } from '@repo/config';
+import { VOXCPM_MODEL_DIR } from '@repo/config/path/models';
 
 const CFG = {
   patchSize: 4,
@@ -54,7 +54,7 @@ export function checkONNXStatus(modelDir: string): ModelStatus {
 }
 
 export async function checkONNXReady(): Promise<ModelStatus> {
-  return checkONNXStatus(VOXCPM_DIR);
+  return checkONNXStatus(VOXCPM_MODEL_DIR);
 }
 
 export class VoxCPMNodeONNX implements TTSBackend {
@@ -68,7 +68,7 @@ export class VoxCPMNodeONNX implements TTSBackend {
   private modelDir: string;
 
   constructor(config: VoxCPMNodeConfig = {}) {
-    this.modelDir = config.modelDir ?? VOXCPM_DIR;
+    this.modelDir = config.modelDir ?? VOXCPM_MODEL_DIR;
     const ep = config.executionProvider ?? 'cpu';
     this.transformerEp = [ep];
     this.vaeEp = ep === 'webgpu' ? ['cpu'] : [ep];

@@ -4,7 +4,6 @@ import { join, resolve } from 'node:path';
 import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { timeId } from '../shared/db/timeId.ts';
 import {
-	pythonBin,
 	readInputArgs,
 } from './src/feat/input/input.ts';
 import {

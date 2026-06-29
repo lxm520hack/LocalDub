@@ -1,5 +1,5 @@
 import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
-import { pythonBin, VOXCPM_DIR } from "@repo/config";
+import { pythonBin,  } from "@repo/config";
 import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config';
 import type { ModelServerStatus } from '@repo/core/servers/type';
@@ -7,6 +7,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { to } from "@repo/shared/lib/utils/try";
 import { fetchStatsData } from '@repo/core/servers/client';
 import { TTSInput } from '@repo/core/input/tts';
+import { VOXCPM_MODEL_DIR } from '@repo/config/path/models';
 
 export const voxcpmTorchGradioStatus = async ({
   port,
@@ -21,7 +22,7 @@ export const voxcpmTorchGradioStatus = async ({
 export const startVoxCPMTorchGradioServer = async ({
   port,
   device = 'cpu',
-  modelDir = VOXCPM_DIR,
+  modelDir = VOXCPM_MODEL_DIR,
   waitForReady = false,
 }: {
   port: number;

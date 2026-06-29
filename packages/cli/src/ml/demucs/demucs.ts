@@ -1,6 +1,7 @@
 import * as ort from 'onnxruntime-node';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { DEMUCS_MODEL_PATH, checkDemucsStatus, STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
+import { checkDemucsStatus, STEM_FILE_NAMES, STEM_NAMES, type Stem } from './load';
+import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 
 const SAMPLE_RATE = 44100;
 const SEGMENT_LEN = 343980;
@@ -29,7 +30,7 @@ export class Demucs {
   private stems: readonly Stem[];
 
   constructor(
-    private modelDir: string = DEMUCS_MODEL_PATH,
+    private modelDir: string = DEMUCS_MODEL_DIR,
     private options?: { executionProvider?: 'cpu' | 'webgpu'; stems?: readonly Stem[] },
   ) {
     this.stems = options?.stems ?? ['vocals'];

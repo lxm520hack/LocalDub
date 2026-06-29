@@ -1,8 +1,9 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { delimiter, pythonBin, REPO_ROOT } from '../../feat/input/input.ts';
+import { delimiter, REPO_ROOT } from '../../feat/input/input.ts';
 import { findServer } from '@repo/core/servers/discovery';
 import { ModelServerStatus } from '@repo/core/servers/type';
+import { pythonBin } from '@repo/config/path/exe';
 
 export const fetchStatsRes = (port: number) => fetch(`http://127.0.0.1:${port}/status`, {
   signal: AbortSignal.timeout(2000),

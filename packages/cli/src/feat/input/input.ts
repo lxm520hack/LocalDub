@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER, pythonBin } from '@repo/config';
+import { env, REPO_ROOT, WORKFOLDER,  } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
 import { type BaseConfigInput, TaskInputSchema,  } from './types.ts';
 import { fileLog } from '../stages/utils/fileOps.ts';
 
-export { delimiter, REPO_ROOT, pythonBin };
+export { delimiter, REPO_ROOT,  };
 
 const INPUT_ARGS_PATH = join(REPO_ROOT, 'packages', 'cli', 'input.json');
 

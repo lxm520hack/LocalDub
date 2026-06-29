@@ -6,7 +6,6 @@ import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
 import {
-	pythonBin,
 	REPO_ROOT,
 	readInputArgs,
 } from '../../input/input.ts';
@@ -16,6 +15,7 @@ import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build
 import { startLog } from '../utils/log.ts';
 import { separateBurn } from '../../../ml/demucs/cli/burn_cli.ts';
 import { separateGgml } from '../../../ml/demucs/cli/ggml_cli.ts';
+import { pythonBin } from '@repo/config/path/exe';
 
 export async function stageSeparate(
 	ctx: Context,

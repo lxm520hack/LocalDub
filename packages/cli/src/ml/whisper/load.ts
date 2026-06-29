@@ -1,10 +1,8 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { WHISPER_ONNX_DIR } from '@repo/config';
+import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
-const WHISPER_MODEL_PATH = WHISPER_ONNX_DIR;
-
-export { WHISPER_MODEL_PATH };
+const WHISPER_MODEL_PATH = WHISPER_MODEL_DIR;
 
 export interface ModelStatus {
 	exists: boolean;

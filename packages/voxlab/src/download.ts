@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { mkdirSync, existsSync } from 'node:fs';
-import { VOXCPM_DIR } from '@repo/config';
+import { VOXCPM_MODEL_DIR } from '@repo/config/path/models';
 
 const HF_BASE_URL = 'https://huggingface.co/ai4all8/VoxCPM2-ONNX/resolve/main';
 
@@ -16,7 +16,7 @@ const FILES_TO_DOWNLOAD = [
 ];
 
 export async function downloadVoxCPM(onProgress: (percent: number, message: string) => void): Promise<void> {
-  const modelDir = VOXCPM_DIR;
+  const modelDir = VOXCPM_MODEL_DIR;
   if (!existsSync(modelDir)) {
     mkdirSync(modelDir, { recursive: true });
   }
