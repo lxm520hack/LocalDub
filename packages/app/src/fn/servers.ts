@@ -1,26 +1,18 @@
 import { to } from '@repo/shared/lib/utils/try';
 import { invoke } from './invoke'
-import { findServer } from '../../../core/servers/discovery'
+import { findServer } from '@repo/core/servers/discovery'
 import type { ModelServerStatus } from '@repo/core/servers/type'
+import { fetchStatsRes } from '@repo/core/servers/client';
 
 let _torchPort = 19109
 let _voxcpmPort = 19112
 
-async function fetchStatsRes(port: number) {
-	return await fetch(`http://127.0.0.1:${port}/status`, {
-		signal: AbortSignal.timeout(2000),
-	})
-}
-
 async function fetchHealth(port: number): Promise<ModelServerStatus> {
-	try {
-		const res = await fetchStatsRes(port)
-		if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: {} }
-		const data = await res.json() as ModelServerStatus
-		return { ...data, status: data.status === 'running' ? 'running' : 'error' }
-	} catch {
-		return { status: 'stopped', port, uptime_s: 0, models: {} }
-	}
+	const [res, err] = await  to(fetchStatsRes(port))
+	if (err) return { status: 'stopped', port, uptime_s: 0, models: {} }
+	if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: {} }
+	const data = await res.json() as ModelServerStatus
+	return { ...data, status: data.status === 'running' ? 'running' : 'error' }
 }
 
 async function ping(port: number): Promise<boolean> {
