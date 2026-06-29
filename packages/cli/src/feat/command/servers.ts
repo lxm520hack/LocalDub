@@ -4,7 +4,7 @@ import { startTorchServer, stopTorchServer } from "../../ml/server/client";
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { torchStatus } from "../../ml/server/torchServer";
-import { findServer } from '../../../../core/servers/discovery';
+import { findServer, findServers } from '../../../../core/servers/discovery';
 import { startVoxCPMTorchGradioServer, stopVoxCPMTorchGradioServer, voxcpmTorchGradioStatus } from "@repo/core/ml/voxcpm/runtime/voxcpm_torch_gradio";
 
 export const cmdServers = async (input: InputArgs) => {
@@ -42,6 +42,9 @@ export const cmdServers = async (input: InputArgs) => {
       result.voxcpm_torch_gradio = await voxcpmTorchGradioStatus({ port });
     }
     console.log(JSON.stringify(result, null, 2));
+  } else if (action==='discovery') {
+    const res =  await findServers(name ?? "voxcpm_torch_gradio")
+    console.log(res)
   } else {
     console.error(`[Servers] Unknown action: ${action}`);
   }

@@ -1,4 +1,5 @@
 import { TTSTaskInputSchema } from '@repo/core/input/tts';
+import { ServersArgsSchema } from '@repo/core/servers/input';
 import { z } from 'zod';
 
 const targetLangList = [
@@ -532,10 +533,7 @@ const TaskSchema = z.looseObject({
 		idleTimeout: z.number().default(300).optional().describe('空闲超时秒数, 超时后自动关闭'),
 		action: z.enum(['start', 'status', 'stop']).default('start').optional().describe('服务器操作'),
 	}).optional(),
-	servers: z.looseObject({
-		action: z.enum(['status', 'start', 'stop']).default('status').optional().describe('服务器操作'),
-		name: z.enum(['torch', 'voxcpm_torch_gradio']).optional().describe('指定操作的服务器，不传则操作所有'),
-	}).optional(),
+	servers: ServersArgsSchema,
 });
 
 export const TaskInputSchema = TaskSchema.and(BaseTaskInputSchema);

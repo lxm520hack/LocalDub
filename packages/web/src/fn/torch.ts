@@ -152,7 +152,7 @@ async function pingVoxCpm(port: number): Promise<boolean> {
 }
 
 export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
-	const { port } = await findServer('voxcpm', 19112)
+	const { port } = await findServer('voxcpm_torch_gradio', 19112)
 	_voxcpmPort = port
 	if (await pingVoxCpm(port)) return fetchVoxCpmHealth(port)
 
@@ -183,7 +183,7 @@ export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStat
 })
 
 export const checkVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
-	const { port } = await findServer('voxcpm', _voxcpmPort)
+	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
 	_voxcpmPort = port
 	return fetchVoxCpmHealth(port)
 })

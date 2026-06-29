@@ -6,10 +6,17 @@ Server types:
 
 Usage:
   ```ts
-  import { findServer } from '@repo/config/discovery'
+  import { findServer, findServers } from '@repo/core/servers/discovery'
+
+  // Get the first discovered (or fallback) server
   const { port, host } = await findServer('torch', 19109)
+
+  // Get all discovered servers as base URLs
+  const urls = await findServers('torch', 19109)
   ```
 */
+
+import { ServerType } from '@repo/core/servers/type';
 
 export interface ServerInfo {
   host: string
@@ -17,7 +24,7 @@ export interface ServerInfo {
   foundVia: 'mdns' | 'default' | 'portfile'
 }
 
-const SERVICE_MAP = {
+const SERVICE_MAP: Record<ServerType, string> = {
   voxcpm_torch_gradio: '_localdub-voxcpm._tcp',
   torch: '_localdub-torch._tcp',
 }
@@ -25,62 +32,71 @@ const SERVICE_MAP = {
 /** Timeout for mDNS browse (ms). */
 const MDNS_TIMEOUT = 3000
 
-export type ServerType = keyof typeof SERVICE_MAP
+
 /**
- * Discover a LocalDub server by mDNS, falling back to default port.
+ * Discover all running instances of a server type via mDNS.
+ * Falls back to a single default entry if nothing found.
  *
- * @param type  Server type (`"torch"` or `"voxcpm_torch_gradio"`)
- * @param defaultPort  Fallback port if mDNS fails
- * @param defaultHost  Host to check for fallback
+ * Returns base URLs like `http://127.0.0.1:19109`.
+ */
+export async function findServers(
+  type: ServerType,
+  defaultPort = type === 'torch' ? 19109 : 19112,
+  defaultHost = '127.0.0.1',
+): Promise<string[]> {
+  const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
+  if (mdnsList.length > 0) {
+    return mdnsList.map((s) => `http://${s.host}:${s.port}`)
+  }
+  return [`http://${defaultHost}:${defaultPort}`]
+}
+
+/**
+ * Discover a single LocalDub server by mDNS, falling back to default port.
  */
 export async function findServer(
   type: ServerType,
   defaultPort = type === 'torch' ? 19109 : 19112,
   defaultHost = '127.0.0.1',
 ): Promise<ServerInfo> {
-  // 1) Try mDNS
-  try {
-    const mdns = await findServerViaMdns(type, MDNS_TIMEOUT)
-    if (mdns) return { ...mdns, foundVia: 'mdns' }
-  } catch {
-    // fall through
+  const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
+  if (mdnsList.length > 0) {
+    return { ...mdnsList[0], foundVia: 'mdns' }
   }
-
-  // 2) Fallback: check default port
   return { host: defaultHost, port: defaultPort, foundVia: 'default' }
 }
 
-async function findServerViaMdns(
+async function findServerViaMdnsAll(
   type: ServerType,
   timeoutMs: number,
-): Promise<{ host: string; port: number } | null> {
+): Promise<{ host: string; port: number }[]> {
   const serviceType = SERVICE_MAP[type]
-  if (!serviceType) return null
+  if (!serviceType) return []
 
-  // Dynamic import so bundlers don't choke on Node.js modules
   const Bonjour = await import('bonjour-service').then((m) => m.Bonjour)
   const bonjour = new Bonjour()
+  const results: { host: string; port: number }[] = []
 
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
+      browser.stop()
       bonjour.destroy()
-      resolve(null)
+      resolve(results)
     }, timeoutMs)
 
     const browser = bonjour.find({ type: serviceType.replace(/^_|\._tcp$/g, '') }, (svc) => {
-      clearTimeout(timer)
-      browser.stop()
-      bonjour.destroy()
-      resolve({ host: svc.referer?.address ?? '127.0.0.1', port: svc.port })
+      const entry = { host: svc.referer?.address ?? '127.0.0.1', port: svc.port }
+      // Deduplicate
+      if (!results.some((r) => r.host === entry.host && r.port === entry.port)) {
+        results.push(entry)
+      }
     })
 
     browser.start()
   })
 }
 
-/**
- * Read the first PORT= line from a spawned process stdout.
- */
+/** Read the first PORT= line from a spawned process stdout. */
 export function readPortFromOutput(output: string, defaultPort: number): number {
   const m = output.match(/^PORT=(\d+)/m)
   return m ? parseInt(m[1], 10) : defaultPort

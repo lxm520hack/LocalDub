@@ -94,8 +94,8 @@ export const connectToVoxCPMTorchGradioServer = async ({baseUrl, device='cpu'}:{
   } else if (res.status === 'stopped') {
     // Spawn Gradio server and wait for URL
     const ret = await startVoxCPMTorchGradioServer({ port, device, waitForReady: true });
-    			// Load model via dedicated endpoint
-			await loadVoxCPMTorchGradioModel(ret.url, device);
+    // Load model via dedicated endpoint
+		await loadVoxCPMTorchGradioModel(ret.url, device);
     return ret;
   } else if (res.status === 'error') {}
 }

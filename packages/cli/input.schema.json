@@ -167,7 +167,8 @@
               "enum": [
                 "status",
                 "start",
-                "stop"
+                "stop",
+                "discovery"
               ]
             },
             "name": {
