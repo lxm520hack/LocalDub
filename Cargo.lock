@@ -1617,6 +1617,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "config-rs"
+version = "0.1.0"
+
+[[package]]
 name = "const-random"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2511,6 +2515,7 @@ dependencies = [
  "anyhow",
  "burn",
  "clap",
+ "config-rs",
  "demucs-core",
  "hound",
  "pollster",
@@ -9613,6 +9618,7 @@ dependencies = [
  "anyhow",
  "burn",
  "clap",
+ "config-rs",
  "env_logger",
  "half",
  "hound",

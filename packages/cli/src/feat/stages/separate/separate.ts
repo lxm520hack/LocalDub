@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
+import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import {
 	REPO_ROOT,
 	readInputArgs,
@@ -174,7 +175,7 @@ async function separatePytorch(
 
 	return new Promise<void>((resolve, reject) => {
 		const proc = spawn(pyBin, pythonArgs, {
-			env: { ...process.env, TORCHAUDIO_USE_BACKEND: 'soundfile' } as Record<string, string>,
+			env: { ...process.env, TORCHAUDIO_USE_BACKEND: 'soundfile', TORCH_HOME: join(DEMUCS_MODEL_DIR, 'pytorch_hub') } as Record<string, string>,
 		});
 
 		let stderr = '';

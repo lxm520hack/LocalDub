@@ -57,11 +57,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let model_dir = if cli.model_dir.is_empty() {
-        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap()
-            .parent().unwrap()
-            .to_path_buf();
-        repo_root.join("data/models/voxcpm2")
+        config_rs::path::models::voxcpm_model_dir()
     } else {
         PathBuf::from(&cli.model_dir)
     };

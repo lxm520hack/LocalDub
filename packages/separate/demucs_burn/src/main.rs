@@ -94,7 +94,7 @@ fn run() -> Result<()> {
     let info = resolve_model_info(&cli.model)?;
     let opts = model_options(info);
 
-    let provider = FsProvider::new().context("Failed to initialize model cache")?;
+    let provider = FsProvider::with_dir(config_rs::path::models::demucs_model_dir());
     let bytes = if provider.is_cached(info) {
         eprintln!("Loading cached model: {}", info.id);
         provider.load_cached(info).context("Failed to load cached model")?
