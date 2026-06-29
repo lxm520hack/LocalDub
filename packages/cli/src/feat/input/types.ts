@@ -34,7 +34,6 @@ export type Device = (typeof deviceList)[number];
 export const commandList = [
 	'task',
 	'check',
-	'createTask', // 创建任务(完成后会自动开始任务)
 	'deviceInfo', // 显示设备信息
 	'servers', // 统一状态/启停所有服务器
 	'listModels', // 列出 openai 兼容端点的 可用模型
@@ -98,11 +97,7 @@ const SeparateTaskInputSchema = z.object({
 		device: 'cuda',
 	})
 	.optional()
-	.describe(`separate: demucs 分离人声与背景声, 提示 tts-vc 的质量 
-		input: media/video_source.mp4
-			output: media/target_3_vocals.wav 用于 ASR + TTS reference
-						media/target_bgm.wav  用于 MergeVideo 背景
-	`);
+	.describe(`separate: demucs 分离人声与背景声, 提升 tts-vc 的质量`);
 export type SeparateConfig = z.infer<typeof SeparateTaskInputSchema>;
 
 const ASRTaskInputSchema = z

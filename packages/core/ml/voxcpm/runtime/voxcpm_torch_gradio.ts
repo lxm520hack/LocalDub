@@ -1,5 +1,5 @@
 import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
-import { pythonBin, VOXCPM_DIR } from "@repo/config";
+import { pythonBin } from "@repo/config";
 import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config';
 import type { ModelServerStatus } from '@repo/core/servers/type';
@@ -33,7 +33,7 @@ async function waitForHealth(port: number, timeoutMs = 120_000): Promise<void> {
 export const startVoxCPMTorchGradioServer = async ({
   port: hintPort,
   device = 'cpu',
-  modelDir = VOXCPM_DIR,
+  modelDir,
   healthPolling = false
 }: {
   port?: number;
@@ -55,7 +55,9 @@ export const startVoxCPMTorchGradioServer = async ({
   }
 
   // 2) Spawn
-  const proc = spawn(pythonBin(), [VOXCPM_TORCH_GRADIO_MAIN, '--port', String(hint), '--device', device, '--model-dir', modelDir], {
+  const args = [VOXCPM_TORCH_GRADIO_MAIN, '--port', String(hint), '--device', device]
+  if (modelDir) args.push('--model-dir', modelDir)
+  const proc = spawn(pythonBin(), args, {
     env: { ...process.env as Record<string, string> },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
