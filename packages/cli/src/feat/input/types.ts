@@ -505,7 +505,7 @@ const TaskSchema = z.looseObject({
 		7. deviceInfo: 显示设备信息
 		8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)
 		9. listModels: 列出 openai 兼容端点的 可用模型
-		10. envcheck: 环境检查/修复 (check=诊断, ensure=尝试修复)
+		10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)
 		`),
 	task: z.looseObject({
 		action: z.enum(['start', 'resume', 'rerunStage', 'status']).optional().describe('任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态'),
