@@ -10,15 +10,13 @@ let _voxcpmPort = 19112
 let _proc: ChildProcess | null = null
 let _voxcpm_proc: ChildProcess | null = null
 
-type TorchStatus = ModelServerStatus
-
-async function fetchHealth(port: number): Promise<TorchStatus> {
+async function fetchHealth(port: number): Promise<ModelServerStatus> {
 	try {
 		const res = await fetch(`http://127.0.0.1:${port}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
 		if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: {} }
-		const data = await res.json() as TorchStatus
+		const data = await res.json() as ModelServerStatus
 		return { ...data, status: data.status === 'running' ? 'running' : 'error' }
 	} catch {
 		return { status: 'stopped', port, uptime_s: 0, models: {} }
@@ -36,7 +34,7 @@ async function ping(port: number): Promise<boolean> {
 	}
 }
 
-export const startTorch = createServerFn().handler(async (): Promise<TorchStatus> => {
+export const startTorch = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	const { port } = await findServer('torch', 19109)
 	_torchPort = port
 	if (await ping(port)) return fetchHealth(port)
@@ -71,7 +69,6 @@ export const startTorch = createServerFn().handler(async (): Promise<TorchStatus
 	while (Date.now() < deadline) {
 		await new Promise((r) => setTimeout(r, 200))
 		if (await ping(_torchPort)) return fetchHealth(_torchPort)
-		// Try to read port from buffered stdout
 		const p = readPortFromOutput(stdout, _torchPort)
 		if (p !== _torchPort) {
 			_torchPort = p
@@ -81,7 +78,7 @@ export const startTorch = createServerFn().handler(async (): Promise<TorchStatus
 	throw new Error('TorchServer startup timeout after 60000ms')
 })
 
-export const stopTorch = createServerFn().handler(async (): Promise<TorchStatus> => {
+export const stopTorch = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	try {
 		await fetch(`http://127.0.0.1:${_torchPort}/api/shutdown`, { method: 'POST' })
 	} catch {
@@ -95,7 +92,7 @@ export const stopTorch = createServerFn().handler(async (): Promise<TorchStatus>
 	return { status: 'stopped', port: _torchPort, uptime_s: 0, models: {} }
 })
 
-export const restartTorch = createServerFn().handler(async (): Promise<TorchStatus> => {
+export const restartTorch = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	try {
 		await fetch(`http://127.0.0.1:${_torchPort}/api/shutdown`, { method: 'POST' })
 	} catch { /* ok */ }
@@ -110,7 +107,7 @@ export const restartTorch = createServerFn().handler(async (): Promise<TorchStat
 	return startTorch()
 })
 
-export const checkTorch = createServerFn().handler(async (): Promise<TorchStatus> => {
+export const checkTorch = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	const { port } = await findServer('torch', _torchPort)
 	_torchPort = port
 	return fetchHealth(port)
@@ -118,29 +115,15 @@ export const checkTorch = createServerFn().handler(async (): Promise<TorchStatus
 
 // VoxCPM server management
 
-interface VoxCpmStatus {
-	running: boolean
-	model_loaded: boolean
-	model_status: string
-	model_device: string
-}
-
-async function fetchVoxCpmHealth(port: number): Promise<VoxCpmStatus> {
+async function fetchVoxCpmHealth(port: number): Promise<ModelServerStatus> {
 	try {
 		const res = await fetch(`http://127.0.0.1:${port}/status`, {
 			signal: AbortSignal.timeout(2000),
 		})
-		if (!res.ok) return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
-		const data = await res.json() as ModelServerStatus
-		const vox = data.models ? Object.values(data.models)[0] : undefined
-		return {
-			running: data.status === 'running',
-			model_loaded: vox?.status === 'ready',
-			model_status: vox?.status ?? 'unknown',
-			model_device: vox?.device ?? '',
-		}
+		if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'unloaded', device: '' } } }
+		return await res.json() as ModelServerStatus
 	} catch {
-		return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
+		return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'unloaded', device: '' } } }
 	}
 }
 
@@ -151,7 +134,17 @@ async function pingVoxCpm(port: number): Promise<boolean> {
 	} catch { return false }
 }
 
-export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
+async function waitForVoxCpm(port: number, timeoutMs = 120_000): Promise<ModelServerStatus> {
+	const deadline = Date.now() + timeoutMs
+	while (Date.now() < deadline) {
+		await new Promise((r) => setTimeout(r, 200))
+		const status = await fetchVoxCpmHealth(port)
+		if (status.status === 'running') return status
+	}
+	return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'error', device: '' } } }
+}
+
+export const startVoxCpm = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	const { port } = await findServer('voxcpm_torch_gradio', 19112)
 	_voxcpmPort = port
 	if (await pingVoxCpm(port)) return fetchVoxCpmHealth(port)
@@ -163,7 +156,6 @@ export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStat
 		detached: true, stdio: ['ignore', 'pipe', 'pipe'],
 	})
 
-	// Read PORT=N from stdout
 	let stdout = ''
 	proc.stdout?.on('data', (d: Buffer) => {
 		stdout += d.toString()
@@ -179,25 +171,25 @@ export const startVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStat
 		const p = readPortFromOutput(stdout, _voxcpmPort)
 		if (p !== _voxcpmPort) _voxcpmPort = p
 	}
-	return { running: false, model_loaded: false, model_status: 'timeout', model_device: '' }
+	return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'error', device: '' } } }
 })
 
-export const checkVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
+export const checkVoxCpm = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
 	_voxcpmPort = port
 	return fetchVoxCpmHealth(port)
 })
 
-export const stopVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
+export const stopVoxCpm = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	if (_voxcpm_proc) {
 		_voxcpm_proc.stdout?.destroy()
 		_voxcpm_proc.stderr?.destroy()
 		_voxcpm_proc = null
 	}
-	return { running: false, model_loaded: false, model_status: 'stopped', model_device: '' }
+	return { status: 'stopped', port: _voxcpmPort, uptime_s: 0, models: { voxcpm: { status: 'unloaded', device: '' } } }
 })
 
-export const restartVoxCpm = createServerFn().handler(async (): Promise<VoxCpmStatus> => {
+export const restartVoxCpm = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	await stopVoxCpm()
 	await new Promise((r) => setTimeout(r, 1500))
 	return startVoxCpm()

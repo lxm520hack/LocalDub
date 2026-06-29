@@ -3,24 +3,15 @@ import type { ModelServerStatus, ModelStatus } from '@repo/core/servers/type';
 import type { DeviceInfo } from '@repo/device';
 export type { DeviceInfo, ModelServerStatus, ModelStatus };
 
-export type TorchStatus = ModelServerStatus;
-
-export interface VoxCpmStatus {
-  running: boolean;
-  model_loaded: boolean;
-  model_status: string;
-  model_device: string;
-}
-
 export interface ServersManagerApi {
-  startTorch: () => Promise<TorchStatus>;
-  stopTorch: () => Promise<TorchStatus>;
-  restartTorch: () => Promise<TorchStatus>;
-  checkTorch: () => Promise<TorchStatus>;
-  startVoxCpm: () => Promise<VoxCpmStatus>;
-  stopVoxCpm: () => Promise<VoxCpmStatus>;
-  restartVoxCpm: () => Promise<VoxCpmStatus>;
-  checkVoxCpm: () => Promise<VoxCpmStatus>;
+  startTorch: () => Promise<ModelServerStatus>;
+  stopTorch: () => Promise<ModelServerStatus>;
+  restartTorch: () => Promise<ModelServerStatus>;
+  checkTorch: () => Promise<ModelServerStatus>;
+  startVoxCpm: () => Promise<ModelServerStatus>;
+  stopVoxCpm: () => Promise<ModelServerStatus>;
+  restartVoxCpm: () => Promise<ModelServerStatus>;
+  checkVoxCpm: () => Promise<ModelServerStatus>;
 }
 
 export interface ClientApi {

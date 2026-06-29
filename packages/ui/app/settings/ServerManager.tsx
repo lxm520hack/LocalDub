@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/solid-query';
 import { Button } from '@repo/ui-solid/base/button';
 import { CardX } from '@repo/ui-solid/custom/card';
 import { toastError } from '@repo/ui-solid/custom/toast';
-import { useClientApi, type TorchStatus, type ModelStatus } from '../api/context';
+import { useClientApi, type ModelServerStatus } from '../api/context';
 
 function fmtUptime(s: number): string {
   if (!s) return '0s';
@@ -17,6 +17,7 @@ function ServerCard(props: {
   name: string;
   running: boolean;
   uptimeS: number;
+  port: number;
   models: Record<string, { status: string; device: string }>;
   busy: boolean;
   onStart: () => void;
@@ -39,6 +40,12 @@ function ServerCard(props: {
               : 'stopped'}
         </span>
       </div>
+
+      {props.running ? (
+        <div class="text-xs text-gray-400">
+          http://127.0.0.1:{props.port}
+        </div>
+      ) : null}
 
       <div class="flex gap-2">
         <Button
@@ -81,30 +88,23 @@ function ServerCard(props: {
 }
 
 export function ServerManager() {
-  const [torchHealth, setTorchHealth] = createSignal<TorchStatus | null>(null);
-  const [voxcpmHealth, setVoxCpmHealth] = createSignal<VoxCpmHealth | null>(null);
+  const [torchHealth, setTorchHealth] = createSignal<ModelServerStatus | null>(null);
+  const [voxcpmHealth, setVoxCpmHealth] = createSignal<ModelServerStatus | null>(null);
   const api = useClientApi().serversManagerApi;
   if (!api) return null;
 
   onMount(() => {
     const iv = setInterval(async () => {
-      try {
-        const status = await api.checkTorch();
-        setTorchHealth(status);
-      } catch { setTorchHealth(null); }
+      try { setTorchHealth(await api.checkTorch()); }
+      catch { setTorchHealth(null); }
     }, 3000);
     onCleanup(() => clearInterval(iv));
   });
 
   onMount(() => {
     const iv = setInterval(async () => {
-      try {
-        const status = await api.checkVoxCpm();
-        setVoxCpmHealth({
-          status: status.running ? 'running' : 'stopped',
-          models: { voxcpm: { status: status.model_status, device: status.model_device } },
-        });
-      } catch { setVoxCpmHealth(null); }
+      try { setVoxCpmHealth(await api.checkVoxCpm()); }
+      catch { setVoxCpmHealth(null); }
     }, 3000);
     onCleanup(() => clearInterval(iv));
   });
@@ -135,6 +135,7 @@ export function ServerManager() {
         name="Torch Server"
         running={torchHealth()?.status === 'running'}
         uptimeS={torchHealth()?.uptime_s ?? 0}
+        port={torchHealth()?.port ?? 19109}
         models={torchModels()}
         busy={startTorch.isPending || stopTorch.isPending || restartTorch.isPending}
         onStart={() => startTorch.mutate()}
@@ -143,8 +144,9 @@ export function ServerManager() {
       />
       <ServerCard
         name="VoxCPM Server"
-        running={voxcpmHealth() !== null}
-        uptimeS={0}
+        running={voxcpmHealth()?.status === 'running'}
+        uptimeS={voxcpmHealth()?.uptime_s ?? 0}
+        port={voxcpmHealth()?.port ?? 19112}
         models={vcModels()}
         busy={startVox.isPending || stopVox.isPending || restartVox.isPending}
         onStart={() => startVox.mutate()}
@@ -153,9 +155,4 @@ export function ServerManager() {
       />
     </div>
   );
-}
-
-interface VoxCpmHealth {
-  status: string;
-  models: Record<string, { status: string; device: string }>;
 }
