@@ -1,7 +1,7 @@
 # LocalDub
 
 - 测试/实验/探索一律不用 `/tmp`，写到 `packages/tmp/`。
-- 类型检查: tsgo
+- 类型检查: bun typecheck
 
 ## Key directories
 

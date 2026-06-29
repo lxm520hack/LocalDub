@@ -5,9 +5,7 @@ import { AppSidebar, ClientApiProvider } from '@repo/ui';
 import { ModalRenderer } from '@repo/ui-solid/custom/modal/renderer';
 import { Toaster } from '@repo/ui-solid/base/sonner';
 import type { JSX } from 'solid-js';
-import {
-	getLocale,
-} from '@repo/shared/i18n/paraglide/runtime.js';
+import { getLocale } from '@repo/shared/i18n/paraglide/runtime';
 import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Devtools } from '@repo/ui-solid/app/devtools';

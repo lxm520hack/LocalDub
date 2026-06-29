@@ -14,7 +14,7 @@
             "listModels",
             "env"
           ],
-          "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. envcheck: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
+          "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
         },
         "task": {
           "type": "object",
@@ -171,7 +171,39 @@
               "default": [],
               "type": "array",
               "items": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "bun",
+                  "python",
+                  "uv",
+                  "ffmpeg",
+                  "cargo",
+                  "vcpkg",
+                  "vulkan",
+                  "rocm",
+                  "cuda",
+                  "whisper_ggml",
+                  "whisper_vad",
+                  "whisper_sherpa",
+                  "whisper_onnx",
+                  "demucs_pth",
+                  "demucs_onnx",
+                  "demucs_ggml",
+                  "voxcpm2_onnx",
+                  "voxcpm2_pth",
+                  "submodule_whisper_cpp",
+                  "submodule_demucs_cpp",
+                  "submodule_demucs_rs",
+                  "submodule_voxcpm_rs",
+                  "whisper_bin",
+                  "demucs_ggml_bin",
+                  "voxcpm_burn_bin",
+                  "demucs_burn_bin",
+                  "ocr_cpp_bin",
+                  "cmake",
+                  "git",
+                  "dotenv"
+                ]
               }
             }
           },
