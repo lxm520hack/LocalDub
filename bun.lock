@@ -94,6 +94,11 @@
     },
     "packages/core": {
       "name": "@repo/core",
+      "dependencies": {
+        "@repo/shared": "workspace:*",
+        "@repo/voxlab": "workspace:*",
+        "zod": "^4.4.3",
+      },
     },
     "packages/device": {
       "name": "@repo/device",

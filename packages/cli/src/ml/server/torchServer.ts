@@ -1,4 +1,4 @@
-import type { ModelServerStatus } from "./type";
+import type { ModelServerStatus } from '@repo/core/servers/type';
 
 export async function torchStatus(port: number): Promise<ModelServerStatus> {
 	try {

@@ -3,12 +3,12 @@ import { readJson, writeFile, ensureDir, writeFileSync } from './utils/fileOps.t
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { writeWav } from '@repo/voxlab';
-import { newVoxCPMEngine,  } from '../../ml/voxcpm/voxcpm.ts';
 
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath } from './utils/utils.ts';
 import { TranslateFile } from './translate.ts';
 import { Context, setStage, setTask } from '../context/context.ts';
 import { startLog } from './utils/log.ts';
+import { newVoxCPMEngine } from '@repo/core/ml/voxcpm/voxcpm';
 
 // ---------------------------------------------------------------------------
 // Progress bar

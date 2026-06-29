@@ -1,10 +1,12 @@
-import { pythonBin } from "@repo/config";
+import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
+import { pythonBin, VOXCPM_DIR } from "@repo/config";
 import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config';
-import type { ModelServerStatus } from "../../server/type";
+import type { ModelServerStatus } from '@repo/core/servers/type';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { fetchStatsData } from "../../server/client";
 import { to } from "@repo/shared/lib/utils/try";
+import { fetchStatsData } from '@repo/core/servers/client';
+import { TTSInput } from '@repo/core/input/tts';
 
 
 
@@ -21,7 +23,7 @@ export const voxcpmTorchGradioStatus = async ({
 export const startVoxCPMTorchGradioServer = async ({
   port,
   device = 'cpu',
-  modelDir = join(REPO_ROOT, 'data', 'modelscope', 'OpenBMB__VoxCPM2'),
+  modelDir = VOXCPM_DIR,
   waitForReady = false,
 }: {
   port: number;
@@ -96,4 +98,28 @@ export const connectToVoxCPMTorchGradioServer = async ({baseUrl, device='cpu'}:{
 			await loadVoxCPMTorchGradioModel(ret.url, device);
     return ret;
   } else if (res.status === 'error') {}
+}
+
+export const newVoxCPMPyTorchGradio = (cfg: TTSInput): TTSBackend => {
+	let cloud: VoxCPMCloud | null = null;
+	let device = cfg && 'device' in cfg ? (cfg.device as string) : 'cpu';
+	let port = 19112;
+	return {
+		name: 'voxcpm_torch_gradio',
+		async load(): Promise<void> {
+			console.log(`[VoxCPM] connecting to Gradio server on port ${port}...`);
+
+		const ret = await	connectToVoxCPMTorchGradioServer({ baseUrl: `http://127.0.0.1:${port}`, device });
+
+			cloud = new VoxCPMCloud({ apiUrl: ret?.url });
+			await cloud.load();
+		},
+		async generate(options: Parameters<TTSBackend['generate']>[0]): ReturnType<TTSBackend['generate']> {
+			if (!cloud) throw new Error('VoxCPMGradio not loaded');
+			return cloud.generate(options);
+		},
+		async dispose(): Promise<void> {
+			await cloud?.dispose();
+		}
+	}
 }

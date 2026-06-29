@@ -33,7 +33,7 @@ const MDNS_TIMEOUT = 3000
  * @param defaultHost  Host to check for fallback
  */
 export async function findServer(
-  type: string,
+  type: 'voxcpm_torch_gradio' | 'torch',
   defaultPort = type === 'torch' ? 19109 : 19112,
   defaultHost = '127.0.0.1',
 ): Promise<ServerInfo> {

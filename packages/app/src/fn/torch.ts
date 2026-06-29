@@ -130,7 +130,7 @@ async function waitForVoxCpm(port: number, timeoutMs = 120_000): Promise<VoxCpmS
 }
 
 export async function startVoxCpm(): Promise<VoxCpmStatus> {
-	const { port } = await findServer('voxcpm', 19112)
+	const { port } = await findServer('voxcpm_torch_gradio', 19112)
 	_voxcpmPort = port
 	if (await pingVoxCpm(port)) return fetchVoxCpmHealth(port)
 
@@ -139,7 +139,7 @@ export async function startVoxCpm(): Promise<VoxCpmStatus> {
 }
 
 export async function checkVoxCpm(): Promise<VoxCpmStatus> {
-	const { port } = await findServer('voxcpm', _voxcpmPort)
+	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
 	_voxcpmPort = port
 	return fetchVoxCpmHealth(port)
 }

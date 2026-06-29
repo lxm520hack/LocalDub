@@ -29,10 +29,6 @@ export async function stageOcr(ctx: Context) {
 	const runtime = (ocrCfg?.runtime ?? 'ort-cpp') as OCRRuntime;
 	const device = (ocrCfg?.device ?? 'cpu') as 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
 	const cleanupFrames = ocrCfg?.cleanupFrames ?? false;
-	const isoThresholdMs = ocrCfg?.isoThresholdMs ?? 1500;
-	const adjustYWeight = ocrCfg?.adjustYWeight ?? 0.8;
-	const adjustIsoWeight = ocrCfg?.adjustIsoWeight ?? 0.2;
-	const adjustYFactor = ocrCfg?.adjustYFactor ?? 0.08;
 
 	// 1. Extract frames
 	const frameDir = join(sessionPath, "ocr", "frames");
@@ -95,14 +91,13 @@ export async function stageOcr(ctx: Context) {
 	await engine.release();
 
 	// 3. Merge into segments
-	const segments = mergeFrames(frameResults);
+	const {segments, text} = mergeFrames(frameResults);
 	emitLog(
 		sessionPath,
 		`[OCR] ${frameFiles.length} frames → ${segments.length} segments`,
 	);
 
 	// 4. Build output text
-	const text = segments.map((s) => s.text).join(" ");
 	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : 0;
 
 	// 5. Probe video duration
@@ -126,7 +121,12 @@ export async function stageOcr(ctx: Context) {
 	const ocrDir = join(sessionPath, "ocr");
 	ensureDir(ocrDir, ctx);
 	const yStats = computeBoxYStats(frameResults);
-	const adjustedSegments = computeSegmentAdjustments(segments, frameResults, yStats, videoHeight, isoThresholdMs, adjustYWeight, adjustIsoWeight, adjustYFactor);
+	const adjustedSegments = computeSegmentAdjustments(segments, frameResults, yStats, videoHeight, {
+		adjustIsoWeight: ocrCfg?.adjustIsoWeight,
+		adjustYWeight: ocrCfg?.adjustYWeight,
+		adjustYFactor: ocrCfg?.adjustYFactor,
+		isoThresholdMs: ocrCfg?.isoThresholdMs,
+	});
 	const segmentsOut = adjustedSegments.map((s) => ({ text: s.text, start: s.start, end: s.end, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end), confidence: s.confidence, ...(s.box_y ? { box_y: s.box_y } : {}), ...(s.frameCount !== undefined ? { frameCount: s.frameCount } : {}), ...(s.adjustedConfidence !== undefined ? { adjustedConfidence: s.adjustedConfidence } : {}), ...(s.yPenalty !== undefined ? { yPenalty: s.yPenalty } : {}), ...(s.isoPenalty !== undefined ? { isoPenalty: s.isoPenalty } : {}) }));
 	writeJson(
 		join(ocrDir, "ocr.json"),

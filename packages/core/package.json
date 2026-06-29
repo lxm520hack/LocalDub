@@ -7,5 +7,10 @@
   "exports": {
     "./*": "./*.ts",
     "./*.ts": "./*.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3",
+    "@repo/voxlab": "workspace:*",
+    "@repo/shared": "workspace:*"
   }
 }
