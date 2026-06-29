@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 export const RESULTS_DIR = join(__dirname, 'results');
-export const VIDEO_PATH = resolve(__dirname, '..', '..', '..', '..', 'packages', 'benchmark', 'video_source.mp4');
+export const VIDEO_PATH = resolve(__dirname, '..', '..', '..', '..', 'packages', 'benchmark', 'ref', 'media', 'video_source.mp4');
 export const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 
 const isWin = process.platform === 'win32';
