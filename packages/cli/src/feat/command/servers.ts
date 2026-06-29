@@ -12,15 +12,15 @@ export const cmdServers = async (input: InputArgs) => {
   const name = input.servers?.name;
 
   if (action === 'stop') {
+    const { port } = await findServer(name);
     if (!name || name === 'torch') {
-      const { port } = await findServer('torch');
       await stopTorchServer(`http://127.0.0.1:${port}`);
       console.log(`[Servers] Torch server (port ${port}) stopped`);
     }
     if (!name || name === 'voxcpm_torch_gradio') {
-      const { port } = await findServer('voxcpm_torch_gradio');
       await stopVoxCPMTorchGradioServer({ port });
     }
+    console.log(`[Servers] (port: ${port}) stopped`);
   } else if (action === 'start') {
     if (!name || name === 'torch') {
       const url = await startTorchServer();

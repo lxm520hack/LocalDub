@@ -1,4 +1,4 @@
-export const serverTypeList = ['torch', 'voxcpm_torch_gradio'] as const;
+export const serverTypeList = [ 'voxcpm_torch_gradio', 'torch',] as const;
 export type ServerType = (typeof serverTypeList)[number];
 
 export type ModelStatus = {

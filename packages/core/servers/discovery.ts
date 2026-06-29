@@ -55,7 +55,7 @@ export async function findServers(
  * Discover a single LocalDub server by mDNS, falling back to default port.
  */
 export async function findServer(
-  type: ServerType,
+  type: ServerType = 'voxcpm_torch_gradio',
   defaultPort = type === 'torch' ? 19109 : 19112,
   defaultHost = '127.0.0.1',
 ): Promise<ServerInfo> {
