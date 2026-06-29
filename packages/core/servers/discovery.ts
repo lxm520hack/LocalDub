@@ -17,14 +17,15 @@ export interface ServerInfo {
   foundVia: 'mdns' | 'default' | 'portfile'
 }
 
-const SERVICE_MAP: Record<string, string> = {
-  torch: '_localdub-torch._tcp',
+const SERVICE_MAP = {
   voxcpm_torch_gradio: '_localdub-voxcpm._tcp',
+  torch: '_localdub-torch._tcp',
 }
 
 /** Timeout for mDNS browse (ms). */
 const MDNS_TIMEOUT = 3000
 
+export type ServerType = keyof typeof SERVICE_MAP
 /**
  * Discover a LocalDub server by mDNS, falling back to default port.
  *
@@ -33,7 +34,7 @@ const MDNS_TIMEOUT = 3000
  * @param defaultHost  Host to check for fallback
  */
 export async function findServer(
-  type: 'voxcpm_torch_gradio' | 'torch',
+  type: ServerType,
   defaultPort = type === 'torch' ? 19109 : 19112,
   defaultHost = '127.0.0.1',
 ): Promise<ServerInfo> {
@@ -50,7 +51,7 @@ export async function findServer(
 }
 
 async function findServerViaMdns(
-  type: string,
+  type: ServerType,
   timeoutMs: number,
 ): Promise<{ host: string; port: number } | null> {
   const serviceType = SERVICE_MAP[type]
