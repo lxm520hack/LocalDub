@@ -85,9 +85,9 @@ switch (cmd) {
 		await cmdTask(input);
 		break
 	}
-	case 'envcheck': {
-		const envArgs = input.envcheck ?? { action: 'check', targets: [] };
-		const { runCheck, runEnsure } = await import('@repo/core/cmd/envcheck/index');
+	case 'env': {
+		const envArgs = input.env ?? { action: 'check', targets: [] };
+		const { runCheck, runEnsure } = await import('@repo/core/cmd/env/index');
 		const results = envArgs.action === 'ensure'
 			? await runEnsure(envArgs.targets)
 			: await runCheck(envArgs.targets);

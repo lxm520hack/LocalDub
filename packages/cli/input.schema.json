@@ -12,7 +12,7 @@
             "deviceInfo",
             "servers",
             "listModels",
-            "envcheck"
+            "env"
           ],
           "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. envcheck: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
         },
@@ -156,7 +156,7 @@
           },
           "additionalProperties": {}
         },
-        "envcheck": {
+        "env": {
           "type": "object",
           "properties": {
             "action": {

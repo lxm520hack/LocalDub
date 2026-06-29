@@ -1,6 +1,6 @@
 import { TTSTaskInputSchema } from '@repo/core/input/tts';
 import { ServersArgsSchema } from '@repo/core/servers/input';
-import { EnvArgsSchema } from '@repo/core/cmd/envcheck/input';
+import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
 
 const targetLangList = [
@@ -38,7 +38,7 @@ export const commandList = [
 	'deviceInfo',
 	'servers',
 	'listModels',
-	'envcheck',
+	'env',
 ] as const;
 export type Command = (typeof commandList)[number];
 // 各 command 的参数
@@ -523,7 +523,7 @@ const TaskSchema = z.looseObject({
 		})
 		.optional(),
 	servers: ServersArgsSchema,
-	envcheck: EnvArgsSchema.optional(),
+	env: EnvArgsSchema.optional(),
 });
 
 export const TaskInputSchema = TaskSchema.and(BaseTaskInputSchema);
