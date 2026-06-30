@@ -1,11 +1,6 @@
 import { readInputArgs } from '../input/input.ts';
 import { StageName } from '../input/types.ts';
 
-export interface StageSpec {
-	name: string;
-	label: string;
-}
-
 export const DUB_STAGES: StageName[] = [
 	'separate',
 	'separate_after',
@@ -64,14 +59,14 @@ function withAsrOcrStages(stages: StageName[], _pipeline?: string): StageName[] 
 export function getStages(pipeline?: string): StageName[] {
 	let stages = pipeline === 'subtitle' ? SUBTITLE_STAGES : DUB_STAGES;
 	try {
-		const cfg = readInputArgs();
-		const src = cfg.subtitleSource ?? 'asr';
+		const args = readInputArgs();
+		const src = args.subtitleSource ?? 'asr';
 		if (src === 'ocr') stages = withOcrStages(stages, pipeline);
 		else if (src === 'asr_ocr') stages = withAsrOcrStages(stages, pipeline);
-		if (cfg.stages?.translate?.enabled === false) {
+		if (args.stages?.translate?.enabled === false) {
 			stages = stages.filter(s => s !== 'translate');
 		}
-		if (pipeline === 'subtitle' && cfg.stages?.split_audio?.vadAlign !== true) {
+		if (pipeline === 'subtitle' && args.stages?.split_audio?.vadAlign !== true) {
 			stages = stages.filter(s => s !== 'split_audio');
 		}
 	} catch {
@@ -80,9 +75,3 @@ export function getStages(pipeline?: string): StageName[] {
 	return stages;
 }
 
-/** @deprecated Use DUB_STAGES or getStages(pipeline) */
-export const STAGES = DUB_STAGES;
-
-export const DUB_STAGE_NAMES = DUB_STAGES.map((s) => s);
-export const SUBTITLE_STAGE_NAMES = SUBTITLE_STAGES.map((s) => s);
-export const STAGE_NAMES = DUB_STAGE_NAMES;
