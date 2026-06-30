@@ -18,7 +18,6 @@ import { readCtx, readTask, setCtx } from './src/feat/context/context.ts';
 import { cmdStartTask } from './src/feat/command/tasks/startTask.ts';
 import { cmdServers } from './src/feat/command/servers.ts';
 import { cmdResumeTask } from './src/feat/command/tasks/resumeTask.ts';
-import { cmdRerunStage } from './src/feat/command/tasks/rerunStage.ts';
 import { cmdTaskStatus } from './src/feat/command/tasks/taskStatus.ts';
 import { cmdTask } from './src/feat/command/tasks/task.ts';
 

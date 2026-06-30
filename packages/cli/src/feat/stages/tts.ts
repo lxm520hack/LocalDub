@@ -36,10 +36,6 @@ function renderProgress(current: number, total: number, start: number) {
 	process.stdout.write(`\r${pct}%|${bar}| ${current}/${total} [${fmt(elapsed)}<${fmt(eta)}, ${rate.toFixed(2)}it/s]`);
 }
 
-// ---------------------------------------------------------------------------
-// Main stage
-// ---------------------------------------------------------------------------
-
 export async function stageTts(
 	ctx: Context,
 ) {
@@ -89,19 +85,21 @@ export async function stageTts(
 			break;
 		}
 	}
-
+	const isStart = ctx.input?.task.action === 'start';
+	const onlyIndices = isStart ? undefined : ttsCfg.onlyIndices 
 	for (let i = 0; i < total; i++) {
 		const item = translation[i];
 		const idx = String(i + 1).padStart(4, '0');
 		const outPath = resolve(ttsWavDir, `${idx}.wav`);
 
 		// onlyIndices: 只处理指定索引，同时删除旧文件强制重新生成
-		if (ttsCfg.onlyIndices?.length) {
-			if (!ttsCfg.onlyIndices.includes(i + 1)) {
+		if (onlyIndices?.length) {
+			if (!onlyIndices.includes(i + 1)) {
 				skipped += 1;
 				renderProgress(i + 1, total, tqdmStart);
 				continue;
 			}
+			// 在列表里 删除指定 {idx}.wav 文件
 			if (existsSync(outPath)) {
 				spawnSync('rm', ['-f', outPath]);
 			}
