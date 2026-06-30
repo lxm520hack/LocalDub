@@ -50,12 +50,12 @@ export async function stageTts(
 	const ttsCfg = ctx.input?.stages?.tts!;
 	const timingsFile = timingsFilePath(sessionPath);
 	const vocalsDir = join(sessionPath, 'split_audio', 'vocals');
-	const ttsDir = join(sessionPath, 'tts', 'wavs');
-	const doubledDir = resolve(ttsDir, '..', 'ref_doubled');
+	const ttsWavDir = join(sessionPath, 'tts', 'wavs');
+	const doubledDir = join(sessionPath, 'tts', 'ref_doubled');
 
 	if (!existsSync(timingsFile))
 		throw new Error(`${timingsFile} not found`);
-	ensureDir(ttsDir, ctx);
+	ensureDir(ttsWavDir, ctx);
 	ensureDir(doubledDir, ctx);
 
 	const data: TranslateFile = await readJson(timingsFile, ctx);
@@ -63,7 +63,7 @@ export async function stageTts(
 	const total = translation.length;
 
 	if (!ttsCfg.skipExisting) {
-		const anyTts = readdirSync(ttsDir).find((f) => f.endsWith('.wav'));
+		const anyTts = readdirSync(ttsWavDir).find((f) => f.endsWith('.wav'));
 		if (anyTts) {
 			emitLog(sessionPath, `[TTS] Existing TTS segments found; will overwrite without deleting files`);
 		}
@@ -95,7 +95,7 @@ export async function stageTts(
 	for (let i = 0; i < total; i++) {
 		const item = translation[i];
 		const idx = String(i + 1).padStart(4, '0');
-		const outPath = resolve(ttsDir, `${idx}.wav`);
+		const outPath = resolve(ttsWavDir, `${idx}.wav`);
 
 		// onlyIndices: 只处理指定索引，同时删除旧文件强制重新生成
 		if (ttsCfg.onlyIndices?.length) {
