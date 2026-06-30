@@ -41,8 +41,8 @@ struct Cli {
     #[arg(short, long, default_value = "htdemucs_ft")]
     model: String,
 
-    /// Wgpu tasks_max (CPU threads for command recording). Default 1 for stability.
-    #[arg(long, default_value = "1")]
+    /// Wgpu tasks_max (CPU threads for command recording). Default 128.
+    #[arg(long, default_value = "128")]
     tasks_max: u32,
 
     /// Run warmup inference to pre-compile GPU shaders.
