@@ -7,7 +7,7 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { env,  WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
+import { env,   } from '@repo/config/env';
 import { sanitizeText } from '../../../tasks/fn.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
 import {
@@ -20,6 +20,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 import { startLog } from '../../../stages/utils/log.ts';
 import { copyFileSync } from '../../../stages/utils/fileOps.ts';
 import { getStages } from '../../../tasks/stages.ts';
+import { YOUTUBE_COOKIE_PATH } from '@repo/config/path/paths';
 
 
 function parseDirAndId(filePath: string): { dir: string; id: string } {

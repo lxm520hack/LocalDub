@@ -1,7 +1,7 @@
 import { readJson, writeJson, ensureDir } from './utils/fileOps.ts';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { env } from '@repo/config';
+import { env } from '@repo/config/env';
 import { readInputArgs, } from '../input/input.ts';
 import {
 	emitLog,

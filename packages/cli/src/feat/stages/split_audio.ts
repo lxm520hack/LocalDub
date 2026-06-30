@@ -3,7 +3,7 @@ import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:f
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, timingsFilePath, videoSourcePath, vocalsPath } from './utils/utils.ts';
-import { env } from '@repo/config';
+import { env } from '@repo/config/env';
 import { Context, setStage } from '../context/context.ts';
 
 function probeDuration(file: string): number {

@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { env } from '@repo/config';
+import { env } from '@repo/config/env';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
 const SHERPA_MODEL_DIR = join(WHISPER_MODEL_DIR, 'sherpa_onnx');

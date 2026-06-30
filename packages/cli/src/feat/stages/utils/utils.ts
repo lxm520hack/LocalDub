@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { env, LOG_DIR, WORKFOLDER } from '@repo/config';
+import { env,} from '@repo/config/env';
 import { getStages } from '../../tasks/stages.ts';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 

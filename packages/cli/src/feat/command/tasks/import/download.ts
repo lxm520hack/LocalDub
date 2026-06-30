@@ -7,7 +7,6 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { env,  WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { sanitizeText } from '../../../tasks/fn.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
 import {
@@ -20,6 +19,7 @@ import { startLog } from '../../../stages/utils/log.ts';
 import { getStages } from '../../../tasks/stages.ts';
 import { InputArgs } from '../../../input/input.ts';
 import { autoProjectIdAndVideoId, copyFileToPath, downloadRemoteVideo, encodeToMp4 } from './utils.ts';
+import { WORKFOLDER } from '@repo/config/path/paths';
 
 
 export const importVideo = async (input: InputArgs) => {
