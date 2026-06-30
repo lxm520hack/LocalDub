@@ -48,6 +48,10 @@ struct Cli {
     /// Run warmup inference to pre-compile GPU shaders.
     #[arg(long)]
     warmup: bool,
+
+    /// Benchmark rounds: run separation N times in one process (default 1).
+    #[arg(long, default_value = "1")]
+    benchmark_rounds: u32,
 }
 
 fn resolve_model_info(model_id: &str) -> Result<&'static ModelInfo> {
@@ -150,21 +154,25 @@ fn run() -> Result<()> {
     let duration_secs = left.len() as f64 / sample_rate as f64;
     eprintln!("  {} samples, {:.1}s, {} Hz, stereo", left.len(), duration_secs, sample_rate);
 
-    eprintln!("Separating...");
-    let sep_start = Instant::now();
-    let stems = pollster::block_on(model.separate_with_listener(
-        &left, &right, sample_rate, &mut BenchListener,
-    ))?;
-    let sep_time = sep_start.elapsed();
-    eprintln!("Generate: {:.3}s", sep_time.as_secs_f64());
-    println!("Benchmark-Gen-Time: {:.3}", sep_time.as_secs_f64());
+    for round in 1..=cli.benchmark_rounds {
+        eprintln!("--- Round {}/{} ---", round, cli.benchmark_rounds);
+        let sep_start = Instant::now();
+        let stems = pollster::block_on(model.separate_with_listener(
+            &left, &right, sample_rate, &mut BenchListener,
+        ))?;
+        let sep_time = sep_start.elapsed();
+        eprintln!("Generate (round {}): {:.3}s", round, sep_time.as_secs_f64());
+        println!("Benchmark-Gen-Time-Round{}: {:.3}", round, sep_time.as_secs_f64());
 
-    std::fs::create_dir_all(&out_dir)?;
-    for (i, stem) in stems.iter().enumerate() {
-        let filename = format!("target_{}_{}.wav", i, stem.id.as_str());
-        let path = out_dir.join(&filename);
-        write_wav(&path, &stem.left, &stem.right, sample_rate)?;
-        eprintln!("  Wrote {}", path.display());
+        if round == cli.benchmark_rounds {
+            std::fs::create_dir_all(&out_dir)?;
+            for (i, stem) in stems.iter().enumerate() {
+                let filename = format!("target_{}_{}.wav", i, stem.id.as_str());
+                let path = out_dir.join(&filename);
+                write_wav(&path, &stem.left, &stem.right, sample_rate)?;
+                eprintln!("  Wrote {}", path.display());
+            }
+        }
     }
 
     println!("(100%)");

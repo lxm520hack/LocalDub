@@ -46,7 +46,10 @@ LIBTORCH_DIR=$LIBTORCH_DIR cargo build --release --bin demucs-burn-tch --no-defa
 - model load: ~1.0s (tch), ~1.2s~1.5s (wgpu)
 - warmup (`--warmup`): ~16s wgpu, pre-compiles CubeCL shaders for all 4 htdemucs_ft models. Reduces first-inference RTF by ~15%.
   Without warmup, shader compilation happens lazily during inference, increasing first-run RTF (short 3.44, medium 2.68).
-  With warmup, inference-only RTF is 2.83 (short) / 2.41 (medium).
+  With warmup, inference-only RTF is **2.63** (short) / **2.41** (medium, with `tasks_max=128`).
+- 多轮 benchmark (`--benchmark-rounds N`): 不重启进程跑 N 次推理，验证 CubeCL JIT 是否存在冷启动之外的残余开销。
+  实测在 warmup 后第二轮与第一轮生成时间差 <0.3%（26.34s vs 26.58s，10s 音频）。
+  **结论：warmup 已全覆盖所有 shader，无残余 JIT。单轮 benchmark 即可反映稳定态性能。**
 - GPU fusion (`--features cubecl-wgpu,fusion`): 实测无改善（RTF 2.40 vs 2.41，在误差范围内）。fusion 对 demucs 的小 kernel 卷积和 transposed conv 无效。已确认在 RADV 780M 上不 crash。
 - CUDA GPU: tch can use CUDA if available (not tested here)
 - Real CPU production path: **tch** (RTF 1.26-1.66) or **ggml** (RTF 1.44-2.91)
