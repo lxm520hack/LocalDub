@@ -64,7 +64,14 @@ LIBTORCH_DIR=$LIBTORCH_DIR cargo build --release --bin demucs-burn-tch --no-defa
 
 ### tasks_max tuning (wgpu only)
 
-`--tasks-max` controls CPU threads for wgpu command recording. Default 128.
+`--tasks-max` controls CPU threads for wgpu command recording. **不影响 tch/libtorch 后端。**
+
+| tasks_max | short (10s) | 提升 |
+|:---------:|:-----------:|:----:|
+|    1      |   34.4s     |  —   |
+|   128     |   **26.3s** | +23% |
+
+默认值已改为 128。之前的 crash 是 autotune 导致，非 tasks_max 本身问题。
 
 ## ONNX (onnxruntime-node)
 
