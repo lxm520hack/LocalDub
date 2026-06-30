@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
-import { FrameResult, mergeFrames } from '../ocr/ocrMerge.ts';
+import { FrameResult } from '../ocr/ocrMerge.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { startLog } from '../utils/log.ts';
@@ -49,9 +49,6 @@ export async function stageAsrOcr(ctx: Context) {
 		}
 	}
 	await engine.release();
-
-	// Merge frames into OCR segments
-	const ocrSegments = mergeFrames(frameResults);
 
 	// probe video duration fallback
 	const probe = spawnSync('ffprobe', [

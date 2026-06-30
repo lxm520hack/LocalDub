@@ -9,9 +9,10 @@
     "./*.ts": "./*.ts"
   },
   "dependencies": {
-    "zod": "^4.4.3",
     "@repo/config": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@repo/voxlab": "workspace:*",
-    "@repo/shared": "workspace:*"
+    "@tanstack/pacer": "^0.21.1",
+    "zod": "^4.4.3"
   }
 }
