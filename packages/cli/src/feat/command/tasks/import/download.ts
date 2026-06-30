@@ -33,7 +33,7 @@ export const importVideo = async (input: InputArgs) => {
 	startLog('import', taskId);
 	const sessionPath = join(WORKFOLDER, projectId, taskId);
 	mkdirSync(sessionPath, { recursive: true });
-	const stages = getStages(input.pipeline);
+	const stages = getStages(input.task.pipeline);
 	const ctx: Context = {
 		task: {
 			id: taskId,
@@ -45,8 +45,8 @@ export const importVideo = async (input: InputArgs) => {
 			title: info.title || taskId,
 		},
 		asr_language: input.task.sourceLang || 'auto',
-		pipeline: input.pipeline || 'dub',
-		lastRunPipeline: input.pipeline || 'dub',
+		pipeline: input.task.pipeline || 'dub',
+		lastRunPipeline: input.task.pipeline || 'dub',
 		input,
 		stages: stages.map((stage) => ({
 			task_id: taskId,

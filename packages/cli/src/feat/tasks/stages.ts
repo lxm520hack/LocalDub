@@ -60,7 +60,7 @@ export function getStages(pipeline?: string): StageName[] {
 	let stages = pipeline === 'subtitle' ? SUBTITLE_STAGES : DUB_STAGES;
 	try {
 		const args = readInputArgs();
-		const src = args.subtitleSource ?? 'asr';
+		const src = args.task.subtitleSource ?? 'asr';
 		if (src === 'ocr') stages = withOcrStages(stages, pipeline);
 		else if (src === 'asr_ocr') stages = withAsrOcrStages(stages, pipeline);
 		if (args.stages?.translate?.enabled === false) {

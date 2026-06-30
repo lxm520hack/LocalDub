@@ -30,7 +30,7 @@ function snapshotConfig(sessionPath: string) {
 	const snap: NonNullable<Context['input']> = {
 		...args,
 		timestamp: new Date().toISOString(),
-		pipeline: args.pipeline ?? 'dub',
+		pipeline: args.task.pipeline ?? 'dub',
 	};
 
 	setCtx(sessionPath, { input: snap });
@@ -44,7 +44,7 @@ export async function runPipeline(ctx: Context) {
 
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);
-	const targetStage = readInputArgs().targetStage;
+	const targetStage = ctx.input?.targetStage;
 	if (targetStage && !stages.find((s) => s === targetStage)) {
 		emitLog(sessionPath, `[WARN] targetStage "${targetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}

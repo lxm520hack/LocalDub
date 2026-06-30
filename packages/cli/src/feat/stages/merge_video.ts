@@ -221,7 +221,7 @@ export async function stageMergeVideo(ctx: Context) {
 	ensureDir(mergeVideoDir, ctx);
 	const tmpDir = join(sessionPath, 'tmp');
 	const srtPath = ctx.input?.stages?.merge_video?.srtPath
-	const subtitleSource = ctx.input?.subtitleSource;
+	const subtitleSource = ctx.input?.task?.subtitleSource;
 	if (!existsSync(video_file_path)) throw new Error('video_source.mp4 not found');
 
 	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
@@ -239,7 +239,7 @@ export async function stageMergeVideo(ctx: Context) {
 	const noTranslate = ctx.input?.stages?.translate?.enabled === false;
 	const finalVideo = join(
 		mergeVideoDir,
-		finalVideoFilename(taskId, pipeline, ctx.input?.subtitleSource ?? 'asr', noTranslate),
+		finalVideoFilename(taskId, pipeline, ctx.input?.task?.subtitleSource ?? 'asr', noTranslate),
 	);
 
 	if (pipeline === 'subtitle') {

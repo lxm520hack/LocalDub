@@ -25,7 +25,7 @@ const input = readInputArgs();
 const cmd = input.command;
 
 if (
-	input.pipeline === 'subtitle' &&
+	input.task.pipeline === 'subtitle' &&
 	input.stages?.separate?.always &&
 	!input.stages?.asr?.useSeparated
 ) {
