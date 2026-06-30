@@ -106,6 +106,45 @@
                 "merge_audio",
                 "merge_video"
               ]
+            },
+            "pipeline": {
+              "description": "任务模式, dub 配音,subtitle 仅字幕",
+              "default": "dub",
+              "type": "string",
+              "enum": [
+                "dub",
+                "subtitle"
+              ]
+            },
+            "subtitleSource": {
+              "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)",
+              "default": "asr",
+              "type": "string",
+              "enum": [
+                "asr",
+                "ocr",
+                "asr_ocr"
+              ]
+            },
+            "targetStage": {
+              "description": "目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤",
+              "type": "string",
+              "enum": [
+                "separate",
+                "separate_after",
+                "asr",
+                "asr_fix",
+                "ocr",
+                "ocr_fix",
+                "asr_ocr_pre",
+                "asr_ocr",
+                "asr_ocr_fix",
+                "translate",
+                "split_audio",
+                "tts",
+                "merge_audio",
+                "merge_video"
+              ]
             }
           },
           "additionalProperties": {}
@@ -219,53 +258,9 @@
     {
       "type": "object",
       "properties": {
-        "pipeline": {
-          "description": "任务模式, dub 配音,subtitle 仅字幕",
-          "default": "dub",
-          "type": "string",
-          "enum": [
-            "dub",
-            "subtitle"
-          ]
-        },
-        "subtitleSource": {
-          "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)",
-          "default": "asr",
-          "type": "string",
-          "enum": [
-            "asr",
-            "ocr",
-            "asr_ocr"
-          ]
-        },
-        "targetStage": {
-          "description": "目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤",
-          "type": "string",
-          "enum": [
-            "separate",
-            "separate_after",
-            "asr",
-            "asr_fix",
-            "ocr",
-            "ocr_fix",
-            "asr_ocr_pre",
-            "asr_ocr",
-            "asr_ocr_fix",
-            "translate",
-            "split_audio",
-            "tts",
-            "merge_audio",
-            "merge_video"
-          ]
-        },
         "stages": {
           "type": "object",
           "properties": {
-            "download": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
-            },
             "separate": {
               "description": "separate: demucs 分离人声与背景声, 提升 tts-vc 的质量",
               "default": {
@@ -818,7 +813,7 @@
               "additionalProperties": {}
             },
             "tts": {
-              "description": "input: 1. metadata/translation.{lang}.json: translation[i].dst\n\t\t2. segments/vocals/{0001..N}.wav\n\t\toutput: segments/tts/{0001..N}.wav",
+              "description": "input: 1. split_audio/timings.json: translation[i].dst",
               "default": {
                 "runtime": "pytorch",
                 "device": "cuda",
@@ -849,7 +844,7 @@
                   ]
                 },
                 "skipExisting": {
-                  "default": false,
+                  "default": true,
                   "type": "boolean"
                 },
                 "onlyIndices": {

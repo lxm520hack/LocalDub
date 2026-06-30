@@ -13,7 +13,7 @@ import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';
 import { whisperCppModelPath } from '@repo/config/path/models';
-import { asrWhisperCpp } from './ggml.ts';
+import { asrWhisperCpp } from '../../../ml/whisper/runtime/ggml.ts';
 import { asrFasterWhisper } from '../../../ml/whisper/runtime/faster_whisper_py.ts';
 
 
