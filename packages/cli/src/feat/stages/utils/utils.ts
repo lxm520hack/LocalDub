@@ -311,9 +311,9 @@ export async function getStageStatuses(sessionPath: string) {
 	const stageMap = new Map(rows.map((r) => [r.name, r]));
 	const stages = stageSpecs.map((s) =>
 		enrichStage(
-			stageMap.get(s.name) ?? {
-				name: s.name,
-				label: s.label,
+			stageMap.get(s) ?? {
+				name: s,
+				label: s,
 				status: 'pending',
 				progress: 0,
 				last_message: null,

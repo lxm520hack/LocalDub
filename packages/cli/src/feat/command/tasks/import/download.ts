@@ -50,8 +50,8 @@ export const importVideo = async (input: InputArgs) => {
 		input,
 		stages: stages.map((stage) => ({
 			task_id: taskId,
-			name: stage.name,
-			label: stage.label,
+			name: stage,
+			label: stage,
 			status: 'pending',
 		})),
 		videoSourcePath: join(sessionPath, 'video_source.mp4'),
