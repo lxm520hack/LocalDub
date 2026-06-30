@@ -851,6 +851,15 @@
                 "skipExisting": {
                   "default": false,
                   "type": "boolean"
+                },
+                "onlyIndices": {
+                  "description": "仅处理指定索引的 segment（其余跳过），可用于精准重跑指定段",
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
                 }
               },
               "additionalProperties": false

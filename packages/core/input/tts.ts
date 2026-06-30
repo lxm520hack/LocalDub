@@ -1,16 +1,15 @@
 import { z } from "zod";
 
-export const TTSTaskInputSchema = z.object({
+export const TtsStageInputSchema = z.object({
 	runtime: z.enum(['ggml', 'pytorch', 'ort', 'cloud', 'voxcpm_torch_gradio']).default('pytorch').optional(),
 	device: z.enum(['webgpu', 'cuda', 'rocm', 'cpu', 'mps']).default('cuda').optional(),
-	skipExisting: z.boolean().default(false).optional(),
+	skipExisting: z.boolean().default(true).optional(),
+	onlyIndices: z.array(z.number().int().positive()).optional().describe('仅处理指定索引的 segment（其余跳过），可用于精准重跑指定段'),
 })
 	.default({
 		runtime: 'pytorch',
 		device: 'cuda',
 		skipExisting: true,
 	})
-	.optional().describe(`input: 1. metadata/translation.{lang}.json: translation[i].dst
-		2. segments/vocals/{0001..N}.wav
-		output: segments/tts/{0001..N}.wav`);
-export type TTSInput = z.output<typeof TTSTaskInputSchema>;
+	.optional().describe(`input: 1. split_audio/timings.json: translation[i].dst`);
+export type TTSInput = z.output<typeof TtsStageInputSchema>;

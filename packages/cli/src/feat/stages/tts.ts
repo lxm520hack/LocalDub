@@ -10,10 +10,10 @@ import { Context, setStage, setTask } from '../context/context.ts';
 import { startLog } from './utils/log.ts';
 import { newVoxCPMEngine } from '@repo/core/ml/voxcpm/voxcpm';
 
-// ---------------------------------------------------------------------------
-// Progress bar
-// ---------------------------------------------------------------------------
 
+/**
+ * Progress bar
+ */
 function renderProgress(current: number, total: number, start: number) {
 	const elapsed = (Date.now() - start) / 1000;
 	const frac = total > 0 ? current / total : 0;
@@ -97,6 +97,18 @@ export async function stageTts(
 		const idx = String(i + 1).padStart(4, '0');
 		const outPath = resolve(ttsDir, `${idx}.wav`);
 
+		// onlyIndices: 只处理指定索引，同时删除旧文件强制重新生成
+		if (ttsCfg.onlyIndices?.length) {
+			if (!ttsCfg.onlyIndices.includes(i + 1)) {
+				skipped += 1;
+				renderProgress(i + 1, total, tqdmStart);
+				continue;
+			}
+			if (existsSync(outPath)) {
+				spawnSync('rm', ['-f', outPath]);
+			}
+		}
+
 		let refWav = resolve(vocalsDir, `${idx}.wav`);
 		if (!existsSync(refWav) || statSync(refWav).size < 1200 * 16 * 2) {
 			refWav = fallbackRef;
@@ -155,7 +167,7 @@ export async function stageTts(
 			generated += 1;
 		} catch (e) {
 			errors += 1;
-			emitLog(sessionPath, `[ERROR] [TTS] Segment ${idx} failed: ${e}`);
+			emitLog(sessionPath, `[tts] [ERROR] Segment ${idx} failed: ${JSON.stringify(e)}`);
 			writeFile(outPath, Buffer.alloc(44), ctx);
 		}
 	}

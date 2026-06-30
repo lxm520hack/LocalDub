@@ -58,7 +58,7 @@ export function whisperVulkanPath(): string {
 
 export function whisperCppBinaryPath(): string {
 	const binPath = whisperVulkanPath();
-	console.log(`[Whisper] whisper.cpp binary path: ${binPath}`);
+	console.log(`[whisper] whisper.cpp(ggml) binary path: ${binPath}`);
 	return binPath
 }
 

@@ -332,7 +332,7 @@ async function asrWhisperCpp(
 	const whisperCli = whisperCppBinaryPath();
 	const model = whisperCppModelPath()
 
-	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
+	emitLog(sessionPath, `[asr] runtime=ggml binary=${whisperCli}`);
 
 	if (!ensureWhisperCpp(sessionPath)) {
 		throw new Error('whisper.cpp setup failed; see logs above for manual steps');

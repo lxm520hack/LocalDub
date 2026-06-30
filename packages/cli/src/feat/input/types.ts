@@ -1,4 +1,4 @@
-import { TTSTaskInputSchema } from '@repo/core/input/tts';
+import { TtsStageInputSchema } from '@repo/core/input/tts';
 import { ServersArgsSchema } from '@repo/core/servers/input';
 import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
@@ -456,7 +456,7 @@ const StagesSchema = z.object({
 		.optional(),
 	translate: TranslateTaskInputSchema,
 	split_audio: SplitAudioTaskInputSchema,
-	tts: TTSTaskInputSchema,
+	tts: TtsStageInputSchema,
 	merge_audio: z.object({
 		maxSpeed: z.number().min(1).default(1.35).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
 		maxAdvanceMs: z.number().min(0).default(500).optional().describe('字幕允许提前显示的最大毫秒数, 利用前段剩余时间'),
@@ -494,11 +494,7 @@ const BaseTaskInputSchema = z.looseObject({
 });
 export type BaseConfigInput = z.input<typeof BaseTaskInputSchema>;
 export type BaseConfig = z.output<typeof BaseTaskInputSchema>;
-const TaskIdSchema = z
-	.string()
-	.describe(
-		'任务 ID (timeId(10) 时间序列 + 程序随机数) \\ 视频id (来自视频app) ',
-	);
+
 const TaskSchema = z.looseObject({
 	command: z.enum(commandList).describe(`
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
