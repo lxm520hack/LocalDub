@@ -68,15 +68,13 @@ export async function stageTts(
 			emitLog(sessionPath, `[TTS] Existing TTS segments found; will overwrite without deleting files`);
 		}
 	}
-
-	// ------ Unified engine (handles all runtimes via createBackend) ------
+	// Unified engine (handles all runtimes via createBackend) 
 
 	emitLog(sessionPath, `[TTS] Using ${ttsCfg.runtime} backend`);
 	const engine = newVoxCPMEngine(ttsCfg);
 	await engine.load();
 
-	// ------ Generation loop ------
-
+	//  Generation loop 
 	const tqdmStart = Date.now();
 	let generated = 0, skipped = 0, errors = 0;
 	let genMs = 0;
@@ -109,7 +107,7 @@ export async function stageTts(
 			}
 		}
 
-		let refWav = resolve(vocalsDir, `${idx}.wav`);
+		let refWav = join(vocalsDir, `${idx}.wav`);
 		if (!existsSync(refWav) || statSync(refWav).size < 1200 * 16 * 2) {
 			refWav = fallbackRef;
 		}
