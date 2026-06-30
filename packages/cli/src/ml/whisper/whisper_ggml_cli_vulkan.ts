@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { defaultWhisperCppModelPath } from '../../feat/stages/utils/utils.ts';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { whisperCppModelPath } from '@repo/config/path/models';
 
 export interface WhisperWord {
 	start: number;  // seconds
@@ -26,7 +26,7 @@ export function transcribeWithWords(
 	const whisperCli = join(
 		REPO_ROOT, 'submodule', 'whisper.cpp', 'build', 'bin', 'whisper-cli',
 	);
-	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
+	const model = whisperCppModelPath()
 
 	const t0 = performance.now();
 	const r = spawnSync(whisperCli, [

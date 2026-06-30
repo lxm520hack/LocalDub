@@ -57,7 +57,9 @@ export function whisperVulkanPath(): string {
 }
 
 export function whisperCppBinaryPath(): string {
-	return whisperVulkanPath();
+	const binPath = whisperVulkanPath();
+	console.log(`[Whisper] whisper.cpp binary path: ${binPath}`);
+	return binPath
 }
 
 function downloadFile(url: string, dest: string, sessionPath: string): boolean {

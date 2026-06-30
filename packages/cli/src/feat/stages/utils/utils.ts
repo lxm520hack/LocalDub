@@ -5,9 +5,6 @@ import { env,} from '@repo/config/env';
 import { getStages } from '../../tasks/stages.ts';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
-export function defaultWhisperCppModelPath(): string {
-	return join(WHISPER_MODEL_DIR, 'ggml-large-v3-turbo.bin');
-}
 
 /** Get the downloaded video source path for a session. */
 export function videoSourcePath(ctx: Context): string {

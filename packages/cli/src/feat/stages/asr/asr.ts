@@ -5,7 +5,7 @@ import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
 
-import { defaultWhisperCppModelPath, emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
+import {  emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../utils/utils.ts';
 import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../../ml/whisper/ensure.ts';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
@@ -13,6 +13,7 @@ import { Context, setCtx, setStage } from '../../context/context.ts';
 import { pythonBin } from '@repo/config/path/exe';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { whisperCppModelPath } from '@repo/config/path/models';
 
 const VAD_CANDIDATES: Record<string, string[]> = {
 	'silero-v5': [
@@ -329,7 +330,7 @@ async function asrWhisperCpp(
 	language: string,
 ) {
 	const whisperCli = whisperCppBinaryPath();
-	const model = process.env.WHISPER_MODEL || defaultWhisperCppModelPath();
+	const model = whisperCppModelPath()
 
 	emitLog(sessionPath, `[ASR] runtime=ggml binary=${whisperCli}`);
 
