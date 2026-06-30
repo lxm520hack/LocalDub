@@ -3,6 +3,7 @@ import { REPO_ROOT } from '@repo/config/path/root';
 import { spawnSync, spawn } from 'node:child_process';
 import { basename, join, relative } from 'node:path';
 
+
 // -nodisp 不弹窗口，-autoexit 播完自动退出
 export const playWav = (wavPath: string) => spawnSync('ffplay', ['-nodisp', '-autoexit', wavPath], { stdio: 'ignore' })
 
