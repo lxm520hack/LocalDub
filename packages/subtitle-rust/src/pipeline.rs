@@ -4,7 +4,6 @@
 //! This mirrors the C++ `ocr_pipeline` binary architecture: a single
 //! executable runs the entire graph end-to-end, taking the image path on
 //! the command line and printing JSON to stdout. Inference calls are
-//! delegated to a small Python helper (`infer_onnx.py`) that loads each
 //! ONNX model and returns raw tensor bytes; see `infer.rs` for details.
 
 use std::time::Instant;
