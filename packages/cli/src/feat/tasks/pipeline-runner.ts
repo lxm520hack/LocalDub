@@ -25,11 +25,12 @@ import {
 
 
 function snapshotConfig(sessionPath: string) {
-	const cfg = readInputArgs();
+	const args = readInputArgs();
+
 	const snap: NonNullable<Context['input']> = {
-		...cfg,
+		...args,
 		timestamp: new Date().toISOString(),
-		pipeline: cfg.pipeline ?? 'dub',
+		pipeline: args.pipeline ?? 'dub',
 	};
 
 	setCtx(sessionPath, { input: snap });
@@ -253,25 +254,23 @@ export async function resumePipeline(
 
 export async function rerunSingleStage(
 	ctx: Context,
-	stageName: string,
-	stageOverrides?: Record<string, any>,
 ) {
 	const taskId= ctx.task.id
 	const sessionPath = ctx.task.session_path
 	const task = readTask(sessionPath)
-
+	const stageName = ctx.input?.task.stageName
 	const pipeline = readPipeline(sessionPath);
 	const stages = getStages(pipeline);
 
 	const stage = stages.find((s) => s === stageName);
 	if (!stage) throw new Error(`Unknown stage "${stageName}"`);
 
-	const handler = STAGE_HANDLERS[stageName];
+	const handler = STAGE_HANDLERS[stage];
 	if (!handler) throw new Error(`No handler for stage "${stageName}"`);
 
 	snapshotConfig(sessionPath);
 
-	setStage(sessionPath, stageName, {
+	setStage(sessionPath, stage, {
 		status: 'running',
 		completed_at: null,
 		error_message: null,
@@ -285,7 +284,7 @@ export async function rerunSingleStage(
 	} catch (err: any) {
 		const msg = err.message ?? String(err);
 		emitLog(sessionPath, `[ERROR] [Pipeline] Stage ${stageName} failed: ${msg}`);
-		await setStage(sessionPath, stageName, {
+		await setStage(sessionPath, stage, {
 			status: 'failed',
 			error_message: msg,
 			completed_at: nowISO(),
@@ -294,7 +293,7 @@ export async function rerunSingleStage(
 		throw err;
 	}
 
-	await setStage(sessionPath, stageName, {
+	await setStage(sessionPath, stage, {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

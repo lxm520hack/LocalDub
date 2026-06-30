@@ -1,9 +1,9 @@
 import { InputArgs } from "../../input/input";
-import { readCtx } from "../../context/context";
+import { readCtx, setCtx } from "../../context/context";
 import { rerunSingleStage } from "../../tasks/pipeline-runner";
 
 export const cmdRerunStage = async (input: InputArgs) => {
-  		const sessionPath = input.task?.sessionPath;
+  	const sessionPath = input.task?.sessionPath;
 		const stageName = input.task?.stageName;
 		if (!sessionPath || !stageName) {
 			console.error(
@@ -11,11 +11,11 @@ export const cmdRerunStage = async (input: InputArgs) => {
 			);
 			process.exit(1);
 		}
-		const ctx = await readCtx(sessionPath);
+		const ctx = setCtx(sessionPath, { input});
 		const taskId = ctx.task.id;
 		console.log(`[CLI] Rerunning stage "${stageName}" for task ${taskId}...`);
 		try {
-			await	rerunSingleStage(ctx, stageName, input.stages),
+			await	rerunSingleStage(ctx),
 			console.log('[CLI] Stage completed');
 			process.exit(0);
 		} catch (err) {
