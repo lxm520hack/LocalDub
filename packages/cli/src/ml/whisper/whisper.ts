@@ -3,9 +3,8 @@ import { InferenceSession, Tensor } from 'onnxruntime-node';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { env } from '@repo/config/env';
-import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
+import { SHERPA_MODEL_DIR,  } from '@repo/config/path/models';
 
-const SHERPA_MODEL_DIR = join(WHISPER_MODEL_DIR, 'sherpa_onnx');
 
 const VOCAB_SIZE = 51866;
 const DECODER_START_TOKEN = 50258;

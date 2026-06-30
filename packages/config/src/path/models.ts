@@ -8,7 +8,7 @@ export const DEMUCS_MODEL_DIR = join(MODEL_CACHE_DIR, 'demucs');
 export const DEMUCS_GGML_FILE = join(DEMUCS_MODEL_DIR, 'ggml-model-htdemucs-4s-f16.bin');
 
 export const WHISPER_MODEL_DIR = join(MODEL_CACHE_DIR, 'whisper');
-
+export const SHERPA_MODEL_DIR = join(WHISPER_MODEL_DIR, 'sherpa_onnx');
 // openai-whisper 自己管理
 // export const OPENAI_WHISPER_MODEL_DIR = join(homedir(), '.cache', 'whisper');
  
