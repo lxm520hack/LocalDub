@@ -10,7 +10,7 @@ import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../../..
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '../../context/context.ts';
-import { pythonBin } from '@repo/config/path/exe';
+import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';
 import { whisperCppModelPath } from '@repo/config/path/models';

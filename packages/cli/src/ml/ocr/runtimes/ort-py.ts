@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { pythonBin } from '@repo/config/path/exe';
+import { pythonBin } from '@repo/config/path/bin';
 import { REPO_ROOT } from '@repo/config/path/root';
 
 export interface OCRLine {

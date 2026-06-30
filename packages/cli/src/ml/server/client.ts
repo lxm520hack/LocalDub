@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { delimiter, join } from 'node:path';
 import { findServer } from '@repo/core/servers/discovery';
 import { ModelServerStatus } from '@repo/core/servers/type';
-import { pythonBin } from '@repo/config/path/exe';
+import { pythonBin } from '@repo/config/path/bin';
 import { REPO_ROOT } from '@repo/config/path/root';
 
 export const fetchStatsRes = (port: number) => fetch(`http://127.0.0.1:${port}/status`, {

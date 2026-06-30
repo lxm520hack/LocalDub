@@ -1,4 +1,3 @@
-// 脚本, cli
 
 import { REPO_ROOT } from "./root";
 import { join } from 'node:path';
@@ -13,4 +12,5 @@ export function pythonBin(): string {
 	);
 }
 
+// scripts
 export const VOXCPM_TORCH_GRADIO_MAIN = join(REPO_ROOT, 'packages', 'voxcpm_torch_server', 'server.py');
