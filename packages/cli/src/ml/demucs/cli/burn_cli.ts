@@ -53,7 +53,7 @@ export async function separateBurn({
 	const sepDir = separateDir(sessionPath);
 	mkdirSync(sepDir, { recursive: true });
 
-	emitLog(sessionPath, `[Separate] backend=${backend} device=${device} binary=${binPath}`);
+	emitLog(sessionPath, `[separate] runtime=${binName} device=${device} binary=${binPath}`);
 
 	const env: Record<string, string> = { ...process.env } as Record<string, string>;
 	if (backend === 'tch') {
