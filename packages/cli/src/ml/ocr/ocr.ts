@@ -43,46 +43,35 @@ export function ocrOrtDir(): string {
 /**
  * OCR engine that manages sessions for ort-node and dispatches per-frame calls.
  */
-export class OCREngine {
-	private runtime: OCRRuntime;
-	private device: OCRDevice;
-	private nodeSessions: OCRSessions | null = null;
-
-	constructor(runtime: OCRRuntime, device: OCRDevice = 'cpu') {
-		this.runtime = runtime;
-		this.device = device;
+export const newOcrEngine = async (runtime: OCRRuntime='ort-cpp', device: OCRDevice = 'cpu') => {
+	let nodeSessions: OCRSessions | undefined
+	if (runtime === 'ort-node') {
+		nodeSessions = await createSessions(device);
 	}
-
-	async init(): Promise<void> {
-		if (this.runtime === 'ort-node') {
-			this.nodeSessions = await createSessions(this.device);
-		}
-	}
-
-	async ocrFrame(framePath: string, opts?: { textScore?: number; subtitleOnly?: boolean }): Promise<OCRLine[]> {
-		switch (this.runtime) {
+	return {
+		async ocrFrame(framePath: string, opts?: { textScore?: number; subtitleOnly?: boolean }): Promise<OCRLine[]> {
+		switch (runtime) {
 			case 'ort-cpp':
-				return ocrFrameOpenCvCpp(framePath, { ...opts, device: this.device });
+				return ocrFrameOpenCvCpp(framePath, { ...opts, device });
 			case 'ort-node':
-				if (!this.nodeSessions) throw new Error('Node sessions not initialized');
-				const nodeResult = await ocrFrameWithSessions(framePath, this.nodeSessions, opts);
+				if (!nodeSessions) throw new Error('Node sessions not initialized');
+				const nodeResult = await ocrFrameWithSessions(framePath, nodeSessions, opts);
 				return nodeResult.segments;
 			case 'ort-py':
-				return ocrFramePy(framePath, { ...opts, device: this.device });
+				return ocrFramePy(framePath, { ...opts, device });
 			case 'ort-rust':
-				return runOcrFrameRust(framePath, { ...opts, device: this.device }).segments;
+				return runOcrFrameRust(framePath, { ...opts, device }).segments;
 			default:
-				throw new Error(`Unknown OCR runtime: ${this.runtime}`);
+				throw new Error(`Unknown OCR runtime: ${runtime}`);
 		}
-	}
-
-	async ocrFrames(
+	},
+		async ocrFrames(
 		frameDir: string,
 		frameFiles: string[],
 		opts?: { textScore?: number; subtitleOnly?: boolean },
 	): Promise<OCRLine[][]> {
-		if (this.runtime === 'ort-cpp') {
-			const resultMap = await ocrFramesOpenCvCpp(frameDir, { ...opts, device: this.device });
+		if (runtime === 'ort-cpp') {
+			const resultMap = await ocrFramesOpenCvCpp(frameDir, { ...opts, device });
 			return frameFiles.map((f) => resultMap.get(f) || []);
 		}
 		const results: OCRLine[][] = [];
@@ -90,19 +79,18 @@ export class OCREngine {
 			results.push(await this.ocrFrame(join(frameDir, frameFiles[i]), opts));
 		}
 		return results;
-	}
+	},
 
 	async release(): Promise<void> {
-		if (this.runtime === 'ort-node' && this.nodeSessions) {
-			await releaseSessions(this.nodeSessions);
-			this.nodeSessions = null;
+		if (runtime === 'ort-node' && nodeSessions) {
+			await releaseSessions(nodeSessions);
+			nodeSessions = undefined;
 		}
 	}
-
-	getRuntime(): OCRRuntime {
-		return this.runtime;
 	}
 }
+
+
 
 /**
  * Convenience function: creates a one-off engine for a single frame.
@@ -113,9 +101,8 @@ export async function ocrFrame(
 	runtime: OCRRuntime = 'ort-cpp',
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: OCRDevice },
 ): Promise<OCRLine[]> {
-	const engine = new OCREngine(runtime, opts?.device ?? 'cpu');
+	const engine = await newOcrEngine(runtime, opts?.device ?? 'cpu');
 	try {
-		await engine.init();
 		return await engine.ocrFrame(framePath, opts);
 	} finally {
 		await engine.release();

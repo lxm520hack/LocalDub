@@ -1,18 +1,19 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { OCREngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
+import { newOcrEngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
 import { FrameResult } from '../ocr/ocrMerge.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { startLog } from '../utils/log.ts';
+import { probeVideoDuration } from '@repo/core/utils/utils'
 
 export async function stageAsrOcr(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
 	startLog(ctx.task.current_stage, ctx.task.id)
-	await setStage(sessionPath, 'asr_ocr', {
+	setStage(sessionPath, 'asr_ocr', {
 		last_message: `OCR'ing frames...`,
 		progress: 0,
 	});
@@ -30,8 +31,7 @@ export async function stageAsrOcr(ctx: Context) {
 	const cleanupFrames = asrOcrCfg?.cleanupFrames ?? false;
 
 	// OCR each frame
-	const engine = new OCREngine(runtime, device);
-	await engine.init();
+	const engine = await newOcrEngine(runtime, device);
 
 	const frameFiles = readdirSync(frameDir).filter(f => f.endsWith('.jpg')).sort();
 	const linesArr = await engine.ocrFrames(frameDir, frameFiles, { textScore, subtitleOnly });
@@ -50,12 +50,6 @@ export async function stageAsrOcr(ctx: Context) {
 	}
 	await engine.release();
 
-	// probe video duration fallback
-	const probe = spawnSync('ffprobe', [
-		'-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoSourcePath(ctx),
-	], { timeout: 15_000, encoding: 'utf-8' });
-	const videoDurationS = parseFloat(probe.stdout?.trim() || '0');
-
 	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
 	ensureDir(asrOcrDir, ctx);
 
@@ -67,7 +61,7 @@ export async function stageAsrOcr(ctx: Context) {
 		{
 			_frames_raw: frameResults,
 			_y_stats: yStats,
-			audio_info: { duration:  Math.round(videoDurationS * 1000) },
+			audio_info: { duration:  probeVideoDuration(videoSourcePath(ctx)) },
 			_source: 'asr_ocr',
 			_engine: runtime,
 			_device: device,
@@ -83,7 +77,7 @@ export async function stageAsrOcr(ctx: Context) {
 		emitLog(sessionPath, `[asr_ocr] Frames kept at ${frameDir}`);
 	}
 
-	await setStage(sessionPath, 'asr_ocr', {
+	setStage(sessionPath, 'asr_ocr', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,
