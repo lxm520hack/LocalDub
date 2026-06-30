@@ -1,6 +1,6 @@
+import { REPO_ROOT } from '@repo/config/path/root';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { REPO_ROOT } from '../../feat/input/input.ts';
 
 function findRapidOCRModelsDir(): string {
 	if (process.env.OCR_MODELS_DIR && existsSync(process.env.OCR_MODELS_DIR)) {
