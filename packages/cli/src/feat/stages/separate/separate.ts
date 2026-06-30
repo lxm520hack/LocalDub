@@ -7,7 +7,6 @@ import { Demucs } from '../../../ml/demucs/demucs.ts';
 import type { Stem } from '../../../ml/demucs/load.ts';
 import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import {
-	REPO_ROOT,
 	readInputArgs,
 } from '../../input/input.ts';
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
@@ -18,6 +17,7 @@ import { separateBurn } from '../../../ml/demucs/cli/burn_cli.ts';
 import { separateGgml } from '../../../ml/demucs/cli/ggml_cli.ts';
 import { pythonBin } from '@repo/config/path/exe';
 import { findServer } from '@repo/core/servers/discovery';
+import { REPO_ROOT } from '@repo/config/path/root';
 
 export async function stageSeparate(
 	ctx: Context,

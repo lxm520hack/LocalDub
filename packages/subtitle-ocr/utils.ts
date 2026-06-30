@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, rmSync, mkdtempSync, existsSync, readdirSy
 import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
-import { REPO_ROOT } from '@repo/config';
+import { REPO_ROOT } from '@repo/config/path/root';
 
 /**
  * Dynamically locate rapidocr model directory.

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { config as loadEnv } from 'dotenv';
-import { REPO_ROOT } from './root.ts';
+import { REPO_ROOT } from './path/root.ts';
 
 loadEnv({ path: resolve(REPO_ROOT, '.env') });
 

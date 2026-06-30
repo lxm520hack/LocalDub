@@ -1,7 +1,6 @@
 import { RawInputInput, StageName, TargetLang } from "../input/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER } from '@repo/config';
 
 import { fileLog, getLastSegment } from '../stages/utils/fileOps.ts';
 

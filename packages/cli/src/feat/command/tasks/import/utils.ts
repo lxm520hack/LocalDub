@@ -7,7 +7,7 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
+import { env,  WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { sanitizeText } from '../../../tasks/fn.ts';
 import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
 import {

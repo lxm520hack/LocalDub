@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
+import { env,  WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { timeId } from '../shared/db/timeId.ts';
 import {
 	readInputArgs,

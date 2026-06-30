@@ -1,6 +1,5 @@
 import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
 import { join } from 'node:path';
-import { REPO_ROOT } from '@repo/config';
 import type { ModelServerStatus } from '@repo/core/servers/type';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { to } from "@repo/shared/lib/utils/try";

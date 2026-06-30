@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { to } from '@repo/shared/lib/utils/try.ts';
 // import { eq, sql } from 'drizzle-orm';
 import { getStages } from './../../feat/tasks/stages.ts';

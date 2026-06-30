@@ -1,4 +1,4 @@
-import { REPO_ROOT } from '@repo/config';
+import { REPO_ROOT } from '@repo/config/path/root';
 import { spawnSync, spawn } from 'node:child_process';
 import { basename, join, relative } from 'node:path';
 

@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { REPO_ROOT, WORKFOLDER } from '@repo/config';
 import { readInputArgs } from '../input/input.ts';
 
 export async function cmdCheck(opts: {

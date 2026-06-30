@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { defaultWhisperCppModelPath } from '../../feat/stages/utils/utils.ts';
-import { REPO_ROOT } from '@repo/config';
+import { REPO_ROOT } from '@repo/config/path/root';
 
 export interface WhisperWord {
 	start: number;  // seconds

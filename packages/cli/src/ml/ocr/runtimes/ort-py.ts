@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { REPO_ROOT,  } from '../../../feat/input/input.ts';
 import { pythonBin } from '@repo/config/path/exe';
+import { REPO_ROOT } from '@repo/config/path/root';
 
 export interface OCRLine {
 	text: string;

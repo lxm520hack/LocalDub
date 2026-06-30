@@ -1,6 +1,6 @@
 // 脚本, cli
 
-import { REPO_ROOT } from "../root";
+import { REPO_ROOT } from "./root";
 import { join } from 'node:path';
 
 export function pythonBin(): string {

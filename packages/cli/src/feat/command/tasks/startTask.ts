@@ -1,6 +1,5 @@
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { env, REPO_ROOT, WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config';
 import { DUB_STAGES, getStages } from '../../tasks/stages.ts';
 import { Context, VideoSource, writeCtx } from '../../context/context.ts';
 import { existsSync } from '../../stages/utils/fileOps.ts';

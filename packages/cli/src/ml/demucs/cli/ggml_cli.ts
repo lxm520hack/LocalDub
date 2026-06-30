@@ -2,12 +2,12 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { REPO_ROOT } from '@repo/config';
 import { DEMUCS_GGML_FILE } from '@repo/config/path/models';
 import { emitLog, probeDuration, separateDir } from '../../../feat/stages/utils/utils';
 import { setStage } from '../../../feat/context/context';
 import { DemucsCliArgs } from './cli_types';
 import { ensureGgmlModel, tryBuildGgml } from '../separate-build';
+import { REPO_ROOT } from '@repo/config/path/root';
 
 export async function separateGgml(
 	taskId: string,
