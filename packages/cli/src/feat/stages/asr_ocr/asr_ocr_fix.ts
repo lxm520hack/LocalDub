@@ -61,6 +61,15 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	// ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） 
 	const yStats = computeBoxYStats(rawFrames);
+	writeJson(
+		join(asrOcrFixDir, 'frames_stats.json'),
+		{
+			_engine: 'asr_ocr_fix',
+			_frame_count: rawFrames.length,
+			_line_stats: yStats,
+		},
+		ctx,
+	);
 	const { height: videoHeight } = probeVideoResolution(videoSourcePath(ctx));
 	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
 	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
