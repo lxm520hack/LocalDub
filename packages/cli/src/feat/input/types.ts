@@ -200,6 +200,11 @@ export const ocrAfterAdjustArgsSchema = z.object({
 				.default(0.08)
 				.describe('Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08')
 				.optional(),
+			noiseFilterThreshold: z
+				.number()
+				.default(2.5)
+				.describe('OCR 行级噪声过滤: line top/bottom 偏移超过 avgHeight × 此值或 height_ratio < 0.5 则移除; 默认 2.5')
+				.optional(),
 })
 export type OcrAfterAdjustArgs = z.output<typeof ocrAfterAdjustArgsSchema>;
 const OcrTaskInputSchema = z

@@ -86,6 +86,40 @@ export function computeBoxYStats(frames: FrameResult[]): {
 	return { avg: [avgTop, avgBtm], mode, avgHeight };
 }
 
+export function filterFrameNoiseLines(
+	frames: FrameResult[],
+	yStats: { avg: [number, number]; avgHeight: number },
+	opts?: { noiseFilterThreshold?: number },
+): FrameResult[] {
+	const threshold = opts?.noiseFilterThreshold ?? 2.0;
+	if (!yStats.avg[0] && yStats.avg[1] === 0) return frames;
+	if (yStats.avgHeight === 0) return frames;
+
+	return frames.map(f => {
+		if (!f.lines || f.lines.length <= 1) return f;
+
+		const cleanLines = f.lines.filter(l => {
+			if (!l.text.trim()) return false;
+			const topOR = Math.abs(l.bbox.top - yStats.avg[0]) / yStats.avgHeight;
+			const botOR = Math.abs(l.bbox.bottom - yStats.avg[1]) / yStats.avgHeight;
+			const bandDrift = Math.max(topOR, botOR);
+			const heightRatio = (l.bbox.bottom - l.bbox.top) / yStats.avgHeight;
+			return bandDrift <= threshold && heightRatio >= 0.5;
+		});
+
+		if (cleanLines.length === 0 || cleanLines.length === f.lines.length) return f;
+
+		const rebuilt = joinOcrLines(cleanLines);
+		return {
+			...f,
+			text: rebuilt.text,
+			confidence: rebuilt.confidence,
+			bbox: rebuilt.bbox,
+			lines: rebuilt.lines,
+		};
+	});
+}
+
 export function computeSegmentAdjustments(
 	segments: Segment[],
 	frameResults: FrameResult[],

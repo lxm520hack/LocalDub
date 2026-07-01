@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
 import {  fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
-import { computeBoxYStats, computeSegmentAdjustments } from '../ocr/utils.ts';
+import { computeBoxYStats, computeSegmentAdjustments, filterFrameNoiseLines } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 
@@ -49,33 +49,88 @@ export async function stageAsrOcrFix(ctx: Context) {
 		end: Math.round(s.end),
 	}));
 
-	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
 	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
-	const { segments: ocrSegs, text: ocrText } = mergeFrames(rawFrames, { mergeSubstring: args?.mergeSubstring });
 
 	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
 	const textScore = asrOcrFixCfg?.textScore ?? 0.45;
+	const noiseFilterThreshold = asrOcrFixCfg?.noiseFilterThreshold ?? 2.0;
+	
+
+	// Compute per-line Y statistics from raw frames
+	const yStats = computeBoxYStats(rawFrames);
+
+	// 1. ocr_frames_line_adjust.json: annotate each line with outlier info
+	const annotatedFrames = rawFrames.map(f => ({
+		...f,
+		lines: f.lines?.map(l => {
+			if (!l.text.trim()) return { ...l, top: 0, bottom: 0, top_offset_ratio: 0, bot_offset_ratio: 0, height: 0, height_ratio: 0, is_outlier: false, adjustedConfidence: l.confidence };
+			const top = l.bbox.top;
+			const bottom = l.bbox.bottom;
+			const height = bottom - top;
+			const topOR = yStats.avgHeight > 0 ? Math.abs(top - yStats.avg[0]) / yStats.avgHeight : 0;
+			const botOR = yStats.avgHeight > 0 ? Math.abs(bottom - yStats.avg[1]) / yStats.avgHeight : 0;
+			const heightRatio = yStats.avgHeight > 0
+				? Math.round((height / yStats.avgHeight) * 100) / 100
+				: 0;
+			const bandDrift = Math.max(topOR, botOR);
+			const isOutlier = bandDrift > noiseFilterThreshold || heightRatio < 0.5;
+			const noisePenalty = Math.min(1,
+				Math.max(0, (bandDrift - 1.0) * 0.5) +
+				Math.abs(1 - heightRatio) * 0.3,
+			);
+			const adjustedConfidence = Math.round(l.confidence * (1 - noisePenalty) * 100) / 100;
+			return {
+				...l,
+				top,
+				bottom,
+				top_offset_ratio: Math.round(topOR * 100) / 100,
+				bot_offset_ratio: Math.round(botOR * 100) / 100,
+				height: Math.round(height * 10) / 10,
+				height_ratio: heightRatio,
+				is_outlier: isOutlier,
+				adjustedConfidence,
+			};
+		}),
+	}));
+
+	writeJson(
+		join(asrOcrFixDir, 'ocr_frames_line_adjust.json'),
+		{
+			_engine: 'asr_ocr_fix',
+			_line_stats: yStats,
+			_frame_count: rawFrames.length,
+			_config: { noiseFilterThreshold },
+			frames: annotatedFrames,
+		},
+		ctx,
+	);
+
+	// 2. Filter noise lines at frame level, then merge into segments
+	const cleanFrames = filterFrameNoiseLines(rawFrames, yStats, { noiseFilterThreshold });
+	const cleanYStats = computeBoxYStats(cleanFrames);
+
+	writeJson(
+		join(asrOcrFixDir, 'ocr_frames_line_filtered.json'),
+		{
+			_engine: 'asr_ocr_fix',
+			_line_stats: cleanYStats,
+			_frame_count: cleanFrames.length,
+			_frames_raw: cleanFrames,
+		},
+		ctx,
+	);
+
+	const { segments: ocrSegs, text: ocrText } = mergeFrames(cleanFrames, { mergeSubstring: args?.mergeSubstring });
 
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!ocrSegs.length) throw new Error('No OCR segments found (empty asr_ocr.json)');
 
-	// ocr_merged.json：对 asr_ocr.json 的 segments 做置信度调整（Y 偏移 + 孤立惩罚） 
-	const yStats = computeBoxYStats(rawFrames);
-	writeJson(
-		join(asrOcrFixDir, 'frames_stats.json'),
-		{
-			_engine: 'asr_ocr_fix',
-			_frame_count: rawFrames.length,
-			_line_stats: yStats,
-		},
-		ctx,
-	);
 	const { height: videoHeight } = probeVideoResolution(videoSourcePath(ctx));
 	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
 	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
 	const adjustIsoWeight = asrOcrFixCfg?.adjustIsoWeight ?? 0.2;
 	const adjustYFactor = asrOcrFixCfg?.adjustYFactor ?? 0.08;
-	const adjustedSegs = computeSegmentAdjustments(ocrSegs, rawFrames, yStats, videoHeight, {
+	const adjustedSegs = computeSegmentAdjustments(ocrSegs, cleanFrames, cleanYStats, videoHeight, {
 		...asrOcrFixCfg
 	});
 
@@ -165,7 +220,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	// Write asr_ocr_fused.json — fixOverlap fused result
 	const maxAdvanceMs = ctx.input?.stages?.merge_audio?.maxAdvanceMs ?? 500;
-	const fix = fixOverlap(asrOcrSegs, rawFrames, ocrSegsMerged, maxAdvanceMs).filter(
+	const fix = fixOverlap(asrOcrSegs, cleanFrames, ocrSegsMerged, maxAdvanceMs).filter(
 		s => s.end > s.start,
 	);
 

@@ -104,14 +104,12 @@ export async function runPipeline(ctx: Context) {
 export async function resumePipeline(
 	ctx: Context,
 ) {
+	const sessionPath = ctx.task.session_path
 	const resumeFrom = ctx.input?.task?.resumeFrom
 	ctx.task.current_stage = 'resumePipeline'
 	setTask(ctx.task.session_path, { current_stage: 'resumePipeline' });
-		const taskId= ctx.task.id
-	const sessionPath = ctx.task.session_path
+	const taskId= ctx.task.id
 	let task = readTask(sessionPath);
-
-
 	// Mode transition handling
 	const lastRunMode = ctx.lastRunPipeline;
 	if (lastRunMode && lastRunMode !== ctx.pipeline) {
@@ -193,7 +191,7 @@ export async function resumePipeline(
 		}
 	}
 
-	const resumeTargetStage = ctx.input?.targetStage;
+	const resumeTargetStage = ctx.input?.task?.targetStage;
 	if (resumeTargetStage && !stages.find((s) => s === resumeTargetStage)) {
 		emitLog(sessionPath, `[WARN] targetStage "${resumeTargetStage}" 不在 ${pipeline} pipeline 中，忽略`);
 	}
