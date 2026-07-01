@@ -1,6 +1,6 @@
-import type { OCRLine } from '../../../ml/ocr/ocr.ts';
+import { OCRLine } from '@repo/subtitle-ocr/types';
 import { OcrAfterAdjustArgs } from '../../input/types.ts';
-import type { FrameResult, Segment, SegmentWithAdjusted } from './ocrMerge.ts';
+import { FrameResult, Segment, SegmentWithAdjusted } from '@repo/core/ml/subtitle_ocr/types';
 
 function polygonToBbox(box: number[][]): { left: number; top: number; right: number; bottom: number } {
 	if (!box || box.length < 2) return { left: 0, top: 0, right: 0, bottom: 0 };

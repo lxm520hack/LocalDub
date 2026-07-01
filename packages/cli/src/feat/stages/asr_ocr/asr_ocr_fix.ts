@@ -2,13 +2,14 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
-import { FrameResult, Segment, fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
+import {  fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
 import { computeBoxYStats, computeSegmentAdjustments } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
+import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 
 export async function stageAsrOcrFix(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
-
+	const args = ctx.input?.stages?.asr_ocr_fix;
 	await setStage(sessionPath, 'asr_ocr_fix', {
 		last_message: 'Fusing ASR + OCR...',
 		progress: 0,
@@ -50,7 +51,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	// rawFrames 用于 fixOverlap 的帧级别时间边界修正
 	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
-	const { segments: ocrSegs, text: ocrText } = mergeFrames(rawFrames)
+	const { segments: ocrSegs, text: ocrText } = mergeFrames(rawFrames, { mergeSubstring: args?.mergeSubstring });
 
 	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
 	const textScore = asrOcrFixCfg?.textScore ?? 0.45;

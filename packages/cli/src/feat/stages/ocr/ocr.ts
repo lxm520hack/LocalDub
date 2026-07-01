@@ -1,13 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { OCREngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
+import { newOcrEngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "../utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "../utils/utils.ts";
 
-import { FrameResult, mergeFrames } from "./ocrMerge.ts";
+import {  mergeFrames } from "./ocrMerge.ts";
 import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
 import { Context, setStage } from "../../context/context.ts";
+import { probeVideoDuration } from "@repo/core/utils/utils";
+import { FrameResult } from "@repo/core/ml/subtitle_ocr/types";
 
 export async function stageOcr(ctx: Context) {
 		const taskId = ctx.task.id;
@@ -70,8 +72,7 @@ export async function stageOcr(ctx: Context) {
 		last_message: `OCR'ing ${frameFiles.length} frames (${runtime})...`,
 	});
 
-	const engine = new OCREngine(runtime, device);
-	await engine.init();
+	const engine = await newOcrEngine(runtime, device);
 
 	const linesArr = await engine.ocrFrames(frameDir, frameFiles, { textScore, subtitleOnly });
 	const frameResults: FrameResult[] = [];
@@ -91,30 +92,12 @@ export async function stageOcr(ctx: Context) {
 	await engine.release();
 
 	// 3. Merge into segments
-	const {segments, text} = mergeFrames(frameResults);
+	const {segments, text} = mergeFrames(frameResults, { mergeSubstring: ocrCfg?.mergeSubstring });
 	emitLog(
 		sessionPath,
 		`[OCR] ${frameFiles.length} frames → ${segments.length} segments`,
 	);
 
-	// 4. Build output text
-	const audioDurMs = segments.length > 0 ? segments[segments.length - 1].end : 0;
-
-	// 5. Probe video duration
-	const probe = spawnSync(
-		"ffprobe",
-		[
-			"-v",
-			"error",
-			"-show_entries",
-			"format=duration",
-			"-of",
-			"csv=p=0",
-			videoPath,
-		],
-		{ timeout: 15_000, encoding: "utf-8" },
-	);
-	const videoDurationS = parseFloat(probe.stdout?.trim() || "0");
 	const { height: videoHeight } = probeVideoResolution(videoPath);
 
 	// 6. Write ocr.json (same format as asr_fix)
@@ -131,7 +114,7 @@ export async function stageOcr(ctx: Context) {
 	writeJson(
 		join(ocrDir, "ocr.json"),
 		{
-			audio_info: { duration: audioDurMs || Math.round(videoDurationS * 1000) },
+			audio_info: { duration: probeVideoDuration(videoPath) },
 			result: { text, segments: segmentsOut },
 			_engine: runtime,
 			_device: device,

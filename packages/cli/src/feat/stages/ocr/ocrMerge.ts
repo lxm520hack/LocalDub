@@ -1,29 +1,11 @@
+import { MergeFramesArgs } from "@repo/core/ml/subtitle_ocr/input";
 import { srtTime } from "../utils/utils";
 
-export interface FrameResult {
-	text: string;
-	timestamp: number;
-	confidence: number;
-	bbox?: { left: number; top: number; right: number; bottom: number };
-	lines?: { text: string; confidence: number; box: number[][]; bbox: { left: number; top: number; right: number; bottom: number } }[];
-}
+import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
 
-export interface Segment {
-	text: string;
-	start: number;
-	end: number;
-	start_fmt?: string;
-	end_fmt?: string;
-	box_y?: [number, number];
-	confidence?: number;
-	frameCount?: number;
-}
 
-export interface SegmentWithAdjusted extends Segment {
-	adjustedConfidence?: number;
-	yPenalty?: number;
-	isoPenalty?: number;
-}
+
+
 
 export function levenshtein(a: string, b: string): number {
 	const m = a.length, n = b.length;
@@ -36,11 +18,6 @@ export function levenshtein(a: string, b: string): number {
 	return dp[m][n];
 }
 
-function boxY(box?: number[][]): [number, number] | undefined {
-	if (!box || box.length < 4) return undefined;
-	const ys = box.map(p => p[1]);
-	return [Math.min(...ys), Math.max(...ys)];
-}
 
 function overlap(a?: [number, number], b?: [number, number]): boolean {
 	if (!a || !b) return false;
@@ -64,7 +41,37 @@ function mergeConfidence(a?: number, b?: number): number | undefined {
 
 const normalize = (s: string) => s.replace(/\s+/g, '');
 
-export function mergeFrames(frames: FrameResult[]): {
+/**
+ * second pass: merge adjacent segments where text is a substring of the other
+ * and Y positions overlap (handles OCR single-character hallucination like 身→绝不起身)
+ */
+function mergeSubstringSegments(segments: Segment[]): Segment[] {
+  for (let i = segments.length - 1; i > 0; i--) {
+    const prev = segments[i - 1];
+    const cur = segments[i];
+    if (!overlap(prev.box_y, cur.box_y)) continue;
+    if (isSubstringOf(prev.text, cur.text)) {
+      segments[i - 1] = {
+        text: cur.text, start: prev.start, end: cur.end,
+        box_y: cur.box_y,
+        confidence: mergeConfidence(prev.confidence, cur.confidence),
+        frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1),
+      };
+      segments.splice(i, 1);
+    } else if (isSubstringOf(cur.text, prev.text)) {
+      segments[i - 1] = {
+        text: prev.text, start: prev.start, end: cur.end,
+        box_y: prev.box_y,
+        confidence: mergeConfidence(prev.confidence, cur.confidence),
+        frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1),
+      };
+      segments.splice(i, 1);
+    }
+  }
+  return segments;
+}
+
+export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesArgs): {
 	text: string;
 	segments: Segment[];
 } {
@@ -117,21 +124,8 @@ export function mergeFrames(frames: FrameResult[]): {
 		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
 	}
 
-	// second pass: merge adjacent segments where text is a substring of the other
-	// and Y positions overlap (handles OCR single-character hallucination like 身→绝不起身)
-	for (let i = segments.length - 1; i > 0; i--) {
-		const prev = segments[i - 1];
-		const cur = segments[i];
-		if (!overlap(prev.box_y, cur.box_y)) continue;
-		if (isSubstringOf(prev.text, cur.text)) {
-			// prev is substring of cur → keep cur (longer)
-			segments[i - 1] = { text: cur.text, start: prev.start, end: cur.end, box_y: cur.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence), frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1) };
-			segments.splice(i, 1);
-		} else if (isSubstringOf(cur.text, prev.text)) {
-			// cur is substring of prev → keep prev (longer)
-			segments[i - 1] = { text: prev.text, start: prev.start, end: cur.end, box_y: prev.box_y, confidence: mergeConfidence(prev.confidence, cur.confidence), frameCount: (prev.frameCount ?? 1) + (cur.frameCount ?? 1) };
-			segments.splice(i, 1);
-		}
+	if (mergeFramesArgs.mergeSubstring) {
+		mergeSubstringSegments(segments);
 	}
 
 	// third pass: A-B-C triplet where A.text == C.text and B is a short hallucination

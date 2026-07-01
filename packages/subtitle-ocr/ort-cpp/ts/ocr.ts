@@ -2,16 +2,12 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
+import { OCRLine } from "../../types";
 const __dirname = resolve(fileURLToPath(import.meta.url), "..", "..");
 const BINARY_PATH = resolve(__dirname, "build", "subtitle_ocr_ort_cpp");
 const LD_PATH = resolve(__dirname, "build");
 
-export interface OCRLine {
-	text: string;
-	confidence: number;
-	box: number[][];
-}
+
 
 export function ocrFrame(
 	framePath: string,

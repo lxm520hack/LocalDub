@@ -3,12 +3,9 @@ import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { OCRLine } from '@repo/subtitle-ocr/types';
 
-export interface OCRLine {
-	text: string;
-	confidence: number;
-	box: number[][];
-}
+
 
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build');
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');

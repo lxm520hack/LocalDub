@@ -3,12 +3,8 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pythonBin } from '@repo/config/path/bin';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { OCRLine } from '@repo/subtitle-ocr/types';
 
-export interface OCRLine {
-	text: string;
-	confidence: number;
-	box: number[][];
-}
 
 const PY_SCRIPT = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'subtitle-py.py');
 

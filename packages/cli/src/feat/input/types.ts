@@ -2,7 +2,8 @@ import { TtsStageInputSchema } from '@repo/core/input/tts';
 import { ServersArgsSchema } from '@repo/core/servers/input';
 import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
-
+import { MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
+import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
 const targetLangList = [
 	'en',
 	'zh',
@@ -230,6 +231,7 @@ const OcrTaskInputSchema = z
 			.describe('步骤完成后是否删除抽出的帧图片; 默认 false (保留)')
 			.optional(),
 		...ocrAfterAdjustArgsSchema.shape,
+		...MergeFramesArgsSchema.shape,
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 	.optional();
@@ -369,28 +371,11 @@ const StagesSchema = z.object({
 	asr: ASRTaskInputSchema,
 	asr_fix: z
 		.looseObject({
-			llmFix: z
-				.boolean()
-				.default(false)
-				.describe('是否启用 LLM ASR 纠错（通过本地 LLM API 修正错别字）').optional(),
+			...LlmFixArgsSchema.shape,
 			segmentPad: z
 				.boolean()
 				.default(true)
 				.describe('是否对 ASR 段落添加时间轴 padding').optional(),
-			llmModel: z
-				.string()
-				.default('gemma4:31b-cloud')
-				.optional()
-				.describe('LLM 模型名，默认 gemma4:31b-cloud'),
-			llmApiBase: z
-				.string()
-				.default('http://localhost:11434/v1')
-				.optional()
-				.describe('LLM API 地址，默认 ollama'),
-			domainHint: z
-				.string()
-				.optional()
-				.describe('领域提示，帮助 LLM 理解上下文，例如"仙侠题材，角色：叶白、慧天、夜白"'),
 			asrFilePath: z.string().optional().describe('ASR 结果文件路径, 调试使用'),
 		})
 		.default({
@@ -409,47 +394,14 @@ const StagesSchema = z.object({
 				.optional()
 				.describe('OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃'),
 			...ocrAfterAdjustArgsSchema.shape,
-			llmFix: z
-				.boolean()
-				.default(false)
-				.describe('是否启用 LLM OCR 纠错').optional(),
-			llmModel: z
-				.string()
-				.default('gemma4:31b-cloud')
-				.optional()
-				.describe('LLM 模型名'),
-			llmApiBase: z
-				.string()
-				.default('http://localhost:11434/v1')
-				.optional()
-				.describe('LLM API 地址'),
-			domainHint: z
-				.string()
-				.optional()
-				.describe('领域提示'),
+			...MergeFramesArgsSchema.shape,
+			...LlmFixArgsSchema.shape,
 		})
 		.default({ llmFix: false, textScore: 0.5, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 		.optional(),
 	ocr_fix: z
 		.looseObject({
-			llmFix: z
-				.boolean()
-				.default(false)
-				.describe('是否启用 LLM OCR 纠错').optional(),
-			llmModel: z
-				.string()
-				.default('gemma4:31b-cloud')
-				.optional()
-				.describe('LLM 模型名'),
-			llmApiBase: z
-				.string()
-				.default('http://localhost:11434/v1')
-				.optional()
-				.describe('LLM API 地址'),
-			domainHint: z
-				.string()
-				.optional()
-				.describe('领域提示'),
+			...LlmFixArgsSchema.shape,
 		})
 		.default({ llmFix: false })
 		.optional(),

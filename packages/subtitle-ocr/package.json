@@ -3,10 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./subtitle-node": "./subtitle-node.ts",
-    "./subtitle-py": "./subtitle-py.py",
-    "./subtitle-cpp": "./ort-cpp/ts/ocr.ts",
-    "./utils": "./utils.ts"
+    "./*": "./*.ts",
+    "./*.ts": "./*.ts"
   },
   "scripts": {
     "test": "bun test",

@@ -212,11 +212,7 @@ export async function releaseSessions(s: OCRSessions): Promise<void> {
 	await Promise.all([s.det.release(), s.cls.release(), s.rec.release()]);
 }
 
-export interface OCRLine {
-	text: string;
-	confidence: number;
-	box: number[][];
-}
+
 
 export interface OCRNodeResult {
 	text: string;

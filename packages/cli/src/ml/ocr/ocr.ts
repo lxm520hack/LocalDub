@@ -10,17 +10,13 @@ import {
 	type OCRSessions,
 } from '@repo/subtitle-ocr/subtitle-node';
 import { REPO_ROOT } from '@repo/config/path/root';
-
+import { OCRLine } from '@repo/subtitle-ocr/types';
 export type { OCRSessions } from '@repo/subtitle-ocr/subtitle-node';
 export type OCRDevice = 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';
 
 export type OCRRuntime = 'ort-cpp' | 'ort-node' | 'ort-py' | 'ort-rust';
 
-export interface OCRLine {
-	text: string;
-	confidence: number;
-	box: number[][];
-}
+
 
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build');
 
