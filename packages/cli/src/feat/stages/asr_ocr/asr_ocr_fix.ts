@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
 import {  fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
-import { computeBoxYStats, computeSegmentAdjustments, filterFrameNoiseLines } from '../ocr/utils.ts';
+import { computeBoxYStats, computeSegmentAdjustments, joinOcrLines } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 
@@ -53,8 +53,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
 	const textScore = asrOcrFixCfg?.textScore ?? 0.45;
-	const noiseFilterThreshold = asrOcrFixCfg?.noiseFilterThreshold ?? 2.0;
-	
+	const lineAdjustedThreshold = asrOcrFixCfg?.lineAdjustedThreshold ?? 0.5;
 
 	// Compute per-line Y statistics from raw frames
 	const yStats = computeBoxYStats(rawFrames);
@@ -73,12 +72,12 @@ export async function stageAsrOcrFix(ctx: Context) {
 				? Math.round((height / yStats.avgHeight) * 100) / 100
 				: 0;
 			const bandDrift = Math.max(topOR, botOR);
-			const isOutlier = bandDrift > noiseFilterThreshold || heightRatio < 0.5;
 			const noisePenalty = Math.min(1,
 				Math.max(0, (bandDrift - 1.0) * 0.5) +
 				Math.abs(1 - heightRatio) * 0.3,
 			);
 			const adjustedConfidence = Math.round(l.confidence * (1 - noisePenalty) * 100) / 100;
+			const isOutlier = adjustedConfidence < lineAdjustedThreshold;
 			return {
 				...l,
 				top,
@@ -99,14 +98,31 @@ export async function stageAsrOcrFix(ctx: Context) {
 			_engine: 'asr_ocr_fix',
 			_line_stats: yStats,
 			_frame_count: rawFrames.length,
-			_config: { noiseFilterThreshold },
+			_config: { lineAdjustedThreshold },
 			frames: annotatedFrames,
 		},
 		ctx,
 	);
 
 	// 2. Filter noise lines at frame level, then merge into segments
-	const cleanFrames = filterFrameNoiseLines(rawFrames, yStats, { noiseFilterThreshold });
+	const cleanFrames: FrameResult[] = annotatedFrames.flatMap(f => {
+		if (!f.lines) return [f as FrameResult];
+		const cleanLines = f.lines.filter(l => !l.is_outlier);
+		if (cleanLines.length === 0) return [];
+		if (cleanLines.length === f.lines.length) return [f as FrameResult];
+		const rebuilt = joinOcrLines(cleanLines.map(l => ({
+			text: l.text,
+			confidence: l.confidence,
+			box: l.box,
+		})));
+		return [{
+			...f,
+			text: rebuilt.text,
+			confidence: rebuilt.confidence,
+			bbox: rebuilt.bbox,
+			lines: rebuilt.lines,
+		} as FrameResult];
+	});
 	const cleanYStats = computeBoxYStats(cleanFrames);
 
 	writeJson(
