@@ -53,14 +53,11 @@ export async function stageAsrOcr(ctx: Context) {
 	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
 	ensureDir(asrOcrDir, ctx);
 
-	const yStats = computeBoxYStats(frameResults);
-
 	// Write ocr_frames.json — raw frame data for debugging/reproducibility
 	writeJson(
 		join(asrOcrDir, 'ocr_frames.json'),
 		{
 			_frames_raw: frameResults,
-			_y_stats: yStats,
 			audio_info: { duration:  probeVideoDuration(videoSourcePath(ctx)) },
 			_source: 'asr_ocr',
 			_engine: runtime,

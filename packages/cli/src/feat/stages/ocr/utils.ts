@@ -56,14 +56,18 @@ export function joinOcrLines(lines: OCRLine[]): {
 export function computeBoxYStats(frames: FrameResult[]): {
 	avg: [number, number];
 	mode: [number, number];
+	avgHeight: number;
 } {
-	const nonEmpty = frames.filter(f => f.bbox && f.text);
-	if (nonEmpty.length === 0) return { avg: [0, 0], mode: [0, 0] };
+	const lineBoxes = frames
+		.flatMap(f => f.lines ?? [])
+		.filter(l => l.text.trim());
+	if (lineBoxes.length === 0) return { avg: [0, 0], mode: [0, 0], avgHeight: 0 };
 
-	const boxYs = nonEmpty.map(f => [f.bbox!.top, f.bbox!.bottom] as [number, number]);
+	const boxYs = lineBoxes.map(l => [l.bbox.top, l.bbox.bottom] as [number, number]);
 
 	const avgTop = Math.round(boxYs.reduce((s, [t]) => s + t, 0) / boxYs.length);
 	const avgBtm = Math.round(boxYs.reduce((s, [, b]) => s + b, 0) / boxYs.length);
+	const avgHeight = Math.round(lineBoxes.reduce((s, l) => s + (l.bbox.bottom - l.bbox.top), 0) / lineBoxes.length);
 
 	const counts = new Map<string, { count: number; pair: [number, number] }>();
 	let maxCount = 0;
@@ -79,7 +83,7 @@ export function computeBoxYStats(frames: FrameResult[]): {
 		}
 	}
 
-	return { avg: [avgTop, avgBtm], mode };
+	return { avg: [avgTop, avgBtm], mode, avgHeight };
 }
 
 export function computeSegmentAdjustments(
