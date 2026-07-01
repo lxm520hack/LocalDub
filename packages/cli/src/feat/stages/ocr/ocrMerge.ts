@@ -6,7 +6,17 @@ import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitl
 
 
 
-
+/**
+ * 编辑距离算法，计算两个字符串之间需要多少次插入/删除/替换才能变成对方。
+ * ```ts
+ * levenshtein("陆", "陆执巡") = 2
+ * ```
+ * 陆 → 陆执巡: 插入 "执" + 插入 "巡" = 2 次操作
+ * ```ts
+ * levenshtein("陆", "这其中是不是有什么误会") = 9
+ * ```
+ * 每个字都要替换 = 9 次操作
+ */
 export function levenshtein(a: string, b: string): number {
 	const m = a.length, n = b.length;
 	const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
@@ -17,7 +27,6 @@ export function levenshtein(a: string, b: string): number {
 			dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]) + 1;
 	return dp[m][n];
 }
-
 
 function overlap(a?: [number, number], b?: [number, number]): boolean {
 	if (!a || !b) return false;
@@ -81,6 +90,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	let currentBoxY: [number, number] | undefined;
 	let gapStart = 0;
 	let currentConfidences: number[] = [];
+	const dedupLevenshtein = mergeFramesArgs.dedupLevenshtein ?? 1;
 
 	function frameBoxY(f: FrameResult): [number, number] | undefined {
 		return f.bbox ? [f.bbox.top, f.bbox.bottom] : undefined;
@@ -155,7 +165,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	// fourth pass: remove overlapping segments with similar text
 	// (handles ASR segment overlap where end2fps scans produce duplicate
 	// segments with lev-distant text like 干嘛/于嘛 in the same time window)
-	dedupOverlap(segments);
+	dedupOverlap(segments, dedupLevenshtein);
 
 	// fifth pass: merge adjacent segments with the same normalized text
 	// (handles A → noise → A cut by a frame gap where the triplet didn't fire
@@ -184,7 +194,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	};
 }
 
-export function dedupOverlap(segments: Segment[]): Segment[] {
+export function dedupOverlap(segments: Segment[], dedupLevenshtein = 1): Segment[] {
 	const TOUCH_GAP_MS = 500;
 	for (let i = 0; i < segments.length; i++) {
 		for (let j = i + 1; j < segments.length; j++) {
@@ -194,7 +204,7 @@ export function dedupOverlap(segments: Segment[]): Segment[] {
 			const gap = Math.max(a.start, b.start) - Math.min(a.end, b.end);
 			const overlap = a.start < b.end && b.start < a.end;
 			const touching = gap <= TOUCH_GAP_MS;
-			if ((overlap || touching) && levenshtein(a.text, b.text) <= 2) {
+			if ((overlap || touching) && levenshtein(a.text, b.text) <= dedupLevenshtein) {
 				segments[i] = {
 					text: a.text.length >= b.text.length ? a.text : b.text,
 					start: Math.min(a.start, b.start),
