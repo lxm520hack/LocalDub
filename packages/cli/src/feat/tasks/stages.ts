@@ -13,6 +13,20 @@ export const DUB_STAGES: StageName[] = [
 	'merge_video',
 ];
 
+export const DUB_ASR_OCR_STAGES: StageName[] = [
+	'separate',
+	'separate_after',
+	'asr',
+	'asr_ocr_pre',
+	'asr_ocr',
+	'asr_ocr_fix',
+	'translate',
+	'split_audio',
+	'tts',
+	'merge_audio',
+	'merge_video',
+]
+
 export const SUBTITLE_STAGES: StageName[] = [
 	'separate',
 	'separate_after',
@@ -41,19 +55,19 @@ function withOcrStages(stages: StageName[], pipeline?: string): StageName[] {
 	return out;
 }
 
-function withAsrOcrStages(stages: StageName[], _pipeline?: string): StageName[] {
-	const out: StageName[] = [];
-	for (const s of stages) {
-		if (s === 'asr_fix' || s === 'ocr' || s === 'ocr_fix') continue;
-		out.push(s);
-		if (s === 'asr') {
-			out.push('asr_ocr_pre',);
-			out.push('asr_ocr',);
-			out.push('asr_ocr_fix',);
-		}
-	}
-	return out;
-}
+// function withAsrOcrStages(stages: StageName[], _pipeline?: string): StageName[] {
+// 	const out: StageName[] = [];
+// 	for (const s of stages) {
+// 		if (s === 'asr_fix' || s === 'ocr' || s === 'ocr_fix') continue;
+// 		out.push(s);
+// 		if (s === 'asr') {
+// 			out.push('asr_ocr_pre',);
+// 			out.push('asr_ocr',);
+// 			out.push('asr_ocr_fix',);
+// 		}
+// 	}
+// 	return out;
+// }
 
 /** Build stage list based on pipeline mode and subtitleSource config */
 export function getStages(pipeline?: string): StageName[] {
@@ -62,7 +76,7 @@ export function getStages(pipeline?: string): StageName[] {
 		const args = readInputArgs();
 		const src = args.task.subtitleSource ?? 'asr';
 		if (src === 'ocr') stages = withOcrStages(stages, pipeline);
-		else if (src === 'asr_ocr') stages = withAsrOcrStages(stages, pipeline);
+		else if (src === 'asr_ocr') stages = DUB_ASR_OCR_STAGES
 		if (args.stages?.translate?.enabled === false) {
 			stages = stages.filter(s => s !== 'translate');
 		}

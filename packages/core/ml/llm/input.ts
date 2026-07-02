@@ -14,6 +14,7 @@ const LlmArgsSchema = z.object({
     .optional()
     .describe('领域提示, 帮助 LLM 理解上下文，例如"仙侠题材，角色：叶白、慧天、夜白"'),
 })
+export type LlmArgs = z.output<typeof LlmArgsSchema>;
 
 export const LlmFixArgsSchema = LlmArgsSchema.extend({
   llmFix: z
@@ -21,3 +22,4 @@ export const LlmFixArgsSchema = LlmArgsSchema.extend({
     .default(false)
     .describe('是否启用 LLM 修正'),
 })
+export type LlmFixArgs = z.output<typeof LlmFixArgsSchema>;

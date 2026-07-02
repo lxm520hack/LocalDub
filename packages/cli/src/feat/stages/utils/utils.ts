@@ -181,16 +181,18 @@ export function translationFilePath(sessionPath: string, lang: string): string {
 	return join(sessionPath, 'translate', `translation.${lang}.json`);
 }
 
-export function subtitleFilePath(sessionPath: string, src: SubtitleSource = 'asr'): string {
+export function subtitleFilePath(ctx: Context,): string {
+	const src = ctx.input?.task?.subtitleSource ?? 'asr'
 	if (src === 'ocr') {
-		const fixFile = join(sessionPath, 'ocr_fix', 'ocr_fix.json');
+		const fixFile = join(ctx.task.session_path, 'ocr_fix', 'ocr_fix.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
 	if (src === 'asr_ocr') {
-		const fixFile = join(sessionPath, 'asr_ocr_fix', 'asr_ocr_fused.json');
+		const filename = ctx.input?.stages?.asr_ocr_fix?.llmFix ? 'asr_ocr_fused_llm_fix.json' : 'asr_ocr_fused.json';
+		const fixFile = join(ctx.task.session_path, 'asr_ocr_fix', filename);
 		if (existsSync(fixFile)) return fixFile;
 	}
-	return join(sessionPath, 'asr_fix', 'asr_fix.json');
+	return join(ctx.task.session_path, 'asr_fix', 'asr_fix.json');
 }
 
 export function timingsFilePath(sessionPath: string): string {

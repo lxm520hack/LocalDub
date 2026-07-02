@@ -7,6 +7,11 @@ import { computeBoxYStats, computeSegmentAdjustments, get_ocr_frames_line_adjust
 import { Context, setStage } from '../../context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
+import { t } from '@repo/shared/i18n/server';
+import { buildOcrFixSystemPrompt, ocrSegmentsToPrompt } from '@repo/core/ml/llm/ocr_llm_fix';
+import { chat_completions } from '@repo/core/ml/llm/openai';
+import { parseLines } from '@repo/core/ml/llm/srt_shared';
+import { LlmArgs, LlmFixArgs } from '@repo/core/ml/llm/input';
 
 
 
@@ -210,8 +215,46 @@ export async function stageAsrOcrFix(ctx: Context) {
 	);
 
 	// asr_ocr_fused_llm_fix.json
+	const ocrLlmFix = async (segments: Segment[], args: LlmArgs) => {
+		const sourceLangLabel = t(ctx.input.task.sourceLang ?? 'zh')
+		const llmModel = args.llmModel
+		const llmApiBase = args.llmApiBase
+		const domainHint = args.domainHint;
+		if (domainHint) emitLog(sessionPath, `[asr_ocr_fix] domainHint: ${domainHint}`);
+		const prompt = ocrSegmentsToPrompt(segments);
+		emitLog(sessionPath, `[asr_ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+
+		const t0 = performance.now();
+		const fixed = await chat_completions(prompt, { 
+			model: llmModel, apiBase: llmApiBase, 
+			systemPrompt: buildOcrFixSystemPrompt(
+				sourceLangLabel,
+				domainHint
+			) 
+		});
+		const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
+
+		const fixedTexts = parseLines(fixed, segments.length);
+		if (fixedTexts) {
+			emitLog(sessionPath, `[asr_ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+			return segments.map((s, i) => ({ ...s, text: fixedTexts[i] }));
+		} else {
+			emitLog(sessionPath, `[asr_ocr_fix] LLM response parse failed, keeping original text`);
+			throw new Error('LLM response parse failed');
+		}
+	}
 	if (args?.llmFix) {
-		
+		const llmFixedSegments = await ocrLlmFix(merged, args)
+		writeJson(
+			join(asrOcrFixDir, 'asr_ocr_fused_llm_fix.json'),
+			{
+				result: {
+					text: llmFixedSegments.map(s => s.text).join(' '),
+					segments: llmFixedSegments,
+				},
+			},
+			ctx,
+		);
 	}
 
 	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrSegsRaw.length} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);

@@ -37,9 +37,9 @@ export async function stageOcrFix(ctx: Context) {
   // LLM correction
   if (llmFix) {
     const sourceLangLabel = t(ctx.input.task.sourceLang ?? 'zh')
-    const llmModel = args?.llmModel
-    const llmApiBase = args?.llmApiBase
-    const domainHint = args?.domainHint;
+    const llmModel = args.llmModel
+    const llmApiBase = args.llmApiBase
+    const domainHint = args.domainHint;
 
     if (domainHint) emitLog(sessionPath, `[ocr_fix] domainHint: ${domainHint}`);
 

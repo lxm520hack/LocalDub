@@ -253,7 +253,7 @@ export async function stageMergeVideo(ctx: Context) {
 			const trFile = translationFilePath(sessionPath, dstLangCode);
 			data = await readJson(trFile, ctx);
 		} else {
-			const srt = await readJson(srtPath ? srtPath : subtitleFilePath(sessionPath, subtitleSource), ctx);
+			const srt = await readJson(srtPath ? srtPath : subtitleFilePath(ctx), ctx);
 			const segments = srt.result?.segments ?? [];
 			data = {
 				translation: segments.map((seg: any) => ({
