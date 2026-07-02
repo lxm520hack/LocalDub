@@ -1,42 +1,759 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "allOf": [
-    {
+  "type": "object",
+  "properties": {
+    "command": {
+      "default": "env",
+      "type": "string",
+      "enum": [
+        "task",
+        "check",
+        "deviceInfo",
+        "servers",
+        "listModels",
+        "env"
+      ],
+      "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
+    },
+    "task": {
       "type": "object",
       "properties": {
-        "command": {
+        "action": {
+          "description": "任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态",
           "type": "string",
           "enum": [
-            "task",
-            "check",
-            "deviceInfo",
-            "servers",
-            "listModels",
-            "env"
-          ],
-          "description": "\n\t\t6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)\n\t\t7. deviceInfo: 显示设备信息\n\t\t8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)\n\t\t9. listModels: 列出 openai 兼容端点的 可用模型\n\t\t10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)\n\t\t"
+            "start",
+            "resume",
+            "rerunStage",
+            "status"
+          ]
         },
-        "task": {
+        "url": {
+          "description": "本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl",
+          "type": "string"
+        },
+        "sourceLang": {
+          "type": "string"
+        },
+        "targetLang": {
+          "type": "string",
+          "enum": [
+            "en",
+            "zh",
+            "vi",
+            "ja",
+            "ko",
+            "fr",
+            "de",
+            "es",
+            "pt",
+            "ru",
+            "ar",
+            "hi",
+            "th",
+            "id",
+            "ms",
+            "tl",
+            "my",
+            "km",
+            "lo",
+            "mn",
+            "ne",
+            "ur",
+            "bn"
+          ]
+        },
+        "resumeFrom": {
+          "description": "继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始",
+          "type": "string",
+          "enum": [
+            "separate",
+            "separate_after",
+            "asr",
+            "asr_fix",
+            "ocr",
+            "ocr_fix",
+            "asr_ocr_pre",
+            "asr_ocr",
+            "asr_ocr_fix",
+            "translate",
+            "split_audio",
+            "tts",
+            "merge_audio",
+            "merge_video"
+          ]
+        },
+        "sessionPath": {
+          "type": "string"
+        },
+        "stageName": {
+          "description": "rerunStage 专业参数, 指定要重新运行的步骤",
+          "type": "string",
+          "enum": [
+            "separate",
+            "separate_after",
+            "asr",
+            "asr_fix",
+            "ocr",
+            "ocr_fix",
+            "asr_ocr_pre",
+            "asr_ocr",
+            "asr_ocr_fix",
+            "translate",
+            "split_audio",
+            "tts",
+            "merge_audio",
+            "merge_video"
+          ]
+        },
+        "pipeline": {
+          "description": "任务模式, dub 配音,subtitle 仅字幕",
+          "default": "dub",
+          "type": "string",
+          "enum": [
+            "dub",
+            "subtitle"
+          ]
+        },
+        "subtitleSource": {
+          "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)",
+          "default": "asr",
+          "type": "string",
+          "enum": [
+            "asr",
+            "ocr",
+            "asr_ocr"
+          ]
+        },
+        "targetStage": {
+          "description": "目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤",
+          "type": "string",
+          "enum": [
+            "separate",
+            "separate_after",
+            "asr",
+            "asr_fix",
+            "ocr",
+            "ocr_fix",
+            "asr_ocr_pre",
+            "asr_ocr",
+            "asr_ocr_fix",
+            "translate",
+            "split_audio",
+            "tts",
+            "merge_audio",
+            "merge_video"
+          ]
+        }
+      },
+      "additionalProperties": {}
+    },
+    "check": {
+      "type": "object",
+      "properties": {
+        "sessionPath": {
+          "type": "string"
+        },
+        "type": {
+          "default": "video",
+          "type": "string",
+          "enum": [
+            "video",
+            "asr",
+            "font"
+          ]
+        }
+      }
+    },
+    "servers": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "description": "服务器操作",
+          "default": "status",
+          "type": "string",
+          "enum": [
+            "status",
+            "start",
+            "stop",
+            "discovery"
+          ]
+        },
+        "name": {
+          "description": "指定操作的服务器，不传则操作所有",
+          "type": "string",
+          "enum": [
+            "voxcpm_torch_gradio",
+            "torch"
+          ]
+        }
+      },
+      "additionalProperties": {}
+    },
+    "env": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "default": "check",
+          "type": "string",
+          "enum": [
+            "check",
+            "ensure"
+          ]
+        },
+        "targets": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "bun",
+              "python",
+              "uv",
+              "ffmpeg",
+              "cargo",
+              "vcpkg",
+              "vulkan",
+              "rocm",
+              "cuda",
+              "whisper_ggml",
+              "whisper_vad",
+              "whisper_sherpa",
+              "whisper_onnx",
+              "demucs_pth",
+              "demucs_onnx",
+              "demucs_ggml",
+              "voxcpm2_onnx",
+              "voxcpm2_pth",
+              "submodule_whisper_cpp",
+              "submodule_demucs_cpp",
+              "submodule_demucs_rs",
+              "submodule_voxcpm_rs",
+              "whisper_bin",
+              "demucs_ggml_bin",
+              "voxcpm_burn_bin",
+              "demucs_burn_bin",
+              "ocr_cpp_bin",
+              "cmake",
+              "git",
+              "dotenv"
+            ]
+          }
+        }
+      }
+    },
+    "stages": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "separate": {
+          "description": "separate: demucs 分离人声与背景声, 提升 tts-vc 的质量",
+          "default": {
+            "runtime": "pytorch",
+            "device": "cuda"
+          },
           "type": "object",
           "properties": {
-            "action": {
-              "description": "任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态",
+            "runtime": {
               "type": "string",
               "enum": [
-                "start",
-                "resume",
-                "rerunStage",
-                "status"
+                "ggml",
+                "ort",
+                "pytorch",
+                "burn",
+                "burn-tch"
               ]
             },
-            "url": {
-              "description": "本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl",
+            "device": {
+              "default": "cuda",
+              "description": "pytorch:cuda (NVIDIA/ROCm), mps (Apple Silicon)",
+              "type": "string",
+              "enum": [
+                "vulkan",
+                "webgpu",
+                "cuda",
+                "cpu",
+                "mps"
+              ]
+            },
+            "always": {
+              "default": false,
+              "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
+              "type": "boolean"
+            },
+            "stems": {
+              "default": [
+                "vocals"
+              ],
+              "description": "需分离的 stems; 默认只分离 vocals, 目前仅支持 ort",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "drums",
+                  "bass",
+                  "other",
+                  "vocals"
+                ]
+              }
+            }
+          },
+          "required": [
+            "runtime"
+          ]
+        },
+        "asr": {
+          "default": {
+            "runtime": "pytorch",
+            "device": "cuda",
+            "useSeparated": false,
+            "mixMode": "sidechain",
+            "reduceBgm": -12,
+            "wordsOutput": false,
+            "sidechainCompress": {
+              "threshold": 0.1,
+              "ratio": 20,
+              "attack": 1,
+              "release": 200
+            },
+            "useGate": false
+          },
+          "type": "object",
+          "properties": {
+            "runtime": {
+              "default": "pytorch",
+              "type": "string",
+              "enum": [
+                "ggml",
+                "faster-whisper",
+                "pytorch"
+              ]
+            },
+            "device": {
+              "default": "cuda",
+              "type": "string",
+              "enum": [
+                "vulkan",
+                "cuda",
+                "cpu",
+                "mps"
+              ]
+            },
+            "useSeparated": {
+              "default": false,
+              "description": "使用分离后的人声 (target_3_vocals.wav) 而非原始视频音频",
+              "type": "boolean"
+            },
+            "mixMode": {
+              "default": "sidechain",
+              "description": "ASR 音频源: vocals=纯分离人声, \n\t\t\t\traw-sum=人声+降低背景音直接叠加, \n\t\t\t\tsidechain=人声+侧链压缩背景音",
+              "type": "string",
+              "enum": [
+                "vocals",
+                "raw-sum",
+                "sidechain"
+              ]
+            },
+            "reduceBgm": {
+              "default": -12,
+              "description": "背景音降低量(dB); raw-sum 时叠加前直接衰减, sidechain 时压缩后额外衰减",
+              "type": "number"
+            },
+            "wordsOutput": {
+              "default": false,
+              "description": "是否在 asr.json 中包含词级时间戳 (words), 分离场景下可能受幻觉影响；默认关闭，调试时开启",
+              "type": "boolean"
+            },
+            "sidechainCompress": {
+              "default": {
+                "threshold": 0.1,
+                "ratio": 20,
+                "attack": 1,
+                "release": 200
+              },
+              "description": "mixMode=sidechain 时侧链压缩器参数",
+              "type": "object",
+              "properties": {
+                "threshold": {
+                  "default": 0.1,
+                  "description": "压缩器阈值, 默认 0.1",
+                  "type": "number"
+                },
+                "ratio": {
+                  "default": 20,
+                  "description": "压缩比, 默认 20",
+                  "type": "number"
+                },
+                "attack": {
+                  "default": 1,
+                  "description": "attack 时间(ms), 默认 1",
+                  "type": "number"
+                },
+                "release": {
+                  "default": 200,
+                  "description": "release 时间(ms), 默认 200",
+                  "type": "number"
+                }
+              }
+            },
+            "useGate": {
+              "default": false,
+              "description": "对分离后的人声应用 silence gate 过滤静音段噪声",
+              "type": "boolean"
+            },
+            "vocalAudioPath": {
+              "description": "ASR 输入的人声音频路径, 调试使用",
               "type": "string"
             },
-            "sourceLang": {
+            "vad": {
+              "description": "whisper.cpp: 启用 VAD",
+              "default": false,
+              "type": "boolean"
+            },
+            "vadModel": {
+              "description": "whisper.cpp: VAD 模型, silero-v5 (默认) 或 silero-v6",
+              "type": "string",
+              "enum": [
+                "silero-v5",
+                "silero-v6"
+              ]
+            },
+            "vadThreshold": {
+              "description": "whisper.cpp: VAD 阈值, 默认 0.5",
+              "default": 0.5,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "noSpeechThold": {
+              "description": "whisper.cpp: no-speech 阈值, 默认 0.6",
+              "default": 0.6,
+              "type": "number",
+              "minimum": 0
+            },
+            "temperature": {
+              "description": "whisper.cpp: 解码温度, 默认 0.0",
+              "default": 0,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "maxLen": {
+              "description": "whisper.cpp: 最大段长(字符), 0=不限",
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "splitOnWord": {
+              "description": "whisper.cpp: 按词边界分割",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "asr_fix": {
+          "default": {
+            "llmFix": false,
+            "segmentPad": true
+          },
+          "type": "object",
+          "properties": {
+            "llmModel": {
+              "default": "gemma4:31b-cloud",
+              "description": "LLM 模型名",
+              "type": "string"
+            },
+            "llmApiBase": {
+              "default": "http://localhost:11434/v1",
+              "description": "LLM API 地址",
+              "type": "string"
+            },
+            "domainHint": {
+              "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+              "type": "string"
+            },
+            "llmFix": {
+              "default": false,
+              "description": "是否启用 LLM 修正",
+              "type": "boolean"
+            },
+            "segmentPad": {
+              "default": true,
+              "description": "是否对 ASR 段落添加时间轴 padding",
+              "type": "boolean"
+            },
+            "asrFilePath": {
+              "description": "ASR 结果文件路径, 调试使用",
+              "type": "string"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "ocr": {
+          "default": {
+            "runtime": "ort-cpp",
+            "device": "cpu",
+            "fps": 2,
+            "textScore": 0.45,
+            "subtitleOnly": true,
+            "cleanupFrames": false,
+            "isoThresholdMs": 1500,
+            "adjustYWeight": 0.8,
+            "adjustIsoWeight": 0.2,
+            "adjustYFactor": 0.08
+          },
+          "type": "object",
+          "properties": {
+            "runtime": {
+              "default": "ort-cpp",
+              "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
+              "type": "string",
+              "enum": [
+                "ort-cpp",
+                "ort-node",
+                "ort-py",
+                "ort-rust"
+              ]
+            },
+            "device": {
+              "default": "cpu",
+              "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
+              "type": "string",
+              "enum": [
+                "cpu",
+                "cuda",
+                "directml",
+                "coreml",
+                "rocm",
+                "mps"
+              ]
+            },
+            "fps": {
+              "default": 2,
+              "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
+              "type": "number"
+            },
+            "textScore": {
+              "default": 0.45,
+              "description": "OCR 识别置信度阈值, 默认 0.45",
+              "type": "number"
+            },
+            "subtitleOnly": {
+              "default": true,
+              "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
+              "type": "boolean"
+            },
+            "cleanupFrames": {
+              "default": false,
+              "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
+              "type": "boolean"
+            },
+            "isoThresholdMs": {
+              "default": 1500,
+              "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
+              "type": "number"
+            },
+            "adjustYWeight": {
+              "default": 0.8,
+              "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
+              "type": "number"
+            },
+            "adjustIsoWeight": {
+              "default": 0.2,
+              "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
+              "type": "number"
+            },
+            "adjustYFactor": {
+              "default": 0.08,
+              "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
+              "type": "number"
+            },
+            "lineAdjustedThreshold": {
+              "default": 0.5,
+              "description": "行级 outlier 判定: adjustedConfidence < 此值则标记为 outlier; 默认 0.5",
+              "type": "number"
+            },
+            "mergeSubstring": {
+              "default": false,
+              "type": "boolean"
+            },
+            "dedupLevenshtein": {
+              "default": 1,
+              "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
+              "type": "number"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "asr_ocr": {
+          "default": {
+            "runtime": "ort-cpp",
+            "device": "cpu",
+            "fps": 2,
+            "textScore": 0.45,
+            "subtitleOnly": true,
+            "cleanupFrames": false
+          },
+          "type": "object",
+          "properties": {
+            "runtime": {
+              "default": "ort-cpp",
+              "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
+              "type": "string",
+              "enum": [
+                "ort-cpp",
+                "ort-node",
+                "ort-py",
+                "ort-rust"
+              ]
+            },
+            "device": {
+              "default": "cpu",
+              "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
+              "type": "string",
+              "enum": [
+                "cpu",
+                "cuda",
+                "directml",
+                "coreml",
+                "rocm",
+                "mps"
+              ]
+            },
+            "fps": {
+              "default": 2,
+              "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
+              "type": "number"
+            },
+            "textScore": {
+              "default": 0.45,
+              "description": "OCR 识别置信度阈值, 默认 0.45",
+              "type": "number"
+            },
+            "subtitleOnly": {
+              "default": true,
+              "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
+              "type": "boolean"
+            },
+            "cleanupFrames": {
+              "default": false,
+              "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "asr_ocr_fix": {
+          "default": {
+            "llmFix": false,
+            "textScore": 0.5,
+            "isoThresholdMs": 1500,
+            "adjustYWeight": 0.8,
+            "adjustIsoWeight": 0.2,
+            "adjustYFactor": 0.08
+          },
+          "type": "object",
+          "properties": {
+            "textScore": {
+              "description": "OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃",
+              "default": 0.5,
+              "type": "number"
+            },
+            "isoThresholdMs": {
+              "default": 1500,
+              "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
+              "type": "number"
+            },
+            "adjustYWeight": {
+              "default": 0.8,
+              "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
+              "type": "number"
+            },
+            "adjustIsoWeight": {
+              "default": 0.2,
+              "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
+              "type": "number"
+            },
+            "adjustYFactor": {
+              "default": 0.08,
+              "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
+              "type": "number"
+            },
+            "lineAdjustedThreshold": {
+              "default": 0.5,
+              "description": "行调整的置信度阈值: confidence < 此值则进行行调整; 默认 0.5",
+              "type": "number"
+            },
+            "mergeSubstring": {
+              "default": false,
+              "type": "boolean"
+            },
+            "dedupLevenshtein": {
+              "default": 1,
+              "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
+              "type": "number"
+            },
+            "llmModel": {
+              "default": "gemma4:31b-cloud",
+              "description": "LLM 模型名",
+              "type": "string"
+            },
+            "llmApiBase": {
+              "default": "http://localhost:11434/v1",
+              "description": "LLM API 地址",
+              "type": "string"
+            },
+            "domainHint": {
+              "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+              "type": "string"
+            },
+            "llmFix": {
+              "default": false,
+              "description": "是否启用 LLM 修正",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "ocr_fix": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "llmModel": {
+              "default": "gemma4:31b-cloud",
+              "description": "LLM 模型名",
+              "type": "string"
+            },
+            "llmApiBase": {
+              "default": "http://localhost:11434/v1",
+              "description": "LLM API 地址",
+              "type": "string"
+            },
+            "domainHint": {
+              "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+              "type": "string"
+            },
+            "llmFix": {
+              "default": false,
+              "description": "是否启用 LLM 修正",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": {}
+        },
+        "translate": {
+          "type": "object",
+          "properties": {
+            "apiBase": {
+              "type": "string"
+            },
+            "model": {
               "type": "string"
             },
             "targetLang": {
+              "description": "如果不填则 按照这个逻辑: 源语言: zh -> en, 否则 any -> zh",
               "type": "string",
               "enum": [
                 "en",
@@ -64,948 +781,198 @@
                 "bn"
               ]
             },
-            "resumeFrom": {
-              "description": "继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始",
-              "type": "string",
-              "enum": [
-                "separate",
-                "separate_after",
-                "asr",
-                "asr_fix",
-                "ocr",
-                "ocr_fix",
-                "asr_ocr_pre",
-                "asr_ocr",
-                "asr_ocr_fix",
-                "translate",
-                "split_audio",
-                "tts",
-                "merge_audio",
-                "merge_video"
-              ]
-            },
-            "sessionPath": {
-              "type": "string"
-            },
-            "stageName": {
-              "description": "rerunStage 专业参数, 指定要重新运行的步骤",
-              "type": "string",
-              "enum": [
-                "separate",
-                "separate_after",
-                "asr",
-                "asr_fix",
-                "ocr",
-                "ocr_fix",
-                "asr_ocr_pre",
-                "asr_ocr",
-                "asr_ocr_fix",
-                "translate",
-                "split_audio",
-                "tts",
-                "merge_audio",
-                "merge_video"
-              ]
-            },
-            "pipeline": {
-              "description": "任务模式, dub 配音,subtitle 仅字幕",
-              "default": "dub",
-              "type": "string",
-              "enum": [
-                "dub",
-                "subtitle"
-              ]
-            },
-            "subtitleSource": {
-              "description": "字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)",
-              "default": "asr",
-              "type": "string",
-              "enum": [
-                "asr",
-                "ocr",
-                "asr_ocr"
-              ]
-            },
-            "targetStage": {
-              "description": "目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤",
-              "type": "string",
-              "enum": [
-                "separate",
-                "separate_after",
-                "asr",
-                "asr_fix",
-                "ocr",
-                "ocr_fix",
-                "asr_ocr_pre",
-                "asr_ocr",
-                "asr_ocr_fix",
-                "translate",
-                "split_audio",
-                "tts",
-                "merge_audio",
-                "merge_video"
-              ]
+            "enabled": {
+              "description": "设为 false 跳过翻译，直接使用原始识别文本",
+              "type": "boolean"
             }
           },
           "additionalProperties": {}
         },
-        "check": {
+        "split_audio": {
+          "default": {
+            "vadAlign": false
+          },
           "type": "object",
           "properties": {
-            "sessionPath": {
+            "vadAlign": {
+              "default": false,
+              "description": "是否启用静音检测对齐: 修正 segments 前后静音导致的偏移",
+              "type": "boolean"
+            },
+            "vocalsFilePath": {
+              "description": "人声文件路径, 调试使用",
               "type": "string"
             },
-            "type": {
-              "default": "video",
-              "type": "string",
-              "enum": [
-                "video",
-                "asr",
-                "font"
-              ]
-            }
-          },
-          "required": [
-            "type"
-          ],
-          "additionalProperties": false
-        },
-        "servers": {
-          "type": "object",
-          "properties": {
-            "action": {
-              "description": "服务器操作",
-              "default": "status",
-              "type": "string",
-              "enum": [
-                "status",
-                "start",
-                "stop",
-                "discovery"
-              ]
-            },
-            "name": {
-              "description": "指定操作的服务器，不传则操作所有",
-              "type": "string",
-              "enum": [
-                "voxcpm_torch_gradio",
-                "torch"
-              ]
+            "sourceFilePath": {
+              "description": "原始视频音频路径, 调试使用",
+              "type": "string"
             }
           },
           "additionalProperties": {}
         },
-        "env": {
+        "tts": {
+          "description": "input: 1. split_audio/timings.json: translation[i].dst",
+          "default": {
+            "runtime": "pytorch",
+            "device": "cuda",
+            "skipExisting": true
+          },
           "type": "object",
           "properties": {
-            "action": {
-              "default": "check",
+            "runtime": {
+              "default": "pytorch",
               "type": "string",
               "enum": [
-                "check",
-                "ensure"
+                "ggml",
+                "pytorch",
+                "ort",
+                "cloud",
+                "voxcpm_torch_gradio"
               ]
             },
-            "targets": {
-              "default": [],
+            "device": {
+              "default": "cuda",
+              "type": "string",
+              "enum": [
+                "webgpu",
+                "cuda",
+                "rocm",
+                "cpu",
+                "mps"
+              ]
+            },
+            "skipExisting": {
+              "default": true,
+              "type": "boolean"
+            },
+            "onlyIndices": {
+              "description": "仅处理指定索引的 segment（其余跳过），可用于精准重跑指定段",
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "bun",
-                  "python",
-                  "uv",
-                  "ffmpeg",
-                  "cargo",
-                  "vcpkg",
-                  "vulkan",
-                  "rocm",
-                  "cuda",
-                  "whisper_ggml",
-                  "whisper_vad",
-                  "whisper_sherpa",
-                  "whisper_onnx",
-                  "demucs_pth",
-                  "demucs_onnx",
-                  "demucs_ggml",
-                  "voxcpm2_onnx",
-                  "voxcpm2_pth",
-                  "submodule_whisper_cpp",
-                  "submodule_demucs_cpp",
-                  "submodule_demucs_rs",
-                  "submodule_voxcpm_rs",
-                  "whisper_bin",
-                  "demucs_ggml_bin",
-                  "voxcpm_burn_bin",
-                  "demucs_burn_bin",
-                  "ocr_cpp_bin",
-                  "cmake",
-                  "git",
-                  "dotenv"
-                ]
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               }
             }
+          }
+        },
+        "merge_audio": {
+          "default": {
+            "maxSpeed": 1.35,
+            "maxAdvanceMs": 500,
+            "maxDelayMs": 500
           },
-          "additionalProperties": false
-        }
-      },
-      "required": [
-        "command",
-        "task"
-      ],
-      "additionalProperties": {}
-    },
-    {
-      "type": "object",
-      "properties": {
-        "stages": {
           "type": "object",
           "properties": {
-            "separate": {
-              "description": "separate: demucs 分离人声与背景声, 提升 tts-vc 的质量",
-              "default": {
-                "runtime": "pytorch",
-                "device": "cuda"
-              },
-              "type": "object",
-              "properties": {
-                "runtime": {
-                  "type": "string",
-                  "enum": [
-                    "ggml",
-                    "ort",
-                    "pytorch",
-                    "burn",
-                    "burn-tch"
-                  ]
-                },
-                "device": {
-                  "default": "cuda",
-                  "description": "pytorch:cuda (NVIDIA/ROCm), mps (Apple Silicon)",
-                  "type": "string",
-                  "enum": [
-                    "vulkan",
-                    "webgpu",
-                    "cuda",
-                    "cpu",
-                    "mps"
-                  ]
-                },
-                "always": {
-                  "default": false,
-                  "description": "效果(默认关闭): subtitle 模式下也始终分离人声，保留 vocals 以便后续切换到 dub; dub 流程下始终 需要分离人声以 保证 tts-vc 的质量",
-                  "type": "boolean"
-                },
-                "stems": {
-                  "default": [
-                    "vocals"
-                  ],
-                  "description": "需分离的 stems; 默认只分离 vocals, 目前仅支持 ort",
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "drums",
-                      "bass",
-                      "other",
-                      "vocals"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "runtime",
-                "device"
-              ],
-              "additionalProperties": false
+            "maxSpeed": {
+              "description": "TTS 音频最大变速比, 1.0=不变速",
+              "default": 1.35,
+              "type": "number",
+              "minimum": 1
             },
-            "asr": {
-              "default": {
-                "runtime": "pytorch",
-                "device": "cuda",
-                "useSeparated": false,
-                "mixMode": "sidechain",
-                "reduceBgm": -12,
-                "wordsOutput": false,
-                "sidechainCompress": {
-                  "threshold": 0.1,
-                  "ratio": 20,
-                  "attack": 1,
-                  "release": 200
-                },
-                "useGate": false
-              },
-              "type": "object",
-              "properties": {
-                "runtime": {
-                  "default": "pytorch",
-                  "type": "string",
-                  "enum": [
-                    "ggml",
-                    "faster-whisper",
-                    "pytorch"
-                  ]
-                },
-                "device": {
-                  "default": "cuda",
-                  "type": "string",
-                  "enum": [
-                    "vulkan",
-                    "cuda",
-                    "cpu",
-                    "mps"
-                  ]
-                },
-                "useSeparated": {
-                  "default": false,
-                  "description": "使用分离后的人声 (target_3_vocals.wav) 而非原始视频音频",
-                  "type": "boolean"
-                },
-                "mixMode": {
-                  "default": "sidechain",
-                  "description": "ASR 音频源: vocals=纯分离人声, \n\t\t\t\traw-sum=人声+降低背景音直接叠加, \n\t\t\t\tsidechain=人声+侧链压缩背景音",
-                  "type": "string",
-                  "enum": [
-                    "vocals",
-                    "raw-sum",
-                    "sidechain"
-                  ]
-                },
-                "reduceBgm": {
-                  "default": -12,
-                  "description": "背景音降低量(dB); raw-sum 时叠加前直接衰减, sidechain 时压缩后额外衰减",
-                  "type": "number"
-                },
-                "wordsOutput": {
-                  "default": false,
-                  "description": "是否在 asr.json 中包含词级时间戳 (words), 分离场景下可能受幻觉影响；默认关闭，调试时开启",
-                  "type": "boolean"
-                },
-                "sidechainCompress": {
-                  "default": {
-                    "threshold": 0.1,
-                    "ratio": 20,
-                    "attack": 1,
-                    "release": 200
-                  },
-                  "description": "mixMode=sidechain 时侧链压缩器参数",
-                  "type": "object",
-                  "properties": {
-                    "threshold": {
-                      "default": 0.1,
-                      "description": "压缩器阈值, 默认 0.1",
-                      "type": "number"
-                    },
-                    "ratio": {
-                      "default": 20,
-                      "description": "压缩比, 默认 20",
-                      "type": "number"
-                    },
-                    "attack": {
-                      "default": 1,
-                      "description": "attack 时间(ms), 默认 1",
-                      "type": "number"
-                    },
-                    "release": {
-                      "default": 200,
-                      "description": "release 时间(ms), 默认 200",
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "threshold",
-                    "ratio",
-                    "attack",
-                    "release"
-                  ],
-                  "additionalProperties": false
-                },
-                "useGate": {
-                  "default": false,
-                  "description": "对分离后的人声应用 silence gate 过滤静音段噪声",
-                  "type": "boolean"
-                },
-                "vocalAudioPath": {
-                  "description": "ASR 输入的人声音频路径, 调试使用",
-                  "type": "string"
-                },
-                "vad": {
-                  "description": "whisper.cpp: 启用 VAD",
-                  "default": false,
-                  "type": "boolean"
-                },
-                "vadModel": {
-                  "description": "whisper.cpp: VAD 模型, silero-v5 (默认) 或 silero-v6",
-                  "type": "string",
-                  "enum": [
-                    "silero-v5",
-                    "silero-v6"
-                  ]
-                },
-                "vadThreshold": {
-                  "description": "whisper.cpp: VAD 阈值, 默认 0.5",
-                  "default": 0.5,
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                },
-                "noSpeechThold": {
-                  "description": "whisper.cpp: no-speech 阈值, 默认 0.6",
-                  "default": 0.6,
-                  "type": "number",
-                  "minimum": 0
-                },
-                "temperature": {
-                  "description": "whisper.cpp: 解码温度, 默认 0.0",
-                  "default": 0,
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 2
-                },
-                "maxLen": {
-                  "description": "whisper.cpp: 最大段长(字符), 0=不限",
-                  "default": 0,
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 9007199254740991
-                },
-                "splitOnWord": {
-                  "description": "whisper.cpp: 按词边界分割",
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "runtime",
-                "device"
-              ],
-              "additionalProperties": {}
+            "maxAdvanceMs": {
+              "description": "字幕允许提前显示的最大毫秒数, 利用前段剩余时间",
+              "default": 500,
+              "type": "number",
+              "minimum": 0
             },
-            "asr_fix": {
-              "default": {
-                "llmFix": false,
-                "segmentPad": true
-              },
-              "type": "object",
-              "properties": {
-                "llmModel": {
-                  "description": "LLM 模型名",
-                  "default": "gemma4:31b-cloud",
-                  "type": "string"
-                },
-                "llmApiBase": {
-                  "description": "LLM API 地址",
-                  "default": "http://localhost:11434/v1",
-                  "type": "string"
-                },
-                "domainHint": {
-                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
-                  "type": "string"
-                },
-                "llmFix": {
-                  "description": "是否启用 LLM 修正",
-                  "default": false,
-                  "type": "boolean"
-                },
-                "segmentPad": {
-                  "default": true,
-                  "description": "是否对 ASR 段落添加时间轴 padding",
-                  "type": "boolean"
-                },
-                "asrFilePath": {
-                  "description": "ASR 结果文件路径, 调试使用",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "ocr": {
-              "default": {
-                "runtime": "ort-cpp",
-                "device": "cpu",
-                "fps": 2,
-                "textScore": 0.45,
-                "subtitleOnly": true,
-                "cleanupFrames": false,
-                "isoThresholdMs": 1500,
-                "adjustYWeight": 0.8,
-                "adjustIsoWeight": 0.2,
-                "adjustYFactor": 0.08
-              },
-              "type": "object",
-              "properties": {
-                "runtime": {
-                  "default": "ort-cpp",
-                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
-                  "type": "string",
-                  "enum": [
-                    "ort-cpp",
-                    "ort-node",
-                    "ort-py",
-                    "ort-rust"
-                  ]
-                },
-                "device": {
-                  "default": "cpu",
-                  "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
-                  "type": "string",
-                  "enum": [
-                    "cpu",
-                    "cuda",
-                    "directml",
-                    "coreml",
-                    "rocm",
-                    "mps"
-                  ]
-                },
-                "fps": {
-                  "default": 2,
-                  "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
-                  "type": "number"
-                },
-                "textScore": {
-                  "default": 0.45,
-                  "description": "OCR 识别置信度阈值, 默认 0.45",
-                  "type": "number"
-                },
-                "subtitleOnly": {
-                  "default": true,
-                  "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
-                  "type": "boolean"
-                },
-                "cleanupFrames": {
-                  "default": false,
-                  "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
-                  "type": "boolean"
-                },
-                "isoThresholdMs": {
-                  "default": 1500,
-                  "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
-                  "type": "number"
-                },
-                "adjustYWeight": {
-                  "default": 0.8,
-                  "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
-                  "type": "number"
-                },
-                "adjustIsoWeight": {
-                  "default": 0.2,
-                  "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
-                  "type": "number"
-                },
-                "adjustYFactor": {
-                  "default": 0.08,
-                  "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
-                  "type": "number"
-                },
-                "lineAdjustedThreshold": {
-                  "default": 0.5,
-                  "description": "行级 outlier 判定: adjustedConfidence < 此值则标记为 outlier; 默认 0.5",
-                  "type": "number"
-                },
-                "mergeSubstring": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "dedupLevenshtein": {
-                  "default": 1,
-                  "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
-                  "type": "number"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "asr_ocr": {
-              "default": {
-                "runtime": "ort-cpp",
-                "device": "cpu",
-                "fps": 2,
-                "textScore": 0.45,
-                "subtitleOnly": true,
-                "cleanupFrames": false
-              },
-              "type": "object",
-              "properties": {
-                "runtime": {
-                  "default": "ort-cpp",
-                  "description": "OCR 推理运行时: ort-cpp (C++ + OpenCV 预处理), ort-node (onnxruntime-node), ort-py (Python rapidocr), ort-rust (Rust 二进制)",
-                  "type": "string",
-                  "enum": [
-                    "ort-cpp",
-                    "ort-node",
-                    "ort-py",
-                    "ort-rust"
-                  ]
-                },
-                "device": {
-                  "default": "cpu",
-                  "description": "OCR 运行设备: cpu, cuda (NVIDIA), directml (Windows), coreml (macOS), rocm (AMD), mps (Apple Silicon)",
-                  "type": "string",
-                  "enum": [
-                    "cpu",
-                    "cuda",
-                    "directml",
-                    "coreml",
-                    "rocm",
-                    "mps"
-                  ]
-                },
-                "fps": {
-                  "default": 2,
-                  "description": "帧率 (fps), 越高时间戳越准但越慢; 默认 2",
-                  "type": "number"
-                },
-                "textScore": {
-                  "default": 0.45,
-                  "description": "OCR 识别置信度阈值, 默认 0.45",
-                  "type": "number"
-                },
-                "subtitleOnly": {
-                  "default": true,
-                  "description": "只识别字幕区域 (Y轴裁剪); 默认 true",
-                  "type": "boolean"
-                },
-                "cleanupFrames": {
-                  "default": false,
-                  "description": "步骤完成后是否删除抽出的帧图片; 默认 false (保留)",
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "asr_ocr_fix": {
-              "default": {
-                "llmFix": false,
-                "textScore": 0.5,
-                "isoThresholdMs": 1500,
-                "adjustYWeight": 0.8,
-                "adjustIsoWeight": 0.2,
-                "adjustYFactor": 0.08
-              },
-              "type": "object",
-              "properties": {
-                "textScore": {
-                  "description": "OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃",
-                  "default": 0.5,
-                  "type": "number"
-                },
-                "isoThresholdMs": {
-                  "default": 1500,
-                  "description": "单帧孤立惩罚的参考时间 (ms)，在此时长内无同文帧则视为完全孤立; 默认 1500",
-                  "type": "number"
-                },
-                "adjustYWeight": {
-                  "default": 0.8,
-                  "description": "Y 偏移在调整置信度中的权重 (0~1); 默认 0.8",
-                  "type": "number"
-                },
-                "adjustIsoWeight": {
-                  "default": 0.2,
-                  "description": "孤立程度在调整置信度中的权重 (0~1); 默认 0.2",
-                  "type": "number"
-                },
-                "adjustYFactor": {
-                  "default": 0.08,
-                  "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
-                  "type": "number"
-                },
-                "lineAdjustedThreshold": {
-                  "default": 0.5,
-                  "description": "行级 outlier 判定: adjustedConfidence < 此值则标记为 outlier; 默认 0.5",
-                  "type": "number"
-                },
-                "mergeSubstring": {
-                  "default": false,
-                  "type": "boolean"
-                },
-                "dedupLevenshtein": {
-                  "default": 1,
-                  "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
-                  "type": "number"
-                },
-                "llmModel": {
-                  "description": "LLM 模型名",
-                  "default": "gemma4:31b-cloud",
-                  "type": "string"
-                },
-                "llmApiBase": {
-                  "description": "LLM API 地址",
-                  "default": "http://localhost:11434/v1",
-                  "type": "string"
-                },
-                "domainHint": {
-                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
-                  "type": "string"
-                },
-                "llmFix": {
-                  "description": "是否启用 LLM 修正",
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "ocr_fix": {
-              "default": {
-                "llmFix": false
-              },
-              "type": "object",
-              "properties": {
-                "llmModel": {
-                  "description": "LLM 模型名",
-                  "default": "gemma4:31b-cloud",
-                  "type": "string"
-                },
-                "llmApiBase": {
-                  "description": "LLM API 地址",
-                  "default": "http://localhost:11434/v1",
-                  "type": "string"
-                },
-                "domainHint": {
-                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
-                  "type": "string"
-                },
-                "llmFix": {
-                  "description": "是否启用 LLM 修正",
-                  "default": false,
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "translate": {
-              "type": "object",
-              "properties": {
-                "apiBase": {
-                  "type": "string"
-                },
-                "model": {
-                  "type": "string"
-                },
-                "targetLang": {
-                  "description": "如果不填则 按照这个逻辑: 源语言: zh -> en, 否则 any -> zh",
-                  "type": "string",
-                  "enum": [
-                    "en",
-                    "zh",
-                    "vi",
-                    "ja",
-                    "ko",
-                    "fr",
-                    "de",
-                    "es",
-                    "pt",
-                    "ru",
-                    "ar",
-                    "hi",
-                    "th",
-                    "id",
-                    "ms",
-                    "tl",
-                    "my",
-                    "km",
-                    "lo",
-                    "mn",
-                    "ne",
-                    "ur",
-                    "bn"
-                  ]
-                },
-                "enabled": {
-                  "description": "设为 false 跳过翻译，直接使用原始识别文本",
-                  "type": "boolean"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "split_audio": {
-              "default": {
-                "vadAlign": false
-              },
-              "type": "object",
-              "properties": {
-                "vadAlign": {
-                  "default": false,
-                  "description": "是否启用静音检测对齐: 修正 segments 前后静音导致的偏移",
-                  "type": "boolean"
-                },
-                "vocalsFilePath": {
-                  "description": "人声文件路径, 调试使用",
-                  "type": "string"
-                },
-                "sourceFilePath": {
-                  "description": "原始视频音频路径, 调试使用",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": {}
-            },
-            "tts": {
-              "description": "input: 1. split_audio/timings.json: translation[i].dst",
-              "default": {
-                "runtime": "pytorch",
-                "device": "cuda",
-                "skipExisting": true
-              },
-              "type": "object",
-              "properties": {
-                "runtime": {
-                  "default": "pytorch",
-                  "type": "string",
-                  "enum": [
-                    "ggml",
-                    "pytorch",
-                    "ort",
-                    "cloud",
-                    "voxcpm_torch_gradio"
-                  ]
-                },
-                "device": {
-                  "default": "cuda",
-                  "type": "string",
-                  "enum": [
-                    "webgpu",
-                    "cuda",
-                    "rocm",
-                    "cpu",
-                    "mps"
-                  ]
-                },
-                "skipExisting": {
-                  "default": true,
-                  "type": "boolean"
-                },
-                "onlyIndices": {
-                  "description": "仅处理指定索引的 segment（其余跳过），可用于精准重跑指定段",
-                  "type": "array",
-                  "items": {
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 9007199254740991
-                  }
-                }
-              },
-              "additionalProperties": false
-            },
-            "merge_audio": {
-              "default": {
-                "maxSpeed": 1.35,
-                "maxAdvanceMs": 500,
-                "maxDelayMs": 500
-              },
-              "type": "object",
-              "properties": {
-                "maxSpeed": {
-                  "description": "TTS 音频最大变速比, 1.0=不变速",
-                  "default": 1.35,
-                  "type": "number",
-                  "minimum": 1
-                },
-                "maxAdvanceMs": {
-                  "description": "字幕允许提前显示的最大毫秒数, 利用前段剩余时间",
-                  "default": 500,
-                  "type": "number",
-                  "minimum": 0
-                },
-                "maxDelayMs": {
-                  "description": "字幕允许延迟显示的最大毫秒数, 借用后段留白",
-                  "default": 500,
-                  "type": "number",
-                  "minimum": 0
-                }
-              },
-              "additionalProperties": false
-            },
-            "merge_video": {
-              "default": {
-                "alignment": "bottom-center",
-                "outline": 0,
-                "shadow": 1,
-                "bgmGain": -6,
-                "dubGain": 3
-              },
-              "type": "object",
-              "properties": {
-                "fontSize": {
-                  "description": "字幕字号，不填则自动: 竖屏: 12(zh) / 9(其他) ← 横屏: 24(zh) / 18(其他)",
-                  "anyOf": [
-                    {
-                      "type": "number",
-                      "minimum": 1,
-                      "maximum": 200
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "marginV": {
-                  "description": "垂直边距(像素)，不填则自动: 竖屏 70 / 横屏 5",
-                  "anyOf": [
-                    {
-                      "type": "number",
-                      "minimum": 0
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alignment": {
-                  "default": "bottom-center",
-                  "type": "string",
-                  "enum": [
-                    "bottom-left",
-                    "bottom-center",
-                    "bottom-right",
-                    "middle-left",
-                    "center",
-                    "middle-right",
-                    "top-left",
-                    "top-center",
-                    "top-right"
-                  ]
-                },
-                "outline": {
-                  "default": 0,
-                  "type": "number",
-                  "minimum": 0
-                },
-                "shadow": {
-                  "default": 1,
-                  "type": "number",
-                  "minimum": 0
-                },
-                "font": {
-                  "description": "ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC",
-                  "type": "string"
-                },
-                "srtPath": {
-                  "description": "调试使用",
-                  "type": "string"
-                },
-                "bgmPath": {
-                  "description": "调试使用",
-                  "type": "string"
-                },
-                "bgmGain": {
-                  "description": "背景音乐增益(dB), 0=不变, 负值=衰减",
-                  "default": -6,
-                  "type": "number"
-                },
-                "dubGain": {
-                  "description": "配音增益(dB), 补偿合成语音偏小的听感差",
-                  "default": 3,
-                  "type": "number"
-                }
-              },
-              "additionalProperties": false
+            "maxDelayMs": {
+              "description": "字幕允许延迟显示的最大毫秒数, 借用后段留白",
+              "default": 500,
+              "type": "number",
+              "minimum": 0
             }
+          }
+        },
+        "merge_video": {
+          "default": {
+            "alignment": "bottom-center",
+            "outline": 0,
+            "shadow": 1,
+            "bgmGain": -6,
+            "dubGain": 3
           },
-          "additionalProperties": false
+          "type": "object",
+          "properties": {
+            "fontSize": {
+              "description": "字幕字号，不填则自动: 竖屏: 12(zh) / 9(其他) ← 横屏: 24(zh) / 18(其他)",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "marginV": {
+              "description": "垂直边距(像素)，不填则自动: 竖屏 70 / 横屏 5",
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "alignment": {
+              "default": "bottom-center",
+              "type": "string",
+              "enum": [
+                "bottom-left",
+                "bottom-center",
+                "bottom-right",
+                "middle-left",
+                "center",
+                "middle-right",
+                "top-left",
+                "top-center",
+                "top-right"
+              ]
+            },
+            "outline": {
+              "default": 0,
+              "type": "number",
+              "minimum": 0
+            },
+            "shadow": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0
+            },
+            "font": {
+              "description": "ASS 字幕字体名（须系统已安装），默认 Noto Sans CJK SC",
+              "type": "string"
+            },
+            "srtPath": {
+              "description": "调试使用",
+              "type": "string"
+            },
+            "bgmPath": {
+              "description": "调试使用",
+              "type": "string"
+            },
+            "bgmGain": {
+              "description": "背景音乐增益(dB), 0=不变, 负值=衰减",
+              "default": -6,
+              "type": "number"
+            },
+            "dubGain": {
+              "description": "配音增益(dB), 补偿合成语音偏小的听感差",
+              "default": 3,
+              "type": "number"
+            }
+          }
         }
-      },
-      "additionalProperties": {}
+      }
     }
-  ]
+  },
+  "required": [
+    "task"
+  ],
+  "additionalProperties": {}
 }

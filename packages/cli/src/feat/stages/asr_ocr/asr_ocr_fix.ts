@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
-import {  fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
+import {  fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
 import { computeBoxYStats, computeSegmentAdjustments, get_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';

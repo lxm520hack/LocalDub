@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 
 import { join, resolve } from 'node:path';
 import { main as evalOcrMain } from '../../ref/compute/eval-ocr.ts';
 import { createSessions, ocrFrameWithSessions, releaseSessions } from '../../../subtitle-ocr/subtitle-node.ts';
-import { FrameResult, Segment, mergeFrames } from '../../../cli/src/feat/stages/ocr/ocrMerge.ts';
+import { FrameResult, Segment, mergeFrames } from '@repo/core/stages/ocr/ocrMerge';
 import { REPO_ROOT } from '@repo/config/path/root';
 import { findRapidOcrModelsDir } from '@repo/subtitle-ocr/utils';
 

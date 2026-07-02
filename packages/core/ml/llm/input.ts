@@ -2,14 +2,12 @@ import { z } from "zod";
 
 const LlmArgsSchema = z.object({
   llmModel: z
-    .string()
+    .string().optional()
     .default('gemma4:31b-cloud')
-    .optional()
     .describe('LLM 模型名'),
   llmApiBase: z
-    .string()
+    .string().optional()
     .default('http://localhost:11434/v1')
-    .optional()
     .describe('LLM API 地址'),
   domainHint: z
     .string()
@@ -21,6 +19,5 @@ export const LlmFixArgsSchema = LlmArgsSchema.extend({
   llmFix: z
     .boolean()
     .default(false)
-    .optional()
     .describe('是否启用 LLM 修正'),
 })

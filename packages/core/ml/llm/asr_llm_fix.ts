@@ -1,7 +1,7 @@
 import { env } from "@repo/config/env";
 
 
-export function buildAsrFixSystemPrompt(domainHint?: string): string {
+export function buildAsrFixSystemPrompt(lang: string='中文',domainHint?: string): string {
   let prompt = `你是一个 ASR 纠错助手。修正中文转录文本中的错别字。
 
 输入包含两部分：
@@ -29,14 +29,5 @@ export function segmentsToPrompt(segments: { text: string }[]): string {
   return `全文上下文（参考用，每句以空格分隔）：\n${fullText}\n\n请修正以下条目（保持行号不变）：\n${lines}`;
 }
 
-export function parseLines(input: string, expectedCount: number): string[] | null {
-  const texts: string[] = [];
-  const lines = input.trim().split('\n');
-  for (const line of lines) {
-    const m = line.match(/^\s*\d+\s*[):.]\s*(.+)/);
-    if (m) texts.push(m[1].trim());
-  }
-  if (texts.length !== expectedCount) return null;
-  return texts;
-}
+
 

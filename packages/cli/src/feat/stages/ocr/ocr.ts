@@ -5,7 +5,7 @@ import { newOcrEngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
 import { ensureDir, writeJson } from "../utils/fileOps.ts";
 import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "../utils/utils.ts";
 
-import {  mergeFrames } from "./ocrMerge.ts";
+import {  mergeFrames } from "@repo/core/stages/ocr/ocrMerge";
 import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
 import { Context, setStage } from "../../context/context.ts";
 import { probeVideoDuration } from "@repo/core/utils/utils";

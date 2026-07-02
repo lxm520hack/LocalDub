@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { mergeFrames } from '@repo/cli/feat/stages/ocr/ocrMerge';
+import { mergeFrames } from '@repo/core/stages/ocr/ocrMerge';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const VIDEO = resolve(REPO_ROOT, 'packages', 'benchmark', 'ref', 'media', 'video_source.mp4');

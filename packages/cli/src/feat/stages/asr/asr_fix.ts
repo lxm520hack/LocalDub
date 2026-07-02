@@ -4,8 +4,10 @@ import { join } from 'node:path';
 import { readInputArgs } from '../../input/input.ts';
 import { emitLog, nowISO, srtTime, } from '../utils/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
-import { segmentsToPrompt, parseLines,  buildAsrFixSystemPrompt } from '@repo/core/ml/llm/asr_llm_fix.ts';
+import { segmentsToPrompt,   buildAsrFixSystemPrompt } from '@repo/core/ml/llm/asr_llm_fix.ts';
 import { chat_completions} from '@repo/core/ml/llm/openai.ts';
+import { parseLines } from '@repo/core/ml/llm/srt_shared.ts';
+import { t } from '@repo/shared/i18n/server';
 
 function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   if (!segments.length) return segments;
@@ -74,6 +76,7 @@ export async function stageAsrFix(ctx: Context) {
 
   // Step 1: LLM correction (before padding, to fix text)
   if (llmFix) {
+    const sourceLangLabel = t(ctx.input.task.sourceLang ?? 'zh')
     const llmModel = cfg?.llmModel || 'gemma4:31b-cloud';
     const llmApiBase = cfg?.llmApiBase || 'http://localhost:11434/v1';
     const domainHint = cfg?.domainHint;
@@ -88,7 +91,7 @@ export async function stageAsrFix(ctx: Context) {
     emitLog(sessionPath, `[ASR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
     const t0 = performance.now();
-    const fixed = await chat_completions(prompt, { model: llmModel, apiBase: llmApiBase, systemPrompt: buildAsrFixSystemPrompt(domainHint) });
+    const fixed = await chat_completions(prompt, { model: llmModel, apiBase: llmApiBase, systemPrompt: buildAsrFixSystemPrompt(sourceLangLabel, domainHint) });
     const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
 
     const fixedTexts = parseLines(fixed, segments.length);

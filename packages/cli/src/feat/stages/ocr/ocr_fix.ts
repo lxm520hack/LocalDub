@@ -1,17 +1,19 @@
 import { readJson, writeJson, ensureDir } from '../utils/fileOps.ts';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { readInputArgs } from '../../input/input.ts';
 import { emitLog, nowISO, srtTime } from '../utils/utils.ts';
-import { buildSystemPrompt, segmentsToPrompt, fixWithLLM, parseLines } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';
+import { chat_completions } from '@repo/core/ml/llm/openai.ts';
+import { ocrSegmentsToPrompt, buildOcrFixSystemPrompt } from '@repo/core/ml/llm/ocr_llm_fix.ts';
+import { parseLines } from '@repo/core/ml/llm/srt_shared.ts';
+import { t } from '@repo/shared/i18n/server';
+
 
 export async function stageOcrFix(ctx: Context) {
-    const taskId = ctx.task.id;
+  const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
-  const ocrDir = join(sessionPath, 'ocr');
   const ocrFixDir = join(sessionPath, 'ocr_fix');
-  const ocrFile = join(ocrDir, 'ocr.json');
+  const ocrFile = join(sessionPath, 'ocr', 'ocr.json');
   const fixFile = join(ocrFixDir, 'ocr_fix.json');
 
   ensureDir(ocrFixDir, ctx);
@@ -27,36 +29,43 @@ export async function stageOcrFix(ctx: Context) {
 
   if (!segments.length) throw new Error('OCR result has no segments.');
 
-  const cfg = readInputArgs().stages?.ocr_fix;
-  const llmFix = cfg?.llmFix ?? false;
-
-  emitLog(sessionPath, `[OCR Fix] ${segments.length} segs, llmFix=${llmFix}`);
+  const args = ctx.input.stages.ocr_fix;
+  const llmFix = args?.llmFix
+  
+  emitLog(sessionPath, `[ocr_fix] ${segments.length} segs, llmFix=${llmFix}`);
 
   // LLM correction
   if (llmFix) {
-    const llmModel = cfg?.llmModel || 'gemma4:31b-cloud';
-    const llmApiBase = cfg?.llmApiBase || 'http://localhost:11434/v1';
-    const domainHint = cfg?.domainHint;
+    const sourceLangLabel = t(ctx.input.task.sourceLang ?? 'zh')
+    const llmModel = args?.llmModel
+    const llmApiBase = args?.llmApiBase
+    const domainHint = args?.domainHint;
 
-    if (domainHint) emitLog(sessionPath, `[OCR Fix] domainHint: ${domainHint}`);
+    if (domainHint) emitLog(sessionPath, `[ocr_fix] domainHint: ${domainHint}`);
 
     await setStage(sessionPath, 'ocr_fix', {
       last_message: `LLM fixing ${segments.length} segments...`,
     });
 
-    const prompt = segmentsToPrompt(segments);
-    emitLog(sessionPath, `[OCR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+    const prompt = ocrSegmentsToPrompt(segments);
+    emitLog(sessionPath, `[ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
     const t0 = performance.now();
-    const fixed = await fixWithLLM(prompt, { model: llmModel, apiBase: llmApiBase, domainHint });
+    const fixed = await chat_completions(prompt, { 
+      model: llmModel, apiBase: llmApiBase, 
+      systemPrompt: buildOcrFixSystemPrompt(
+        sourceLangLabel,
+        domainHint
+      ) 
+    });
     const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
 
     const fixedTexts = parseLines(fixed, segments.length);
     if (fixedTexts) {
       segments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
-      emitLog(sessionPath, `[OCR Fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+      emitLog(sessionPath, `[ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
     } else {
-      emitLog(sessionPath, `[OCR Fix] LLM response parse failed, keeping original text`);
+      emitLog(sessionPath, `[ocr_fix] LLM response parse failed, keeping original text`);
     }
   }
 
@@ -68,7 +77,7 @@ export async function stageOcrFix(ctx: Context) {
     _llm_fixed: llmFix,
   }, ctx);
 
-  emitLog(sessionPath, `[OCR Fix] Written ${segments.length} segs to ocr_fix.json`);
+  emitLog(sessionPath, `[ocr_fix] Written ${segments.length} segs to ocr_fix.json`);
 
   await setStage(sessionPath, 'ocr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,

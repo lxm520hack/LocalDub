@@ -1,7 +1,7 @@
 import { MergeFramesArgs } from "@repo/core/ml/subtitle_ocr/input";
-import { srtTime } from "../utils/utils";
 
 import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
+import { srtTime } from "@repo/core/utils/utils";
 
 
 

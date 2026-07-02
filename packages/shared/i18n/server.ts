@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
+import enJson from './messages/en.json' 
+import zhCnJson from './messages/zh-cn.json' 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const en = JSON.parse(readFileSync(join(__dirname, 'messages', 'en.json'), 'utf-8'));
@@ -9,9 +10,10 @@ const zhCn = JSON.parse(readFileSync(join(__dirname, 'messages', 'zh-cn.json'), 
 
 export const locale = process.env.LANG?.startsWith('zh') ? 'zh-cn' : 'en';
 
-const messages: Record<string, string> = locale === 'zh-cn' ? zhCn : en;
+const messages = locale === 'zh-cn' ? zhCnJson : enJson;
+export type ServerI18nKey = keyof typeof messages;
 
-export function t(key: string, vars?: Record<string, string | number | boolean>): string {
+export function t(key: ServerI18nKey, vars?: Record<string, string | number | boolean>): string {
   let msg = messages[key];
   if (msg === undefined) return key;
   if (vars) {

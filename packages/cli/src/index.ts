@@ -1,6 +1,6 @@
 export { readInputArgs } from './feat/input/input.ts';
 export type {
-	TaskInputSchema,
-	RawInput,
-	RawInputInput,
+	CliInputSchema,
+	CliInput,
+	CliInputInput,
 } from './feat/input/types.ts';

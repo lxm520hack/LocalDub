@@ -1,4 +1,4 @@
-import { RawInputInput, StageName, TargetLang } from "../input/types";
+import { CliInput, CliInputInput, StageName, TargetLang } from "../input/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 
@@ -26,7 +26,7 @@ export interface Context {
   stages?: TaskStage[]
   pipeline: 'dub' | 'subtitle';
   lastRunPipeline?: 'dub' | 'subtitle'; // 用于 detect pipeline 切换
-  input?: RawInputInput
+  input: CliInput
   runInfo?: {
 		asr?: {
 			engine: string; // 'whisper-pytorch' | 'faster-whisper'

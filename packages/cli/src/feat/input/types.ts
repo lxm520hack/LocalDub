@@ -4,7 +4,7 @@ import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
 import { LineAdjustedArgsSchema, MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
 import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
-const targetLangList = [
+const langList = [
 	'en',
 	'zh',
 	'vi', // 越南语
@@ -29,10 +29,11 @@ const targetLangList = [
 	'ur',
 	'bn',
 ] as const;
-export type TargetLang = (typeof targetLangList)[number];
+export type TargetLang = (typeof langList)[number];
 
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];
+
 export const commandList = [
 	'task',
 	'check',
@@ -41,7 +42,9 @@ export const commandList = [
 	'listModels',
 	'env',
 ] as const;
+
 export type Command = (typeof commandList)[number];
+
 // 各 command 的参数
 const stagesList = [
 	'separate',
@@ -77,7 +80,7 @@ export enum StageNameEnum {
 }
 export type StageName = (typeof stagesList)[number];
 
-const SeparateTaskInputSchema = z.object({
+const SeparateCliInputSchema = z.object({
 	runtime: z.enum(['ggml', 'ort', 'pytorch', 'burn', 'burn-tch']),
 	device: z
 		.enum(['vulkan', 'webgpu', 'cuda', 'cpu', 'mps'])
@@ -101,9 +104,9 @@ const SeparateTaskInputSchema = z.object({
 	})
 	.optional()
 	.describe(`separate: demucs 分离人声与背景声, 提升 tts-vc 的质量`);
-export type SeparateConfig = z.infer<typeof SeparateTaskInputSchema>;
+export type SeparateConfig = z.infer<typeof SeparateCliInputSchema>;
 
-const ASRTaskInputSchema = z
+const ASRCliInputSchema = z
 	.looseObject({
 		runtime: z.enum(['ggml', 'faster-whisper', 'pytorch',]).default('pytorch'),
 		device: z.enum(['vulkan', 'cuda', 'cpu', 'mps']).default('cuda'),
@@ -171,7 +174,7 @@ const ASRTaskInputSchema = z
 	})
 	.optional();
 
-export type ASRConfig = z.output<typeof ASRTaskInputSchema>;
+export type ASRConfig = z.output<typeof ASRCliInputSchema>;
 
 const ocrRuntimeList = ['ort-cpp', 'ort-node', 'ort-py', 'ort-rust'] as const;
 const ocrRuntimeSchema = z
@@ -207,7 +210,7 @@ export const ocrAfterAdjustArgsSchema = z.object({
 				.optional(),
 })
 export type OcrAfterAdjustArgs = z.output<typeof ocrAfterAdjustArgsSchema>;
-const OcrTaskInputSchema = z
+const OcrCliInputSchema = z
 	.looseObject({
 		runtime: ocrRuntimeSchema,
 		device: z
@@ -240,10 +243,10 @@ const OcrTaskInputSchema = z
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
 	.optional();
-export type OcrConfig = z.output<typeof OcrTaskInputSchema>;
+export type OcrConfig = z.output<typeof OcrCliInputSchema>;
 
 
-const AsrOcrTaskInputSchema = z
+const AsrOcrCliInputSchema = z
 	.looseObject({
 		runtime: ocrRuntimeSchema,
 		device: z
@@ -273,15 +276,15 @@ const AsrOcrTaskInputSchema = z
 			.optional(),
 	})
 	.default({ runtime: 'ort-cpp', device: 'cpu', fps: 2, textScore: 0.45, subtitleOnly: true, cleanupFrames: false })
-	.optional();
-export type AsrOcrConfig = z.output<typeof AsrOcrTaskInputSchema>;
 
-const TranslateTaskInputSchema = z
+export type AsrOcrConfig = z.output<typeof AsrOcrCliInputSchema>;
+
+const TranslateCliInputSchema = z
 	.looseObject({
 		apiBase: z.string().optional(),
 		model: z.string().optional(),
 		targetLang: z
-			.enum(targetLangList)
+			.enum(langList)
 			.optional()
 			.describe('如果不填则 按照这个逻辑: 源语言: zh -> en, 否则 any -> zh'), //
 		enabled: z
@@ -293,7 +296,7 @@ const TranslateTaskInputSchema = z
 
 
 
-const SplitAudioTaskInputSchema = z
+const SplitAudioCliInputSchema = z
 	.looseObject({
 		vadAlign: z
 			.boolean()
@@ -372,8 +375,8 @@ export type MergeVideoConfig = z.output<typeof MergeVideoSchema>;
 
 
 const StagesSchema = z.object({
-	separate: SeparateTaskInputSchema,
-	asr: ASRTaskInputSchema,
+	separate: SeparateCliInputSchema,
+	asr: ASRCliInputSchema,
 	asr_fix: z
 		.looseObject({
 			...LlmFixArgsSchema.shape,
@@ -386,11 +389,11 @@ const StagesSchema = z.object({
 		.default({
 			llmFix: false,
 			segmentPad: true,
-		})
+		} as any)
 		.optional(),
 
-	ocr: OcrTaskInputSchema,
-	asr_ocr: AsrOcrTaskInputSchema,
+	ocr: OcrCliInputSchema,
+	asr_ocr: AsrOcrCliInputSchema,
 	asr_ocr_fix: z
 		.looseObject({
 			textScore: z
@@ -403,16 +406,15 @@ const StagesSchema = z.object({
 			...MergeFramesArgsSchema.shape,
 			...LlmFixArgsSchema.shape,
 		})
-		.default({ llmFix: false, textScore: 0.5, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 })
+		.default({ llmFix: false, textScore: 0.5, isoThresholdMs: 1500, adjustYWeight: 0.8, adjustIsoWeight: 0.2, adjustYFactor: 0.08 } as any)
 		.optional(),
 	ocr_fix: z
 		.looseObject({
 			...LlmFixArgsSchema.shape,
 		})
-		.default({ llmFix: false })
-		.optional(),
-	translate: TranslateTaskInputSchema,
-	split_audio: SplitAudioTaskInputSchema,
+		.default({ } as any),
+	translate: TranslateCliInputSchema,
+	split_audio: SplitAudioCliInputSchema,
 	tts: TtsStageInputSchema,
 	merge_audio: z.object({
 		maxSpeed: z.number().min(1).default(1.35).optional().describe('TTS 音频最大变速比, 1.0=不变速'),
@@ -424,7 +426,7 @@ const StagesSchema = z.object({
 		maxDelayMs: 500,
 	}).optional(),
 	merge_video: MergeVideoSchema,
-});
+}).default({} as any)
 
 type StagesConfigInput = z.input<typeof StagesSchema>;
 export type StagesConfig = z.output<typeof StagesSchema>;
@@ -432,26 +434,20 @@ export type StagesConfig = z.output<typeof StagesSchema>;
 const subtitleSourceList = ['asr', 'ocr', 'asr_ocr'] as const;
 export type SubtitleSource = (typeof subtitleSourceList)[number];
 
-const BaseTaskInputSchema = z.looseObject({
 
-	stages: StagesSchema.optional(),
-});
-export type BaseConfigInput = z.input<typeof BaseTaskInputSchema>;
-export type BaseConfig = z.output<typeof BaseTaskInputSchema>;
-
-const TaskSchema = z.looseObject({
+export const CliInputSchema = z.looseObject({
 	command: z.enum(commandList).describe(`
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
 		7. deviceInfo: 显示设备信息
 		8. servers: 统一管理所有服务器 (servers.action=status 查状态, stop 停止, start 启动; servers.name 指定单个)
 		9. listModels: 列出 openai 兼容端点的 可用模型
 		10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)
-		`),
+		`).default('env'),
 	task: z.looseObject({
 		action: z.enum(['start', 'resume', 'rerunStage', 'status']).optional().describe('任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态'),
 		url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),
-		sourceLang: z.string().optional(),
-		targetLang: z.enum(targetLangList).optional(),
+		sourceLang: z.enum(langList).optional(),
+		targetLang: z.enum(langList).optional(),
 		resumeFrom: z.enum(stagesList).optional().describe(`继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
 		sessionPath: z.string().optional(),
 		stageName: z.enum(stagesList).optional().describe(`rerunStage 专业参数, 指定要重新运行的步骤`),
@@ -478,9 +474,8 @@ const TaskSchema = z.looseObject({
 		.optional(),
 	servers: ServersArgsSchema,
 	env: EnvArgsSchema.optional(),
+	stages: StagesSchema,
 });
-
-export const TaskInputSchema = TaskSchema.and(BaseTaskInputSchema);
-export type RawInputInput = z.input<typeof TaskInputSchema>;
-export type RawInput = z.output<typeof TaskInputSchema>;
+export type CliInputInput = z.input<typeof CliInputSchema>;
+export type CliInput = z.output<typeof CliInputSchema>;
 

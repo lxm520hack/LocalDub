@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { levenshtein, FrameResult, mergeFrames, dedupOverlap } from '@repo/cli/feat/stages/ocr/ocrMerge';
+import { levenshtein, FrameResult, mergeFrames, dedupOverlap } from '@repo/core/stages/ocr/ocrMerge';
 
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..');
 const CPP_BIN = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build', 'subtitle_ocr_ort_cpp');

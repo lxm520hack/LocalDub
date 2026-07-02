@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env  } from '@repo/config/env';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import { type BaseConfigInput, TaskInputSchema,  } from './types.ts';
+import {  CliInputSchema,  } from './types.ts';
 import { fileLog } from '../stages/utils/fileOps.ts';
 import { REPO_ROOT } from '@repo/config/path/root';
 
@@ -16,7 +16,7 @@ const INPUT_ARGS_PATH = join(REPO_ROOT, 'packages', 'cli', 'input.json');
 export const readInputArgs = (path?: string) => {
 	const configPath = path ?? INPUT_ARGS_PATH;
 	const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
-	const config = TaskInputSchema.parse(raw);
+	const config = CliInputSchema.parse(raw);
 	return {
 		...config,
 		stages: {
