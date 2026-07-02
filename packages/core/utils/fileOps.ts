@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, copyFileSync, rmSync, mkdirSync, existsSync, type WriteFileOptions } from 'node:fs';
-import { emitLog } from './utils.ts';
-import { Context,  } from '../../context/context.ts';
+import { Context } from '@repo/core/context/context';
+import { emitLog } from '@repo/core/stages/utils/utils';
 
 export function getLastSegment(path: string) {
 	const last = path.replace(/\\/g, "/").split("/").filter(Boolean).pop();

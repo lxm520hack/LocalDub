@@ -1,4 +1,4 @@
-import { InputArgs } from "../input/input";
+import { InputArgs } from "@repo/core/input/input";
 import { startTorchServer, stopTorchServer } from "../../ml/server/client";
 import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';

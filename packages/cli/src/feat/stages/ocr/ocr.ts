@@ -2,12 +2,12 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { newOcrEngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
-import { ensureDir, writeJson } from "../utils/fileOps.ts";
-import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "../utils/utils.ts";
+import { ensureDir, writeJson } from "@repo/core/utils/fileOps";
+import { emitLog, ffmpeg, nowISO, srtTime, probeVideoResolution, videoSourcePath } from "@repo/core/stages/utils/utils.ts";
 
 import {  mergeFrames } from "@repo/core/stages/ocr/ocrMerge";
 import { joinOcrLines, computeBoxYStats, computeSegmentAdjustments } from "./utils.ts";
-import { Context, setStage } from "../../context/context.ts";
+import { Context, setStage } from "@repo/core/context/context.ts";
 import { probeVideoDuration } from "@repo/core/utils/utils";
 import { FrameResult } from "@repo/core/ml/subtitle_ocr/types";
 

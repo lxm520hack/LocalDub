@@ -1,8 +1,8 @@
-import { readJson, writeJson, ensureDir } from './utils/fileOps.ts';
+import { readJson, writeJson, ensureDir } from '@repo/core/utils/fileOps';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { env } from '@repo/config/env';
-import { readInputArgs, } from '../input/input.ts';
+import { readInputArgs, } from '@repo/core/input/input';
 import {
 	emitLog,
 	LANG_NAMES,
@@ -10,8 +10,8 @@ import {
 	readTaskLanguages,
 	subtitleFilePath,
 	translationFilePath,
-} from './utils/utils.ts';
-import { Context, setCtx, setStage } from '../context/context.ts';
+} from '@repo/core/stages/utils/utils.ts';
+import { Context, setCtx, setStage } from '@repo/core/context/context.ts';
 
 /**
  * translate.[dstLang].json 结构

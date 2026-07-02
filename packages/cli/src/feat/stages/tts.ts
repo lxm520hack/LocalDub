@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { readJson, writeFile, ensureDir, writeFileSync, rmSync } from './utils/fileOps.ts';
+import { readJson, writeFile, ensureDir, writeFileSync, rmSync } from '@repo/core/utils/fileOps';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { writeWav } from '@repo/voxlab';
 
-import { emitLog, ffmpeg, nowISO, readTaskLanguages, timingsFilePath } from './utils/utils.ts';
+import { emitLog, ffmpeg, nowISO, readTaskLanguages, split_audio_timings_filepath } from '@repo/core/stages/utils/utils.ts';
 import { TranslateFile } from './translate.ts';
-import { Context, setStage, setTask } from '../context/context.ts';
+import { Context, setStage, setTask } from '@repo/core/context/context.ts';
 import { startLog } from './utils/log.ts';
 import { newVoxCPMEngine } from '@repo/core/ml/voxcpm/voxcpm';
 
@@ -44,7 +44,7 @@ export async function stageTts(
 	startLog(sessionPath, taskId);
 
 	const ttsCfg = ctx.input?.stages?.tts!;
-	const timingsFile = timingsFilePath(sessionPath);
+	const timingsFile = split_audio_timings_filepath(sessionPath);
 	const vocalsDir = join(sessionPath, 'split_audio', 'vocals');
 	const ttsWavDir = join(sessionPath, 'tts', 'wavs');
 	const doubledDir = join(sessionPath, 'tts', 'ref_doubled');

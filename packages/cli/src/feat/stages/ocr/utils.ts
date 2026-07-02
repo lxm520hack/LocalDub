@@ -1,5 +1,5 @@
 import { OCRLine } from '@repo/subtitle-ocr/types';
-import { OcrAfterAdjustArgs } from '../../input/types.ts';
+import { OcrAfterAdjustArgs } from '@repo/core/input/types';
 import { FrameResult, Segment, SegmentWithAdjusted } from '@repo/core/ml/subtitle_ocr/types';
 import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
 

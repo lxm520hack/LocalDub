@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { emitLog } from '../../feat/stages/utils/utils.ts';
+import { emitLog } from '@repo/core/stages/utils/utils.ts';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 import { REPO_ROOT } from '@repo/config/path/root';
 

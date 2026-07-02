@@ -1,8 +1,8 @@
-import { readJson, writeFile, ensureDir, fileLog } from './utils/fileOps.ts';
+import { readJson, writeFile, ensureDir, fileLog } from '@repo/core/utils/fileOps';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Context, readCtx, setStage, setTask, } from '../context/context.ts';
-import { alignmentToFfmpeg } from '../input/types.ts';
+import { Context, readCtx, setStage, setTask, } from '@repo/core/context/context.ts';
+import { alignmentToFfmpeg } from '@repo/core/input/types';
 import {
 	ffmpeg,
 	nowISO,
@@ -12,11 +12,11 @@ import {
 	subtitleFilePath,
 	finalVideoFilename,
 	translationFilePath,
-	timingsFilePath,
 	bgmPath,
 	defaultFont,
 	videoSourcePath,
-} from './utils/utils.ts';
+    timings_filepath,
+} from '@repo/core/stages/utils/utils';
 import { startLog } from './utils/log.ts';
 
 function filterSubPath(subPath: string): string {
@@ -25,41 +25,28 @@ function filterSubPath(subPath: string): string {
 }
 
 function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
-	const CLOSING_QUOTES = new Set([
-		'"',
-		"'",
-		'」',
-		'』',
-		'》',
-		'）',
-		'】',
-		'\u201d',
-		'\u2019',
-		']',
-	]);
-	const PUNCTUATION = new Set([
-		'，',
-		',',
-		'；',
-		';',
-		'：',
-		':',
-		'。',
-		'?',
-		'？',
-		'!',
-		'！',
-		'、',
-	]);
-	const PROTECTED_PAIRS: Record<string, string> = {
-		'《': '》',
-		'（': '）',
-		'【': '】',
-		'「': '」',
-		'『': '』',
-	};
-
 	function splitProtected(text: string): string[] {
+		const PUNCTUATION = new Set([
+			'，',
+			',',
+			'；',
+			';',
+			'：',
+			':',
+			'。',
+			'?',
+			'？',
+			'!',
+			'！',
+			'、',
+		]);
+		const PROTECTED_PAIRS: Record<string, string> = {
+			'《': '》',
+			'（': '）',
+			'【': '】',
+			'「': '」',
+			'『': '』',
+		};
 		const segs: string[] = [];
 		let buf: string[] = [],
 			inside: string | null = null;
@@ -89,6 +76,18 @@ function writeSrt(translation: any[], ctx: Context, outputPath: string, useSourc
 
 	function attachClosingQuotes(segs: string[]): string[] {
 		const fixed: string[] = [];
+		const CLOSING_QUOTES = new Set([
+			'"',
+			"'",
+			'」',
+			'』',
+			'》',
+			'）',
+			'】',
+			'\u201d',
+			'\u2019',
+			']',
+		]);
 		for (const s of segs) {
 			if (s && CLOSING_QUOTES.has(s[0]) && fixed.length) {
 				fixed[fixed.length - 1] = `${fixed[fixed.length - 1]}${s}`.trim();
@@ -247,7 +246,7 @@ export async function stageMergeVideo(ctx: Context) {
 		const translateEnabled = ctx.input?.stages?.translate?.enabled ?? true;
 		let data: { translation: any[] };
 		if (vadAlign) {
-			data = await readJson(timingsFilePath(sessionPath), ctx);
+			data = await readJson(timings_filepath(sessionPath), ctx);
 		} else if (translateEnabled) {
 			const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 			const trFile = translationFilePath(sessionPath, dstLangCode);
@@ -298,7 +297,7 @@ export async function stageMergeVideo(ctx: Context) {
 		const dubbingFile = join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
 		const ctxBgmPath = ctx.input?.stages?.merge_video?.bgmPath;
 		const bgmFile = ctxBgmPath ? ctxBgmPath : bgmPath(sessionPath);
-		const timingsFile = timingsFilePath(sessionPath);
+		const timingsFile = timings_filepath(sessionPath);
 
 		if (!existsSync(dubbingFile))
 			throw new Error('audio_dubbing.wav not found');

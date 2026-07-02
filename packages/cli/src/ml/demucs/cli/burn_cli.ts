@@ -1,8 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { emitLog, probeDuration, separateDir } from '../../../feat/stages/utils/utils';
-import { setStage } from '../../../feat/context/context';
+import { emitLog, probeDuration, separateDir } from '@repo/core/stages/utils/utils';
+import { setStage } from '@repo/core/context/context';
 import { DemucsCliArgs } from './cli_types';
 import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import { REPO_ROOT } from '@repo/config/path/root';

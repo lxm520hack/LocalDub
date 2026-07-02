@@ -8,9 +8,9 @@ import type { Stem } from '../../../ml/demucs/load.ts';
 import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import {
 	readInputArgs,
-} from '../../input/input.ts';
-import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '../utils/utils.ts';
-import { Context, setStage } from '../../context/context.ts';
+} from '@repo/core/input/input';
+import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
+import { Context, setStage } from '@repo/core/context/context.ts';
 import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
 import { startLog } from '../utils/log.ts';
 import { separateBurn } from '../../../ml/demucs/cli/burn_cli.ts';

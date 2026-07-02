@@ -1,4 +1,4 @@
-import { InputArgs } from "../../input/input";
+import { InputArgs } from "@repo/core/input/input";
 import { cmdRerunStage } from "./rerunStage";
 import { cmdResumeTask } from "./resumeTask";
 import { cmdStartTask } from "./startTask";

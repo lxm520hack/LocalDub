@@ -1,15 +1,15 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { readJson, writeJson, ensureDir, removeFile } from '../../../feat/stages/utils/fileOps.ts';
+import { readJson, writeJson, ensureDir, removeFile } from '@repo/core/utils/fileOps';
 import { copyFileSync, existsSync, renameSync } from 'node:fs';
 import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { runStage, getTorchServerUrl } from '../../server/client.ts';
 
-import {  emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '../../../feat/stages/utils/utils.ts';
+import {  emitLog, ffmpeg, nowISO, readTaskLanguages, srtTime, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils.ts';
 import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../ensure.ts';
 import { AsrOptions } from '../../../feat/stages/asr/types.ts';
 import { parseAsrOutput } from '../../../feat/stages/asr/utils.ts';
-import { Context, setCtx, setStage } from '../../../feat/context/context.ts';
+import { Context, setCtx, setStage } from '@repo/core/context/context.ts';
 import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';

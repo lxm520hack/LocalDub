@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env,} from '@repo/config/env';
-import { getStages } from '../../tasks/stages.ts';
+import { getStages } from './stages';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
 
@@ -47,9 +47,9 @@ export function defaultFont(dstLang: string): string {
 		default: return 'Noto Sans CJK SC';
 	}
 }
-import type { SubtitleSource, TargetLang } from '../../input/types.ts';
+import type { SubtitleSource, TargetLang } from '@repo/core/input/types';
 
-import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '../../context/context.ts';
+import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '@repo/core/context/context.ts';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');
@@ -195,12 +195,12 @@ export function subtitleFilePath(ctx: Context,): string {
 	return join(ctx.task.session_path, 'asr_fix', 'asr_fix.json');
 }
 
-export function timingsFilePath(sessionPath: string): string {
-	return join(sessionPath, 'split_audio', 'timings.json');
+export function split_audio_timings_filepath(sessionPath: string): string {
+	return join(sessionPath, 'split_audio', 'split_audio.json');
 }
-
-
-
+export function timings_filepath(sessionPath: string): string {
+	return join(sessionPath, 'merge_audio', 'timings.json');
+}
 
 export function mixedVocalsPath(sessionPath: string): string {
 	return join(sessionPath, 'separate_after', 'target_3_vocals_mixed.wav');
@@ -215,14 +215,6 @@ export function gatedVocalsPath(sessionPath: string): string {
 export function dubbingPath(sessionPath: string): string {
 	return join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
 }
-
-
-
-
-
-
-
-
 
 export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
 	const suffix = subtitleSource === 'asr_ocr' ? '_asr_ocr' : subtitleSource === 'ocr' ? '_ocr' : '';

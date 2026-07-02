@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CliInputSchema } from '../src/feat/input/types.ts';
+import { CliInputSchema } from '@repo/core/input/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outPath = resolve(__dirname, '..', 'input.schema.json');

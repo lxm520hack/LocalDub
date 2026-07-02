@@ -1,4 +1,4 @@
-import { emitLog } from "../../feat/stages/utils/utils";
+import { emitLog } from "@repo/core/stages/utils/utils";
 
 export function emitAsrTiming(sessionPath: string, asr: Record<string, any>, elapsedSec: number) {
 	emitLog(sessionPath, `[ASR] Transcribed in ${elapsedSec.toFixed(1)}s`);

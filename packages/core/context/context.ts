@@ -2,7 +2,7 @@ import { CliInput, CliInputInput, StageName, TargetLang } from "../input/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 
-import { fileLog, getLastSegment } from '../stages/utils/fileOps.ts';
+import { fileLog, getLastSegment } from '../utils/fileOps.ts';
 
 export const getTaskId = (sessionPath: string) => getLastSegment(sessionPath)
 

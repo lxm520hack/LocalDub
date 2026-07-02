@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { emitLog } from '../../feat/stages/utils/utils';
+import { emitLog } from '@repo/core/stages/utils/utils';
 import { REPO_ROOT } from '@repo/config/path/root';
 
 /**

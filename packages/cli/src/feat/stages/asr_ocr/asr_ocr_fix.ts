@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
+import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
+import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
 import {  fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
 import { computeBoxYStats, computeSegmentAdjustments, get_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
-import { Context, setStage } from '../../context/context.ts';
+import { Context, setStage } from '@repo/core/context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
 import { t } from '@repo/shared/i18n/server';

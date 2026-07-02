@@ -1,10 +1,10 @@
-import { readJson, writeJson, ensureDir, removeFile } from './utils/fileOps.ts';
+import { readJson, writeJson, ensureDir, removeFile } from '@repo/core/utils/fileOps';
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, timingsFilePath, videoSourcePath, vocalsPath } from './utils/utils.ts';
+import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, split_audio_timings_filepath, videoSourcePath, vocalsPath } from '@repo/core/stages/utils/utils.ts';
 import { env } from '@repo/config/env';
-import { Context, setStage } from '../context/context.ts';
+import { Context, setStage } from '@repo/core/context/context.ts';
 
 function probeDuration(file: string): number {
   const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -107,8 +107,8 @@ export async function stageSplitAudio(ctx: Context) {
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 	const splitAudioDir = join(sessionPath, 'split_audio');
 	const translationFile = translationFilePath(sessionPath, dstLangCode);
-	const timingsFile = timingsFilePath(sessionPath);
-	const segmentsDir = join(splitAudioDir, 'vocals');
+	const timingsFile = split_audio_timings_filepath(sessionPath);
+	const vocalsSegmentDir = join(splitAudioDir, 'vocals');
 
 	if (!existsSync(srtFilePath)) throw new Error(`subtitle file not found: ${srtFilePath}`);
   const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? vocalsPath(sessionPath)
@@ -170,18 +170,18 @@ export async function stageSplitAudio(ctx: Context) {
   let totalMs = srtData.audio_info?.duration ?? 0;
   if (!totalMs) totalMs = probeDuration(sourceAudio);
 
-  ensureDir(segmentsDir, ctx);
+  ensureDir(vocalsSegmentDir, ctx);
 
   // ---- Segment cutting (dub only) ----
   if (hasVocals) {
-    const anySeg = readdirSync(segmentsDir).find(f => f.endsWith('.wav'));
-    if (anySeg && existsSync(translationFile) && statSync(translationFile).mtimeMs > statSync(join(segmentsDir, anySeg)).mtimeMs) {
-      for (const f of readdirSync(segmentsDir)) rmSync(join(segmentsDir, f));
+    const anySeg = readdirSync(vocalsSegmentDir).find(f => f.endsWith('.wav'));
+    if (anySeg && existsSync(translationFile) && statSync(translationFile).mtimeMs > statSync(join(vocalsSegmentDir, anySeg)).mtimeMs) {
+      for (const f of readdirSync(vocalsSegmentDir)) rmSync(join(vocalsSegmentDir, f));
     }
 
     for (let i = 0; i < timings.length; i++) {
       const idx = String(i + 1).padStart(4, '0');
-      const outPath = join(segmentsDir, `${idx}.wav`);
+      const outPath = join(vocalsSegmentDir, `${idx}.wav`);
       if (existsSync(outPath)) continue;
 
       const startMs = timings[i].start_time;
@@ -213,10 +213,10 @@ export async function stageSplitAudio(ctx: Context) {
       if (startMs >= endMs) continue;
 
       // Detect leading non-speech content (breath/silence) in ms
-      const wavPath = join(segmentsDir, `${String(i + 1).padStart(4, '0')}.wav`);
+      const wavPath = join(vocalsSegmentDir, `${String(i + 1).padStart(4, '0')}.wav`);
       const removedMs = existsSync(wavPath)
         ? detectSpeechStartMs(wavPath)
-        : detectSpeechStartMsSeek(sourceAudio, Math.max(0, startMs - 80), Math.min(totalMs, endMs + 160), segmentsDir);
+        : detectSpeechStartMsSeek(sourceAudio, Math.max(0, startMs - 80), Math.min(totalMs, endMs + 160), vocalsSegmentDir);
       if (removedMs <= 500) continue;
 
       const newStartMs = startMs + removedMs - 80;

@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
-import { emitLog, nowISO, srtTime, videoSourcePath } from '../utils/utils.ts';
+import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
+import { emitLog, nowISO, srtTime, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
 import type { Segment } from '@repo/core/ml/subtitle_ocr/types';
-import { Context, setStage, setTask } from '../../context/context.ts';
+import { Context, setStage, setTask } from '@repo/core/context/context.ts';
 
 // Split long ASR segments by punctuation using word-level timestamps
 const SPLIT_PAT = /[，,。！？.!?]/;

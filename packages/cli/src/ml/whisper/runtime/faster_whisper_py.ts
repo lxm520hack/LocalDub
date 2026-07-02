@@ -8,9 +8,9 @@ import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';
 import { AsrOptions } from '../../../feat/stages/asr/types.ts';
-import { setCtx, setStage } from '../../../feat/context/context.ts';
+import { setCtx, setStage } from '@repo/core/context/context.ts';
 import { parseAsrOutput } from '../../../feat/stages/asr/utils.ts';
-import { readJson } from '../../../feat/stages/utils/fileOps.ts';
+import { readJson } from '@repo/core/utils/fileOps';
 import { emitAsrTiming } from '../time.ts';
 import { faster_whisper_py } from '@repo/config/path/scripts';
 

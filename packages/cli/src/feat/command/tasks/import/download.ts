@@ -13,11 +13,11 @@ import {
 	emitLog,
 	ffmpeg,
 	nowISO,
-} from '../../../stages/utils/utils.ts';
-import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '../../../context/context.ts';
+} from '@repo/core/stages/utils/utils.ts';
+import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '@repo/core/context/context.ts';
 import { startLog } from '../../../stages/utils/log.ts';
-import { getStages } from '../../../tasks/stages.ts';
-import { InputArgs } from '../../../input/input.ts';
+import { getStages } from '@repo/core/stages/utils/stages';
+import { InputArgs } from '@repo/core/input/input';
 import { autoProjectIdAndVideoId, copyFileToPath, downloadRemoteVideo, encodeToMp4 } from './utils.ts';
 import { WORKFOLDER } from '@repo/config/path/paths';
 

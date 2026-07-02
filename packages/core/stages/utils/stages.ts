@@ -1,5 +1,5 @@
-import { readInputArgs } from '../input/input.ts';
-import { StageName } from '../input/types.ts';
+import { readInputArgs } from '../../input/input.ts';
+import { StageName } from '@repo/core/input/types';
 
 export const DUB_STAGES: StageName[] = [
 	'separate',

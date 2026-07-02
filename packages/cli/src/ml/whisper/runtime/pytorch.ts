@@ -1,7 +1,7 @@
 import { REPO_ROOT } from "@repo/config/path/root";
-import { setCtx, setStage } from "../../../feat/context/context";
+import { setCtx, setStage } from "@repo/core/context/context";
 import { parseAsrOutput } from "../../../feat/stages/asr/utils";
-import { existsSync, readJson } from "../../../feat/stages/utils/fileOps";
+import { existsSync, readJson } from "@repo/core/utils/fileOps";
 import { emitAsrTiming } from "../time";
 import { AsrOptions } from "../../../feat/stages/asr/types";
 import path from "node:path";

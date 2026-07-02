@@ -1,6 +1,6 @@
-import { InputArgs } from "../../input/input";
-import { readCtx } from "../../context/context";
-import { getStageStatuses } from "../../stages/utils/utils";
+import { InputArgs } from "@repo/core/input/input";
+import { readCtx } from "@repo/core/context/context";
+import { getStageStatuses } from "@repo/core/stages/utils/utils";
 
 export const cmdTaskStatus = async (input: InputArgs) => {
   const sessionPath = input.task?.sessionPath!;

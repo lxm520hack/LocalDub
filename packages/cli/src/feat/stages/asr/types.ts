@@ -1,4 +1,4 @@
-import { Context } from "../../context/context";
+import { Context } from "@repo/core/context/context";
 
 export interface AsrOptions {
 	ctx: Context;

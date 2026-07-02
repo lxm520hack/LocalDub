@@ -1,6 +1,6 @@
-export { readInputArgs } from './feat/input/input.ts';
+export { readInputArgs } from '@repo/core/input/input';
 export type {
 	CliInputSchema,
 	CliInput,
 	CliInputInput,
-} from './feat/input/types.ts';
+} from '@repo/core/input/types';

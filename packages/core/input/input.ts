@@ -2,8 +2,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { env  } from '@repo/config/env';
 import { to } from '@repo/shared/lib/utils/try.ts';
-import {  CliInputSchema,  } from './types.ts';
-import { fileLog } from '../stages/utils/fileOps.ts';
+import {  CliInputSchema,  } from '@repo/core/input/types';
+import { fileLog } from '@repo/core/utils/fileOps';
 import { REPO_ROOT } from '@repo/config/path/root';
 
 
