@@ -127,15 +127,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, textScore, dropped },
 			result: {
 				text: ocrSegsMerged.map(s => s.text).join(' '),
-				segments: ocrSegsMerged.map(s => ({
-					text: s.text,
-					start: s.start,
-					end: s.end,
-					start_fmt: srtTime(s.start),
-					end_fmt: srtTime(s.end),
-					confidence: s.confidence,
-					box_y: s.box_y,
-				})),
+				segments: ocrSegsMerged,
 			},
 		},
 		ctx,
@@ -174,14 +166,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, textScore, dropped },
 			result: {
 				text: asrOcrText,
-				segments: asrOcrSegs.map(s => ({
-					text: s.text,
-					start: s.start,
-					end: s.end,
-					start_fmt: srtTime(s.start),
-					end_fmt: srtTime(s.end),
-					confidence: s.confidence,
-				})),
+				segments: asrOcrSegs,
 			},
 		},
 		ctx,
@@ -218,14 +203,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, fixSegs: merged.length, textScore, dropped },
 			result: {
 				text: fixText,
-				segments: merged.map(s => ({
-					text: s.text,
-					start: s.start,
-					end: s.end,
-					start_fmt: srtTime(s.start),
-					end_fmt: srtTime(s.end),
-					confidence: s.confidence,
-				})),
+				segments: merged,
 			},
 		},
 		ctx,
