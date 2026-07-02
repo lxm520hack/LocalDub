@@ -2,7 +2,7 @@ import { TtsStageInputSchema } from '@repo/core/input/tts';
 import { ServersArgsSchema } from '@repo/core/servers/input';
 import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
-import { MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
+import { LineAdjustedArgsSchema, MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
 import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
 const targetLangList = [
 	'en',
@@ -399,6 +399,7 @@ const StagesSchema = z.object({
 				.optional()
 				.describe('OCR 文本置信度阈值（0-1），低于此阈值的帧在合并前会被丢弃'),
 			...ocrAfterAdjustArgsSchema.shape,
+			...LineAdjustedArgsSchema.shape,
 			...MergeFramesArgsSchema.shape,
 			...LlmFixArgsSchema.shape,
 		})

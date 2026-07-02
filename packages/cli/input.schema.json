@@ -488,29 +488,29 @@
               },
               "type": "object",
               "properties": {
+                "llmModel": {
+                  "description": "LLM 模型名",
+                  "default": "gemma4:31b-cloud",
+                  "type": "string"
+                },
+                "llmApiBase": {
+                  "description": "LLM API 地址",
+                  "default": "http://localhost:11434/v1",
+                  "type": "string"
+                },
+                "domainHint": {
+                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
+                  "type": "string"
+                },
                 "llmFix": {
+                  "description": "是否启用 LLM 修正",
                   "default": false,
-                  "description": "是否启用 LLM ASR 纠错（通过本地 LLM API 修正错别字）",
                   "type": "boolean"
                 },
                 "segmentPad": {
                   "default": true,
                   "description": "是否对 ASR 段落添加时间轴 padding",
                   "type": "boolean"
-                },
-                "llmModel": {
-                  "description": "LLM 模型名，默认 gemma4:31b-cloud",
-                  "default": "gemma4:31b-cloud",
-                  "type": "string"
-                },
-                "llmApiBase": {
-                  "description": "LLM API 地址，默认 ollama",
-                  "default": "http://localhost:11434/v1",
-                  "type": "string"
-                },
-                "domainHint": {
-                  "description": "领域提示，帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
-                  "type": "string"
                 },
                 "asrFilePath": {
                   "description": "ASR 结果文件路径, 调试使用",
@@ -596,6 +596,20 @@
                 "adjustYFactor": {
                   "default": 0.08,
                   "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
+                  "type": "number"
+                },
+                "lineAdjustedThreshold": {
+                  "default": 0.5,
+                  "description": "行级 outlier 判定: adjustedConfidence < 此值则标记为 outlier; 默认 0.5",
+                  "type": "number"
+                },
+                "mergeSubstring": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "dedupLevenshtein": {
+                  "default": 1,
+                  "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
                   "type": "number"
                 }
               },
@@ -695,10 +709,19 @@
                   "description": "Y 偏移惩罚归一化系数: 偏移量 / (videoHeight × adjustYFactor); 越小越严格; 默认 0.08",
                   "type": "number"
                 },
-                "llmFix": {
+                "lineAdjustedThreshold": {
+                  "default": 0.5,
+                  "description": "行级 outlier 判定: adjustedConfidence < 此值则标记为 outlier; 默认 0.5",
+                  "type": "number"
+                },
+                "mergeSubstring": {
                   "default": false,
-                  "description": "是否启用 LLM OCR 纠错",
                   "type": "boolean"
+                },
+                "dedupLevenshtein": {
+                  "default": 1,
+                  "description": "dedupOverlap 的编辑距离阈值: levenshtein ≤ 此值则合并; 默认 1",
+                  "type": "number"
                 },
                 "llmModel": {
                   "description": "LLM 模型名",
@@ -711,8 +734,13 @@
                   "type": "string"
                 },
                 "domainHint": {
-                  "description": "领域提示",
+                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
                   "type": "string"
+                },
+                "llmFix": {
+                  "description": "是否启用 LLM 修正",
+                  "default": false,
+                  "type": "boolean"
                 }
               },
               "additionalProperties": {}
@@ -723,11 +751,6 @@
               },
               "type": "object",
               "properties": {
-                "llmFix": {
-                  "default": false,
-                  "description": "是否启用 LLM OCR 纠错",
-                  "type": "boolean"
-                },
                 "llmModel": {
                   "description": "LLM 模型名",
                   "default": "gemma4:31b-cloud",
@@ -739,8 +762,13 @@
                   "type": "string"
                 },
                 "domainHint": {
-                  "description": "领域提示",
+                  "description": "领域提示, 帮助 LLM 理解上下文，例如\"仙侠题材，角色：叶白、慧天、夜白\"",
                   "type": "string"
+                },
+                "llmFix": {
+                  "description": "是否启用 LLM 修正",
+                  "default": false,
+                  "type": "boolean"
                 }
               },
               "additionalProperties": {}

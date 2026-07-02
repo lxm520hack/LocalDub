@@ -3,9 +3,12 @@ import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '../utils/fileOps.ts';
 import { emitLog, nowISO, srtTime, probeVideoResolution, videoSourcePath } from '../utils/utils.ts';
 import {  fixOverlap, mergeFrames, toOcrFiltered } from '../ocr/ocrMerge.ts';
-import { computeBoxYStats, computeSegmentAdjustments, joinOcrLines } from '../ocr/utils.ts';
+import { computeBoxYStats, computeSegmentAdjustments, get_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
 import { Context, setStage } from '../../context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
+import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
+
+
 
 export async function stageAsrOcrFix(ctx: Context) {
 	const sessionPath = ctx.task.session_path;
@@ -15,14 +18,12 @@ export async function stageAsrOcrFix(ctx: Context) {
 		progress: 0,
 	});
 
-	const asrOcrPreDir = resolve(sessionPath, 'asr_ocr_pre');
-	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
 	const asrOcrFixDir = resolve(sessionPath, 'asr_ocr_fix');
 
 	// Read inputs
 	const asrFile = join(sessionPath, 'asr', 'asr.json');
-	const asrSplitFile = join(asrOcrPreDir, 'asr_split.json');
-	const ocrFramesFile = join(asrOcrDir, 'ocr_frames.json');
+	const asrSplitFile = join(sessionPath, 'asr_ocr_pre', 'asr_split.json');
+	const ocrFramesFile = join(sessionPath, 'asr_ocr', 'ocr_frames.json');
 
 	if (!existsSync(asrFile)) throw new Error(`asr.json not found: ${asrFile}`);
 	if (!existsSync(asrSplitFile)) throw new Error(`asr_split.json not found, run asr_ocr_pre first`);
@@ -59,38 +60,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	const yStats = computeBoxYStats(rawFrames);
 
 	// 1. ocr_frames_line_adjust.json: annotate each line with outlier info
-	const annotatedFrames = rawFrames.map(f => ({
-		...f,
-		lines: f.lines?.map(l => {
-			if (!l.text.trim()) return { ...l, top: 0, bottom: 0, top_offset_ratio: 0, bot_offset_ratio: 0, height: 0, height_ratio: 0, is_outlier: false, adjustedConfidence: l.confidence };
-			const top = l.bbox.top;
-			const bottom = l.bbox.bottom;
-			const height = bottom - top;
-			const topOR = yStats.avgHeight > 0 ? Math.abs(top - yStats.avg[0]) / yStats.avgHeight : 0;
-			const botOR = yStats.avgHeight > 0 ? Math.abs(bottom - yStats.avg[1]) / yStats.avgHeight : 0;
-			const heightRatio = yStats.avgHeight > 0
-				? Math.round((height / yStats.avgHeight) * 100) / 100
-				: 0;
-			const bandDrift = Math.max(topOR, botOR);
-			const noisePenalty = Math.min(1,
-				Math.max(0, (bandDrift - 1.0) * 0.5) +
-				Math.abs(1 - heightRatio) * 0.3,
-			);
-			const adjustedConfidence = Math.round(l.confidence * (1 - noisePenalty) * 100) / 100;
-			const isOutlier = adjustedConfidence < lineAdjustedThreshold;
-			return {
-				...l,
-				top,
-				bottom,
-				top_offset_ratio: Math.round(topOR * 100) / 100,
-				bot_offset_ratio: Math.round(botOR * 100) / 100,
-				height: Math.round(height * 10) / 10,
-				height_ratio: heightRatio,
-				is_outlier: isOutlier,
-				adjustedConfidence,
-			};
-		}),
-	}));
+	const annotatedFrames = get_ocr_frames_line_adjust(rawFrames, yStats, { lineAdjustedThreshold });
 
 	writeJson(
 		join(asrOcrFixDir, 'ocr_frames_line_adjust.json'),
@@ -105,24 +75,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	);
 
 	// 2. Filter noise lines at frame level, then merge into segments
-	const cleanFrames: FrameResult[] = annotatedFrames.flatMap(f => {
-		if (!f.lines) return [f as FrameResult];
-		const cleanLines = f.lines.filter(l => !l.is_outlier);
-		if (cleanLines.length === 0) return [];
-		if (cleanLines.length === f.lines.length) return [f as FrameResult];
-		const rebuilt = joinOcrLines(cleanLines.map(l => ({
-			text: l.text,
-			confidence: l.confidence,
-			box: l.box,
-		})));
-		return [{
-			...f,
-			text: rebuilt.text,
-			confidence: rebuilt.confidence,
-			bbox: rebuilt.bbox,
-			lines: rebuilt.lines,
-		} as FrameResult];
-	});
+	const cleanFrames: FrameResult[] = get_ocr_frames_line_filtered(annotatedFrames);
 	const cleanYStats = computeBoxYStats(cleanFrames);
 
 	writeJson(

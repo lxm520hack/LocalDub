@@ -1,6 +1,7 @@
 import { OCRLine } from '@repo/subtitle-ocr/types';
 import { OcrAfterAdjustArgs } from '../../input/types.ts';
 import { FrameResult, Segment, SegmentWithAdjusted } from '@repo/core/ml/subtitle_ocr/types';
+import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
 
 function polygonToBbox(box: number[][]): { left: number; top: number; right: number; bottom: number } {
 	if (!box || box.length < 2) return { left: 0, top: 0, right: 0, bottom: 0 };
@@ -85,6 +86,64 @@ export function computeBoxYStats(frames: FrameResult[]): {
 
 	return { avg: [avgTop, avgBtm], mode, avgHeight };
 }
+export type YStats = ReturnType<typeof computeBoxYStats>;
+
+export const get_ocr_frames_line_adjust = (
+	ocrFrames: FrameResult[], 
+	yStats: YStats,
+	{ lineAdjustedThreshold = 0.5 }: LineAdjustedArgs
+)=> ocrFrames.map(f => ({
+	...f,
+	lines: f.lines?.map(l => {
+		if (!l.text.trim()) return { ...l, top: 0, bottom: 0, top_offset_ratio: 0, bot_offset_ratio: 0, height: 0, height_ratio: 0, is_outlier: false, adjustedConfidence: l.confidence };
+		const top = l.bbox.top;
+		const bottom = l.bbox.bottom;
+		const height = bottom - top;
+		const topOR = yStats.avgHeight > 0 ? Math.abs(top - yStats.avg[0]) / yStats.avgHeight : 0;
+		const botOR = yStats.avgHeight > 0 ? Math.abs(bottom - yStats.avg[1]) / yStats.avgHeight : 0;
+		const heightRatio = yStats.avgHeight > 0
+			? Math.round((height / yStats.avgHeight) * 100) / 100
+			: 0;
+		const bandDrift = Math.max(topOR, botOR);
+		const noisePenalty = Math.min(1,
+			Math.max(0, (bandDrift - 1.0) * 0.5) +
+			Math.abs(1 - heightRatio) * 0.3,
+		);
+		const adjustedConfidence = Math.round(l.confidence * (1 - noisePenalty) * 100) / 100;
+		const isOutlier = adjustedConfidence < lineAdjustedThreshold;
+		return {
+			...l,
+			top,
+			bottom,
+			top_offset_ratio: Math.round(topOR * 100) / 100,
+			bot_offset_ratio: Math.round(botOR * 100) / 100,
+			height: Math.round(height * 10) / 10,
+			height_ratio: heightRatio,
+			is_outlier: isOutlier,
+			adjustedConfidence,
+		};
+	}),
+}));
+type OcrFramesLineAdjustFrame = ReturnType<typeof get_ocr_frames_line_adjust>[number];
+
+export const get_ocr_frames_line_filtered = (ocrFramesLineAdjustFrames: OcrFramesLineAdjustFrame[]) => ocrFramesLineAdjustFrames.flatMap(f => {
+	if (!f.lines) return [f as FrameResult];
+	const cleanLines = f.lines.filter(l => !l.is_outlier);
+	if (cleanLines.length === 0) return [];
+	if (cleanLines.length === f.lines.length) return [f as FrameResult];
+	const rebuilt = joinOcrLines(cleanLines.map(l => ({
+		text: l.text,
+		confidence: l.confidence,
+		box: l.box,
+	})));
+	return [{
+		...f,
+		text: rebuilt.text,
+		confidence: rebuilt.confidence,
+		bbox: rebuilt.bbox,
+		lines: rebuilt.lines,
+	} as FrameResult];
+});
 
 export function computeSegmentAdjustments(
 	segments: Segment[],
