@@ -98,7 +98,18 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   });
 }
 
-
+type SplitAudioTiming = {
+  		seg_idx: number;
+		src: string;
+		dst: string;
+		src_lang: string;
+		dst_lang: string;
+		start_time: number;
+		end_time: number;
+    start: number;
+    end: number;
+		speaker: string;
+}
 export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
   const sessionPath = ctx.task.session_path
@@ -122,16 +133,7 @@ export async function stageSplitAudio(ctx: Context) {
 
 	// Read translated text from translation.json, or original from srt.json
 	const translateEnabled = ctx.input?.stages?.translate?.enabled ?? true;
-	let timings: {
-		seg_idx: number;
-		src: string;
-		dst: string;
-		src_lang: string;
-		dst_lang: string;
-		start_time: number;
-		end_time: number;
-		speaker: string;
-	}[];
+	let timings: SplitAudioTiming[];
 	if (translateEnabled) {
 		if (!existsSync(translationFile))
 			throw new Error(`translation file not found: ${translationFile}`);
@@ -147,6 +149,8 @@ export async function stageSplitAudio(ctx: Context) {
 			dst: translation[i].dst,
 			src_lang: translation[i].src_lang,
 			dst_lang: translation[i].dst_lang,
+      start: seg.start,
+      end: seg.end,
 			start_time: Math.floor(seg.start),
 			end_time: Math.ceil(seg.end),
 			speaker: translation[i].speaker ?? '1',
@@ -158,6 +162,8 @@ export async function stageSplitAudio(ctx: Context) {
 			dst: seg.text,
 			src_lang: srcLangCode,
 			dst_lang: srcLangCode,
+      start: seg.start,
+      end: seg.end,
 			start_time: Math.floor(seg.start),
 			end_time: Math.ceil(seg.end),
 			speaker: '1',
