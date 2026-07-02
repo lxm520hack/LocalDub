@@ -116,7 +116,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
-	// ========== ocr_filtered.json：以 adjustedSegs 为输入，按 adjustedConfidence 过滤（Y 偏移 + 孤立惩罚） ==========
+	// ocr_filtered.json：以 adjustedSegs 为输入，按 adjustedConfidence 过滤（Y 偏移 + 孤立惩罚）
 	const { segments: ocrSegsMerged, dropped } = toOcrFiltered(adjustedSegs, textScore);
 
 	writeJson(
@@ -141,7 +141,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
-	// ========== asr_ocr_merged.json：复用 ocr_filtered.json 的 segments，时间边界对齐到 ASR ==========
+	// asr_ocr_merged.json：复用 ocr_filtered.json 的 segments，时间边界对齐到 ASR 
 	// 对每个 OCR segment，找到时间上最重叠的 ASR segment，用 ASR 的 start/end 作为新边界
 	const asrOcrSegs: Segment[] = ocrSegsMerged.map(seg => {
 		let bestAsr: Segment | undefined = undefined;
