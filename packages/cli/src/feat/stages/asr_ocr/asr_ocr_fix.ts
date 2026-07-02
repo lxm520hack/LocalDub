@@ -209,6 +209,11 @@ export async function stageAsrOcrFix(ctx: Context) {
 		ctx,
 	);
 
+	// asr_ocr_fused_llm_fix.json
+	if (args?.llmFix) {
+		
+	}
+
 	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrSegsRaw.length} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);
 
 	await setStage(sessionPath, 'asr_ocr_fix', {
