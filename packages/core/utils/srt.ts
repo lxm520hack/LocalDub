@@ -1,4 +1,8 @@
-function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
+import { Context } from "../context/context";
+import { srtTime } from "./utils";
+import { writeFile } from "./fileOps";
+
+export function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
 	function splitProtected(text: string): string[] {
 		const PUNCTUATION = new Set([
 			'，',

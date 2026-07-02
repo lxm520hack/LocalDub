@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { newOcrEngine, type OCRRuntime } from '../../../ml/ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
-import { emitLog, nowISO, srtTime, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
+import { emitLog, nowISO, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { startLog } from '../utils/log.ts';
