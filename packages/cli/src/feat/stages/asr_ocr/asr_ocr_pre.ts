@@ -130,8 +130,13 @@ export async function stageAsrOcrPre(ctx: Context) {
 	for (let i = 0; i < asrSegs.length; i++) {
 		const seg = asrSegs[i];
 		if (i === 0) {
-			for (let t = Math.round(seg.start); t <= Math.round(seg.end); t += 100) {
-				allTimestamps.add(Math.round(t));
+			let fwd = Math.round(seg.start);
+			let bwd = Math.round(seg.end);
+			while (fwd <= bwd) {
+				allTimestamps.add(fwd);
+				if (fwd !== bwd) allTimestamps.add(bwd);
+				fwd += 100;
+				bwd -= 100;
 			}
 		} else {
 			for (let t = Math.round(seg.end); t >= seg.start; t -= 500) {
