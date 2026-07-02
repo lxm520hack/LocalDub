@@ -3,8 +3,9 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readInputArgs } from '../../input/input.ts';
 import { emitLog, nowISO, srtTime, } from '../utils/utils.ts';
-import { segmentsToPrompt, parseLines, fixWithLLM } from './llm.ts';
 import { Context, setStage } from '../../context/context.ts';
+import { segmentsToPrompt, parseLines,  buildAsrFixSystemPrompt } from '@repo/core/ml/llm/asr_llm_fix.ts';
+import { chat_completions} from '@repo/core/ml/llm/openai.ts';
 
 function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
   if (!segments.length) return segments;
@@ -87,7 +88,7 @@ export async function stageAsrFix(ctx: Context) {
     emitLog(sessionPath, `[ASR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
     const t0 = performance.now();
-    const fixed = await fixWithLLM(prompt, { model: llmModel, apiBase: llmApiBase, domainHint });
+    const fixed = await chat_completions(prompt, { model: llmModel, apiBase: llmApiBase, systemPrompt: buildAsrFixSystemPrompt(domainHint) });
     const elapsedSec = ((performance.now() - t0) / 1000).toFixed(1);
 
     const fixedTexts = parseLines(fixed, segments.length);

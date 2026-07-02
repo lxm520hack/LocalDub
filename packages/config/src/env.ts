@@ -26,9 +26,9 @@ export const env = {
   CUDA_DEVICE: envStrUndefined('CUDA_DEVICE'),
 
   // Translate API
-  OPENAI_BASE_URL: envStr('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-  OPENAI_API_KEY: envStr('OPENAI_API_KEY', ''),
-  OPENAI_MODEL: envStr('OPENAI_MODEL', 'gpt-4o-mini'),
+  OPENAI_BASE_URL: envStr('OPENAI_BASE_URL', 'http://localhost:11434/v1'),
+  OPENAI_API_KEY: envStr('OPENAI_API_KEY', 'sk-xxxx'),
+  OPENAI_MODEL: envStr('OPENAI_MODEL', 'gemma4:31b-cloud'),
   OPENAI_TRANSLATE_CONCURRENCY: parseInt(envStr('OPENAI_TRANSLATE_CONCURRENCY', '50'), 10),
 
   // yt-dlp
