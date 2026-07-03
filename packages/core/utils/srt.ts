@@ -142,12 +142,13 @@ function writeSrtFragments(
 }
 
 export function writeSrt(translation: any[], ctx: Context, outputPath: string, useSource?: boolean) {
+	console.log(`Writing SRT length: ${translation.length}...`);
 	const lines: string[] = [];
 	let idx = 1;
 	for (const item of translation) {
 		const start = Math.floor(item.actual_start_time ?? item.start_time);
 		const end = Math.floor(item.actual_end_time ?? item.end_time);
-		if (end <= start) continue;
+		// if (end <= start) continue;
 
 		const text = (
 			useSource ? (item.src || '').trim() : (item.dst || item.zh || '').trim()

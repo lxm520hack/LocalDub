@@ -90,6 +90,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	let currentBoxY: [number, number] | undefined;
 	let gapStart = 0;
 	let currentConfidences: number[] = [];
+	let currentEnd = 0;
 	const dedupLevenshtein = mergeFramesArgs.dedupLevenshtein ?? 1;
 
 	function frameBoxY(f: FrameResult): [number, number] | undefined {
@@ -105,6 +106,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 			const gapMs = f.timestamp - gapStart;
 			if (gapMs <= 1500 && (normalize(f.text) === normalize(currentText) || isSubstringOf(f.text, currentText) || isSubstringOf(currentText, f.text))) {
 				currentConfidences.push(f.confidence);
+				currentEnd = f.timestamp;
 				gapStart = 0; continue;
 			}
 			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
@@ -115,7 +117,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 				segments.push({
 					text: currentText,
 					start: currentStart,
-					end: f.timestamp,
+					end: currentEnd,
 					box_y: currentBoxY,
 					confidence: avgConfidence(currentConfidences),
 					frameCount: currentConfidences.length,
@@ -123,14 +125,16 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 			}
 			currentText = f.text;
 			currentStart = f.timestamp;
+			currentEnd = f.timestamp;
 			currentBoxY = frameBoxY(f);
 			currentConfidences = [f.confidence];
 		} else {
 			currentConfidences.push(f.confidence);
+			currentEnd = f.timestamp;
 		}
 	}
 	if (currentText) {
-		const lastTs = gapStart > 0 ? gapStart : frames[frames.length - 1]?.timestamp ?? currentStart;
+		const lastTs = gapStart > 0 ? gapStart : currentEnd;
 		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
 	}
 
