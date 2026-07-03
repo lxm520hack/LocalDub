@@ -88,7 +88,7 @@ export function computeBoxYStats(frames: FrameResult[]): {
 }
 export type YStats = ReturnType<typeof computeBoxYStats>;
 
-export const get_ocr_frames_line_adjust = (
+export const build_ocr_frames_line_adjust = (
 	ocrFrames: FrameResult[], 
 	yStats: YStats,
 	{ lineAdjustedThreshold = 0.5 }: LineAdjustedArgs
@@ -124,7 +124,7 @@ export const get_ocr_frames_line_adjust = (
 		};
 	}),
 }));
-type OcrFramesLineAdjustFrame = ReturnType<typeof get_ocr_frames_line_adjust>[number];
+type OcrFramesLineAdjustFrame = ReturnType<typeof build_ocr_frames_line_adjust>[number];
 
 export const get_ocr_frames_line_filtered = (ocrFramesLineAdjustFrames: OcrFramesLineAdjustFrame[]) => ocrFramesLineAdjustFrames.flatMap(f => {
 	if (!f.lines) return [f as FrameResult];

@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
 import { emitLog, nowISO, probeVideoResolution, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
 import {  fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
-import { computeBoxYStats, computeSegmentAdjustments, get_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
+import { computeBoxYStats, computeSegmentAdjustments, build_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
@@ -12,6 +12,7 @@ import { buildOcrFixSystemPrompt, ocrSegmentsToPrompt } from '@repo/core/ml/llm/
 import { chat_completions } from '@repo/core/ml/llm/openai';
 import { parseLines } from '@repo/core/ml/llm/srt_shared';
 import { LlmArgs, LlmFixArgs } from '@repo/core/ml/llm/input';
+import { AsrResult } from '../asr/types.ts';
 
 
 
@@ -36,23 +37,15 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	ensureDir(asrOcrFixDir, ctx);
 
-	const asrData = await readJson(asrFile, ctx);
+	const asrRawLen = (await readJson<AsrResult>(asrFile, ctx)).result.segments.length;
 	const asrSplitData = await readJson(asrSplitFile, ctx);
 	const ocrFramesData = await readJson(ocrFramesFile, ctx);
 
 
-	const asrSegsRaw: { text: string; start: number; end: number; words?: { word: string; start: number; end: number; probability: number }[] }[] =
-		(asrData.result?.segments ?? []).map((s: any) => ({
-			text: s.text,
-			start: Math.round(s.start),
-			end: Math.round(s.end),
-			words: s.words,
-		}));
-
 	const asrSegs: Segment[] = (asrSplitData.result?.segments ?? []).map((s: any) => ({
 		text: s.text,
-		start: Math.round(s.start),
-		end: Math.round(s.end),
+		start: s.start,
+		end: s.end,
 	}));
 
 	const rawFrames: FrameResult[] = (ocrFramesData._frames_raw ?? []);
@@ -65,7 +58,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	const yStats = computeBoxYStats(rawFrames);
 
 	// 1. ocr_frames_line_adjust.json: annotate each line with outlier info
-	const annotatedFrames = get_ocr_frames_line_adjust(rawFrames, yStats, { lineAdjustedThreshold });
+	const annotatedFrames = build_ocr_frames_line_adjust(rawFrames, yStats, { lineAdjustedThreshold });
 
 	writeJson(
 		join(asrOcrFixDir, 'ocr_frames_line_adjust.json'),
@@ -168,7 +161,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		{
 			audio_info: { duration: asrOcrSegs.length > 0 ? asrOcrSegs[asrOcrSegs.length - 1].end : 0 },
 			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, textScore, dropped },
+			_fusion_params: { strategy: 'end2fps', ocrCalls: ocrSegsMerged.length, asrSegs: asrRawLen, asrSplits: asrSegs.length, textScore, dropped },
 			result: {
 				text: asrOcrText,
 				segments: asrOcrSegs,
@@ -205,7 +198,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		join(asrOcrFixDir, 'asr_ocr_fused.json'),
 		{
 			_engine: 'asr_ocr',
-			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrSegsRaw.length, asrSplits: asrSegs.length, fixSegs: merged.length, textScore, dropped },
+			_fusion_params: { strategy: 'end2fps', maxAdvanceMs, ocrCalls: ocrSegsMerged.length, asrSegs: asrRawLen, asrSplits: asrSegs.length, fixSegs: merged.length, textScore, dropped },
 			result: {
 				text: fixText,
 				segments: merged,
@@ -257,7 +250,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 		);
 	}
 
-	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrSegsRaw.length} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);
+	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrRawLen} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);
 
 	await setStage(sessionPath, 'asr_ocr_fix', {
 		status: 'succeeded',

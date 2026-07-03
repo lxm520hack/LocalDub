@@ -10,19 +10,48 @@ import { srtTime } from '@repo/core/utils/utils';
 // Split long ASR segments by punctuation using word-level timestamps
 const SPLIT_PAT = /[，,。！？.!?]/;
 const MIN_SUB_DUR = 800;
+
+// Find word indices where seg.text contains spaces (e.g. "陆 陆直循")
+function findSpaceSplits(text: string, words: { word: string }[]): number[] {
+	const chars = [...text];
+	const splits: number[] = [];
+	let wordIdx = 0;
+	let wordPos = 0;
+	for (let i = 0; i < chars.length && wordIdx < words.length; i++) {
+		if (chars[i] === ' ') {
+			if (wordIdx > 0) splits.push(wordIdx - 1);
+			continue;
+		}
+		wordPos++;
+		if (wordPos >= words[wordIdx].word.length) {
+			wordIdx++;
+			wordPos = 0;
+		}
+	}
+	return splits;
+}
+
 function splitAsrByWords(segs: { text: string; start: number; end: number; words?: { word: string; start: number; end: number; probability: number }[] }[]): Segment[] {
 	return segs.flatMap(seg => {
 		const ws = seg.words;
-		if (!ws || ws.length < 2 || seg.end - seg.start < 3000) {
+		if (!ws || ws.length < 2 ) {
 			return [{ text: seg.text, start: seg.start, end: seg.end }];
 		}
-		const splitIdx: number[] = [];
-		for (let i = 0; i < ws.length; i++) {
-			if (SPLIT_PAT.test(ws[i].word)) {
-				splitIdx.push(i);
+		const spaceSplits = findSpaceSplits(seg.text, ws);
+		const punctSplits = (() => {
+			const punct: number[] = [];
+			for (let i = 0; i < ws.length; i++) {
+				if (SPLIT_PAT.test(ws[i].word)) punct.push(i);
 			}
-		}
-		if (splitIdx.length <= 1) {
+			return punct;
+		})();
+		const hasSpaceSplit = spaceSplits.length > 0;
+		const splitIdx: number[] = [
+			...spaceSplits,
+			...punctSplits,
+		].sort((a, b) => a - b)
+			.filter((v, i, a) => a.indexOf(v) === i);
+		if (splitIdx.length <= 1 && !hasSpaceSplit) {
 			return [{ text: seg.text, start: seg.start, end: seg.end }];
 		}
 		// Filter split points: keep if remaining segment (after the split) >= MIN_SUB_DUR
@@ -35,12 +64,12 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 			}
 		}
 		useIdx.push(splitIdx[splitIdx.length - 1]);
-		if (useIdx.length <= 1) {
+		if (useIdx.length <= 1 && !hasSpaceSplit) {
 			return [{ text: seg.text, start: seg.start, end: seg.end }];
 		}
 		const subSegs: Segment[] = [];
 		let prevIdx = 0;
-		for (let i = 0; i < useIdx.length - 1; i++) {
+		for (let i = 0; i < useIdx.length; i++) {
 			const endIdx = useIdx[i];
 			subSegs.push({
 				text: ws.slice(prevIdx, endIdx + 1).map(w => w.word).join(''),
@@ -49,11 +78,13 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 			});
 			prevIdx = endIdx + 1;
 		}
-		subSegs.push({
-			text: ws.slice(prevIdx).map(w => w.word).join(''),
-			start: ws[prevIdx].start,
-			end: totalEnd,
-		});
+		if (prevIdx < ws.length) {
+			subSegs.push({
+				text: ws.slice(prevIdx).map(w => w.word).join(''),
+				start: ws[prevIdx].start,
+				end: totalEnd,
+			});
+		}
 		return subSegs;
 	});
 }
