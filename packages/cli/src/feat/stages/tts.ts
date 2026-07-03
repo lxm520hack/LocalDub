@@ -52,7 +52,8 @@ export async function stageTts(
 	if (!existsSync(timingsFile))
 		throw new Error(`${timingsFile} not found`);
 	ensureDir(ttsWavDir, ctx);
-	ensureDir(doubledDir, ctx);
+	if (ttsCfg.refAudioX2) {ensureDir(doubledDir, ctx);}
+	
 
 	const { translation } = await readJson<TranslateFile>(timingsFile, ctx);
 
@@ -140,20 +141,22 @@ export async function stageTts(
 		}
 
 		// Double reference audio if shorter than 2500ms
-		const minRefMs = 2500;
-		const durProbe = spawnSync('ffprobe',
-			['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', refWav],
-			{ stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 },
-		);
-		const refMs = parseFloat(durProbe.stdout.toString().trim()) * 1000 || 0;
-		if (refMs > 0 && refMs < minRefMs) {
-			const doubled = resolve(doubledDir, `ref_${idx}_x2.wav`);
-			if (!existsSync(doubled)) {
-				const listPath = resolve(doubledDir, `ref_${idx}_list.txt`);
-				writeFileSync(listPath, `file '${refWav}'\nfile '${refWav}'`);
-				ffmpeg(['-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', doubled]);
+		if (ttsCfg.refAudioX2) {
+			const minRefMs = 2500;
+			const durProbe = spawnSync('ffprobe',
+				['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', refWav],
+				{ stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 },
+			);
+			const refMs = parseFloat(durProbe.stdout.toString().trim()) * 1000 || 0;
+			if (refMs > 0 && refMs < minRefMs) {
+				const doubled = resolve(doubledDir, `ref_${idx}_x2.wav`);
+				if (!existsSync(doubled)) {
+					const listPath = resolve(doubledDir, `ref_${idx}_list.txt`);
+					writeFileSync(listPath, `file '${refWav}'\nfile '${refWav}'`);
+					ffmpeg(['-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', doubled]);
+				}
+				refWav = doubled;
 			}
-			refWav = doubled;
 		}
 
 		setStage(sessionPath, 'tts', {
