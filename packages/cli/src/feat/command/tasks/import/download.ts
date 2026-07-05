@@ -18,7 +18,7 @@ import { Context, readCtx, setCtx, setStage, setTask, writeCtx } from '@repo/cor
 import { startLog } from '../../../stages/utils/log.ts';
 import { getStages } from '@repo/core/stages/utils/stages';
 import { InputArgs } from '@repo/core/input/input';
-import { autoProjectIdAndVideoId, copyFileToPath, downloadRemoteVideo, encodeToMp4 } from './utils.ts';
+import { autoGroupIdAndVideoId, copyFileToPath, downloadRemoteVideo, encodeToMp4 } from './utils.ts';
 import { WORKFOLDER } from '@repo/config/path/paths';
 
 
@@ -29,9 +29,9 @@ export const importVideo = async (input: InputArgs) => {
 		console.error('task start: need task.url in input.json',);
 		process.exit(1);
 	}
-	const {projectId, taskId, info, source}	= await autoProjectIdAndVideoId(url)
+	const {groupId, taskId, info, source}	= await autoGroupIdAndVideoId(url)
 	startLog('import', taskId);
-	const sessionPath = join(WORKFOLDER, projectId, taskId);
+	const sessionPath = join(WORKFOLDER, groupId, taskId);
 	mkdirSync(sessionPath, { recursive: true });
 	const stages = getStages(input.task.pipeline);
 	const ctx: Context = {

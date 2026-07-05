@@ -41,12 +41,12 @@ function parseDirAndId(filePath: string): { dir: string; id: string } {
 }
 
 export const copyFileToPath = (src: string, target: string) => copyFileSync(src, target);
-export const autoProjectIdAndVideoId = async (url: string) => {
+export const autoGroupIdAndVideoId = async (url: string) => {
 	const source = await classifySource(url)
-	const ret = { projectId: 'root', taskId: 'unset', source, info: {} as any}
+	const ret = { groupId: 'root', taskId: 'unset', source, info: {} as any}
 	if (source === 'local' || source === 'remote') {
-		const { dir: projectId, id: taskId } = parseDirAndId(url);
-		ret.projectId = projectId;
+		const { dir: groupId, id: taskId } = parseDirAndId(url);
+		ret.groupId = groupId;
 		ret.taskId = taskId;
 	} else if (source === 'youtube' || source === 'bilibili') {
 		// YouTube/Bilibili URL — download via yt-dlp
@@ -67,7 +67,7 @@ export const autoProjectIdAndVideoId = async (url: string) => {
 			info.authArgs = authArgs;
 			const uploader = sanitizeText(info.uploader || '', 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
-			ret.projectId = uploader;
+			ret.groupId = uploader;
 			ret.taskId = videoId;
 			ret.info = info;
 		} else {
