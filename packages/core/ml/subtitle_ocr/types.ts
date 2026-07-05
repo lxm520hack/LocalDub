@@ -5,9 +5,19 @@ export interface FrameResult {
 	timestamp: number;
 	confidence: number;
 	bbox?: { left: number; top: number; right: number; bottom: number };
-	lines?: { text: string; confidence: number; box: number[][]; bbox: { left: number; top: number; right: number; bottom: number } }[];
+	lines?: { 
+		text: string; 
+		confidence: number; 
+		box: number[][]; 
+		bbox: { left: number; top: number; right: number; bottom: number } 
+	}[];
 }
 
+export type SegmentFrame = {
+	text: string;
+	timestamp: number;
+	confidence: number;
+}
 export interface Segment {
 	text: string;
 	start: number;
@@ -17,6 +27,7 @@ export interface Segment {
 	box_y?: [number, number];
 	confidence?: number;
 	frameCount?: number;
+	frames?: SegmentFrame[]
 }
 
 export interface SegmentWithAdjusted extends Segment {

@@ -1,6 +1,6 @@
 import { MergeFramesArgs } from "@repo/core/ml/subtitle_ocr/input";
 
-import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
+import { FrameResult, Segment, SegmentFrame, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
 import { srtTime } from "@repo/core/utils/utils";
 
 
@@ -90,6 +90,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	let currentBoxY: [number, number] | undefined;
 	let gapStart = 0;
 	let currentConfidences: number[] = [];
+	let currentFrames: SegmentFrame[] = []
 	let currentEnd = 0;
 	const dedupLevenshtein = mergeFramesArgs.dedupLevenshtein ?? 1;
 
@@ -98,21 +99,39 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 	}
 
 	for (const f of frames) {
+		// ─── A: 空帧 → 标记 gap ───
 		if (!f.text) {
 			if (currentText && !gapStart) gapStart = f.timestamp;
 			continue;
 		}
+		// ─── B: gap 恢复检查（空帧后同 text 恢复）───
 		if (gapStart > 0) {
 			const gapMs = f.timestamp - gapStart;
-			if (gapMs <= 1500 && (normalize(f.text) === normalize(currentText) || isSubstringOf(f.text, currentText) || isSubstringOf(currentText, f.text))) {
+			if (
+				gapMs <= 1500 
+				&& (
+					normalize(f.text) === normalize(currentText) 
+					|| isSubstringOf(f.text, currentText) 
+					|| isSubstringOf(currentText, f.text)
+				)
+			) {
+				// B1: gap 恢复成功 → 合并回当前段
 				currentConfidences.push(f.confidence);
 				currentEnd = f.timestamp;
 				gapStart = 0; continue;
 			}
-			segments.push({ text: currentText, start: currentStart, end: gapStart, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
-			currentText = ""; currentStart = 0; currentBoxY = undefined; gapStart = 0; currentConfidences = [];
+			// B2: gap 恢复失败 → flush 当前段，重置
+			segments.push({ 
+				text: currentText, start: currentStart, end: gapStart, 
+				box_y: currentBoxY, 
+				confidence: avgConfidence(currentConfidences), 
+				frameCount: currentConfidences.length , frames: currentFrames
+			});
+			currentText = ""; currentStart = 0; currentBoxY = undefined; gapStart = 0; currentConfidences = []; currentFrames = [];
 		}
+		// ─── C: text 比较 ───
 		if (!currentText || normalize(f.text) !== normalize(currentText)) {
+			// C1: 不同 text → flush 旧段，开始新段
 			if (currentText) {
 				segments.push({
 					text: currentText,
@@ -121,6 +140,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 					box_y: currentBoxY,
 					confidence: avgConfidence(currentConfidences),
 					frameCount: currentConfidences.length,
+					frames: currentFrames
 				});
 			}
 			currentText = f.text;
@@ -128,20 +148,31 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 			currentEnd = f.timestamp;
 			currentBoxY = frameBoxY(f);
 			currentConfidences = [f.confidence];
+			currentFrames = [{ timestamp: f.timestamp, text: f.text, confidence: f.confidence }]
 		} else {
+			// C2: 同 text → 延续当前段
 			currentConfidences.push(f.confidence);
 			currentEnd = f.timestamp;
+			currentFrames.push({ timestamp: f.timestamp, text: f.text, confidence: f.confidence });
 		}
 	}
+	// ─── D: 循环结束 flush 最后一段 ───
 	if (currentText) {
 		const lastTs = gapStart > 0 ? gapStart : currentEnd;
-		segments.push({ text: currentText, start: currentStart, end: lastTs, box_y: currentBoxY, confidence: avgConfidence(currentConfidences), frameCount: currentConfidences.length });
+		segments.push({ 
+			text: currentText, start: currentStart, end: lastTs, box_y: currentBoxY, 
+			confidence: avgConfidence(currentConfidences), 
+			frameCount: currentConfidences.length,
+			frames: currentFrames
+		});
 	}
 
+	// ─── Pass 1: substring merge ───
 	if (mergeFramesArgs.mergeSubstring) {
 		mergeSubstringSegments(segments);
 	}
 
+	// ─── Pass 2: A-B-C triplet 噪声消除 ───
 	// third pass: A-B-C triplet where A.text == C.text and B is a short hallucination
 	// (handles patterns like "嗯发财了" → "菌" → "嗯发财了", or same-text segments
 	// split by a one-word noise like "娘带着我们门爬了七座山才到")
@@ -159,18 +190,24 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 			const isNoise = isShort || bNearA || bNearC;
 			if (isNoise) {
 				const mergedConf = [a.confidence, b.confidence, c.confidence].filter((v): v is number => v !== undefined);
-				segments[i] = { text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf), frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1) + (c.frameCount ?? 1) };
+				segments[i] = { 
+					text: a.text, start: a.start, end: c.end, box_y: a.box_y, confidence: avgConfidence(mergedConf), 
+					frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1) + (c.frameCount ?? 1),
+					frames: [...(a.frames ?? []), ...(b.frames ?? []), ...(c.frames ?? [])]
+				};
 				segments.splice(i + 1, 2);
 				i--; // re-check from this position
 			}
 		}
 	}
 
+	// ─── Pass 3: overlapping dedup ───
 	// fourth pass: remove overlapping segments with similar text
 	// (handles ASR segment overlap where end2fps scans produce duplicate
 	// segments with lev-distant text like 干嘛/于嘛 in the same time window)
 	dedupOverlap(segments, dedupLevenshtein);
 
+	// ─── Pass 4: 同 text 相邻合并 ───
 	// fifth pass: merge adjacent segments with the same normalized text
 	// (handles A → noise → A cut by a frame gap where the triplet didn't fire
 	// because noise was a single long segment, e.g. same subtitle resumed after
@@ -186,6 +223,7 @@ export function mergeFrames(frames: FrameResult[], mergeFramesArgs: MergeFramesA
 		prev.confidence = avgConfidence(mergedConf);
 		prev.frameCount = (prev.frameCount ?? 1) + (cur.frameCount ?? 1);
 		segments.splice(i, 1);
+		prev.frames = [...(prev.frames ?? []), ...(cur.frames ?? [])];
 	}
 
 	return {	 
@@ -216,6 +254,7 @@ export function dedupOverlap(segments: Segment[], dedupLevenshtein = 1): Segment
 					box_y: a.box_y,
 					confidence: mergeConfidence(a.confidence, b.confidence),
 					frameCount: (a.frameCount ?? 1) + (b.frameCount ?? 1),
+					frames: [...(a.frames ?? []), ...(b.frames ?? [])]
 				};
 				segments.splice(j, 1);
 				j--;
