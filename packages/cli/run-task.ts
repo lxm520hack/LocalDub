@@ -13,8 +13,8 @@ import { cmdCheck } from './src/feat/command/check.ts';
 import { cmdStartTask } from '@repo/core/cmd/tasks/startTask';
 import { cmdServers } from './src/feat/command/servers.ts';
 import { cmdResumeTask } from '@repo/core/cmd/tasks/resumeTask';
-import { cmdTaskStatus } from './src/feat/command/tasks/taskStatus.ts';
-import { cmdTask } from './src/feat/command/tasks/task.ts';
+import { cmdTaskStatus } from '@repo/core/cmd/tasks/taskStatus';
+import { cmdTask } from '@repo/core/cmd/tasks/task';
 
 const input = readInputArgs();
 const cmd = input.command;
