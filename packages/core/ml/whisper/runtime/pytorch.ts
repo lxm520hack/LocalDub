@@ -1,4 +1,4 @@
-import { REPO_ROOT } from "@repo/config/path/root";
+import { REPO_ROOT } from "@repo/config/root";
 import { setCtx, setStage } from "@repo/core/context/context";
 import { parseAsrOutput } from "@repo/core/stages/asr/utils";
 import { existsSync, readJson } from "@repo/core/utils/fileOps";

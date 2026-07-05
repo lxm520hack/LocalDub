@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use crate::path::root::repo_root;
+use crate::root::repo_root;
 
 pub fn model_cache_dir() -> PathBuf {
     repo_root().join("data").join("models")

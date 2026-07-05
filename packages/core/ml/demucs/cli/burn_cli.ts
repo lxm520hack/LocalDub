@@ -5,7 +5,7 @@ import { emitLog, probeDuration, separateDir } from '@repo/core/stages/utils/uti
 import { setStage } from '@repo/core/context/context';
 import { DemucsCliArgs } from './cli_types';
 import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 function findLibtorchPath(): string | null {
 	const buildDir = join(REPO_ROOT, 'target', 'release', 'build');

@@ -1,7 +1,7 @@
 import * as ort from 'onnxruntime-node';
 import { join, resolve } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 
 /** Find rapidocr model directory dynamically. */

@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { emitLog } from '@repo/core/stages/utils/utils.ts';
 import { ocrBinaryPath, ocrOrtDir } from '@repo/core/ml/subtitle_ocr/ocr';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { cmakeBin } from '@repo/config/path/bin';
 
 const ORT_TMP_DIR = resolve(REPO_ROOT, 'packages', 'tmp');

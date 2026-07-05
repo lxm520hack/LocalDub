@@ -1,5 +1,5 @@
 import { task_fail_path, task_success_path } from '@repo/config/path/assets';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { spawnSync, spawn } from 'node:child_process';
 import { basename, join, relative } from 'node:path';
 

@@ -7,7 +7,7 @@ import { delimiter } from 'node:path';
 import { readWav } from '../../wav.ts';
 import type { TTSGenerateOptions, TTSGenerateResult, TTSBackend, VoxCPMPythonConfig, ModelStatus } from '../../types.ts';
 import { VOXCPM_MODEL_DIR,  } from '@repo/config/path/models';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 let _scriptPath: string | null = null;
 function getScriptPath(): string {

@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { main as evalOcrMain } from '../../ref/compute/eval-ocr.ts';
 import { createSessions, ocrFrameWithSessions, releaseSessions } from '../../../subtitle-ocr/subtitle-node.ts';
 import { FrameResult, Segment, mergeFrames } from '@repo/core/stages/ocr/ocrMerge';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { findRapidOcrModelsDir } from '@repo/subtitle-ocr/utils';
 
 

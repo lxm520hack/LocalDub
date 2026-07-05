@@ -3,7 +3,7 @@ import { delimiter, join } from 'node:path';
 import { findServer } from '@repo/core/servers/discovery';
 import { ModelServerStatus } from '@repo/core/servers/type';
 import { pythonBin } from '@repo/config/path/bin';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 export const fetchStatsRes = (port: number) => fetch(`http://127.0.0.1:${port}/status`, {
   signal: AbortSignal.timeout(2000),

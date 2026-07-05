@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { emitLog } from '@repo/core/stages/utils/utils.ts';
 import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 const HF_BASE = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 

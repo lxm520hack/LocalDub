@@ -7,7 +7,7 @@ import { emitLog, probeDuration, separateDir } from '@repo/core/stages/utils/uti
 import { setStage } from '@repo/core/context/context';
 import { DemucsCliArgs } from './cli_types';
 import { ensureGgmlModel, tryBuildGgml } from '../separate-build';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 export async function separateGgml(
 	taskId: string,

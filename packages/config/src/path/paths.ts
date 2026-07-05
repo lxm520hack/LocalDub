@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { env } from '../env.ts';
-import { REPO_ROOT } from './root.ts';
+import { REPO_ROOT } from '../root.ts';
 
 export const WORKFOLDER = env.WORKFOLDER;
 export const DATA_DIR = join(REPO_ROOT, 'data');

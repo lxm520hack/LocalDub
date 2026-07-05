@@ -9,7 +9,7 @@ import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../ensur
 import { Context, setCtx, setStage } from '@repo/core/context/context.ts';
 import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { whisperCppModelPath } from '@repo/config/path/models';
 import { srtTime } from '@repo/core/utils/utils';
 

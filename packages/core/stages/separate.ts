@@ -16,7 +16,7 @@ import { separateBurn } from '../ml/demucs/cli/burn_cli.ts';
 import { separateGgml } from '../ml/demucs/cli/ggml_cli.ts';
 import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 export async function stageSeparate(
 	ctx: Context,

@@ -8,7 +8,7 @@ import {
   VOXCPM_MODEL_DIR,
 } from '@repo/config/path/models';
 import type { CheckResult } from './types';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 function tryExec(cmd: string, args: string[], cwd?: string): { ok: boolean; stdout: string; stderr: string } {
   try {

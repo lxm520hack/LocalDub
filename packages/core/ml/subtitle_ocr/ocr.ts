@@ -9,7 +9,7 @@ import {
 	releaseSessions,
 	type OCRSessions,
 } from '@repo/subtitle-ocr/subtitle-node';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { OCRLine } from '@repo/subtitle-ocr/types';
 export type { OCRSessions } from '@repo/subtitle-ocr/subtitle-node';
 export type OCRDevice = 'cpu' | 'cuda' | 'directml' | 'coreml' | 'rocm' | 'mps';

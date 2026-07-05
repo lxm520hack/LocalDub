@@ -1,5 +1,5 @@
 import path from "node:path";
-import { REPO_ROOT } from "@repo/config/path/root";
+import { REPO_ROOT } from "../root";
 
 export const faster_whisper_py = path.join(		REPO_ROOT,
 		'packages',

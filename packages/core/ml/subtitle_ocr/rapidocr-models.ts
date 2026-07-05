@@ -1,4 +1,4 @@
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 import { existsSync, readdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 

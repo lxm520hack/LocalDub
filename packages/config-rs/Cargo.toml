@@ -2,3 +2,6 @@
 name = "config-rs"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+dotenvy = "0.15"

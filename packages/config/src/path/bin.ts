@@ -1,5 +1,5 @@
 
-import { REPO_ROOT } from "./root";
+import { REPO_ROOT } from "../root";
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';

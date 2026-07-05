@@ -4,7 +4,7 @@ import { env  } from '@repo/config/env';
 import { to } from '@repo/shared/lib/utils/try.ts';
 import {  CliInputSchema,  } from '@repo/core/input/types';
 import { fileLog } from '@repo/core/utils/fileOps';
-import { REPO_ROOT } from '@repo/config/path/root';
+import { REPO_ROOT } from '@repo/config/root';
 
 
 const INPUT_ARGS_PATH = join(REPO_ROOT, 'packages', 'cli', 'input.json');
