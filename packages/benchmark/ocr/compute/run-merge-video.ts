@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { stageMergeVideo } from '../../../cli/src/feat/stages/merge_video';
+import { stageMergeVideo } from '@repo/core/stages/merge_video';
 import type { Context } from '../../../cli/src/feat/context/context';
 
 const label = process.argv[2];

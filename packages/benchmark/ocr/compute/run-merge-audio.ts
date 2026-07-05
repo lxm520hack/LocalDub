@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { stageMergeAudio } from '../../../cli/src/feat/stages/merge_audio';
+import { stageMergeAudio } from '@repo/core/stages/merge_audio';
 import type { Context } from '../../../cli/src/feat/context/context';
 
 const label = process.argv[2];

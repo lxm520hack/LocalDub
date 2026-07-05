@@ -6,17 +6,13 @@ import { timeId } from '../shared/db/timeId.ts';
 import {
 	readInputArgs,
 } from '@repo/core/input/input';
-import {
 
-	resumePipeline,
-	runPipeline,
-} from './src/feat/tasks/pipeline-runner.ts';
-import { classifySource, extractVideoId, isYouTubeUrl } from './src/feat/tasks/validate.ts';
+import { classifySource, extractVideoId, isYouTubeUrl } from '@repo/core/utils/validate';
 import { startTorchServer, stopTorchServer } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
-import { cmdStartTask } from './src/feat/command/tasks/startTask.ts';
+import { cmdStartTask } from '@repo/core/cmd/tasks/startTask';
 import { cmdServers } from './src/feat/command/servers.ts';
-import { cmdResumeTask } from './src/feat/command/tasks/resumeTask.ts';
+import { cmdResumeTask } from '@repo/core/cmd/tasks/resumeTask';
 import { cmdTaskStatus } from './src/feat/command/tasks/taskStatus.ts';
 import { cmdTask } from './src/feat/command/tasks/task.ts';
 

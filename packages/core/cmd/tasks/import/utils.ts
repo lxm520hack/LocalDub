@@ -8,8 +8,7 @@ import {
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { env,   } from '@repo/config/env';
-import { sanitizeText } from '../../../tasks/fn.ts';
-import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
+import { classifySource, extractVideoId, isYouTubeUrl } from '../../../utils/validate.ts';
 import {
 	emitLog,
 	ffmpeg,
@@ -19,6 +18,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 import { startLog } from '../../../stages/utils/log.ts';
 import { copyFileSync } from '@repo/core/utils/fileOps';
 import { YOUTUBE_COOKIE_PATH } from '@repo/config/path/paths';
+import { sanitizeText } from '@repo/core/utils/utils';
 
 
 function parseDirAndId(filePath: string): { dir: string; id: string } {

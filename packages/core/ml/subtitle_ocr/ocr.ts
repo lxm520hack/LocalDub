@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { ocrFrameOpenCvCpp, ocrFramesOpenCvCpp } from './runtimes/ort-cpp.ts';
-import { ocrFramePy } from './runtimes/ort-py.ts';
-import { runOcrFrame as runOcrFrameRust } from '../../../../subtitle-rust/ts/ocr.ts';
+import { ocrFrameOpenCvCpp, ocrFramesOpenCvCpp } from './runtimes/ort-cpp';
+import { ocrFramePy } from './runtimes/ort-py';
+import { runOcrFrame as runOcrFrameRust } from '../../../subtitle-rust/ts/ocr.ts';
 import {
 	ocrFrameWithSessions,
 	createSessions,

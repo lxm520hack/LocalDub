@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test';
-import { playTaskSuccess, playTaskFail } from './utils.ts';
+import { playTaskSuccess, playTaskFail } from '@repo/core/cmd/tasks/utils';
 import { task_success_path, task_fail_path } from '@repo/config/path/assets';
 import { existsSync } from 'node:fs';
 

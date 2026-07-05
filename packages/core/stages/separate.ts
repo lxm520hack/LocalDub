@@ -2,19 +2,18 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
-import { Demucs } from '../../../ml/demucs/demucs.ts';
-import type { Stem } from '../../../ml/demucs/load.ts';
+import { runStage, getTorchServerUrl } from '../servers/client.ts';
+import { Demucs } from '../ml/demucs/demucs.ts';
+import type { Stem } from '../ml/demucs/load.ts';
 import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import {
 	readInputArgs,
 } from '@repo/core/input/input';
 import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
-import { ensureGgmlModel, tryBuildGgml } from '../../../ml/demucs/separate-build.ts';
-import { startLog } from '../utils/log.ts';
-import { separateBurn } from '../../../ml/demucs/cli/burn_cli.ts';
-import { separateGgml } from '../../../ml/demucs/cli/ggml_cli.ts';
+import { startLog } from './utils/log.ts';
+import { separateBurn } from '../ml/demucs/cli/burn_cli.ts';
+import { separateGgml } from '../ml/demucs/cli/ggml_cli.ts';
 import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';

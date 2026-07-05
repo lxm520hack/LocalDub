@@ -3,7 +3,7 @@ import { readJson, writeJson, ensureDir, removeFile } from '@repo/core/utils/fil
 import { copyFileSync, existsSync, renameSync } from 'node:fs';
 import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { runStage, getTorchServerUrl } from '../../../ml/server/client.ts';
+import { runStage, getTorchServerUrl } from '../../servers/client.ts';
 
 import {  emitLog, ffmpeg, nowISO, readTaskLanguages,videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils';
 import { AsrOptions } from './types.ts';
@@ -13,8 +13,8 @@ import { pythonBin } from '@repo/config/path/bin';
 import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/path/root';
 import { whisperCppModelPath } from '@repo/config/path/models';
-import { asrWhisperCpp } from '../../../ml/whisper/runtime/ggml.ts';
-import { asrFasterWhisper } from '../../../ml/whisper/runtime/faster_whisper_py.ts';
+import { asrWhisperCpp } from '../../ml/whisper/runtime/ggml.ts';
+import { asrFasterWhisper } from '../../ml/whisper/runtime/faster_whisper_py.ts';
 
 
 export async function stageAsr(

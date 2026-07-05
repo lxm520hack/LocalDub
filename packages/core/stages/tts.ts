@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { writeWav } from '@repo/voxlab';
 
 import { emitLog, ffmpeg, nowISO, readTaskLanguages, split_audio_timings_filepath } from '@repo/core/stages/utils/utils.ts';
-import { TranslateFile } from './translate.ts';
+import { TranslateFile } from '@repo/core/stages/translate';
 import { Context, setStage, setTask } from '@repo/core/context/context.ts';
 import { startLog } from './utils/log.ts';
 import { newVoxCPMEngine } from '@repo/core/ml/voxcpm/voxcpm';

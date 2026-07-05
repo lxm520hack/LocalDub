@@ -2,11 +2,10 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { DUB_STAGES, getStages } from '@repo/core/stages/utils/stages';
 import { existsSync } from '@repo/core/utils/fileOps';
-import { classifySource, isYouTubeUrl } from '../../tasks/validate.ts';
 import { InputArgs } from '@repo/core/input/input';
 import { runPipeline } from '../../tasks/pipeline-runner.ts';
-import { downloadVideo, importVideo } from './import/download.ts';
-import { playTaskFail, playTaskSuccess } from './utils.ts';
+import { downloadVideo, importVideo } from './import/download';
+import { playTaskFail, playTaskSuccess } from '@repo/core/cmd/tasks/utils';
 
 
 export const cmdStartTask = async (input: InputArgs) => {

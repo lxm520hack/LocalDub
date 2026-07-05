@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { newOcrEngine, type OCRRuntime } from "../../../ml/ocr/ocr.ts";
+import { newOcrEngine, type OCRRuntime } from "../../ml/subtitle_ocr/ocr.ts";
 import { ensureDir, writeJson } from "@repo/core/utils/fileOps";
 import { emitLog, ffmpeg, nowISO,  probeVideoResolution, videoSourcePath } from "@repo/core/stages/utils/utils.ts";
 

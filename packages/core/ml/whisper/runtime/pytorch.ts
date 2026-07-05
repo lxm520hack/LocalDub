@@ -1,9 +1,9 @@
 import { REPO_ROOT } from "@repo/config/path/root";
 import { setCtx, setStage } from "@repo/core/context/context";
-import { parseAsrOutput } from "../../../feat/stages/asr/utils";
+import { parseAsrOutput } from "@repo/core/stages/asr/utils";
 import { existsSync, readJson } from "@repo/core/utils/fileOps";
 import { emitAsrTiming } from "../time";
-import { AsrOptions } from "../../../feat/stages/asr/types";
+import { AsrOptions } from "@repo/core/stages/asr/types";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 

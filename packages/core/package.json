@@ -11,8 +11,10 @@
   "dependencies": {
     "@repo/config": "workspace:*",
     "@repo/shared": "workspace:*",
+    "@repo/subtitle-ocr": "workspace:*",
     "@repo/voxlab": "workspace:*",
     "@tanstack/pacer": "^0.21.1",
+    "onnxruntime-node": "^1.26.0",
     "zod": "^4.4.3"
   }
 }

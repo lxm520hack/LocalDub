@@ -3,45 +3,8 @@ import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { emitLog } from '@repo/core/stages/utils/utils';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { cmakeBin, findCmakePath, setCmakePath } from '@repo/config/path/bin';
 
-/**
- * Find cmake.exe in common installation paths on Windows.
- */
-export function findCmakePath(): string | null {
-	const candidates = [
-		join(process.env.ProgramFiles || 'C:\\Program Files', 'CMake', 'bin', 'cmake.exe'),
-		join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'CMake', 'bin', 'cmake.exe'),
-		join(process.env.LOCALAPPDATA || '', 'Microsoft', 'WinGet', 'Links', 'cmake.exe'),
-		join(process.env.USERPROFILE || '', 'AppData', 'Local', 'Microsoft', 'WinGet', 'Links', 'cmake.exe'),
-	];
-	for (const p of candidates) {
-		if (existsSync(p)) return p;
-	}
-	return null;
-}
-
-let _cmakePath: string | null = null;
-
-/**
- * Returns the path to cmake binary, checking PATH first, then common install paths.
- */
-export function cmakeBin(): string {
-	if (_cmakePath) return _cmakePath;
-	const fromPath = spawnSync('where', ['cmake'], { timeout: 5000, shell: true });
-	if (fromPath.status === 0) {
-		const lines = fromPath.stdout?.toString().trim().split(/\r?\n/);
-		if (lines && lines.length > 0 && lines[0].length > 0) {
-			_cmakePath = lines[0].trim();
-			return _cmakePath;
-		}
-	}
-	const found = findCmakePath();
-	if (found) {
-		_cmakePath = found;
-		return _cmakePath;
-	}
-	return 'cmake';
-}
 
 /**
  * Attempt to build the GGML binary from demucs.cpp submodule.
@@ -77,7 +40,7 @@ export async function tryBuildGgml(sessionPath: string): Promise<boolean> {
 					+ '  Then restart your terminal and re-run the pipeline.');
 				return false;
 			}
-			_cmakePath = found;
+			setCmakePath(found);
 			log(`[Separate] cmake found at ${found}`);
 		} else if (process.platform === 'darwin') {
 			const install = spawnSync('brew', ['install', 'cmake'], {

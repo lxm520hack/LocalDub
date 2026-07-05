@@ -1,7 +1,7 @@
 import { InputArgs } from "@repo/core/input/input";
-import { cmdRerunStage } from "./rerunStage";
-import { cmdResumeTask } from "./resumeTask";
-import { cmdStartTask } from "./startTask";
+import { cmdRerunStage } from "@repo/core/cmd/tasks/rerunStage";
+import { cmdResumeTask } from "@repo/core/cmd/tasks/resumeTask";
+import { cmdStartTask } from "@repo/core/cmd/tasks/startTask";
 import { cmdTaskStatus } from "./taskStatus";
 
 export const cmdTask = async (input: InputArgs) => {

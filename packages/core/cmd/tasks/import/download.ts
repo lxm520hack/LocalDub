@@ -7,8 +7,6 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { sanitizeText } from '../../../tasks/fn.ts';
-import { classifySource, extractVideoId, isYouTubeUrl } from '../../../tasks/validate.ts';
 import {
 	emitLog,
 	ffmpeg,

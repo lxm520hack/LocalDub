@@ -1,17 +1,17 @@
-import { stageSeparate } from './separate/separate.ts';
-import { stageSeparateAfter } from './separate_after.ts';
-import { stageAsr } from './asr/asr.ts';
-import { stageAsrFix } from './asr/asr_fix.ts';
-import { stageOcr } from './ocr/ocr.ts';
-import { stageOcrFix } from './ocr/ocr_fix.ts';
-import { stageAsrOcrPre } from './asr_ocr/asr_ocr_pre.ts';
-import { stageAsrOcr } from './asr_ocr/asr_ocr.ts';
-import { stageAsrOcrFix } from './asr_ocr/asr_ocr_fix.ts';
-import { stageTranslate } from './translate.ts';
-import { stageSplitAudio } from './split_audio.ts';
-import { stageTts } from './tts.ts';
-import { stageMergeAudio } from './merge_audio.ts';
-import { stageMergeVideo } from './merge_video.ts';
+import { stageSeparate } from './separate';
+import { stageSeparateAfter } from './separate_after';
+import { stageAsr } from './asr/asr';
+import { stageAsrFix } from './asr/asr_fix';
+import { stageOcr } from './ocr/ocr';
+import { stageOcrFix } from './ocr/ocr_fix';
+import { stageAsrOcrPre } from './asr_ocr/asr_ocr_pre';
+import { stageAsrOcr } from './asr_ocr/asr_ocr';
+import { stageAsrOcrFix } from './asr_ocr/asr_ocr_fix';
+import { stageTranslate } from './translate';
+import { stageSplitAudio } from './split_audio';
+import { stageTts } from './tts';
+import { stageMergeAudio } from './merge_audio';
+import { stageMergeVideo } from './merge_video';
 import { Context, readCtx, Task } from '@repo/core/context/context.ts';
 
 

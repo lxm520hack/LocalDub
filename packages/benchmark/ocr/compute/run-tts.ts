@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { stageTts } from '../../../cli/src/feat/stages/tts';
+import { stageTts } from '@repo/core/stages/tts';
 import type { Context } from '../../../cli/src/feat/context/context';
 
 const label = process.argv[2];

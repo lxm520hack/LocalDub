@@ -1,5 +1,5 @@
 import { Context, writeCtx } from '../../../cli/src/feat/context/context';
-import { stageSplitAudio } from '../../../cli/src/feat/stages/split_audio';
+import { stageSplitAudio } from '@repo/core/stages/split_audio';
 import { ensureDir } from '@repo/core/utils/fileOps';
 import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';

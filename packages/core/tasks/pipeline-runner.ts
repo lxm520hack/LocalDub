@@ -5,7 +5,7 @@ import { to } from '@repo/shared/lib/utils/try.ts';
 import { getStages } from '@repo/core/stages/utils/stages';
 // import { taskStages, tasks } from './../../feat/tasks/table.ts';
 import { readInputArgs } from '@repo/core/input/input';
-import { STAGE_HANDLERS } from '../stages/index.ts';
+import { STAGE_HANDLERS } from '../stages/index';
 import { Context, 	readCtx,
 	readPipeline,
 	readTask,

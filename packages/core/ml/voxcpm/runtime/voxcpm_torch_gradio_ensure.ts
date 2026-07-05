@@ -1,5 +1,5 @@
 import { VoxCPMCloud, type TTSBackend } from '@repo/voxlab';
-import { pythonBin,  } from "@repo/config/path/exe";
+import { pythonBin,  } from "@repo/config/path/bin";
 import { join } from 'node:path';
 import { REPO_ROOT } from '@repo/config/path/root';
 import type { ModelServerStatus } from '@repo/core/servers/type';

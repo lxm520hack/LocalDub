@@ -2,9 +2,9 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { emitLog } from '@repo/core/stages/utils/utils.ts';
-import { ocrBinaryPath, ocrOrtDir } from './ocr.ts';
-import { cmakeBin } from '../demucs/separate-build.ts';
+import { ocrBinaryPath, ocrOrtDir } from '@repo/core/ml/subtitle_ocr/ocr';
 import { REPO_ROOT } from '@repo/config/path/root';
+import { cmakeBin } from '@repo/config/path/bin';
 
 const ORT_TMP_DIR = resolve(REPO_ROOT, 'packages', 'tmp');
 const SRC_DIR = resolve(REPO_ROOT, 'packages', 'ocr-cpp');
