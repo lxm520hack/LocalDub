@@ -5,7 +5,8 @@
 
 ## Key directories
 
-- `packages/cli/src/feat/` — pipeline 流程（stages、config、tasks）
+- `packages/cli/` — 入口 `run-task.ts`（派发器），`src/feat/` 为 pipeline 流程实现
+- `packages/core/cmd/` — CLI 命令逻辑（`tasks/task.ts` 集中派发 task 动作，含 `get_group_list`、`taskStatus` 等）
 - `packages/cli/src/ml/` — 模型实现（whisper、demucs 等）
 - `packages/cli/src/ml/ocr/ocr.ts` — OCR 二进制调用（ort-cpp），使用 `pythonBin()`（config.ts）而非内联 VIRTUAL_ENV
 - `packages/subtitle-ocr/` — 字幕专用 OCR 包（ort-cpp、subtitle-node.ts、subtitle-py.py）

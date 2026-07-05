@@ -22,7 +22,7 @@ export const cmdTask = async (input: InputArgs) => {
     console.log(status)
   } else if (input.task.action === 'get_group_list') {
     const group_list = await get_group_list()
-    console.log(group_list)
+    console.log(JSON.stringify(group_list, null, 2))
   } else {
     console.error(`Unknown task action: ${input.task.action}`);
   }

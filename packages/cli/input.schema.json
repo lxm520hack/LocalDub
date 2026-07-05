@@ -19,13 +19,14 @@
       "type": "object",
       "properties": {
         "action": {
-          "description": "任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态",
+          "description": "任务操作: start=开始, resume=继续, rerun_stage=重新运行某步骤, status=显示状态, get_group_list=列出分组",
           "type": "string",
           "enum": [
             "start",
             "resume",
-            "rerunStage",
-            "status"
+            "rerun_stage",
+            "status",
+            "get_group_list"
           ]
         },
         "url": {
@@ -33,7 +34,32 @@
           "type": "string"
         },
         "sourceLang": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "en",
+            "zh",
+            "vi",
+            "ja",
+            "ko",
+            "fr",
+            "de",
+            "es",
+            "pt",
+            "ru",
+            "ar",
+            "hi",
+            "th",
+            "id",
+            "ms",
+            "tl",
+            "my",
+            "km",
+            "lo",
+            "mn",
+            "ne",
+            "ur",
+            "bn"
+          ]
         },
         "targetLang": {
           "type": "string",
@@ -145,8 +171,7 @@
             "merge_video"
           ]
         }
-      },
-      "additionalProperties": {}
+      }
     },
     "check": {
       "type": "object",
@@ -853,6 +878,11 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               }
+            },
+            "refAudioX2": {
+              "description": "将短参考音频（< 2500ms）拼接一倍再送 TTS，帮助稳定输出音色",
+              "default": false,
+              "type": "boolean"
             }
           }
         },
