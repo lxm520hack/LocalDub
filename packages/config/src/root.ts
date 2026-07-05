@@ -1,8 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dir;
 
 function hasWorkspaces(packageJsonPath: string): boolean {
   if (!existsSync(packageJsonPath)) return false;
@@ -28,3 +27,5 @@ function findRepoRoot(startDir: string): string {
 }
 
 export const REPO_ROOT = findRepoRoot(__dirname);
+
+export const repo_root = () => REPO_ROOT;
