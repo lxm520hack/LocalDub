@@ -1,42 +1,27 @@
 use std::fs;
-use std::path::Path;
 use serde::Serialize;
 use crate::context;
-
+use crate::utils::time::system_time_to_iso;
 #[derive(Debug, Clone, Serialize)]
-struct TaskBrief {
-    task_id: String,
-    title: Option<String>,
-    status: String,
-    current_stage: Option<String>,
-    created_at: String,
-    started_at: Option<String>,
-    completed_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct GroupInfo {
-    group_id: String,
-    task_count: usize,
-    created_at: Option<String>,
-    tasks: Vec<TaskBrief>,
+pub struct TaskBrief {
+    pub task_id: String,
+    pub title: Option<String>,
+    pub status: String,
+    pub current_stage: Option<String>,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct GroupListResponse {
-    groups: Vec<GroupInfo>,
+pub struct GroupInfo {
+    pub group_id: String,
+    pub task_count: usize,
+    pub created_at: Option<String>,
+    pub tasks: Vec<TaskBrief>,
 }
 
-fn system_time_to_iso(t: std::time::SystemTime) -> Option<String> {
-    let dur = t.duration_since(std::time::UNIX_EPOCH).ok()?;
-    let secs = dur.as_secs();
-    let nanos = dur.subsec_nanos();
-    // Format as ISO 8601
-    let naive = chrono::DateTime::from_timestamp(secs as i64, nanos)?;
-    Some(naive.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string())
-}
-
-pub fn get_group_list() -> Result<String, String> {
+pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
     let wf = config_rs::env::workfolder();
     let mut groups: Vec<GroupInfo> = Vec::new();
 
@@ -118,6 +103,5 @@ pub fn get_group_list() -> Result<String, String> {
         }
     });
 
-    let resp = GroupListResponse { groups };
-    serde_json::to_string(&resp).map_err(|e| format!("Serialize failed: {}", e))
+    Ok(groups)
 }

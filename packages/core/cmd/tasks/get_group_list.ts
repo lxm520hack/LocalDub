@@ -21,13 +21,14 @@ interface GroupInfo {
 }
 
 export const get_group_list = async () => {
+  const wf = workfolder();
   const groups: GroupInfo[] = [];
 
-  const entries = readdirSync(workfolder(), { withFileTypes: true });
+  const entries = readdirSync(wf, { withFileTypes: true });
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const groupPath = join(workfolder(), entry.name);
+    const groupPath = join(wf, entry.name);
     const tasks: TaskBrief[] = [];
 
     const taskEntries = readdirSync(groupPath, { withFileTypes: true });
@@ -78,5 +79,5 @@ export const get_group_list = async () => {
     return b.created_at.localeCompare(a.created_at);
   });
 
-  return { groups };
+  return groups
 };
