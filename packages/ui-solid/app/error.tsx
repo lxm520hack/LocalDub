@@ -3,7 +3,7 @@ import { ArrowLeft, RotateCw } from 'lucide-solid';
 import { Button } from '../base/button';
 import { UxAlert } from '../custom/alert';
 import { Description } from '../custom/label';
-import {m} from '@repo/shared/i18n/paraglide/messages'
+import { i18n } from '@repo/shared/i18n/utils';
 
 export function ErrorCard({error, info, reset}: ErrorComponentProps) {
 	  const router = useRouter()
@@ -26,11 +26,11 @@ export function ErrorCard({error, info, reset}: ErrorComponentProps) {
 				<div class="grid grid-cols-2 gap-3 mt-2 ">
 					<Button variant="secondary" onClick={() => isRoot() ? navigate({ to: '/' }) : window.history.back()}>
 						<ArrowLeft />
-						{m.goBack()}
+						{i18n.goBack()}
 					</Button>
 					<Button  onClick={()=>router.invalidate()}>
 						<RotateCw />
-						{m.tryAgain()}
+						{i18n.tryAgain()}
 					</Button>
 				</div>
 			</main>

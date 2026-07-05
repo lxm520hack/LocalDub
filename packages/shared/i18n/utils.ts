@@ -1,5 +1,6 @@
-
+import { getLocale, setLocale, locales,  } from "./paraglide/runtime.js";
 import { m } from './paraglide/messages.js';
+export {getLocale, setLocale, locales, m, m as i18n}
 
 type MessageKeys = keyof typeof m;
 

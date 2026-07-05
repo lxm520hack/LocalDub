@@ -1,9 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@repo/ui-solid/base/select";
 import { CardX } from "@repo/ui-solid/custom/card";
 import { createSignal } from "solid-js";
-import { getLocale, setLocale, locales,  } from "@repo/shared/i18n/paraglide/runtime";
-import { m } from "@repo/shared/i18n/paraglide/messages";
-import { tLocaleName, type LocaleNameKey } from "@repo/shared/i18n/utils";
+import { getLocale, m, setLocale, tLocaleName, type LocaleNameKey } from "@repo/shared/i18n/utils";
 import { useTheme } from "@repo/ui-solid/theme";
 import { THEMES } from "@repo/ui-solid/theme/defs";
 import { getAutoSaveMode, setAutoSaveMode } from "./editorPrefs";

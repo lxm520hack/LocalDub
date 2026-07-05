@@ -1,19 +1,21 @@
 import { createEffect, createResource, Show } from 'solid-js';
 import { useClientApi } from '../api/context';
+import { useQuery } from '@tanstack/solid-query';
 
 export function DeviceInfo() {
   const api = useClientApi().deviceInfoApi;
-  const [data] = createResource(() => api?.fetchDeviceInfo());
-
-  if (!api) return null;
+  const deviceInfo = useQuery(()=>({
+    queryKey: ['deviceInfo'],
+    queryFn: api?.fetchDeviceInfo,
+    enabled: !!api,
+  }))
 
   return (
     <div class="space-y-3">
-      {data.loading && <p class="text-sm text-gray-500">Loading device info...</p>}
-      {data.error && <p class="text-sm text-red-400">Failed to fetch: {data.error.message}</p>}
-      <Show when={data()}>
-        {d => (
-    <>
+      {deviceInfo.isLoading && <p class="text-sm text-gray-500">Loading device info...</p>}
+      {deviceInfo.error && <p class="text-sm text-red-400">Failed to fetch: {deviceInfo.error.message}</p>}
+      <Show when={deviceInfo.data} fallback={<p class="text-sm text-gray-500">No device info available.</p>}>
+        {d => (<>
           <section>
             <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">System</h3>
             <dl class="space-y-1 text-sm">
@@ -67,7 +69,6 @@ export function DeviceInfo() {
         </>
         )}
       </Show>
-
     </div>
   );
 }

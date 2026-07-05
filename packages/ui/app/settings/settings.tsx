@@ -2,7 +2,6 @@ import { ClientOnly } from "@tanstack/solid-router";
 import { Code, Keyboard, Monitor, Palette, Settings, Server } from "lucide-solid";
 import { type Component } from "solid-js";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "@repo/ui-solid/base/tabs";
-import { m} from "@repo/shared/i18n/paraglide/messages";
 import { Modal } from "@repo/ui-solid/custom/modal/modal";
 import type { JSX } from "solid-js";
 import { openModal } from "@repo/ui-solid/custom/modal/renderer";
@@ -11,18 +10,19 @@ import { ServerManager } from "./ServerManager";
 import { DeviceInfo } from "./DeviceInfo";
 import { useClientApi } from "../api/context";
 import { InputEditor } from "./InputEditor";
+import { i18n } from "@repo/shared/i18n/utils";
 
 export const SettingsContent = () => {
   const { serversManagerApi, inputEditorApi } = useClientApi();
   const baseItems = [
     {
       value: 'general',
-      label: m.general(),
+      label: i18n.general(),
       icon: Settings,
     },
     {
       value: 'shortcuts',
-      label: m.shortcuts(),
+      label: i18n.shortcuts(),
       icon: Keyboard,
     },
     ...(serversManagerApi ? [{ value: 'servers', label: 'Servers', icon: Server as typeof Settings, content: ServerManager as Component }] : []),
@@ -42,7 +42,7 @@ export const SettingsContent = () => {
         <GeneralSettings />
       </TabsContent>
       <TabsContent value="shortcuts">
-        <h2>{m.shortcuts()}</h2>
+        <h2>{i18n.shortcuts()}</h2>
       </TabsContent>
       {serversManagerApi && (
         <TabsContent value="servers">
@@ -61,4 +61,4 @@ export const SettingsContent = () => {
   </ClientOnly>
 }
 
-export const openSettings = () => openModal(SettingsContent, { size: '5xl', class: 'p-4' })
+export const openSettings = () => openModal(SettingsContent, { size: '5xl', class: 'p-4 ' })
