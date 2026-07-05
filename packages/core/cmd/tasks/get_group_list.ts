@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { WORKFOLDER } from '@repo/config/path/paths';
 import { readTask } from '@repo/core/context/context';
+import { workfolder } from '@repo/config/env';
 
 interface TaskBrief {
   taskId: string;
@@ -23,11 +23,11 @@ interface GroupInfo {
 export const get_group_list = async () => {
   const groups: GroupInfo[] = [];
 
-  const entries = readdirSync(WORKFOLDER, { withFileTypes: true });
+  const entries = readdirSync(workfolder(), { withFileTypes: true });
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const groupPath = join(WORKFOLDER, entry.name);
+    const groupPath = join(workfolder(), entry.name);
     const tasks: TaskBrief[] = [];
 
     const taskEntries = readdirSync(groupPath, { withFileTypes: true });

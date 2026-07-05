@@ -1,8 +1,9 @@
-import { CliInput, CliInputInput, TargetLang } from "../input/types";
+import { CliInput, CliInputInput } from "../input/types";
 import { readFileSync, writeFileSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 
 import { fileLog, getLastSegment } from '../utils/fileOps.ts';
+import { TargetLang } from "@repo/core/cmd/tasks/input";
 
 export const getTaskId = (sessionPath: string) => getLastSegment(sessionPath)
 

@@ -4,33 +4,7 @@ import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
 import { LineAdjustedArgsSchema, MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
 import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
-import { taskArgsSchema } from '@repo/core/cmd/tasks/input';
-const langList = [
-	'en',
-	'zh',
-	'vi', // 越南语
-	'ja',
-	'ko',
-	'fr',
-	'de',
-	'es',
-	'pt',
-	'ru',
-	'ar',
-	'hi',
-	'th',
-	'id',
-	'ms',
-	'tl',
-	'my',
-	'km',
-	'lo',
-	'mn',
-	'ne',
-	'ur',
-	'bn',
-] as const;
-export type TargetLang = (typeof langList)[number];
+import { langList, taskArgsSchema } from '@repo/core/cmd/tasks/input';
 
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];

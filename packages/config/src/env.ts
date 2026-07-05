@@ -13,12 +13,14 @@ function envStrUndefined(key: string): string | undefined {
   return v || undefined;
 }
 
+export const workfolder = () => resolve_path(envStr('WORKFOLDER', 'workfolder'))
+
 export const env = {
   // DB
   // DB_FILE_NAME: resolve(REPO_ROOT, process.env.DB_FILE_NAME ?? 'data/youdub.sqlite'),
 
   // Paths
-  WORKFOLDER: resolve_path(envStr('WORKFOLDER', 'workfolder')),
+  WORKFOLDER: workfolder(),
   MODEL_CACHE_DIR: resolve_path( envStr('MODEL_CACHE_DIR', 'data/models')),
 
   // Device
