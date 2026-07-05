@@ -13,7 +13,7 @@ interface TaskBrief {
   completed_at: string | null;
 }
 
-interface GroupInfo {
+export interface GroupInfo {
   groupId: string;
   taskCount: number;
   created_at: string | null;

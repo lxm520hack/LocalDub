@@ -15,8 +15,16 @@ import {
 import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
 import { LayoutDashboard, Settings } from 'lucide-solid';
+import { useClientApi } from './api/context';
+import { useQuery } from '@tanstack/solid-query';
 
 export function AppSidebar() {
+	const api = useClientApi()
+	const groupList = useQuery(()=>({
+		queryKey: ['groupList'],
+		queryFn: api.taskApi?.getGroupList ?? (()=>Promise.resolve([])),
+		enabled: !!api.taskApi,
+	}))
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">

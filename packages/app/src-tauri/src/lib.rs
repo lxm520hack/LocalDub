@@ -191,6 +191,12 @@ fn write_input(content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_group_list() -> Result<String, String> {
+    core_rs::cmd::tasks::get_group_list::get_group_list()
+        .and_then(|groups| serde_json::to_string(&groups).map_err(|e| e.to_string()))
+}
+
+#[tauri::command]
 fn read_input_schema() -> Result<String, String> {
     let path = input_schema_path();
     fs::read_to_string(&path).map_err(|e| format!("Failed to read input.schema.json: {}", e))
@@ -206,6 +212,7 @@ pub fn run() {
             start_torch, stop_torch, check_torch,
             start_voxcpm, stop_voxcpm,
             device_info, read_input, write_input, read_input_schema,
+            get_group_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

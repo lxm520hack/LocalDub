@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 import type { ModelServerStatus, ModelStatus } from '@repo/core/servers/type';
 import type { DeviceInfo } from '@repo/device';
+import { GroupInfo } from '@repo/core/cmd/tasks/get_group_list';
 export type { DeviceInfo, ModelServerStatus, ModelStatus };
 
 export interface ServersManagerApi {
@@ -22,6 +23,9 @@ export interface ClientApi {
     writeInput: (content: string) => Promise<void>;
     readInputSchema: () => Promise<string>;
   };
+  taskApi?: {
+    getGroupList: () => Promise<GroupInfo[]>;
+  }
 }
 
 const ClientApiCtx = createContext<ClientApi>({});

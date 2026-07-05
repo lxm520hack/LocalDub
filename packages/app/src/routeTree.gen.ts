@@ -10,29 +10,47 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GroupIdIndexRouteImport } from './routes/group/$id/index'
+import { Route as GroupIdTaskIdRouteImport } from './routes/group/$id/$taskId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupIdIndexRoute = GroupIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GroupIdRoute,
+} as any)
+const GroupIdTaskIdRoute = GroupIdTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => GroupIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/group/$id/$taskId': typeof GroupIdTaskIdRoute
+  '/group/$id/': typeof GroupIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/group/$id/$taskId': typeof GroupIdTaskIdRoute
+  '/group/$id': typeof GroupIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/group/$id/$taskId': typeof GroupIdTaskIdRoute
+  '/group/$id/': typeof GroupIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/group/$id/$taskId' | '/group/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/group/$id/$taskId' | '/group/$id'
+  id: '__root__' | '/' | '/group/$id/$taskId' | '/group/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -47,6 +65,20 @@ declare module '@tanstack/solid-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/group/$id/': {
+      id: '/group/$id/'
+      path: '/'
+      fullPath: '/group/$id/'
+      preLoaderRoute: typeof GroupIdIndexRouteImport
+      parentRoute: typeof GroupIdRoute
+    }
+    '/group/$id/$taskId': {
+      id: '/group/$id/$taskId'
+      path: '/$taskId'
+      fullPath: '/group/$id/$taskId'
+      preLoaderRoute: typeof GroupIdTaskIdRouteImport
+      parentRoute: typeof GroupIdRoute
     }
   }
 }
