@@ -1,8 +1,8 @@
 import { resolve } from 'node:path';
 import { config as loadEnv } from 'dotenv';
-import { REPO_ROOT } from './root.ts';
+import { config_dir, resolve_path } from './root.ts';
 
-loadEnv({ path: resolve(REPO_ROOT, '.env') });
+loadEnv({ path: resolve(config_dir(), '.env') });
 
 function envStr(key: string, fallback: string): string {
   return process.env[key]?.trim() || fallback;
@@ -18,8 +18,8 @@ export const env = {
   // DB_FILE_NAME: resolve(REPO_ROOT, process.env.DB_FILE_NAME ?? 'data/youdub.sqlite'),
 
   // Paths
-  WORKFOLDER: resolve(REPO_ROOT, envStr('WORKFOLDER', 'workfolder')),
-  MODEL_CACHE_DIR: resolve(REPO_ROOT, envStr('MODEL_CACHE_DIR', 'data/models')),
+  WORKFOLDER: resolve_path(envStr('WORKFOLDER', 'workfolder')),
+  MODEL_CACHE_DIR: resolve_path( envStr('MODEL_CACHE_DIR', 'data/models')),
 
   // Device
   DEVICE: envStr('DEVICE', 'auto'),

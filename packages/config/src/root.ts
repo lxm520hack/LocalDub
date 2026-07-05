@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, isAbsolute } from 'node:path';
+import envPaths from 'env-paths';
 
 const __dirname = import.meta.dir;
 
@@ -29,3 +30,22 @@ function findRepoRoot(startDir: string): string {
 export const REPO_ROOT = findRepoRoot(__dirname);
 
 export const repo_root = () => REPO_ROOT;
+
+export const base_dir = () => {
+  const d = process.env.LOCALDUB_BASE_DIR?.trim();
+  if (d) return resolve(d);
+  if (process.env.NODE_ENV === 'production') return envPaths('aa.localdub', { suffix: '' }).data
+
+  return REPO_ROOT;
+}
+
+export const config_dir = () => {
+  if (process.env.NODE_ENV === 'production') return envPaths('aa.localdub', { suffix: '' }).config
+
+  return REPO_ROOT;
+}
+
+export const resolve_path = (val: string) => {
+  if (isAbsolute(val)) return val;
+  return resolve(base_dir(), val);
+}

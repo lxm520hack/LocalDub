@@ -9,8 +9,9 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "bonjour-service": "^1.2.0",
     "dotenv": "^17.4.2",
-    "bonjour-service": "^1.2.0"
+    "env-paths": "^4.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14"
