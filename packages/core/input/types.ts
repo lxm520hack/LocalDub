@@ -4,6 +4,7 @@ import { EnvArgsSchema } from '@repo/core/cmd/env/input';
 import { z } from 'zod';
 import { LineAdjustedArgsSchema, MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
 import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
+import { taskArgsSchema } from '@repo/core/cmd/tasks/input';
 const langList = [
 	'en',
 	'zh',
@@ -45,40 +46,6 @@ export const commandList = [
 
 export type Command = (typeof commandList)[number];
 
-// 各 command 的参数
-const stagesList = [
-	'separate',
-	'separate_after',
-	'asr',
-	'asr_fix',
-	'ocr',
-	'ocr_fix',
-	'asr_ocr_pre',
-	'asr_ocr',
-	'asr_ocr_fix',
-	'translate',
-	'split_audio',
-	'tts',
-	'merge_audio',
-	'merge_video',
-] as const;
-export enum StageNameEnum {
-	separate='separate',
-	separate_after='separate_after',
-	asr='asr',
-	asr_fix='asr_fix',
-	ocr='ocr',
-	ocr_fix='ocr_fix',
-	asr_ocr_pre='asr_ocr_pre',
-	asr_ocr='asr_ocr',
-	asr_ocr_fix='asr_ocr_fix',
-	translate='translate',
-	split_audio='split_audio',
-	tts='tts',
-	merge_audio='merge_audio',
-	merge_video='merge_video',
-}
-export type StageName = (typeof stagesList)[number];
 
 const SeparateCliInputSchema = z.object({
 	runtime: z.enum(['ggml', 'ort', 'pytorch', 'burn', 'burn-tch']),
@@ -428,13 +395,6 @@ const StagesSchema = z.object({
 	merge_video: MergeVideoSchema,
 }).default({} as any)
 
-type StagesConfigInput = z.input<typeof StagesSchema>;
-export type StagesConfig = z.output<typeof StagesSchema>;
-
-const subtitleSourceList = ['asr', 'ocr', 'asr_ocr'] as const;
-export type SubtitleSource = (typeof subtitleSourceList)[number];
-
-
 export const CliInputSchema = z.looseObject({
 	command: z.enum(commandList).describe(`
 		6. check: 检测某任务的结果 (如视频是否下载成功, ASR 结果是否合理等)
@@ -443,29 +403,7 @@ export const CliInputSchema = z.looseObject({
 		9. listModels: 列出 openai 兼容端点的 可用模型
 		10. env: 环境检查/修复 (check=诊断, ensure=尝试修复)
 		`).default('env'),
-	task: z.looseObject({
-		action: z.enum(['start', 'resume', 'rerunStage', 'status']).optional().describe('任务操作: create=创建任务 start=开始, resume=继续, rerunStage=重新运行某步骤, status=显示状态'),
-		url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),
-		sourceLang: z.enum(langList).optional(),
-		targetLang: z.enum(langList).optional(),
-		resumeFrom: z.enum(stagesList).optional().describe(`继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
-		sessionPath: z.string().optional(),
-		stageName: z.enum(stagesList).optional().describe(`rerunStage 专业参数, 指定要重新运行的步骤`),
-		pipeline: z
-			.enum(['dub', 'subtitle'])
-			.default('dub')
-			.optional()
-			.describe('任务模式, dub 配音,subtitle 仅字幕'),
-		subtitleSource: z
-			.enum(subtitleSourceList)
-			.default('asr')
-			.optional()
-			.describe('字幕源: asr (whisper, 默认), ocr (RapidOCR 硬字幕提取), asr_ocr (ASR 时序+OCR 文本融合)'),
-		targetStage: z
-			.enum(stagesList)
-			.optional()
-			.describe('目标步骤, pipeline 跑到此步骤后自动停止, 不指定则跑完所有步骤'),
-	}),
+	task: taskArgsSchema,
 	check: z
 		.object({
 			sessionPath: z.string().optional(),

@@ -47,9 +47,9 @@ export function defaultFont(dstLang: string): string {
 		default: return 'Noto Sans CJK SC';
 	}
 }
-import type { SubtitleSource, TargetLang } from '@repo/core/input/types';
 
 import { _readCtx, Context,  getTaskId,  listStage,  readCtx, Task, TaskStage } from '@repo/core/context/context.ts';
+import { SubtitleSource, TargetLang } from '@repo/core/cmd/tasks/input';
 
 export function nowISO(): string {
 	return new Date().toISOString().replace(/\.\d{3}Z$/, '');

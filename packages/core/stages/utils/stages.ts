@@ -1,5 +1,5 @@
+import { StageName } from '@repo/core/cmd/tasks/input';
 import { readInputArgs } from '../../input/input.ts';
-import { StageName } from '@repo/core/input/types';
 
 export const DUB_STAGES: StageName[] = [
 	'separate',
