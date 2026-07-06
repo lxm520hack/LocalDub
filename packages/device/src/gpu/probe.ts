@@ -76,9 +76,9 @@ export function probeOps(gpus: GpuInfo[]): GpuInfo['opProbes'] | undefined {
 
 	const pyBin = pythonBin();
 
-	const torchConv1d = probeTorchConv1d(pyBin);
+	const torch_conv1d = probeTorchConv1d(pyBin);
 
-	const result: GpuInfo['opProbes'] = { torchConv1d };
+	const result: GpuInfo['opProbes'] = { torch_conv1d };
 
 	const newCache: DeviceCache = {
 		driverVersions: Object.fromEntries(
