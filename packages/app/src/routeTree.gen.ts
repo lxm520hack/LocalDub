@@ -19,14 +19,14 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupIdIndexRoute = GroupIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => GroupIdRoute,
+  id: '/group/$id/',
+  path: '/group/$id/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GroupIdTaskIdRoute = GroupIdTaskIdRouteImport.update({
-  id: '/$taskId',
-  path: '/$taskId',
-  getParentRoute: () => GroupIdRoute,
+  id: '/group/$id/$taskId',
+  path: '/group/$id/$taskId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -55,6 +55,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GroupIdTaskIdRoute: typeof GroupIdTaskIdRoute
+  GroupIdIndexRoute: typeof GroupIdIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -68,23 +70,25 @@ declare module '@tanstack/solid-router' {
     }
     '/group/$id/': {
       id: '/group/$id/'
-      path: '/'
+      path: '/group/$id'
       fullPath: '/group/$id/'
       preLoaderRoute: typeof GroupIdIndexRouteImport
-      parentRoute: typeof GroupIdRoute
+      parentRoute: typeof rootRouteImport
     }
     '/group/$id/$taskId': {
       id: '/group/$id/$taskId'
-      path: '/$taskId'
+      path: '/group/$id/$taskId'
       fullPath: '/group/$id/$taskId'
       preLoaderRoute: typeof GroupIdTaskIdRouteImport
-      parentRoute: typeof GroupIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GroupIdTaskIdRoute: GroupIdTaskIdRoute,
+  GroupIdIndexRoute: GroupIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

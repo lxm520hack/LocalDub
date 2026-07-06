@@ -12,4 +12,7 @@
     "readme.md": "readme.*, AGENTS.md, todo.md",
     "pyproject.toml": "pyproject.*, uv.lock, setup.cfg, setup.py, requirements*.txt",
 	},
+  "tailwindCSS.experimental.configFile": {
+    "packages/app/src/styles.css": ["packages/**"]
+  }
 }

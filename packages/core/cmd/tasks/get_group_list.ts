@@ -4,7 +4,7 @@ import { readTask } from '@repo/core/context/context';
 import { workfolder } from '@repo/config/env';
 
 interface TaskBrief {
-  taskId: string;
+  id: string;
   title: string | null;
   status: string;
   current_stage: string | null;
@@ -14,8 +14,8 @@ interface TaskBrief {
 }
 
 export interface GroupInfo {
-  groupId: string;
-  taskCount: number;
+  group_id: string;
+  task_count: number;
   created_at: string | null;
   tasks: TaskBrief[];
 }
@@ -38,7 +38,7 @@ export const get_group_list = async () => {
       try {
         const task = readTask(taskPath);
         tasks.push({
-          taskId: task.id,
+          id: task.id,
           title: task.title ?? null,
           status: task.status,
           current_stage: task.current_stage ?? null,
@@ -65,15 +65,15 @@ export const get_group_list = async () => {
     }
 
     groups.push({
-      groupId: entry.name,
-      taskCount: tasks.length,
+      group_id: entry.name,
+      task_count: tasks.length,
       created_at,
       tasks,
     });
   }
 
   groups.sort((a, b) => {
-    if (!a.created_at && !b.created_at) return a.groupId.localeCompare(b.groupId);
+    if (!a.created_at && !b.created_at) return a.group_id.localeCompare(b.group_id);
     if (!a.created_at) return 1;
     if (!b.created_at) return -1;
     return b.created_at.localeCompare(a.created_at);

@@ -4,7 +4,7 @@ use crate::context;
 use crate::utils::time::system_time_to_iso;
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskBrief {
-    pub task_id: String,
+    pub id: String,
     pub title: Option<String>,
     pub status: String,
     pub current_stage: Option<String>,
@@ -65,7 +65,7 @@ pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
             match context::read_task(task_path.to_str().unwrap_or_default()) {
                 Ok(task) => {
                     tasks.push(TaskBrief {
-                        task_id: task.id,
+                        id: task.id,
                         title: task.title,
                         status: task.status,
                         current_stage: task.current_stage,

@@ -82,7 +82,15 @@ pub fn read_ctx(session_path: &str) -> Result<Context, String> {
 }
 
 pub fn read_task(session_path: &str) -> Result<Task, String> {
-    read_ctx(session_path).map(|ctx| ctx.task)
+    let path = ctx_path(session_path);
+    let raw = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let json: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+    let task_value = json.get("task")
+        .ok_or_else(|| format!("Missing 'task' field in {}", path.display()))?;
+    serde_json::from_value(task_value.clone())
+        .map_err(|e| format!("Failed to deserialize task in {}: {}", path.display(), e))
 }
 
 pub fn read_stages(session_path: &str) -> Result<Vec<TaskStage>, String> {

@@ -1,6 +1,6 @@
 import { SidebarProvider } from '@repo/ui-solid/base/sidebar';
 import { ThemeProvider, themeScript } from '@repo/ui-solid/theme';
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/solid-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useParams } from '@tanstack/solid-router';
 import { AppSidebar, ClientApiProvider } from '@repo/ui';
 import { ModalRenderer } from '@repo/ui-solid/custom/modal/renderer';
 import { Toaster } from '@repo/ui-solid/base/sonner';
@@ -43,6 +43,7 @@ function RootComponent() {
   )
 }
 function RootDocument({ children }: { children: JSX.Element }) {
+  // const { } = useParams({ strict: false })
   return <>
   <HeadContent />
   <ClientApiProvider value={{
