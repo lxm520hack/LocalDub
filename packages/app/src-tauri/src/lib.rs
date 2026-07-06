@@ -1,5 +1,5 @@
 mod commands;
-mod router;
+pub mod router;
 mod server;
 mod state;
 
