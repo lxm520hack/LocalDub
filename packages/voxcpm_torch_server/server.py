@@ -92,9 +92,7 @@ def generate(
     return 48000, wav.astype(np.float32)
 
 
-# ---------------------------------------------------------------------------
 # FastAPI + Gradio app (built at module level for uvicorn reload compat)
-# ---------------------------------------------------------------------------
 
 # Module-level variables set by main() so endpoints can reference them
 _HOST = "127.0.0.1"
