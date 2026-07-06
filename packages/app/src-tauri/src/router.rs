@@ -1,3 +1,4 @@
+use core_rs::cmd::tasks::get_group_list::GroupInfo;
 use device_rs::DeviceInfo;
 use rspc::{Procedure, ProcedureError, ResolverError, Router};
 use serde::Serialize;
@@ -87,7 +88,7 @@ pub fn build() -> Router<AppState> {
         )
         .procedure(
             "getGroupList",
-            Procedure::<AppState, (), String>::builder::<RspcErr>()
+            Procedure::<AppState, (), Vec<GroupInfo>>::builder::<RspcErr>()
                 .query(|_ctx: AppState, _input: ()| async move {
                     commands::get_group_list().map_err(RspcErr)
                 }),

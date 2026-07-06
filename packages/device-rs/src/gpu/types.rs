@@ -59,10 +59,12 @@ pub struct VulkanHeaps {
     pub host_visible: f64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+
 pub enum ProbeResult {
-    #[serde(rename = "ok")]
+    // #[serde(rename = "ok")]
     Ok,
-    #[serde(rename = "fail")]
+    // #[serde(rename = "fail")]
     Fail,
 }
 

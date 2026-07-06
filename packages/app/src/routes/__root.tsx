@@ -9,11 +9,11 @@ import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Devtools } from '@repo/ui-solid/app/devtools';
 import * as torchApi from '../fn/servers';
-import * as deviceApi from '../fn/device';
+import * as deviceApi from '../feat/env/device';
 import * as inputApi from '../fn/input';
-import { Header } from '@repo/ui/app/header/Header';
 import { getLocale } from '@repo/shared/i18n/utils';
 import { getGroupList } from '#/cmd/tasks.ts';
+import { Header } from '#/components/app/header/Header.tsx';
 interface MyRouterContext {
 	queryClient: QueryClient;
 }

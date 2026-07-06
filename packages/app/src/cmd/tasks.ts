@@ -1,4 +1,5 @@
 import { invoke } from "#/fn/invoke.ts";
+import { client } from "#/lib/rspc.ts";
 import { GroupInfo } from "@repo/core/cmd/tasks/get_group_list";
 
-export const getGroupList = () => invoke<string>('get_group_list').then(JSON.parse) as Promise<GroupInfo[]>;
+export const getGroupList = () => client.query(['getGroupList', null]) as Promise<GroupInfo[]>;

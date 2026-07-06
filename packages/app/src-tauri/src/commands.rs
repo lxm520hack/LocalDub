@@ -4,6 +4,7 @@ use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 use std::path::PathBuf;
 
+use core_rs::cmd::tasks::get_group_list::GroupInfo;
 use device_rs::DeviceInfo;
 
 use crate::state::AppState;
@@ -185,9 +186,9 @@ pub fn read_input_schema(state: &AppState) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| format!("Failed to read input.schema.json: {}", e))
 }
 
-pub fn get_group_list() -> Result<String, String> {
+pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
     core_rs::cmd::tasks::get_group_list::get_group_list()
-        .and_then(|groups| serde_json::to_string(&groups).map_err(|e| e.to_string()))
+        .map_err(|e| e.to_string())
 }
 
 
