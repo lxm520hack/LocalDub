@@ -1,11 +1,11 @@
 export interface GpuInfo {
 	name: string;
 	vendor: 'amd' | 'nvidia' | 'intel' | 'unknown';
-	architecture?: string;
+	architecture?: string | null
 	driverVersion: string;
 	temperature: number;
 	gpuPercent: number;
-	gfxVersion?: string;
+	gfxVersion?: string | null
 
 	vram: {
 		percent: number;
@@ -16,17 +16,17 @@ export interface GpuInfo {
 		 * - Vulkan 的 DEVICE_LOCAL heap 在 APU 上可能比 carveout 大，
 		 *   因为驱动会把部分 GTT 也标记为 DEVICE_LOCAL（"visible VRAM"）
 		 */
-		total?: number;
-		used?: number;
-		type?: 'dedicated' | 'shared' | 'unknown';
-		reserved?: number;
+		total?: number | null
+		used?: number | null
+		type?: 'dedicated' | 'shared' | 'unknown' | null
+		reserved?: number | null
 		/**
 		 * GTT (Graphics Translation Table) 可映射的系统内存（GB）。
 		 * APU iGPU 没有独立显存芯片，通过 GTT 页表访问系统内存。
 		 * rocm-smi `GTT Total Memory` 字段。
 		 * vram.total + gtt = GPU 可访问的总内存上限。
 		 */
-		gtt?: number;
+		gtt?: number | null
 	};
 	capabilities: {
 		webgpu: boolean;
@@ -37,7 +37,7 @@ export interface GpuInfo {
 		mps: boolean;
 		openvino: boolean;
 	};
-	hsaOverrideGfx?: string;
+	hsaOverrideGfx?: string | null
 	/**
 	 * Vulkan memory heap 视角（GB）。
 	 * APU 上 heap 划分与 ROCm 不同：
@@ -49,7 +49,7 @@ export interface GpuInfo {
 	vulkanHeaps?: {
 		deviceLocal: number;
 		hostVisible: number;
-	};
+	} | null
 	/**
 	 * 算子级可用性探测结果。
 	 * 实际执行最小推理测试来验证 GPU 能否跑特定算子，
@@ -57,8 +57,8 @@ export interface GpuInfo {
 	 * 结果按 driverVersion 缓存到 data/device-cache.json，驱动版本变化时自动重测。
 	 */
 	opProbes?: {
-		torchConv1d?: 'ok' | 'fail';
-	};
+		torch_conv1d?: 'ok' | 'fail' | null
+	} | null
 }
 
 /** data/device-cache.json 的结构 */

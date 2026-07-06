@@ -4,6 +4,8 @@ use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 use std::path::PathBuf;
 
+use device_rs::DeviceInfo;
+
 use crate::state::AppState;
 
 fn find_available_port(preferred: u16) -> u16 {
@@ -136,7 +138,7 @@ pub fn stop_voxcpm(state: &AppState) -> Result<(), String> {
     Ok(())
 }
 
-pub fn device_info(state: &AppState) -> Result<String, String> {
+pub fn device_info(state: &AppState) -> Result<DeviceInfo, String> {
     let cli = state.repo_root
         .join("packages")
         .join("device")
@@ -150,7 +152,8 @@ pub fn device_info(state: &AppState) -> Result<String, String> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Device CLI failed: {}", stderr));
     }
-    String::from_utf8(output.stdout).map_err(|e| format!("Invalid UTF-8: {}", e))
+    let raw = String::from_utf8(output.stdout).map_err(|e| format!("Invalid UTF-8: {}", e))?;
+    serde_json::from_str(&raw).map_err(|e| format!("Failed to parse device info: {}", e))
 }
 
 fn input_json_path(state: &AppState) -> PathBuf {

@@ -1,3 +1,4 @@
+use device_rs::DeviceInfo;
 use rspc::{Procedure, ProcedureError, ResolverError, Router};
 use serde::Serialize;
 use specta::Type;
@@ -58,7 +59,7 @@ pub fn build() -> Router<AppState> {
         )
         .procedure(
             "deviceInfo",
-            Procedure::<AppState, (), String>::builder::<RspcErr>()
+            Procedure::<AppState, (), DeviceInfo>::builder::<RspcErr>()
                 .query(|ctx: AppState, _input: ()| async move {
                     commands::device_info(&ctx).map_err(RspcErr)
                 }),

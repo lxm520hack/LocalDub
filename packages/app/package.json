@@ -13,6 +13,7 @@
     "dev:android": "bun run tauri android dev",
     "typecheck": "tsgo --noEmit",
     "build": "vite build",
+    "gen-types": "cargo run --bin gen-types",
     "serve": "vite preview",
     "tauri": "tauri"
   },

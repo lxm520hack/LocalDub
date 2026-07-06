@@ -17,7 +17,7 @@ export interface DeviceInfo {
 		hostname: string;
 		runtime: string;
 		runtimeVersion: string;
-		nodeVersion?: string;
+		nodeVersion?: string | null
 	};
 	cpu: {
 		model: string;
