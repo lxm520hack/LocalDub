@@ -1883,6 +1883,7 @@ dependencies = [
  "config-rs",
  "serde",
  "serde_json",
+ "specta",
 ]
 
 [[package]]

@@ -18,7 +18,9 @@ export type PlatformInfo = { os: string; arch: string; release: string; hostname
 
 export type ProbeResult = "ok" | "fail"
 
-export type ProceduresLegacy = { queries: { key: "checkTorch"; input: null; result: boolean } | { key: "deviceInfo"; input: null; result: { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo } } | { key: "getGroupList"; input: null; result: string } | { key: "readInput"; input: null; result: string } | { key: "readInputSchema"; input: null; result: string } | { key: "version"; input: null; result: string }; mutations: { key: "startTorch"; input: null; result: number } | { key: "startVoxcpm"; input: null; result: number } | { key: "stopTorch"; input: null; result: null } | { key: "stopVoxcpm"; input: null; result: null } | { key: "writeInput"; input: string; result: null }; subscriptions: never }
+export type ProceduresLegacy = { queries: { key: "checkTorch"; input: null; result: boolean } | { key: "deviceInfo"; input: null; result: { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo } } | { key: "getGroupList"; input: null; result: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[] } | { key: "readInput"; input: null; result: string } | { key: "readInputSchema"; input: null; result: string } | { key: "version"; input: null; result: string }; mutations: { key: "startTorch"; input: null; result: number } | { key: "startVoxcpm"; input: null; result: number } | { key: "stopTorch"; input: null; result: null } | { key: "stopVoxcpm"; input: null; result: null } | { key: "writeInput"; input: string; result: null }; subscriptions: never }
+
+export type TaskBrief = { id: string; title: string | null; status: string; current_stage: string | null; created_at: string; started_at: string | null; completed_at: string | null }
 
 export type Vendor = "amd" | "nvidia" | "intel" | "unknown"
 
@@ -31,7 +33,7 @@ export type VulkanHeaps = { deviceLocal: number; hostVisible: number }
 export type Procedures = {
 	checkTorch: { kind: "query", input: null, output: boolean, error: unknown },
 	deviceInfo: { kind: "query", input: null, output: { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo }, error: unknown },
-	getGroupList: { kind: "query", input: null, output: string, error: unknown },
+	getGroupList: { kind: "query", input: null, output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[], error: unknown },
 	readInput: { kind: "query", input: null, output: string, error: unknown },
 	readInputSchema: { kind: "query", input: null, output: string, error: unknown },
 	startTorch: { kind: "mutation", input: null, output: number, error: unknown },

@@ -1,8 +1,9 @@
 use std::fs;
 use serde::Serialize;
+use specta::Type;
 use crate::context;
 use crate::utils::time::system_time_to_iso;
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 pub struct TaskBrief {
     pub id: String,
     pub title: Option<String>,
@@ -13,10 +14,10 @@ pub struct TaskBrief {
     pub completed_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 pub struct GroupInfo {
     pub group_id: String,
-    pub task_count: usize,
+    pub task_count: u32,
     pub created_at: Option<String>,
     pub tasks: Vec<TaskBrief>,
 }
@@ -88,7 +89,7 @@ pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
 
         groups.push(GroupInfo {
             group_id,
-            task_count: tasks.len(),
+            task_count: tasks.len() as u32,
             created_at,
             tasks,
         });

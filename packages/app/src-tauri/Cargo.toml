@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "LocalDub Desktop Application"
 authors = ["Nahida-aa"]
 edition = "2021"
-default-run = "app"   # ← 加这行
+default-run = "app"
 
 [lib]
 name = "app_lib"
