@@ -3,18 +3,14 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { env,  } from '@repo/config/env';
 import { timeId } from '../shared/db/timeId.ts';
+import { CookieArgsSchema } from '@repo/core/cmd/cookie/input';
 import {
 	readInputArgs,
 } from '@repo/core/input/input';
 
-import { classifySource, extractVideoId, isYouTubeUrl } from '@repo/core/utils/validate';
-import { startTorchServer, stopTorchServer } from './src/ml/server/client.ts';
 import { cmdCheck } from './src/feat/command/check.ts';
-import { cmdStartTask } from '@repo/core/cmd/tasks/startTask';
 import { cmdServers } from './src/feat/command/servers.ts';
-import { cmdResumeTask } from '@repo/core/cmd/tasks/resumeTask';
-import { cmdTaskStatus } from '@repo/core/cmd/tasks/taskStatus';
-import { cmdTask } from '@repo/core/cmd/tasks/task';
+
 
 const input = readInputArgs();
 const cmd = input.command;
@@ -36,8 +32,6 @@ switch (cmd) {
 		await cmdCheck({ type: p?.type, sessionPath: p?.sessionPath ?? undefined });
 		break;
 	}
-
-
 
 	case 'deviceInfo': {
 		const { getDeviceInfo } = await import('@repo/device');
@@ -76,6 +70,7 @@ switch (cmd) {
 		break;
 	}
 	case 'task': {
+		const { cmdTask } = await import('@repo/core/cmd/tasks/task');
 		await cmdTask(input);
 		break
 	}
@@ -88,6 +83,11 @@ switch (cmd) {
 		for (const r of results) {
 			console.log(formatResult(r));
 		}
+		break;
+	}
+	case 'cookie': {
+		const { cmdCookie } = await import('@repo/core/cmd/cookie/handler');
+		await cmdCookie(input.cookie ?? CookieArgsSchema.parse({}));
 		break;
 	}
 	default: {
