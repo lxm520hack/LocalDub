@@ -98,11 +98,11 @@ export async function downloadVideo(
 		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 
 	} else if (ctx.task.source === 'youtube' || ctx.task.source === 'bilibili') {
-
+		console.log(`[Download] video info: `, info);
 		try {
 			if (info) {
 				writeFileSync(
-					join(sessionPath, 'download', 'ytdlp_info.json'),
+					join(sessionPath, 'ytdlp_info.json'),
 					info,
 				);
 			}

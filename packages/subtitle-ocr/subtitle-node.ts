@@ -6,7 +6,6 @@ import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
 import { getRapidOcrModelsDir } from './utils';
-import { dbPostprocess } from './postprocess-det';
 
 const KEYS_PATH = resolve(__dirname, 'ppocr_keys.json');
 
@@ -248,7 +247,7 @@ export async function ocrFrameWithSessions(
 	const heatmapBytes = heatmapData.buffer.slice(
 		heatmapData.byteOffset, heatmapData.byteOffset + heatmapData.byteLength,
 	) as ArrayBuffer;
-	const boxes = dbPostprocess(
+	const boxes = (await import('./postprocess-det')).dbPostprocess(
 		heatmapBytes, resizedH, resizedW, origH, origW,
 		0.3, textScore, 1.6, 1000, true,
 	);

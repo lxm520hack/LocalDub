@@ -52,12 +52,14 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		// YouTube/Bilibili URL — download via yt-dlp
 		const isYT = source === 'youtube'
 		const authArgs: string[] = [];
-		if (isYT && existsSync(YOUTUBE_COOKIE_PATH))
-			{ authArgs.push('--cookies', YOUTUBE_COOKIE_PATH);}
+		if (isYT && existsSync(YOUTUBE_COOKIE_PATH)){ 
+			authArgs.push('--cookies', YOUTUBE_COOKIE_PATH);
+		}
 		if (isYT && env.YTDLP_PROXY_PORT) {
-	authArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
+			authArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
 		}
 		const infoArgs = ['--dump-json', ...authArgs, url];
+		console.log(`[autoGroupIdAndVideoId] yt-dlp`, infoArgs);
 		const infoR = spawnSync('yt-dlp', infoArgs, {
 			stdio: ['pipe', 'pipe', 'pipe'],
 			timeout: 30_000,
@@ -65,6 +67,7 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		if (infoR.status === 0 && infoR.stdout.length > 0) {
 			const info = JSON.parse(infoR.stdout.toString());
 			info.authArgs = authArgs;
+			console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
 			const uploader = sanitizeText(info.uploader || '', 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
 			ret.groupId = uploader;
