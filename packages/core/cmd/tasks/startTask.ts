@@ -15,8 +15,8 @@ export const cmdStartTask = async (input: InputArgs) => {
 		console.error('task start: need task.url in input.json',);
 		process.exit(1);
 	}
-	const {ctx, info} = await importVideo(input);
-	await downloadVideo(ctx, info)
+	const {ctx, ytDlpExtArgs} = await importVideo(input);
+	await downloadVideo(ctx, ytDlpExtArgs)
 	try {
 		console.log(`\n[CLI] Running pipeline ...`);
 		await runPipeline(ctx)

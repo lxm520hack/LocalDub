@@ -43,7 +43,7 @@ function parseDirAndId(filePath: string): { dir: string; id: string } {
 export const copyFileToPath = (src: string, target: string) => copyFileSync(src, target);
 export const autoGroupIdAndVideoId = async (url: string) => {
 	const source = await classifySource(url)
-	const ret = { groupId: 'root', taskId: 'unset', source, info: {} as any}
+	const ret = { groupId: 'root', taskId: 'unset', source, ytDlpExtArgs: [] as string[], title: undefined as string | undefined };
 	if (source === 'local' || source === 'remote') {
 		const { dir: groupId, id: taskId } = parseDirAndId(url);
 		ret.groupId = groupId;
@@ -51,14 +51,25 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 	} else if (source === 'youtube' || source === 'bilibili') {
 		// YouTube/Bilibili URL — download via yt-dlp
 		const isYT = source === 'youtube'
-		const authArgs: string[] = [];
+		const ytDlpExtArgs: string[] = [];
 		if (isYT && existsSync(YOUTUBE_COOKIE_PATH)){ 
-			authArgs.push('--cookies', YOUTUBE_COOKIE_PATH);
+			ytDlpExtArgs.push('--cookies', YOUTUBE_COOKIE_PATH);
 		}
 		if (isYT && env.YTDLP_PROXY_PORT) {
-			authArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
+			ytDlpExtArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
 		}
-		const infoArgs = ['--dump-json', '--no-playlist', ...authArgs, url];
+		try {
+			const urlObj = new URL(url);
+			if (urlObj.searchParams.has('list')) {
+				const index = urlObj.searchParams.get('index') || '1';
+				ytDlpExtArgs.push('--playlist-items', index);
+			} else {
+				ytDlpExtArgs.push('--no-playlist');
+			}
+		} catch {
+			ytDlpExtArgs.push('--no-playlist');
+		}
+		const infoArgs = ['--dump-json', ...ytDlpExtArgs, url];
 		console.log(`[autoGroupIdAndVideoId] yt-dlp`, infoArgs);
 		const infoR = spawnSync('yt-dlp', infoArgs, {
 			stdio: ['pipe', 'pipe', 'pipe'],
@@ -66,11 +77,10 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		});
 		if (infoR.status === 0 && infoR.stdout.length > 0) {
 			const info = JSON.parse(infoR.stdout.toString());
-			info.authArgs = authArgs;
 			// console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
-			const uploader = sanitizeText(info.uploader || '', 'unknown');
+			const groupName = sanitizeText(info.playlist_title || info.uploader || '', 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
-			ret.groupId = uploader;
+			ret.groupId = groupName;
 			ret.taskId = videoId;
 			const sessionPath = join(WORKFOLDER, ret.groupId, ret.taskId);
 
@@ -83,7 +93,7 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 					console.warn('[Download] Failed to write ytdlp_info.json');
 				}
 			}
-			ret.info = info;
+			ret.ytDlpExtArgs = ytDlpExtArgs;
 		} else {
 			ret.taskId = extractVideoId(url);
 		}

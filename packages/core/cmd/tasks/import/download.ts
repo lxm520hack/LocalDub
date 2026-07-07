@@ -27,7 +27,7 @@ export const importVideo = async (input: InputArgs) => {
 		console.error('task start: need task.url in input.json',);
 		process.exit(1);
 	}
-	const {groupId, taskId, info, source}	= await autoGroupIdAndVideoId(url)
+	const {groupId, taskId, ytDlpExtArgs, title, source}	= await autoGroupIdAndVideoId(url)
 	startLog('import', taskId);
 	const sessionPath = join(WORKFOLDER, groupId, taskId);
 	mkdirSync(sessionPath, { recursive: true });
@@ -40,7 +40,7 @@ export const importVideo = async (input: InputArgs) => {
 			url,
 			created_at: nowISO(),
 			session_path: sessionPath,
-			title: info.title || taskId,
+			title: title || taskId,
 		},
 		asr_language: input.task.sourceLang || 'auto',
 		pipeline: input.task.pipeline || 'dub',
@@ -57,11 +57,11 @@ export const importVideo = async (input: InputArgs) => {
 	}
 
 	writeCtx(ctx);
-	return {ctx, info}
+	return {ctx, ytDlpExtArgs}
 }
 export async function downloadVideo(
 	ctx: Context,
-	info: any
+	ytDlpExtArgs: string[]
 ) {
 	const videoPath = ctx.videoSourcePath!
 	const url = ctx.task.url
@@ -107,14 +107,13 @@ export async function downloadVideo(
 		});
 
 		const ytArgs: string[] = [
-			'--no-playlist',
 			'-f',
 			'bestaudio[ext=m4a]+bestvideo[ext=mp4]/best[ext=mp4]/best',
 			'--merge-output-format',
 			'mp4',
 			'-o',
 			join(sessionPath, 'video_source.%(ext)s'),
-			...info.authArgs,
+			...ytDlpExtArgs,
 			url,
 		];
 
