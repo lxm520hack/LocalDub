@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { LineAdjustedArgsSchema, MergeFramesArgsSchema } from '@repo/core/ml/subtitle_ocr/input';
 import { LlmFixArgsSchema } from '@repo/core/ml/llm/input';
 import { langList, taskArgsSchema } from '@repo/core/cmd/tasks/input';
+import { CookieArgsSchema } from '@repo/core/cmd/cookie/input';
 
 const deviceList = ['cpu', 'cuda', 'mps', 'webgpu'] as const;
 export type Device = (typeof deviceList)[number];
@@ -16,6 +17,7 @@ export const commandList = [
 	'servers',
 	'listModels',
 	'env',
+	'cookie',
 ] as const;
 
 export type Command = (typeof commandList)[number];
@@ -386,6 +388,7 @@ export const CliInputSchema = z.looseObject({
 		.optional(),
 	servers: ServersArgsSchema,
 	env: EnvArgsSchema.optional(),
+	cookie: CookieArgsSchema.optional(),
 	stages: StagesSchema,
 });
 export type CliInputInput = z.input<typeof CliInputSchema>;
