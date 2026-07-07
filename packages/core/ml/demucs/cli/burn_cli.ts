@@ -68,10 +68,6 @@ export async function separateBurn({
 	await new Promise<void>((resolve, reject) => {
 		const proc = spawn(binPath, [audioPath, sepDir], { env });
 		let stderr = '';
-		const hung = setTimeout(() => {
-			proc.kill('SIGKILL');
-			reject(new Error('Burn separate timed out after 600s'));
-		}, 600_000);
 
 		let lastPct = -1;
 		proc.stdout?.on('data', (chunk: Buffer) => {
@@ -95,12 +91,10 @@ export async function separateBurn({
 		});
 
 		proc.on('error', (e) => {
-			clearTimeout(hung);
 			reject(new Error(`Burn separate failed to spawn: ${e.message}`));
 		});
 
 		proc.on('close', (code) => {
-			clearTimeout(hung);
 			if (code === 0) resolve();
 			else reject(new Error(`Burn separate failed (${code}): ${stderr.slice(-300)}`));
 		});
