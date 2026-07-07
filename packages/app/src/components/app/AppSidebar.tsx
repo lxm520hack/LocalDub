@@ -24,6 +24,7 @@ import { Show } from 'solid-js';
 import { Separator } from '@repo/ui-solid/base/separator';
 import { cn } from '@repo/shared/lib/utils';
 import { client, rspc } from '#/integrations/rspc/rspc.ts';
+import { ScrollArea } from '@repo/ui-solid/base/scroll-area';
 
 const getButtonPx = (depth: number) => ({
 	'padding-left': `${(2 + 6 * depth) * 0.25}rem`,
@@ -34,10 +35,10 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 		<Collapsible
 			class="group/collapsible [&[data-expanded]>button>svg:first-child]:rotate-90"
 		>
-			<CollapsibleTrigger as={SidebarMenuButton} class='gap-0 rounded-none items-center'>	
+			<CollapsibleTrigger as={SidebarMenuButton} class='gap-px rounded-none items-center'>	
 				<ChevronRight class="transition-transform" />
 				<Folder />
-				<span class='h-4 text-sm pl-1'>{item.group_id}</span>
+				<span class='h-4 text-sm pl-0.75'>{item.group_id}</span>
 			</CollapsibleTrigger>
 			<CollapsibleContent class="relative">
 				<Separator
@@ -47,10 +48,13 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 							left: `${1}rem`, // 直接用 inline style，最可靠
 						}}
 					/>
-				<SidebarMenuSub class="border-0 m-0 p-0">
+				<SidebarMenuSub class="border-0 m-0 p-0 gap-0">
 					{item.tasks.map(task => (<SidebarMenuButton class='rounded-none' style={getButtonPx(1)}
 						as={Link} 
 						to={`/group/${item.group_id}/${task.id}`}
+						activeProps={{
+							class: "bg-accent/70!"
+						}}
 					>
 						{task.id}
 					</SidebarMenuButton>))}
@@ -80,11 +84,14 @@ export function AppSidebar() {
 				</TooltipX>
 			</SidebarHeader>
 			<SidebarContent>
+				<ScrollArea scrollbarSize={10}>
+
 				<SidebarMenu class='gap-0 p-0'>
 					<Show when={groupList.data} fallback={<div class='p-2 text-sm text-muted-foreground'>Loading...</div>}>
 						{(items)=><TaskTree items={items()} />}
 					</Show>
 				</SidebarMenu>
+				</ScrollArea>
 					
 					{/* <SidebarMenu>
 						<SidebarMenuItem>
@@ -97,7 +104,7 @@ export function AppSidebar() {
 			<SidebarFooter>
 				<SidebarMenuButton onClick={()=> openSettings()}><Settings /> Settings</SidebarMenuButton>
 			</SidebarFooter>
-			<SidebarRail />
+			<SidebarRail size='sm' />
 		</Sidebar>
 	);
 }

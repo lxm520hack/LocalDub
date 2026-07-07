@@ -18,6 +18,7 @@ import { client, rspc, RspcClient } from '#/integrations/rspc/rspc.ts';
 import { Procedures, ProceduresLegacy } from '#/integrations/rspc/bindings.ts';
 import { createSolidQueryHooks } from '#/integrations/rspc/query.tsx';
 import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
+import { isTauri } from '@tauri-apps/api/core';
 interface MyRouterContext {
 	queryClient: QueryClient;
   client: RspcClient
@@ -37,6 +38,7 @@ export const Route = createRootRoute<MyRouterContext>({
     if (typeof document !== 'undefined') {
 			document.documentElement.setAttribute('lang', getLocale());
 		}
+    if (!isTauri()) document.documentElement.classList.add('browser')
   },
   shellComponent: RootComponent,
 });

@@ -316,8 +316,22 @@ const SidebarTrigger = <T extends ValidComponent = "button">(
 	);
 };
 
-const SidebarRail: Component<ComponentProps<"button">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+export const sidebarRailVariants = cva(
+	"absolute inset-y-0 z-20 hidden -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-0.5  group-data-[side=right]:left-0 sm:flex in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize [[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize roup-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
+	{
+		variants: {
+			size: {
+				default: "w-4 hover:after:bg-sidebar-ring group-data-[side=left]:-right-4 [[data-side=left][data-collapsible=offcanvas]_&]:-right-2 [[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+				sm: "w-2 hover:after:bg-sidebar-ring group-data-[side=left]:-right-2 [[data-side=left][data-collapsible=offcanvas]_&]:-right-2 [[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+			},
+		},
+		defaultVariants: {
+			size: "default",
+		},
+	},
+);
+const SidebarRail = (props: ComponentProps<"button"> & VariantProps<typeof sidebarRailVariants>) => {
+	const [local, others] = splitProps(props, ["class", "size"]);
 	const { toggleSidebar } = useSidebar();
 
 	return (
@@ -328,12 +342,7 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
 			onClick={toggleSidebar}
 			title="Toggle Sidebar"
 			class={cn(
-				"absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 hover:after:bg-sidebar-ring group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
-				"in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
-				"[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-				"group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
-				"[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-				"[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+				sidebarRailVariants({ size: local.size }),
 				local.class,
 			)}
 			{...others}

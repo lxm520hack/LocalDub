@@ -161,3 +161,13 @@ code {
 		@apply bg-background text-foreground;
 	}
 }
+
+/* WebKit（Chrome/Edge）的行为：只要定义了 ::-webkit-scrollbar 样式，滚动条就会转为 overlay 模式（浮动在内容之上，不占布局空间） */
+/* 激活 overlay 模式 */
+/* 所有滚动容器 */
+/* ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  background: transparent;     
+} */
+
