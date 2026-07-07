@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/ui-so
 import { Show } from 'solid-js';
 import { Separator } from '@repo/ui-solid/base/separator';
 import { cn } from '@repo/shared/lib/utils';
-import { rspc } from '#/integrations/rspc/rspc.ts';
+import { client, rspc } from '#/integrations/rspc/rspc.ts';
 
 const getButtonPx = (depth: number) => ({
 	'padding-left': `${(2 + 6 * depth) * 0.25}rem`,
@@ -62,12 +62,11 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 
 export function AppSidebar() {
 	// const api = useClientApi()
-	// const groupList = useQuery(()=>({
-		// 	queryKey: ['groupList'],
-		// 	queryFn: api.taskApi?.getGroupList ?? (()=>Promise.resolve([])),
-		// 	enabled: !!api.taskApi,
-		// }))
-	const groupList = rspc.createQuery(() => ['getGroupList', null])
+	const groupList = useQuery(()=>({
+			queryKey: ['groupList'],
+			queryFn: () => client.query(['getGroupList', null]) 
+		}))
+	// const groupList0 = rspc.createQuery(() => ['getGroupList', null])
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">
@@ -82,7 +81,7 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarMenu class='gap-0 p-0'>
-					<Show when={groupList.data}>
+					<Show when={groupList.data} fallback={<div class='p-2 text-sm text-muted-foreground'>Loading...</div>}>
 						{(items)=><TaskTree items={items()} />}
 					</Show>
 				</SidebarMenu>
