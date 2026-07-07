@@ -14,8 +14,10 @@ import * as inputApi from '../fn/input';
 import { getLocale } from '@repo/shared/i18n/utils';
 import { getGroupList } from '#/cmd/tasks.ts';
 import { Header } from '#/components/app/header/Header.tsx';
+import { RspcClient } from '#/lib/rspc.ts';
 interface MyRouterContext {
 	queryClient: QueryClient;
+  client: RspcClient
 }
 
 export const Route = createRootRoute<MyRouterContext>({
@@ -44,6 +46,7 @@ function RootComponent() {
 }
 function RootDocument({ children }: { children: JSX.Element }) {
   // const { } = useParams({ strict: false })
+  
   return <>
   <HeadContent />
   <ClientApiProvider value={{

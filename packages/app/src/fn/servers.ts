@@ -1,5 +1,5 @@
 import { to } from '@repo/shared/lib/utils/try';
-import { invoke } from './invoke'
+import { client } from '#/lib/rspc.ts'
 import { findServer } from '@repo/core/servers/discovery'
 import type { ModelServerStatus } from '@repo/core/servers/type'
 import { fetchStatsRes } from '@repo/core/servers/client';
@@ -46,7 +46,7 @@ export async function startTorch(): Promise<ModelServerStatus> {
 	_torchPort = port
 	if (await ping(port)) return fetchHealth(port)
 
-	_torchPort = await invoke<number>('start_torch')
+	_torchPort = await client.mutation(['startTorch', null])
 	return waitForHealth(_torchPort)
 }
 
@@ -56,7 +56,7 @@ export async function stopTorch(): Promise<ModelServerStatus> {
 	} catch {
 		// already gone
 	}
-	await invoke('stop_torch')
+	await client.mutation(['stopTorch', null])
 	return { status: 'stopped', port: _torchPort, uptime_s: 0, models: {} }
 }
 
@@ -64,11 +64,11 @@ export async function restartTorch(): Promise<ModelServerStatus> {
 	try {
 		await fetch(`http://127.0.0.1:${_torchPort}/api/shutdown`, { method: 'POST' })
 	} catch { /* ok */ }
-	await invoke('stop_torch')
+	await client.mutation(['stopTorch', null])
 
 	await new Promise((r) => setTimeout(r, 1500))
 
-	_torchPort = await invoke<number>('start_torch')
+	_torchPort = await client.mutation(['startTorch', null])
 	return waitForHealth(_torchPort)
 }
 
@@ -108,7 +108,7 @@ export async function startVoxCpm(): Promise<ModelServerStatus> {
 	_voxcpmPort = port
 	if (await pingVoxCpm(port)) return fetchVoxCpmHealth(port)
 
-	_voxcpmPort = await invoke<number>('start_voxcpm')
+	_voxcpmPort = await client.mutation(['startVoxcpm', null])
 	return waitForVoxCpm(_voxcpmPort)
 }
 
@@ -119,7 +119,7 @@ export async function checkVoxCpm(): Promise<ModelServerStatus> {
 }
 
 export async function stopVoxCpm(): Promise<ModelServerStatus> {
-	await invoke('stop_voxcpm')
+	await client.mutation(['stopVoxcpm', null])
 	return { status: 'stopped', port: _voxcpmPort, uptime_s: 0, models: { voxcpm: { status: 'unloaded', device: '' } } }
 }
 

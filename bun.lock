@@ -31,6 +31,7 @@
         "@repo/ui": "workspace:*",
         "@repo/ui-solid": "workspace:*",
         "@rspc/client": "0.3.1",
+        "@rspc/solid": "^0.2.1",
         "@rspc/tauri": "0.3.1",
         "@tailwindcss/vite": "^4.3.1",
         "@tanstack/devtools-vite": "^0.8.1",
@@ -595,6 +596,10 @@
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
 
     "@rspc/client": ["@rspc/client@0.3.1", "", {}, "sha512-2fWjoREQu6OstOGAKKnfUw4nSFc4vASRQRBSyttXrn9cKBuiOoi75DUdYN2WdjepYQn0uih1EKKV6PwYYk7iWg=="],
+
+    "@rspc/query-core": ["@rspc/query-core@0.2.1", "", { "dependencies": { "@tanstack/query-core": "^5.48.0" }, "peerDependencies": { "@rspc/client": "0.2.1" } }, "sha512-AQQHeQIddhRCVV1+VOGFpnLKuR7wVZnZMOr1V2QKoI6xHE3XJC55uWGQky45VOQZBH7cXwZuiZ0tAF4ao7RyUA=="],
+
+    "@rspc/solid": ["@rspc/solid@0.2.1", "", { "dependencies": { "@rspc/client": "0.2.1", "@rspc/query-core": "0.2.1" }, "peerDependencies": { "@tanstack/solid-query": "^5.0.0", "solid-js": "^1.0.0" } }, "sha512-Xcc4wUyM0iOmEvc3QfFv4snjwJi3dJPpyBkEBcb12VDmSAUcJAY5/n541wn77U6AGbpqRAbD0OQ1vtVFjGumUw=="],
 
     "@rspc/tauri": ["@rspc/tauri@0.3.1", "", { "dependencies": { "@rspc/client": "0.3.1" }, "peerDependencies": { "@tauri-apps/api": "^2.1.1" } }, "sha512-J1gEk079tombC+uAVIofmDrxYdPPIpzeCGzC37pxO6MP7Ihm758COZlbrlEQsGpBP3jPREUZIHFyLeKnl03ydw=="],
 
@@ -1593,6 +1598,10 @@
     "@lix-js/sdk/uuid": ["uuid@14.0.1", "", { "bin": { "uuid": "dist-node/bin/uuid" } }, "sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew=="],
 
     "@repo/cli/@typescript/native-preview": ["@typescript/native-preview@7.0.0-dev.20260706.1", "", { "optionalDependencies": { "@typescript/native-preview-darwin-arm64": "7.0.0-dev.20260706.1", "@typescript/native-preview-darwin-x64": "7.0.0-dev.20260706.1", "@typescript/native-preview-linux-arm": "7.0.0-dev.20260706.1", "@typescript/native-preview-linux-arm64": "7.0.0-dev.20260706.1", "@typescript/native-preview-linux-x64": "7.0.0-dev.20260706.1", "@typescript/native-preview-win32-arm64": "7.0.0-dev.20260706.1", "@typescript/native-preview-win32-x64": "7.0.0-dev.20260706.1" }, "bin": { "tsgo": "bin/tsgo" } }, "sha512-lm3nzcj+cbml0Pt+0QyOpdhZES9WRj0Fv/fds2GaKSf9wXe8694gy6Fa5D65lRcP6q4HHivlrNqJo8rR5Klzww=="],
+
+    "@rspc/query-core/@rspc/client": ["@rspc/client@0.2.1", "", {}, "sha512-sbZfaddxuK0Cwm65H+PeipB9QUCjkLSGWuZ1WE3Lqca7P0tEH1721kOfaS+7iJCkJ+RoVHy6hnVeus/TRc6hwA=="],
+
+    "@rspc/solid/@rspc/client": ["@rspc/client@0.2.1", "", {}, "sha512-sbZfaddxuK0Cwm65H+PeipB9QUCjkLSGWuZ1WE3Lqca7P0tEH1721kOfaS+7iJCkJ+RoVHy6hnVeus/TRc6hwA=="],
 
     "@tailwindcss/oxide-wasm32-wasi/@emnapi/core": ["@emnapi/core@1.11.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" }, "bundled": true }, "sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ=="],
 

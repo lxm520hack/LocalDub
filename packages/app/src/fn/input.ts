@@ -1,13 +1,13 @@
-import { invoke } from './invoke';
+import { client } from '#/lib/rspc.ts';
 
 export async function readInput(): Promise<string> {
-  return invoke<string>('read_input');
+  return client.query(['readInput', null]);
 }
 
 export async function writeInput(content: string): Promise<void> {
-  return invoke('write_input', { content });
+  await client.mutation(['writeInput', content]);
 }
 
 export async function readInputSchema(): Promise<string> {
-  return invoke<string>('read_input_schema');
+  return client.query(['readInputSchema', null]);
 }

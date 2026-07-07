@@ -1,5 +1,4 @@
 import { client } from '#/lib/rspc.ts';
-import { invoke } from '../../fn/invoke';
 import type { DeviceInfo } from '@repo/ui';
 
 export async function fetchDeviceInfo(): Promise<DeviceInfo> {

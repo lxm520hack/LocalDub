@@ -8,6 +8,7 @@ import {
 } from '@tanstack/solid-router';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
+import { client } from '#/lib/rspc.ts';
 
 // const settingsSubRoutes = ["/settings", "/settings/appearance"] as const;
 
@@ -24,7 +25,7 @@ export function getRouter() {
 	const queryClient = getQueryClient();
 	const router = createRouter({
 		routeTree,
-		context: { queryClient },
+		context: { queryClient, client },
 		scrollRestoration: true,
 		defaultPreloadStaleTime: 0,
 		// routeMasks: [...settingsMasks]
