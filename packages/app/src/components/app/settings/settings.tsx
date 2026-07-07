@@ -8,12 +8,11 @@ import { openModal } from "@repo/ui-solid/custom/modal/renderer";
 import { GeneralSettings } from "./general";
 import { ServerManager } from "./ServerManager";
 import { DeviceInfo } from "./DeviceInfo";
-import { useClientApi } from "../api/context";
+// import { useClientApi } from "../api/context";
 import { InputEditor } from "./InputEditor";
 import { i18n } from "@repo/shared/i18n/utils";
 
 export const SettingsContent = () => {
-  const { serversManagerApi, inputEditorApi } = useClientApi();
   const baseItems = [
     {
       value: 'general',
@@ -25,9 +24,9 @@ export const SettingsContent = () => {
       label: i18n.shortcuts(),
       icon: Keyboard,
     },
-    ...(serversManagerApi ? [{ value: 'servers', label: 'Servers', icon: Server as typeof Settings, content: ServerManager as Component }] : []),
+    { value: 'servers', label: 'Servers', icon: Server as typeof Settings, content: ServerManager as Component },
     { value: 'device', label: 'Device', icon: Monitor as typeof Settings, content: DeviceInfo as Component },
-    ...(inputEditorApi ? [{ value: 'config', label: 'Config', icon: Code as typeof Settings, content: InputEditor as Component }] : []),
+    { value: 'config', label: 'Config', icon: Code as typeof Settings, content: InputEditor as Component },
   ];
   return <ClientOnly>
     <Tabs defaultValue="general" orientation='vertical' class='gap-5 h-full' >
@@ -44,19 +43,15 @@ export const SettingsContent = () => {
       <TabsContent value="shortcuts">
         <h2>{i18n.shortcuts()}</h2>
       </TabsContent>
-      {serversManagerApi && (
-        <TabsContent value="servers">
-          <ServerManager />
-        </TabsContent>
-      )}
+      <TabsContent value="servers">
+        <ServerManager />
+      </TabsContent>
       <TabsContent value="device">
         <DeviceInfo />
       </TabsContent>
-      {inputEditorApi && (
-        <TabsContent value="config">
-          <InputEditor />
-        </TabsContent>
-      )}
+      <TabsContent value="config">
+        <InputEditor />
+      </TabsContent>
     </Tabs>
   </ClientOnly>
 }

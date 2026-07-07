@@ -1,8 +1,8 @@
 import { to } from '@repo/shared/lib/utils/try';
-import { client } from '#/lib/rspc.ts'
 import { findServer } from '@repo/core/servers/discovery'
 import type { ModelServerStatus } from '@repo/core/servers/type'
 import { fetchStatsRes } from '@repo/core/servers/client';
+import { client } from '#/integrations/rspc/rspc.ts';
 
 let _torchPort = 19109
 let _voxcpmPort = 19112

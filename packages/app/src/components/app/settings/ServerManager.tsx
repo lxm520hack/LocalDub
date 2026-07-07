@@ -1,9 +1,11 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { useMutation } from '@tanstack/solid-query';
+import { createQuery, useMutation } from '@tanstack/solid-query';
 import { Button } from '@repo/ui-solid/base/button';
 import { CardX } from '@repo/ui-solid/custom/card';
 import { toastError } from '@repo/ui-solid/custom/toast';
-import { useClientApi, type ModelServerStatus } from '../api/context';
+import { ModelServerStatus } from '@repo/core/servers/type';
+import { rspc } from '#/integrations/rspc/rspc.ts';
+import { checkTorch, checkVoxCpm, restartTorch, restartVoxCpm, startTorch, startVoxCpm, stopTorch, stopVoxCpm } from '#/fn/servers.ts';
 
 function fmtUptime(s: number): string {
   if (!s) return '0s';
@@ -88,43 +90,36 @@ function ServerCard(props: {
 }
 
 export function ServerManager() {
-  const [torchHealth, setTorchHealth] = createSignal<ModelServerStatus | null>(null);
-  const [voxcpmHealth, setVoxCpmHealth] = createSignal<ModelServerStatus | null>(null);
-  const api = useClientApi().serversManagerApi;
-  if (!api) return null;
 
-  onMount(() => {
-    const iv = setInterval(async () => {
-      try { setTorchHealth(await api.checkTorch()); }
-      catch { setTorchHealth(null); }
-    }, 3000);
-    onCleanup(() => clearInterval(iv));
-  });
+  const torchHealth = createQuery( ()=>({
+    queryKey: ['torchHealth'],
+    queryFn: checkTorch,
+    staleTime: 3000,
+  }))
 
-  onMount(() => {
-    const iv = setInterval(async () => {
-      try { setVoxCpmHealth(await api.checkVoxCpm()); }
-      catch { setVoxCpmHealth(null); }
-    }, 3000);
-    onCleanup(() => clearInterval(iv));
-  });
+  const voxcpmHealth = createQuery( ()=>({
+    queryKey: ['voxcpmHealth'],
+    queryFn: checkVoxCpm,
+    staleTime: 3000,
+  }))
 
-  const startTorch = useMutation(() => ({ mutationFn: () => api.startTorch(), onError: (e) => toastError(e) }));
-  const stopTorch = useMutation(() => ({ mutationFn: () => api.stopTorch(), onError: (e) => toastError(e) }));
-  const restartTorch = useMutation(() => ({ mutationFn: () => api.restartTorch(), onError: (e) => toastError(e) }));
 
-  const startVox = useMutation(() => ({ mutationFn: () => api.startVoxCpm(), onError: (e) => toastError(e) }));
-  const stopVox = useMutation(() => ({ mutationFn: () => api.stopVoxCpm(), onError: (e) => toastError(e) }));
-  const restartVox = useMutation(() => ({ mutationFn: () => api.restartVoxCpm(), onError: (e) => toastError(e) }));
+  const startTorchM = useMutation(() => ({ mutationFn: startTorch, onError: (e) => toastError(e) }));
+  const stopTorchM = useMutation(() => ({ mutationFn: stopTorch, onError: (e) => toastError(e) }));
+  const restartTorchM = useMutation(() => ({ mutationFn: restartTorch, onError: (e) => toastError(e) }));
+
+  const startVox = useMutation(() => ({ mutationFn: startVoxCpm, onError: (e) => toastError(e) }));
+  const stopVox = useMutation(() => ({ mutationFn: stopVoxCpm, onError: (e) => toastError(e) }));
+  const restartVox = useMutation(() => ({ mutationFn: restartVoxCpm, onError: (e) => toastError(e) }));
 
   const torchModels = () => {
-    const m = torchHealth()?.models;
+    const m = torchHealth.data?.models;
     if (!m || Object.keys(m).length === 0) return { asr: { status: 'unloaded', device: '' }, separate: { status: 'unloaded', device: '' } };
     return m;
   };
 
   const vcModels = () => {
-    const m = voxcpmHealth()?.models;
+    const m = voxcpmHealth.data?.models;
     if (!m) return { voxcpm: { status: 'unloaded', device: '' } };
     return m;
   };
@@ -133,20 +128,20 @@ export function ServerManager() {
     <div class="space-y-4">
       <ServerCard
         name="Torch Server"
-        running={torchHealth()?.status === 'running'}
-        uptimeS={torchHealth()?.uptime_s ?? 0}
-        port={torchHealth()?.port ?? 19109}
+        running={torchHealth.data?.status === 'running'}
+        uptimeS={torchHealth.data?.uptime_s ?? 0}
+        port={torchHealth.data?.port ?? 19109}
         models={torchModels()}
-        busy={startTorch.isPending || stopTorch.isPending || restartTorch.isPending}
-        onStart={() => startTorch.mutate()}
-        onStop={() => stopTorch.mutate()}
-        onRestart={() => restartTorch.mutate()}
+        busy={startTorchM.isPending || stopTorchM.isPending || restartTorchM.isPending}
+        onStart={() => startTorchM.mutate()}
+        onStop={() => stopTorchM.mutate()}
+        onRestart={() => restartTorchM.mutate()}
       />
       <ServerCard
         name="VoxCPM Server"
-        running={voxcpmHealth()?.status === 'running'}
-        uptimeS={voxcpmHealth()?.uptime_s ?? 0}
-        port={voxcpmHealth()?.port ?? 19112}
+        running={voxcpmHealth.data?.status === 'running'}
+        uptimeS={voxcpmHealth.data?.uptime_s ?? 0}
+        port={voxcpmHealth.data?.port ?? 19112}
         models={vcModels()}
         busy={startVox.isPending || stopVox.isPending || restartVox.isPending}
         onStart={() => startVox.mutate()}

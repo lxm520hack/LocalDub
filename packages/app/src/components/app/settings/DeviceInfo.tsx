@@ -1,14 +1,15 @@
 import { createEffect, createResource, Show } from 'solid-js';
-import { useClientApi } from '../api/context';
 import { useQuery } from '@tanstack/solid-query';
+import { rspc } from '#/integrations/rspc/rspc.ts';
 
 export function DeviceInfo() {
-  const api = useClientApi().deviceInfoApi;
-  const deviceInfo = useQuery(()=>({
-    queryKey: ['deviceInfo'],
-    queryFn: api?.fetchDeviceInfo,
-    enabled: !!api,
-  }))
+  // const api = useClientApi().deviceInfoApi;
+  // const deviceInfo = useQuery(()=>({
+  //   queryKey: ['deviceInfo'],
+  //   queryFn: api?.fetchDeviceInfo,
+  //   enabled: !!api,
+  // }))
+  const deviceInfo = rspc.createQuery(() => ['deviceInfo', null])
 
   return (
     <div class="space-y-3">

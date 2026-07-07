@@ -8,7 +8,7 @@ import {
 } from '@tanstack/solid-router';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
-import { client } from '#/lib/rspc.ts';
+import { client } from '#/integrations/rspc/rspc.ts';
 
 // const settingsSubRoutes = ["/settings", "/settings/appearance"] as const;
 

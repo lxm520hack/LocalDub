@@ -1,4 +1,4 @@
-import type { createTheme } from 'monaco-themes';
+import type { MonacoTheme } from 'monaco-themes';
 
 const STORAGE_KEY = 'editor-theme';
 
@@ -33,9 +33,10 @@ export function setEditorTheme(theme: string): void {
 
 export async function loadEditorTheme(monaco: typeof import('monaco-editor'), themeName: string) {
   try {
-    const themeModule = await import('monaco-themes');
-    const themes = themeModule.default || themeModule;
-    const themeData = themes[themeName];
+    const themes = await import('monaco-themes/themes/themelist')
+    type themeKey = keyof typeof themes;
+    const themeLabel = themes[themeName as themeKey];
+    const themeData: MonacoTheme | undefined = await import(`monaco-themes/themes/${themeLabel}.json`)
     if (themeData) {
       monaco.editor.defineTheme(themeName, themeData);
       monaco.editor.setTheme(themeName);

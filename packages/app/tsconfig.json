@@ -10,12 +10,12 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     // "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-
+     "resolveJsonModule": true,
+    "esModuleInterop": true,  // 通常一起开启
     /* Linting */
     "strict": true,
     "allowJs": true,

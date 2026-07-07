@@ -1,4 +1,4 @@
-import { client } from '#/lib/rspc.ts';
+import { client } from "#/integrations/rspc/rspc.ts";
 
 export async function readInput(): Promise<string> {
   return client.query(['readInput', null]);

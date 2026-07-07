@@ -3,7 +3,7 @@ fn main() {
     let (_procedures, types) = router.build().expect("rspc router build failed");
 
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let output_path = manifest_dir.join("../src/lib/bindings.ts");
+    let output_path = manifest_dir.join("../src/integrations/rspc/bindings.ts");
 
     let ts = rspc::Typescript::default();
     ts.export_to(&output_path, &types)

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/solid-router';
-import packageJson from '../package.json';
+import packageJson from '../../../package.json';
 import {
 	Sidebar,
 	SidebarContent,
@@ -16,13 +16,14 @@ import {
 import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
 import { ChevronRight, Folder, LayoutDashboard, Settings } from 'lucide-solid';
-import { useClientApi } from './api/context';
+import { useClientApi } from '@repo/ui/app/api/context';
 import { useQuery } from '@tanstack/solid-query';
 import { GroupInfo } from '@repo/core/cmd/tasks/get_group_list';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/ui-solid/base/collapsible';
 import { Show } from 'solid-js';
 import { Separator } from '@repo/ui-solid/base/separator';
 import { cn } from '@repo/shared/lib/utils';
+import { rspc } from '#/integrations/rspc/rspc.ts';
 
 const getButtonPx = (depth: number) => ({
 	'padding-left': `${(2 + 6 * depth) * 0.25}rem`,
@@ -60,12 +61,13 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 }
 
 export function AppSidebar() {
-	const api = useClientApi()
-	const groupList = useQuery(()=>({
-		queryKey: ['groupList'],
-		queryFn: api.taskApi?.getGroupList ?? (()=>Promise.resolve([])),
-		enabled: !!api.taskApi,
-	}))
+	// const api = useClientApi()
+	// const groupList = useQuery(()=>({
+		// 	queryKey: ['groupList'],
+		// 	queryFn: api.taskApi?.getGroupList ?? (()=>Promise.resolve([])),
+		// 	enabled: !!api.taskApi,
+		// }))
+	const groupList = rspc.createQuery(() => ['getGroupList', null])
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">

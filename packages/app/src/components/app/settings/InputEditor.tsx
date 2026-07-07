@@ -1,12 +1,12 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
-import { useClientApi } from '../api/context';
 import { getAutoSaveMode } from './editorPrefs';
 import { useTheme } from '@repo/ui-solid/theme';
+import { readInput, readInputSchema } from '#/fn/input.ts';
+import { rspc } from '#/integrations/rspc/rspc.ts';
 
 const AUTO_SAVE_DELAY = 2000;
 
 export function InputEditor() {
-  const api = useClientApi().inputEditorApi;
   const { themeName } = useTheme();
   let containerRef: HTMLDivElement | undefined;
   let editor: any = null;
@@ -19,13 +19,14 @@ export function InputEditor() {
     if (!editor) return;
     setDirty(editor.getValue() !== lastSavedContent);
   };
+  const writeInputM = rspc.createMutation(() => "writeInput")
 
   const doSave = async () => {
-    if (!api || !editor) return;
+    if ( !editor) return;
     const content = editor.getValue();
     try {
       JSON.parse(content);
-      await api.writeInput(content);
+      await writeInputM.mutateAsync(content);
       clearTimeout(autoSaveTimer);
       lastSavedContent = content;
       setDirty(false);
@@ -37,24 +38,21 @@ export function InputEditor() {
   const debouncedSave = (content: string) => {
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(async () => {
-      if (!api) return;
       try {
         JSON.parse(content);
-        await api.writeInput(content);
+        await writeInputM.mutateAsync(content);
         lastSavedContent = content;
         setDirty(false);
       } catch { /* silent */ }
     }, AUTO_SAVE_DELAY);
   };
-
+  const readInputQ = rspc.createQuery(()=>['readInput', null])
+  const schemaContentQ = rspc.createQuery(()=>['readInputSchema', null])
   onMount(async () => {
-    if (!api || !containerRef) return;
+    if (!containerRef) return;
 
-    const [fileContent, schemaContent] = await Promise.all([
-      api.readInput(),
-      api.readInputSchema().catch(() => '{}'),
-    ]);
-    lastSavedContent = fileContent;
+
+    lastSavedContent = readInputQ.data ?? '{}';
 
     const monaco = await import('monaco-editor');
 
@@ -70,7 +68,7 @@ export function InputEditor() {
     };
 
     let schemaObj: any;
-    try { schemaObj = JSON.parse(schemaContent); } catch { schemaObj = null; }
+    try { schemaObj = JSON.parse(schemaContentQ.data??"{}"); } catch { schemaObj = null; }
 
     const SCHEMA_URI = 'file:///packages/cli/input.schema.json';
     if (schemaObj && (monaco.languages.json as any)?.jsonDefaults) {
@@ -93,7 +91,7 @@ export function InputEditor() {
       } catch { /* fallback */ }
     }
 
-    model = monaco.editor.createModel(fileContent, 'json', monaco.Uri.parse('file:///packages/cli/input.json'));
+    model = monaco.editor.createModel(readInputQ.data ?? "", 'json', monaco.Uri.parse('file:///packages/cli/input.json'));
     editor = monaco.editor.create(containerRef, {
       model,
       language: 'json',
@@ -123,7 +121,6 @@ export function InputEditor() {
     model?.dispose();
   });
 
-  if (!api) return null;
 
   return (
     <div class="flex flex-col h-full">

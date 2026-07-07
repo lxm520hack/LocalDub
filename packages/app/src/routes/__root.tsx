@@ -1,6 +1,6 @@
 import { SidebarProvider } from '@repo/ui-solid/base/sidebar';
 import { ThemeProvider, themeScript } from '@repo/ui-solid/theme';
-import { HeadContent, Outlet, Scripts, createRootRoute, useParams } from '@tanstack/solid-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useParams, useRouteContext, useRouter, useRouterState } from '@tanstack/solid-router';
 import { AppSidebar, ClientApiProvider } from '@repo/ui';
 import { ModalRenderer } from '@repo/ui-solid/custom/modal/renderer';
 import { Toaster } from '@repo/ui-solid/base/sonner';
@@ -9,12 +9,15 @@ import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Devtools } from '@repo/ui-solid/app/devtools';
 import * as torchApi from '../fn/servers';
-import * as deviceApi from '../feat/env/device';
+// import * as deviceApi from '../feat/env/device';
 import * as inputApi from '../fn/input';
 import { getLocale } from '@repo/shared/i18n/utils';
 import { getGroupList } from '#/cmd/tasks.ts';
 import { Header } from '#/components/app/header/Header.tsx';
-import { RspcClient } from '#/lib/rspc.ts';
+import { client, rspc, RspcClient } from '#/integrations/rspc/rspc.ts';
+import { Procedures, ProceduresLegacy } from '#/integrations/rspc/bindings.ts';
+import { createSolidQueryHooks } from '#/integrations/rspc/query.tsx';
+import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
 interface MyRouterContext {
 	queryClient: QueryClient;
   client: RspcClient
@@ -31,7 +34,7 @@ export const Route = createRootRoute<MyRouterContext>({
     scripts: [{ children: themeScript }],
 	}),
   beforeLoad: async () => {
-    		if (typeof document !== 'undefined') {
+    if (typeof document !== 'undefined') {
 			document.documentElement.setAttribute('lang', getLocale());
 		}
   },
@@ -45,10 +48,11 @@ function RootComponent() {
   )
 }
 function RootDocument({ children }: { children: JSX.Element }) {
-  // const { } = useParams({ strict: false })
-  
+  const queryClient = getQueryClient();
   return <>
   <HeadContent />
+  <rspc.Provider client={client} queryClient={queryClient}>
+
   <ClientApiProvider value={{
     serversManagerApi: {
       startTorch: torchApi.startTorch,
@@ -60,9 +64,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
       restartVoxCpm: torchApi.restartVoxCpm,
       checkVoxCpm: torchApi.checkVoxCpm,
     },
-    deviceInfoApi: {
-      fetchDeviceInfo: deviceApi.fetchDeviceInfo,
-    },
+    // deviceInfoApi: {
+    //   // fetchDeviceInfo: deviceApi.fetchDeviceInfo,
+    // },
     inputEditorApi: {
       readInput: inputApi.readInput,
       writeInput: inputApi.writeInput,
@@ -84,6 +88,7 @@ function RootDocument({ children }: { children: JSX.Element }) {
       </SidebarProvider>
     </ThemeProvider>
   </ClientApiProvider>
+  </rspc.Provider>
   <Devtools />
   <Scripts />
   </>
