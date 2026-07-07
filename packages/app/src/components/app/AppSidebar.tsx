@@ -66,11 +66,12 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 
 export function AppSidebar() {
 	// const api = useClientApi()
-	const groupList = useQuery(()=>({
-			queryKey: ['groupList'],
-			queryFn: () => client.query(['getGroupList', null]) 
-		}))
-	// const groupList0 = rspc.createQuery(() => ['getGroupList', null])
+	// const groupList1 = createQuery(()=>({
+	// 		queryKey: ['groupList'],
+	// 		queryFn: () => client.query(['getGroupList', null]) 
+	// 	}))
+	const groupListQ = rspc.createQuery(() => ['getGroupList', null])
+	const groupList  = () => groupListQ.data
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">
@@ -87,7 +88,8 @@ export function AppSidebar() {
 				<ScrollArea scrollbarSize={10}>
 
 				<SidebarMenu class='gap-0 p-0'>
-					<Show when={groupList.data} fallback={<div class='p-2 text-sm text-muted-foreground'>Loading...</div>}>
+					{groupListQ.isLoading && <div class='p-2 text-sm text-muted-foreground'>Loading...</div>}
+					<Show when={groupList()} fallback={<div class='p-2 text-sm text-muted-foreground'>Loading...</div>}>
 						{(items)=><TaskTree items={items()} />}
 					</Show>
 				</SidebarMenu>

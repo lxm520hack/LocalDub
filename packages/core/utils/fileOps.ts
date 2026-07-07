@@ -15,16 +15,20 @@ export function fileLog(ctx: Context, op: FileOp, path: string, extra?: string) 
 }
 
 export   function readJson<T = any>(path: string,  ctx: Context){
-	fileLog(ctx, 'read', path);
+	if (ctx) {
+		fileLog(ctx, 'read', path);
+	}
 	
 	return Bun.file(path).json() as Promise<T>; 
 }
 
-export function writeJson(path: string, data: any, ctx: Context) {
+export function writeJson(path: string, data: any, ctx?: Context) {
 	const raw = JSON.stringify(data, null, 2);
 	writeFileSync(path, raw);
 	const lines = raw.split('\n').length;
-	fileLog(ctx, 'write', path, `(${raw.length}B, ${lines} lines)`);
+	if (ctx) {
+		fileLog(ctx, 'write', path, `(${raw.length}B, ${lines} lines)`);
+	}
 }
 
 export function writeFile(path: string, content: string | Buffer, ctx: Context) {

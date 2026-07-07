@@ -16,7 +16,7 @@ import {
 } from '@repo/core/stages/utils/utils.ts';
 import { to } from '@repo/shared/lib/utils/try.ts';
 import { startLog } from '../../../stages/utils/log.ts';
-import { copyFileSync } from '@repo/core/utils/fileOps';
+import { copyFileSync, writeJson } from '@repo/core/utils/fileOps';
 import { WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config/path/paths';
 import { sanitizeText } from '@repo/core/utils/utils';
 
@@ -78,19 +78,24 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		if (infoR.status === 0 && infoR.stdout.length > 0) {
 			const info = JSON.parse(infoR.stdout.toString());
 			// console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
-			const groupName = sanitizeText(info.playlist_title || info.uploader || '', 'unknown');
+			const groupName = info.playlist_title && info.uploader 
+				? sanitizeText(`${info.uploader}-${info.playlist_title}`) 
+				: info.playlist_title 
+				? sanitizeText(info.playlist_title) 
+				: sanitizeText(info.uploader ?? 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
 			ret.groupId = groupName;
 			ret.taskId = videoId;
 			const sessionPath = join(WORKFOLDER, ret.groupId, ret.taskId);
 
 			if (info) {
-				const [_, err] = to(()=>writeFileSync(
+				mkdirSync(sessionPath, { recursive: true })
+				const [_, err] = to(()=>writeJson(
 					join(sessionPath, 'ytdlp_info.json'),
 					info,
 				))
 				if (err) {
-					console.warn('[Download] Failed to write ytdlp_info.json');
+					console.warn('[Download] Failed to write ytdlp_info.json', err);
 				}
 			}
 			ret.ytDlpExtArgs = ytDlpExtArgs;
