@@ -1,9 +1,9 @@
 import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
-import { getRapidOCRModelsDir } from '../rapidocr-models.ts';
 import { REPO_ROOT } from '@repo/config/root';
 import { OCRLine } from '@repo/subtitle-ocr/types';
+import { getRapidOcrModelsDir } from '@repo/subtitle-ocr/utils';
 
 
 
@@ -121,7 +121,7 @@ function ocrEnv(): Record<string, string | undefined> {
 	return {
 		...process.env,
 		[LIB_PATH_KEY]: libPath,
-		OCR_MODELS_DIR: getRapidOCRModelsDir(),
+		OCR_MODELS_DIR: getRapidOcrModelsDir(),
 		OCR_KEYS_PATH,
 	};
 }

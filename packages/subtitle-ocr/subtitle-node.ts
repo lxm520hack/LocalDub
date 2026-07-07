@@ -5,23 +5,19 @@ import { readFileSync } from 'node:fs';
 import { Transformer, ResizeFit } from '@napi-rs/image';
 // @ts-ignore - no types published
 import { PNG } from 'pngjs';
-import { findRapidOcrModelsDir } from './utils';
+import { getRapidOcrModelsDir } from './utils';
 import { dbPostprocess } from './postprocess-det';
 
-
-const MODEL_DIR = findRapidOcrModelsDir();
 const KEYS_PATH = resolve(__dirname, 'ppocr_keys.json');
 
-const DET_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_det_infer.onnx');
-const CLS_PATH = join(MODEL_DIR, 'ch_ppocr_mobile_v2.0_cls_infer.onnx');
-const REC_PATH = join(MODEL_DIR, 'ch_PP-OCRv3_rec_infer.onnx');
-
-// 对齐 Python rapidocr 的字符表：
-// - index 0 = blank (CTC blank，解码时跳过)
-// - 1..6623 = 原 ppocr_keys.json 中 1..end 的 6623 个字符
-// - 6624 = ' ' (space)
-const RAW_CHAR_LIST: string[] = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
-const CHAR_LIST: string[] = ['', ...RAW_CHAR_LIST.slice(1), ' '];
+let _charList: string[];
+function getCharList(): string[] {
+	if (!_charList) {
+		const raw = JSON.parse(readFileSync(KEYS_PATH, 'utf-8'));
+		_charList = ['', ...raw.slice(1), ' '];
+	}
+	return _charList;
+}
 
 // ---------- Image processing (replaces sharp, Windows-friendly) ----------
 
@@ -98,7 +94,7 @@ function ctcDecode(logits: Float32Array, shape: number[]): { text: string; confi
 		const idx = rawIndices[i];
 		if (idx === 0) { prev = -1; continue; }
 		if (idx !== prev) {
-			const ch = CHAR_LIST[idx] ?? '';
+			const ch = getCharList()[idx] ?? '';
 			if (ch !== '') { chars.push(ch); confs.push(totalConf[i]); }
 		}
 		prev = idx;
@@ -200,10 +196,11 @@ export interface OCRSessions {
 }
 
 export async function createSessions(detEp = 'cpu'): Promise<OCRSessions> {
+	const modelDir = getRapidOcrModelsDir();
 	const [det, cls, rec] = await Promise.all([
-		ort.InferenceSession.create(DET_PATH, { executionProviders: [detEp] }),
-		ort.InferenceSession.create(CLS_PATH, { executionProviders: ['cpu'] }),
-		ort.InferenceSession.create(REC_PATH, { executionProviders: ['cpu'] }),
+		ort.InferenceSession.create(join(modelDir, 'ch_PP-OCRv3_det_infer.onnx'), { executionProviders: [detEp] }),
+		ort.InferenceSession.create(join(modelDir, 'ch_ppocr_mobile_v2.0_cls_infer.onnx'), { executionProviders: ['cpu'] }),
+		ort.InferenceSession.create(join(modelDir, 'ch_PP-OCRv3_rec_infer.onnx'), { executionProviders: ['cpu'] }),
 	]);
 	return { det, cls, rec };
 }
