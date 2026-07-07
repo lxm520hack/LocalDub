@@ -286,7 +286,7 @@
           ]
         },
         "content": {
-          "description": "Netscape cookie 为空则, 让用户主动输入",
+          "description": "Netscape cookie，为空则让用户手动粘贴",
           "type": "string"
         }
       }
