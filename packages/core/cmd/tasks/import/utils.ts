@@ -58,10 +58,11 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		if (isYT && env.YTDLP_PROXY_PORT) {
 			ytDlpExtArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
 		}
+		let index: string | undefined = undefined
 		try {
 			const urlObj = new URL(url);
 			if (urlObj.searchParams.has('list')) {
-				const index = urlObj.searchParams.get('index') || '1';
+				index = urlObj.searchParams.get('index') || '1';
 				ytDlpExtArgs.push('--playlist-items', index);
 			} else {
 				ytDlpExtArgs.push('--no-playlist');
@@ -85,7 +86,7 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 				: sanitizeText(info.uploader ?? 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
 			ret.groupId = groupName;
-			ret.taskId = videoId;
+			ret.taskId = index ?? videoId;
 			const sessionPath = join(WORKFOLDER, ret.groupId, ret.taskId);
 
 			if (info) {

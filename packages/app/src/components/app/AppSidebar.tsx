@@ -17,10 +17,10 @@ import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
 import { ChevronRight, Folder, LayoutDashboard, Settings } from 'lucide-solid';
 import { useClientApi } from '@repo/ui/app/api/context';
-import { useQuery } from '@tanstack/solid-query';
+import { createQuery, useQuery } from '@tanstack/solid-query';
 import { GroupInfo } from '@repo/core/cmd/tasks/get_group_list';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/ui-solid/base/collapsible';
-import { Show } from 'solid-js';
+import { For, Match, Show, Switch } from 'solid-js';
 import { Separator } from '@repo/ui-solid/base/separator';
 import { cn } from '@repo/shared/lib/utils';
 import { client, rspc } from '#/integrations/rspc/rspc.ts';
@@ -31,7 +31,7 @@ const getButtonPx = (depth: number) => ({
 	'padding-right': `${(2 + 6 * depth) * 0.25}rem`,
 });
 const TaskTree = (p: {items: GroupInfo[]}) => {
-	return p.items.map(item => (<SidebarMenuItem class='h-fit '>
+	return <For each={p.items}>{item => (<SidebarMenuItem class='h-fit '>
 		<Collapsible
 			class="group/collapsible [&[data-expanded]>button>svg:first-child]:rotate-90"
 		>
@@ -61,7 +61,8 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 				</SidebarMenuSub>
 			</CollapsibleContent>
 		</Collapsible>
-	</SidebarMenuItem>))
+	</SidebarMenuItem>)}
+	</For>
 }
 
 export function AppSidebar() {
@@ -70,8 +71,8 @@ export function AppSidebar() {
 	// 		queryKey: ['groupList'],
 	// 		queryFn: () => client.query(['getGroupList', null]) 
 	// 	}))
+	
 	const groupListQ = rspc.createQuery(() => ['getGroupList', null])
-	const groupList  = () => groupListQ.data
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">
@@ -88,10 +89,17 @@ export function AppSidebar() {
 				<ScrollArea scrollbarSize={10}>
 
 				<SidebarMenu class='gap-0 p-0'>
-					{groupListQ.isLoading && <div class='p-2 text-sm text-muted-foreground'>Loading...</div>}
-					<Show when={groupList()} fallback={<div class='p-2 text-sm text-muted-foreground'>Loading...</div>}>
-						{(items)=><TaskTree items={items()} />}
-					</Show>
+					<Switch>
+						<Match when={groupListQ.isPending}>
+							<span>Loading...</span>
+						</Match>
+						<Match when={groupListQ.isError}>
+							<span>Error: {groupListQ.error?.message}</span>
+						</Match>
+						<Match when={groupListQ.isSuccess}>
+							<TaskTree items={groupListQ.data??[]} />
+						</Match>
+					</Switch>
 				</SidebarMenu>
 				</ScrollArea>
 					

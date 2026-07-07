@@ -32,11 +32,10 @@
         "@repo/ui-solid": "workspace:*",
         "@rspc/client": "0.3.1",
         "@rspc/query-core": "^0.3.1",
-        "@rspc/tauri": "0.3.1",
         "@tailwindcss/vite": "^4.3.1",
         "@tanstack/devtools-vite": "^0.8.1",
         "@tanstack/router-plugin": "^1.168.18",
-        "@tanstack/solid-query": "^5.101.1",
+        "@tanstack/solid-query": "^5.101.2",
         "@tanstack/solid-router": "^1.170.16",
         "@tauri-apps/api": "^2.11.1",
         "@tauri-apps/plugin-opener": "^2.5.4",
@@ -600,8 +599,6 @@
     "@rspc/client": ["@rspc/client@0.3.1", "", {}, "sha512-2fWjoREQu6OstOGAKKnfUw4nSFc4vASRQRBSyttXrn9cKBuiOoi75DUdYN2WdjepYQn0uih1EKKV6PwYYk7iWg=="],
 
     "@rspc/query-core": ["@rspc/query-core@0.3.1", "", { "dependencies": { "@tanstack/query-core": "^5.60.6" }, "peerDependencies": { "@rspc/client": "0.3.1" } }, "sha512-AMDDQ8zyfb71bIIL22VeuzFWbVlXdrrGOnrTybWY2XrWWEMh6zGmcxZxvqjDOFPtKT1buKUT8FTxWA/B+S7pgw=="],
-
-    "@rspc/tauri": ["@rspc/tauri@0.3.1", "", { "dependencies": { "@rspc/client": "0.3.1" }, "peerDependencies": { "@tauri-apps/api": "^2.1.1" } }, "sha512-J1gEk079tombC+uAVIofmDrxYdPPIpzeCGzC37pxO6MP7Ihm758COZlbrlEQsGpBP3jPREUZIHFyLeKnl03ydw=="],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.31.28", "", {}, "sha512-/s55Jujywdw/Jpan+vsy6JZs1z2ZTGxTmbZTPiuSL2wz9mfzA2gN1zzaqmvfi4pq+uOt7Du85fkiwv5ymW84aQ=="],
 
