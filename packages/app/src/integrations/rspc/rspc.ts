@@ -1,7 +1,6 @@
 import type { Client, OperationType, Transport } from '@rspc/client'
-import { createClient, FetchTransport } from '@rspc/client'
-import { TauriTransport } from '@rspc/tauri'
-import { isTauri } from '@tauri-apps/api/core'
+import { createClient, FetchTransport, RSPCError } from '@rspc/client'
+import { Channel, invoke, isTauri } from '@tauri-apps/api/core'
 import type { ProceduresLegacy } from './bindings'
 import { createSolidQueryHooks } from '#/integrations/rspc/query.tsx';
 
@@ -31,9 +30,26 @@ class LoggingTransport implements Transport {
   }
 }
 
+class TauriInvokeTransport implements Transport {
+  async doRequest(operation: OperationType, key: string, input: any) {
+    const channel = new Channel<{ code: number; value?: any }>()
+    const promise = new Promise<any>((resolve, reject) => {
+      channel.onmessage = (msg) => {
+        if (msg === null) return  // Done
+        if (msg.code === 200) resolve(msg.value)
+        else reject(new RSPCError(msg.code, msg.value))
+      }
+    })
+    await invoke('plugin:rspc|handle_rpc', {
+      req: { method: 'request', params: { path: key, input } },
+      channel,
+    })
+    return promise
+  }
+}
 const isTauriEnv = isTauri()
 const inner = isTauriEnv
-  ? new TauriTransport()
+  ? new TauriInvokeTransport()
   : new FetchTransport('http://localhost:19110/rspc')
 const transport = new LoggingTransport(inner, isTauriEnv ? 'IPC' : 'HTTP')
 

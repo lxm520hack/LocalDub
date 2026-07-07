@@ -90,7 +90,13 @@ pub fn build() -> Router<AppState> {
             "getGroupList",
             Procedure::<AppState, (), Vec<GroupInfo>>::builder::<RspcErr>()
                 .query(|_ctx: AppState, _input: ()| async move {
-                    get_group_list().map_err(RspcErr)
+                    eprintln!("[RSPC] ▶ query getGroupList");
+                    let result = get_group_list().map_err(RspcErr);
+                    match &result {
+                        Ok(list) => eprintln!("[RSPC] ✔ getGroupList ({} groups)", list.len()),
+                        Err(e) => eprintln!("[RSPC] ✗ getGroupList: {e:?}"),
+                    }
+                    result
                 }),
         )
 }
