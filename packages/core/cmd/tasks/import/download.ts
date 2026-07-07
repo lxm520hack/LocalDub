@@ -98,17 +98,7 @@ export async function downloadVideo(
 		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 
 	} else if (ctx.task.source === 'youtube' || ctx.task.source === 'bilibili') {
-		console.log(`[Download] video info: `, info);
-		try {
-			if (info) {
-				writeFileSync(
-					join(sessionPath, 'ytdlp_info.json'),
-					info,
-				);
-			}
-		} catch {
-			/* fall back to flat path */
-		}
+		// console.log(`[Download] video info: `, info);
 
 		emitLog(sessionPath, '[Download] Downloading video...');
 		await setStage(sessionPath, 'download', {
@@ -117,6 +107,7 @@ export async function downloadVideo(
 		});
 
 		const ytArgs: string[] = [
+			'--no-playlist',
 			'-f',
 			'bestaudio[ext=m4a]+bestvideo[ext=mp4]/best[ext=mp4]/best',
 			'--merge-output-format',

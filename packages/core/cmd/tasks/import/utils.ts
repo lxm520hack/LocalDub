@@ -17,7 +17,7 @@ import {
 import { to } from '@repo/shared/lib/utils/try.ts';
 import { startLog } from '../../../stages/utils/log.ts';
 import { copyFileSync } from '@repo/core/utils/fileOps';
-import { YOUTUBE_COOKIE_PATH } from '@repo/config/path/paths';
+import { WORKFOLDER, YOUTUBE_COOKIE_PATH } from '@repo/config/path/paths';
 import { sanitizeText } from '@repo/core/utils/utils';
 
 
@@ -58,7 +58,7 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		if (isYT && env.YTDLP_PROXY_PORT) {
 			authArgs.push('--proxy', `http://127.0.0.1:${env.YTDLP_PROXY_PORT}`);
 		}
-		const infoArgs = ['--dump-json', ...authArgs, url];
+		const infoArgs = ['--dump-json', '--no-playlist', ...authArgs, url];
 		console.log(`[autoGroupIdAndVideoId] yt-dlp`, infoArgs);
 		const infoR = spawnSync('yt-dlp', infoArgs, {
 			stdio: ['pipe', 'pipe', 'pipe'],
@@ -67,11 +67,22 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 		if (infoR.status === 0 && infoR.stdout.length > 0) {
 			const info = JSON.parse(infoR.stdout.toString());
 			info.authArgs = authArgs;
-			console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
+			// console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
 			const uploader = sanitizeText(info.uploader || '', 'unknown');
 			const videoId: string = info.id || extractVideoId(url);
 			ret.groupId = uploader;
 			ret.taskId = videoId;
+			const sessionPath = join(WORKFOLDER, ret.groupId, ret.taskId);
+
+			if (info) {
+				const [_, err] = to(()=>writeFileSync(
+					join(sessionPath, 'ytdlp_info.json'),
+					info,
+				))
+				if (err) {
+					console.warn('[Download] Failed to write ytdlp_info.json');
+				}
+			}
 			ret.info = info;
 		} else {
 			ret.taskId = extractVideoId(url);
