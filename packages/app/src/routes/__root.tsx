@@ -8,7 +8,7 @@ import type { JSX } from 'solid-js';
 import styleCss from '../styles.css?url'
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Devtools } from '@repo/ui-solid/app/devtools';
-import * as torchApi from '../fn/servers';
+import * as torchApi from '../feat/servers/servers';
 // import * as deviceApi from '../feat/env/device';
 import * as inputApi from '../fn/input';
 import { getLocale } from '@repo/shared/i18n/utils';

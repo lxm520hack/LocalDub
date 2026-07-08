@@ -5,7 +5,7 @@ import { CardX } from '@repo/ui-solid/custom/card';
 import { toastError } from '@repo/ui-solid/custom/toast';
 import { ModelServerStatus } from '@repo/core/servers/type';
 import { rspc } from '#/integrations/rspc/rspc.ts';
-import { checkTorch, checkVoxCpm, restartTorch, restartVoxCpm, startTorch, startVoxCpm, stopTorch, stopVoxCpm } from '#/fn/servers.ts';
+import { checkTorch, checkVoxCpm, restartTorch, restartVoxCpm, startTorch, startVoxCpm, stopTorch, stopVoxCpm } from '#/feat/servers/servers.ts';
 
 function fmtUptime(s: number): string {
   if (!s) return '0s';
@@ -97,7 +97,7 @@ export function ServerManager() {
     staleTime: 3000,
   }))
 
-  const voxcpmHealth = createQuery( ()=>({
+  const voxcpmHealth = createQuery(()=>({
     queryKey: ['voxcpmHealth'],
     queryFn: checkVoxCpm,
     staleTime: 3000,
@@ -138,7 +138,7 @@ export function ServerManager() {
         onRestart={() => restartTorchM.mutate()}
       />
       <ServerCard
-        name="VoxCPM Server"
+        name="VoxCPM PyTorch Server"
         running={voxcpmHealth.data?.status === 'running'}
         uptimeS={voxcpmHealth.data?.uptime_s ?? 0}
         port={voxcpmHealth.data?.port ?? 19112}

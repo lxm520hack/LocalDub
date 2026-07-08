@@ -15,8 +15,8 @@ Usage:
   const urls = await findServers('torch', 19109)
   ```
 */
-
-import { ServerType } from '@repo/core/servers/type';
+import type { ServerType } from '@repo/config/servers'
+import { SERVICE_MAP } from '@repo/config/servers'
 
 export interface ServerInfo {
   host: string
@@ -24,10 +24,6 @@ export interface ServerInfo {
   foundVia: 'mdns' | 'default' | 'portfile'
 }
 
-const SERVICE_MAP: Record<ServerType, string> = {
-  voxcpm_torch_gradio: '_localdub-voxcpm._tcp',
-  torch: '_localdub-torch._tcp',
-}
 
 /** Timeout for mDNS browse (ms). */
 const MDNS_TIMEOUT = 3000
@@ -41,7 +37,7 @@ const MDNS_TIMEOUT = 3000
  */
 export async function findServers(
   type: ServerType,
-  defaultPort = type === 'torch' ? 19109 : 19112,
+  defaultPort = type === 'voxcpm_torch_gradio' ? 19112 : 19109,
   defaultHost = '127.0.0.1',
 ): Promise<string[]> {
   const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
@@ -56,10 +52,12 @@ export async function findServers(
  */
 export async function findServer(
   type: ServerType = 'voxcpm_torch_gradio',
-  defaultPort = type === 'torch' ? 19109 : 19112,
+  defaultPort = type === 'voxcpm_torch_gradio' ? 19112 : 19109,
   defaultHost = '127.0.0.1',
 ): Promise<ServerInfo> {
+  console.log(`findServer(${type}, defaultPort=${defaultPort}, defaultHost=${defaultHost})`)
   const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
+  console.log(`findServer(${type}) => mdnsList=${JSON.stringify(mdnsList)}`)
   if (mdnsList.length > 0) {
     return { ...mdnsList[0], foundVia: 'mdns' }
   }

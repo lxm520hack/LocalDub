@@ -7,12 +7,14 @@ import { client } from '#/integrations/rspc/rspc.ts';
 let _torchPort = 19109
 let _voxcpmPort = 19112
 
-async function fetchHealth(port: number): Promise<ModelServerStatus> {
+async function fetchStats(port: number): Promise<ModelServerStatus> {
+	console.log(`fetchStats(${port})`)
 	const [res, err] = await  to(fetchStatsRes(port))
 	if (err) return { status: 'stopped', port, uptime_s: 0, models: {} }
 	if (!res.ok) return { status: 'stopped', port, uptime_s: 0, models: {} }
 	const data = await res.json() as ModelServerStatus
-	return { ...data, status: data.status === 'running' ? 'running' : 'error' }
+	console.log(`fetchStats(${port}) =>`, data)
+	return data
 }
 
 async function ping(port: number): Promise<boolean> {
@@ -25,7 +27,7 @@ async function waitForHealth(port: number, timeoutMs = 60_000): Promise<ModelSer
 	const deadline = Date.now() + timeoutMs
 	while (Date.now() < deadline) {
 		await new Promise((r) => setTimeout(r, 200))
-		const status = await fetchHealth(port)
+		const status = await fetchStats(port)
 		if (status.status === 'running') return status
 	}
 	throw new Error(`TorchServer startup timeout after ${timeoutMs}ms`)
@@ -35,16 +37,16 @@ async function waitForVoxCpm(port: number, timeoutMs = 120_000): Promise<ModelSe
 	const deadline = Date.now() + timeoutMs
 	while (Date.now() < deadline) {
 		await new Promise((r) => setTimeout(r, 200))
-		const status = await fetchHealth(port)
+		const status = await fetchStats(port)
 		if (status.status === 'running') return status
 	}
 	return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'error', device: '' } } }
 }
 
 export async function startTorch(): Promise<ModelServerStatus> {
-	const { port } = await findServer('torch', 19109)
+	const { port } = await findServer('demucs_torch_server', 19109)
 	_torchPort = port
-	if (await ping(port)) return fetchHealth(port)
+	if (await ping(port)) return fetchStats(port)
 
 	_torchPort = await client.mutation(['startTorch', null])
 	return waitForHealth(_torchPort)
@@ -73,9 +75,9 @@ export async function restartTorch(): Promise<ModelServerStatus> {
 }
 
 export async function checkTorch(): Promise<ModelServerStatus> {
-	const { port } = await findServer('torch', _torchPort)
+	const { port } = await findServer('demucs_torch_server', _torchPort)
 	_torchPort = port
-	return fetchHealth(port)
+	return fetchStats(port)
 }
 
 // VoxCPM server management
@@ -113,9 +115,11 @@ export async function startVoxCpm(): Promise<ModelServerStatus> {
 }
 
 export async function checkVoxCpm(): Promise<ModelServerStatus> {
+	console.log(`checkVoxCpm(), _voxcpmPort=${_voxcpmPort}`)
 	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
+	console.log(`checkVoxCpm() => found port=${port}`)
 	_voxcpmPort = port
-	return fetchVoxCpmHealth(port)
+	return fetchStats(port)
 }
 
 export async function stopVoxCpm(): Promise<ModelServerStatus> {
