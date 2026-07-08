@@ -12,7 +12,7 @@ export const cmdServers = async (input: InputArgs) => {
 
   if (action === 'stop') {
     const { port } = await findServer(name);
-    if (!name || name === 'torch') {
+    if (!name || name === 'demucs_torch_server') {
       await stopTorchServer(`http://127.0.0.1:${port}`);
       console.log(`[Servers] Torch server (port ${port}) stopped`);
     }
@@ -21,7 +21,7 @@ export const cmdServers = async (input: InputArgs) => {
     }
     console.log(`[Servers] (port: ${port}) stopped`);
   } else if (action === 'start') {
-    if (!name || name === 'torch') {
+    if (!name || name === 'demucs_torch_server') {
       const url = await startTorchServer();
       console.log(`[Servers] PyTorch server ready at ${url}`);
     }
@@ -32,8 +32,8 @@ export const cmdServers = async (input: InputArgs) => {
     }
   } else if (action === 'status') {
     const result: Record<string, unknown> = {};
-    if (!name || name === 'torch') {
-      const { port } = await findServer('torch');
+    if (!name || name === 'demucs_torch_server') {
+      const { port } = await findServer('demucs_torch_server');
       result.torch = await torchStatus(port);
     }
     if (!name || name === 'voxcpm_torch_gradio') {

@@ -1,5 +1,3 @@
-export const serverTypeList = [ 'voxcpm_torch_gradio', 'torch',] as const;
-export type ServerType = (typeof serverTypeList)[number];
 
 export type ModelStatus = {
   status: 'ready' | 'loading' | 'error' | 'unloaded' | 'timeout'

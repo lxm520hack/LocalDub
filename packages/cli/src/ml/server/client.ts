@@ -100,7 +100,7 @@ async function healthCheck(baseUrl: string): Promise<boolean> {
 
 export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Promise<string> {
 	// 1) Try mDNS discovery first
-	const { port } = await findServer('torch', preferredPort);
+	const { port } = await findServer('demucs_torch_server', preferredPort);
 	const baseUrl = getTorchServerUrl(port);
 	if (await healthCheck(baseUrl)) {
 		console.log(`[TorchServer] Connected to existing server at ${baseUrl}`);

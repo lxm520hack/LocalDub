@@ -1,4 +1,4 @@
-import { serverTypeList } from "@repo/core/servers/type";
+import { serverTypeList } from "@repo/config/servers";
 import { z } from "zod";
 
 export const ServersArgsSchema = z.looseObject({

@@ -57,7 +57,7 @@ export async function stageSeparate(
 	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[Separate] Using Torch server (device=${device})`);
 
-		const {port} = await findServer('torch')
+		const {port} = await findServer('demucs_torch_server')
 		const sepUrl = getTorchServerUrl(port);
 		let lastTorchPct = -1;
 		const result = await runStage(sepUrl,

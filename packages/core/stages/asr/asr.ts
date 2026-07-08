@@ -61,7 +61,7 @@ export async function stageAsr(
 
 	if (runtime === 'pytorch') {
 		emitLog(sessionPath, `[ASR] Using Torch server (device=${device})`);
-		const {port} = await findServer('torch')
+		const {port} = await findServer('demucs_torch_server')
 		const asrUrl = getTorchServerUrl(port);
 		const result = await runStage(asrUrl, 'asr', taskId, {
 			vocals_path: audioPath,
