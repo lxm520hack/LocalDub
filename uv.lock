@@ -15,9 +15,9 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "demucs-torch-server",
     "localdub",
     "servers-py",
-    "torch-server",
     "voxcpm-torch-server",
 ]
 
@@ -518,6 +518,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/60/8b/32f9823da46cde7df2087faa08cd98d01b908f8dcab982cdba9c84e85355/decorator-5.3.1.tar.gz", hash = "sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82", size = 58084, upload-time = "2026-05-18T06:03:28.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl", hash = "sha256:f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c", size = 10365, upload-time = "2026-05-18T06:03:26.517Z" },
+]
+
+[[package]]
+name = "demucs-torch-server"
+version = "0.1.0"
+source = { virtual = "packages/demucs_torch_server" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "numpy" },
+    { name = "servers-py" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi" },
+    { name = "numpy" },
+    { name = "servers-py", editable = "packages/servers_py" },
+    { name = "uvicorn", extras = ["standard"] },
 ]
 
 [[package]]
@@ -2359,7 +2378,7 @@ wheels = [
 [[package]]
 name = "servers-py"
 version = "0.1.0"
-source = { virtual = "packages/servers_py" }
+source = { editable = "packages/servers_py" }
 dependencies = [
     { name = "zeroconf" },
 ]
@@ -2732,23 +2751,6 @@ wheels = [
 ]
 
 [[package]]
-name = "torch-server"
-version = "0.1.0"
-source = { virtual = "packages/torch_server" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "numpy" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi" },
-    { name = "numpy" },
-    { name = "uvicorn", extras = ["standard"] },
-]
-
-[[package]]
 name = "torchaudio"
 version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2961,6 +2963,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "gradio" },
     { name = "numpy" },
+    { name = "servers-py" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -2969,6 +2972,7 @@ requires-dist = [
     { name = "fastapi" },
     { name = "gradio", specifier = ">=6,<7" },
     { name = "numpy" },
+    { name = "servers-py", editable = "packages/servers_py" },
     { name = "uvicorn", extras = ["standard"] },
 ]
 

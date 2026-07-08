@@ -8,4 +8,5 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = []
+where = ["."]
+include = ["servers_py*"]

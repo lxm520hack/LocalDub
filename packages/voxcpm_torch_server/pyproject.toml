@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Local VoxCPM TTS Gradio server"
 requires-python = ">=3.12"
 dependencies = [
+    "servers-py",
     "gradio>=6,<7",
     "fastapi",
     "uvicorn[standard]",
