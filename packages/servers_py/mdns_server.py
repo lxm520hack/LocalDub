@@ -16,8 +16,8 @@ import sys
 from typing import Any
 
 SERVICE_TYPES = {
-    "torch": "_localdub-torch._tcp",
-    "voxcpm": "_localdub-voxcpm._tcp",
+    "torch": "_localdub-torch._tcp.local.",
+    "voxcpm": "_localdub-voxcpm._tcp.local.",
 }
 
 def _hostname() -> str:
