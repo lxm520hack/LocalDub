@@ -112,6 +112,7 @@ sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "demucs")
 sys.path.insert(0, str(REPO_ROOT / "packages" / "cli" / "src" / "ml" / "whisper"))
 
 # mDNS service discovery
+sys.path.insert(0, str(REPO_ROOT / "packages" / "servers_py"))
 from mdns_server import register_service, unregister_service  # noqa: E402
 
 from torch_server_separate import handle_separate  # noqa: PLC0414,E402

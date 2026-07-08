@@ -21,7 +21,7 @@ _START_TIME: float = time.time()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-sys.path.insert(0, str(REPO_ROOT / "packages" / "torch_server"))
+sys.path.insert(0, str(REPO_ROOT / "packages" / "servers_py"))
 from mdns_server import register_service, unregister_service  # noqa: E402
 
 

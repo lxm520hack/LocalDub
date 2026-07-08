@@ -41,6 +41,8 @@ voxcpm = [
   "sortedcontainers",
   "spaces",
   "argbind",
+  "fastapi",
+  "uvicorn[standard]",
 ]
 all = [
   "localdub[demucs,voxcpm]",
