@@ -236,7 +236,7 @@ def main() -> None:
     _MODEL_DIR = args.model_dir
 
     # Register mDNS so CLI/UI can discover the actual port
-    _mdns_zc = register_service("voxcpm", args.port)
+    _mdns_zc = register_service("voxcpm_torch_gradio", args.port)
 
     import uvicorn
 

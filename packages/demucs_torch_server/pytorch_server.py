@@ -308,7 +308,7 @@ def main() -> None:
     _SERVER_PORT = args.http_port
 
     # Register mDNS so CLI/UI can discover the actual port
-    _mdns_zc = register_service("torch", args.http_port)
+    _mdns_zc = register_service("demucs_torch_server", args.http_port)
     print(f"PORT={args.http_port}", flush=True)
     print(
         f"[TorchServer] Starting HTTP server on {args.host}:{args.http_port}",

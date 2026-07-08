@@ -3,7 +3,7 @@
 Usage:
     from mdns_server import register_service, unregister_service
 
-    reg = register_service("_localdub-torch._tcp", port=19109)
+    reg = register_service("demucs_torch_server", port=19109)
     # ... server runs ...
     unregister_service(reg)
 """
@@ -16,8 +16,8 @@ import sys
 from typing import Any
 
 SERVICE_TYPES = {
-    "torch": "_localdub-torch._tcp.local.",
-    "voxcpm": "_localdub-voxcpm._tcp.local.",
+    "demucs_torch_server": "_ld-demucs-py._tcp.local.",
+    "voxcpm_torch_gradio": "_ld-voxcpm-py._tcp.local.",
 }
 
 def _hostname() -> str:

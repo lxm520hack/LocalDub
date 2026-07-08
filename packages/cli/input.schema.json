@@ -210,7 +210,7 @@
           "type": "string",
           "enum": [
             "voxcpm_torch_gradio",
-            "torch"
+            "demucs_torch_server"
           ]
         }
       },

@@ -82,7 +82,7 @@ export async function findServerViaMdnsAll(
       resolve(results)
     }, timeoutMs)
 
-    const browser = bonjour.find({ type: serviceType.replace(/^_|\._tcp$/g, '') }, (svc) => {
+    const browser = bonjour.find({ type: serviceType.replace(/^_|\._tcp\.local$/g, '') }, (svc) => {
       const entry = { host: svc.referer?.address ?? '127.0.0.1', port: svc.port }
       // Deduplicate
       if (!results.some((r) => r.host === entry.host && r.port === entry.port)) {
