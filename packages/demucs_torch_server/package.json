@@ -1,5 +1,5 @@
 {
-  "name": "@repo/torch-server",
+  "name": "@repo/demucs-torch-server",
   "private": true,
   "type": "module",
   "scripts": {

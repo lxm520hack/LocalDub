@@ -22,9 +22,9 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/torch_server': {
+      '/demucs_torch_server': {
         target: 'http://127.0.0.1:19109',
-        rewrite: (path) => path.replace(/^\/torch_server/, ''),
+        rewrite: (path) => path.replace(/^\/demucs_torch_server/, ''),
       },
     },
   },

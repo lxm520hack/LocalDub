@@ -1,0 +1,13 @@
+[project]
+name = "torch-server"
+version = "0.1.0"
+description = "Local ML Torch server"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "numpy",
+]
+
+[tool.setuptools.packages.find]
+include = []

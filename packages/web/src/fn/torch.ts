@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/solid-start'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { delimiter, join } from 'node:path'
 import { REPO_ROOT } from '@repo/config'
+import { demucs_torch_server } from '@repo/config/path/scripts'
 import { findServer, readPortFromOutput } from '../../../core/servers/discovery'
 import type { ModelServerStatus } from '@repo/core/servers/type'
 
@@ -40,7 +41,7 @@ export const startTorch = createServerFn().handler(async (): Promise<ModelServer
 	if (await ping(port)) return fetchHealth(port)
 
 	const pyBin = join(REPO_ROOT, '.venv', 'bin', 'python')
-	const scriptPath = join(REPO_ROOT, 'packages', 'torch_server', 'pytorch_server.py')
+	const scriptPath = demucs_torch_server
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src')
 
 	const env: Record<string, string> = {

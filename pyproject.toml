@@ -41,16 +41,17 @@ voxcpm = [
   "sortedcontainers",
   "spaces",
   "argbind",
-  "fastapi",
-  "uvicorn[standard]",
 ]
 all = [
   "localdub[demucs,voxcpm]",
 ]
 
 [project.scripts]
-torch-server = "torch_server.pytorch_server:main"
+demucs-torch-server = "demucs_torch_server.pytorch_server:main"
 voxcpm-server = "voxcpm_torch_server.server:main"
 
 [tool.setuptools.packages.find]
 include = []
+
+[tool.uv.workspace]
+members = ["packages/voxcpm_torch_server", "packages/demucs_torch_server", "packages/servers_py"]

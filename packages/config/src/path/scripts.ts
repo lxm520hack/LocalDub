@@ -10,3 +10,6 @@ export const faster_whisper_py = path.join(		REPO_ROOT,
     'runtime',
 		'faster_whisper_py.py',
 )
+
+export const demucs_torch_server = path.join(REPO_ROOT,
+		'packages', 'demucs_torch_server', 'pytorch_server.py')

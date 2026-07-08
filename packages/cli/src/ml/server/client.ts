@@ -3,6 +3,7 @@ import { delimiter, join } from 'node:path';
 import { findServer } from '@repo/core/servers/discovery';
 import { ModelServerStatus } from '@repo/core/servers/type';
 import { pythonBin } from '@repo/config/path/bin';
+import { demucs_torch_server } from '@repo/config/path/scripts';
 import { REPO_ROOT } from '@repo/config/root';
 
 export const fetchStatsRes = (port: number) => fetch(`http://127.0.0.1:${port}/status`, {
@@ -110,9 +111,7 @@ export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Pr
 	// 2) Spawn detached Torch server
 	console.log('[TorchServer] Spawning ML torch server...');
 	const pyBin = pythonBin();
-	const scriptPath = join(
-		REPO_ROOT, 'packages', 'torch_server', 'pytorch_server.py',
-	);
+	const scriptPath = demucs_torch_server;
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
 	const env: Record<string, string> = {

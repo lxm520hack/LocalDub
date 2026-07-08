@@ -20,7 +20,7 @@ SSE events from /api/run/{stage}:
   data: {"message":"..."}
 
 Usage (detached, spawned by TS):
-  .venv/bin/python packages/torch_server/pytorch_server.py --http-port 19109
+  .venv/bin/python packages/demucs_torch_server/pytorch_server.py --http-port 19109
 
 Check health:
   curl http://127.0.0.1:19109/api/health
