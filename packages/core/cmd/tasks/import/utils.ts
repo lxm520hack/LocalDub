@@ -76,7 +76,22 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 			stdio: ['pipe', 'pipe', 'pipe'],
 			timeout: 30_000,
 		});
-		if (infoR.status === 0 && infoR.stdout.length > 0) {
+		ret.ytDlpExtArgs = ytDlpExtArgs;
+		if (infoR.status !== 0) {
+			const stderr = infoR.stderr.toString();
+			console.warn(`[autoGroupIdAndVideoId] yt-dlp failed:`, stderr);
+			if (/Sign in to confirm|no longer valid/i.test(stderr)) {
+				throw new Error(
+						`YouTube cookie expired or invalid.\n` +
+						`Export fresh cookies with your browser, then run:\n` +
+						`  command: cookie\n` +
+						`in input.json, with the Netscape cookie content.`
+				);
+			} else if (/^ERROR:/im.test(stderr)) {
+				throw new Error(`yt-dlp exit`);
+			}
+		}
+		if (infoR.stdout.length > 0) {
 			const info = JSON.parse(infoR.stdout.toString());
 			// console.log(`[autoGroupIdAndVideoId] yt-dlp info:`, info);
 			const groupName = info.playlist_title && info.uploader 
@@ -99,7 +114,6 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 					console.warn('[Download] Failed to write ytdlp_info.json', err);
 				}
 			}
-			ret.ytDlpExtArgs = ytDlpExtArgs;
 		} else {
 			ret.taskId = extractVideoId(url);
 		}

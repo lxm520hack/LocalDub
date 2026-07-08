@@ -105,7 +105,7 @@ export async function downloadVideo(
 			last_message: 'Downloading video...',
 			progress: 0,
 		});
-
+		ytDlpExtArgs.push('--remote-components', 'ejs:github')
 		const ytArgs: string[] = [
 			'-f',
 			'bestaudio[ext=m4a]+bestvideo[ext=mp4]/best[ext=mp4]/best',
@@ -126,10 +126,14 @@ export async function downloadVideo(
 
 		const dlErr = r.error;
 		if (dlErr) throw new Error(`yt-dlp: ${dlErr.message}`);
-		if (r.status !== 0)
-			throw new Error(
-				`yt-dlp exit ${r.status}: ${r.stderr.toString().slice(0, 200)}`,
-			);
+		if (r.status !== 0) {
+			const stderr = r.stderr.toString();
+	
+			console.warn(`[Download] yt-dlp failed:`, stderr);
+			if (/^ERROR:/im.test(stderr)) {
+				throw new Error(`yt-dlp exit ${r.status}: ${stderr}`);
+			}
+		}
 
 		if (!existsSync(videoPath))
 			throw new Error('yt-dlp did not produce video_source.mp4');
