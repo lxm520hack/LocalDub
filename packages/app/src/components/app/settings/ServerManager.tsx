@@ -22,6 +22,9 @@ function ServerCard(props: {
   port: number;
   models: Record<string, { status: string; device: string }>;
   busy: boolean;
+  status?: ModelServerStatus
+  error?: Error | null
+  isLoading?: boolean
   onStart: () => void;
   onStop: () => void;
   onRestart: () => void;
@@ -33,8 +36,9 @@ function ServerCard(props: {
           class="w-3 h-3 rounded-full shrink-0"
           style={{ 'background-color': props.running ? '#22c55e' : '#ef4444' }}
         />
+        <span>{props.error ? props.error.message :  props.status?.status}</span>
         <span class="font-medium">{props.name}</span>
-        <span class="text-sm text-gray-500 ml-auto">
+        <span class="text-sm text-gray-500 ">
           {props.busy
             ? 'working...'
             : props.running
@@ -128,6 +132,7 @@ export function ServerManager() {
     <div class="space-y-4">
       <ServerCard
         name="Torch Server"
+        status={torchHealth.data}
         running={torchHealth.data?.status === 'running'}
         uptimeS={torchHealth.data?.uptime_s ?? 0}
         port={torchHealth.data?.port ?? 19109}
@@ -139,6 +144,9 @@ export function ServerManager() {
       />
       <ServerCard
         name="VoxCPM PyTorch Server"
+        status={voxcpmHealth.data}
+        isLoading={voxcpmHealth.isLoading}
+        error={voxcpmHealth.error}
         running={voxcpmHealth.data?.status === 'running'}
         uptimeS={voxcpmHealth.data?.uptime_s ?? 0}
         port={voxcpmHealth.data?.port ?? 19112}
