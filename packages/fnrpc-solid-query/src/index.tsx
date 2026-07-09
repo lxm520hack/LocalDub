@@ -1,68 +1,119 @@
 import type { Client, Procedures } from "@fnrpc/client";
 import * as solid from "solid-js";
-import * as queryCore from "@fnrpc/query-core";
+import * as tanstackQuery from "@fnrpc/tanstack-query";
 import * as tanstack from "@tanstack/solid-query";
 
-export * from "@fnrpc/query-core";
-
-// const _store: { client: null | Client<any>; queryClient: null | tanstack.QueryClient } = {
-// 	client: null,
-// 	queryClient: null,
-// };
-
-export function createSolidQueryHooks<P extends Procedures>(ctx: queryCore.Context<P>) {
-	const helpers = queryCore.createHookHelpers({
-		useContext: () => ctx,
-	});
+export function createSolidQueryHooks<P extends Procedures>(
+	ctx: tanstackQuery.Context<P>,
+) {
+	type K = keyof P & string;
 
 	function useUtils() {
 		if (!ctx.client || !ctx.queryClient)
 			throw new Error(
 				"The fnrpc context has not been set. Ensure the <fnrpc.Provider> component is higher up in your component tree.",
 			);
-		return queryCore.createUtils(ctx.client, ctx.queryClient);
+		return tanstackQuery.createUtils(ctx.client, ctx.queryClient);
 	}
 
-	type K = keyof P & string;
-
 	function createQuery<T extends K>(
-		keyAndInput: solid.Accessor<queryCore.QueryKeyAndInputOrSkip<P, T>>,
-		opts?: solid.Accessor<queryCore.WrapQueryOptions<P, tanstack.CreateQueryOptions<P[T]["output"], unknown, P[T]["output"], queryCore.QueryKeyAndInput<P, T>>>>,
-	) {
-		return tanstack.createQuery(() =>
-			helpers.useQueryArgs(
-				keyAndInput() as any,
-				opts?.(),
-			) as any,
-		);
+		keyAndInput: solid.Accessor<
+			tanstackQuery.QueryKeyAndInput<P, T> | [T, typeof tanstackQuery.skipToken]
+		>,
+		opts?: solid.Accessor<
+			Omit<
+				tanstack.CreateQueryOptions<
+					P[T]["output"],
+					Error,
+					P[T]["output"],
+					tanstackQuery.QueryKeyAndInput<P, T>
+				>,
+				"queryKey" | "queryFn"
+			> & {
+				initialData: 
+					| P[T]["output"]
+					| (()=> P[T]["output"])
+			}
+		> ,
+	): tanstack.CreateQueryResult<P[T]["output"], Error> {
+		return (tanstack.createQuery)(() => {
+			const args = keyAndInput();
+			const [key, ...rest] = args;
+			const opts_ = () => opts?.() ?? { initialData: undefined }; 
+			if (rest[0] === tanstackQuery.skipToken) {
+				return tanstack.queryOptions({ ...opts_(), 
+					queryKey: args as [T] | [T, P[T]["input"]], 
+					queryFn: tanstackQuery.skipToken, enabled: false });
+			}
+
+			const input = rest[0] as P[T]["input"];
+			return tanstack.queryOptions({ 
+				...opts_(), 
+				...tanstackQuery.createQueryOptions(ctx.client, key, input) 
+			});
+		}) as tanstack.CreateQueryResult<P[T]["output"], Error>;
 	}
 
 	function createMutation<T extends K>(
 		key: solid.Accessor<T>,
-		opts?: solid.Accessor<queryCore.WrapMutationOptions<P, tanstack.CreateMutationOptions<P[T]["output"], unknown, P[T]["input"], unknown>>>,
+		opts?: solid.Accessor<
+			Omit<
+				tanstack.CreateMutationOptions<
+					P[T]["output"],
+					Error,
+					P[T]["input"],
+					Error
+				>,
+				"mutationKey" | "mutationFn"
+			>
+		>,
 	) {
-		return tanstack.createMutation(() =>
-			helpers.useMutationArgs(
-				key(),
-				opts?.(),
-			) as any,
-		);
+		return tanstack.createMutation(() => ({
+			...opts?.(),
+			mutationKey: [key()],
+			mutationFn: (input: P[T]["input"]) =>
+				tanstackQuery.callMutation(ctx.client, key(), input),
+		}));
 	}
 
 	function createSubscription<T extends K>(
-		keyAndInput: () => queryCore.QueryKeyAndInputOrSkip<P, T>,
-		opts: () => queryCore.SubscriptionOptions<P, T>,
+		keyAndInput: () => tanstackQuery.QueryKeyAndInput<P, T> | [T, typeof tanstackQuery.skipToken],
+		opts: () => tanstackQuery.SubscriptionOptions<P, T>,
 	) {
 		solid.createEffect(
 			solid.on(
 				() => [keyAndInput(), opts()] as const,
-				([keyAndInput, opts]) => {
-					const unsubscribe = helpers.handleSubscription(
-						keyAndInput as any,
-						() => opts as any,
-					ctx.client as any,
-					);
-					solid.onCleanup(() => unsubscribe?.());
+				([ki, options]) => {
+					const [key, ...rest] = ki;
+					const input = rest[0] as P[T]["input"] | undefined;
+
+					if (!(options.enabled ?? true) || rest[0] === tanstackQuery.skipToken) return;
+
+					const client = options.client ?? ctx.client;
+					let isStopped = false;
+
+					const segments = (key as string).split(".");
+					let proxy: any = client as any;
+					for (const segment of segments) {
+						proxy = proxy[segment];
+					}
+
+					proxy
+						.subscribe(input)
+						?.then?.((unsub: () => void) => {
+							if (isStopped) {
+								unsub();
+								return;
+							}
+							options.onStarted?.();
+						})
+						.catch((err: unknown) => {
+							if (!isStopped) options.onError?.(err);
+						});
+
+					solid.onCleanup(() => {
+						isStopped = true;
+					});
 				},
 			),
 		);
@@ -76,7 +127,7 @@ export function createSolidQueryHooks<P extends Procedures>(ctx: queryCore.Conte
 		}): solid.JSX.Element => {
 			ctx.client = props.client;
 			ctx.queryClient = props.queryClient;
-			 return props.children;
+			return props.children;
 		},
 		useUtils,
 		createQuery,

@@ -22,11 +22,11 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
+    "@fnrpc/tanstack-query": "workspace:*",
     "solid-js": "^1.9.13"
   },
   "peerDependencies": {
     "@fnrpc/client": "workspace:*",
-    "@fnrpc/query-core": "workspace:*",
     "@tanstack/solid-query": "^5.101.2"
   },
   "devDependencies": {

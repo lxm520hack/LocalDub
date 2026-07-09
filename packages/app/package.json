@@ -33,6 +33,7 @@
     "@repo/ui-solid": "workspace:*",
     "@fnrpc/client": "workspace:*",
     "@fnrpc/solid-query": "workspace:*",
+    "@fnrpc/tanstack-query": "workspace:*",
     "@rspc/client": "0.3.1",
     "@rspc/query-core": "^0.3.1",
     "@tailwindcss/vite": "^4.3.1",
