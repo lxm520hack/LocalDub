@@ -2,6 +2,6 @@
 
 export type GreetInput = { name: string }
 export type GreetOutput = { message: string }
-export interface Procedures {
+export type Procedures = {
   greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
 }

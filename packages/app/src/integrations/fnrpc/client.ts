@@ -1,9 +1,10 @@
-import { createClient, fetchExecute, tauriExecute } from "@fnrpc/client";
+import { createClient, fetchExecute, tauriExecute, ExecuteArgs } from "@fnrpc/client";
 import type { Procedures } from "./bindings";
+import { isTauri } from "@tauri-apps/api/core";
 
-const isTauri =
-	typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 export const client = createClient<Procedures>(
-	isTauri ? tauriExecute() : fetchExecute({ url: "http://localhost:19110/fnrpc" }),
+	isTauri() 
+		? tauriExecute() 
+		: (args) => fetchExecute({ url: "http://localhost:19110/fnrpc" }, args),
 );

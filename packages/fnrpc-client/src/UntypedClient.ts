@@ -72,16 +72,15 @@ export const fetchExecute = (
 		});
 	}
 
-	return observable((subscriber) => {
+	return observable<ExeceuteData>((subscriber) => {
 		promise
 			.then(async (r) => {
-				let json;
-
 				if (r.status === 200) {
-					subscriber.next(await r.json());
-				} else json = (await r.json()) as [];
-
-				json;
+					subscriber.next({ code: 200, value: await r.json() });
+				} else {
+					const err = await r.json();
+					subscriber.next({ code: r.status, value: err });
+				}
 			})
 			.finally(() => subscriber.complete());
 	});

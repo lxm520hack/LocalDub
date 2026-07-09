@@ -1,9 +1,9 @@
 import { observable } from "./UntypedClient";
-import type { ExecuteArgs } from "./types";
+import type { ExecuteArgs, ExeceuteData, ExecuteFn } from "./types";
 
-export function tauriExecute() {
+export function tauriExecute(): ExecuteFn {
 	return (args: ExecuteArgs) =>
-		observable((subscriber) => {
+		observable<ExeceuteData>((subscriber) => {
 			import("@tauri-apps/api/core")
 				.then(({ invoke }) =>
 					invoke("rpc_fn", { method: args.path, input: args.input }),
