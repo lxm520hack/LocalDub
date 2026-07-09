@@ -141,21 +141,42 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
 
     let struct_name = syn::Ident::new(&format!("{}__FnRpc", fn_name), fn_name.span());
 
-    let expanded = quote! {
-        #input_fn
+    let expanded = if has_ctx {
+        quote! {
+            #input_fn
 
-        #[allow(non_camel_case_types, dead_code)]
-        #fn_vis struct #struct_name;
+            #[allow(non_camel_case_types, dead_code)]
+            #fn_vis struct #struct_name;
 
-        #[async_trait::async_trait]
-        impl fnrpc::handler::RpcFn<#ctx_ty> for #struct_name {
-            type Input = #input_ty;
-            type Output = #output_ty;
-            const NAME: &'static str = stringify!(#fn_name);
-            const KIND: &'static str = #kind;
+            #[async_trait::async_trait]
+            impl fnrpc::handler::RpcFn<#ctx_ty> for #struct_name {
+                type Input = #input_ty;
+                type Output = #output_ty;
+                const NAME: &'static str = stringify!(#fn_name);
+                const KIND: &'static str = #kind;
 
-            async fn exec(ctx: &#ctx_ty, input: Self::Input) -> Result<Self::Output, fnrpc::error::RpcErr> {
-                #exec_body
+                async fn exec(ctx: &#ctx_ty, input: Self::Input) -> Result<Self::Output, fnrpc::error::RpcErr> {
+                    #exec_body
+                }
+            }
+        }
+    } else {
+        quote! {
+            #input_fn
+
+            #[allow(non_camel_case_types, dead_code)]
+            #fn_vis struct #struct_name;
+
+            #[async_trait::async_trait]
+            impl<T: Send + Sync + 'static> fnrpc::handler::RpcFn<T> for #struct_name {
+                type Input = #input_ty;
+                type Output = #output_ty;
+                const NAME: &'static str = stringify!(#fn_name);
+                const KIND: &'static str = #kind;
+
+                async fn exec(_ctx: &T, input: Self::Input) -> Result<Self::Output, fnrpc::error::RpcErr> {
+                    #exec_body
+                }
             }
         }
     };

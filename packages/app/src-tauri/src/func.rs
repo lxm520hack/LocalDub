@@ -4,11 +4,14 @@ use specta::Type;
 use crate::state::Ctx;
 
 #[fnrpc::rpc_query]
-pub async fn health_check(_ctx: &Ctx) -> String {
-    "ok".to_string()
+pub async fn health_check() -> &'static str {
+    "ok"
 }
 
-// --- Greet (测试函数) ---
+#[fnrpc::rpc_query]
+pub async fn add(input: (i32, i32)) -> Result<i32, String> {
+    Ok(input.0 + input.1)
+}
 
 #[derive(Debug, Serialize, Deserialize, Type)]
 pub struct GreetInput {
@@ -23,13 +26,12 @@ pub struct GreetOutput {
 #[fnrpc::rpc_query]
 pub async fn greet(ctx: &Ctx, input: GreetInput) -> Result<GreetOutput, String> {
     Ok(GreetOutput {
-        message: format!("hello {} (root: {})", input.name, ctx.state.repo_root.display()),
+        message: format!(
+            "hello {} (root: {})",
+            input.name,
+            ctx.state.repo_root.display()
+        ),
     })
-}
-
-#[fnrpc::rpc_query]
-pub async fn add(_ctx: &Ctx, input: (i32, i32)) -> Result<i32, String> {
-    Ok(input.0 + input.1)
 }
 
 // #[fnrpc::rpc_query]

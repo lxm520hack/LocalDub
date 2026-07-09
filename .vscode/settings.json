@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
-    "bilibili"
+    "bilibili",
+    "fnrpc",
+    "specta"
   ],
   "js/ts.experimental.useTsgo": true,
   "explorer.fileNesting.patterns": {
