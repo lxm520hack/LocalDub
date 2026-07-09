@@ -107,7 +107,7 @@ async fn test_manual_rpc() {
     // Unknown method
     let err = router.dispatch(&(), "nonexistent", serde_json::json!(null)).await;
     assert!(err.is_err());
-    assert!(err.unwrap_err().to_string().contains("unknown method"));
+    assert!(err.unwrap_err().to_string().contains("unknown path"));
 }
 
 #[tokio::test]
@@ -206,8 +206,8 @@ struct PrefixService {
 
 #[async_trait::async_trait]
 impl fnrpc::middleware::FnService<()> for PrefixService {
-    async fn call(&self, ctx: &(), method: &str, input: serde_json::Value) -> Result<serde_json::Value, fnrpc::error::RpcErr> {
-        let result = self.inner.call(ctx, method, input).await?;
+    async fn call(&self, ctx: &(), path: &str, input: serde_json::Value) -> Result<serde_json::Value, fnrpc::error::RpcErr> {
+        let result = self.inner.call(ctx, path, input).await?;
         let s = result.as_str().unwrap_or("");
         Ok(serde_json::json!(format!("layered:{s}")))
     }
@@ -231,11 +231,11 @@ async fn test_hook_layer() {
         .route(macro_health__FnRpc)
         .layer(
             HookLayer::new()
-                .before(move |_ctx, method, _input| {
-                    log_clone.lock().unwrap().push(format!("before:{method}"));
+                .before(move |_ctx, path, _input| {
+                    log_clone.lock().unwrap().push(format!("before:{path}"));
                     Ok(())
                 })
-                .after(move |_ctx, _method, result| {
+                .after(move |_ctx, _path, result| {
                     if let Ok(val) = result {
                         *val = serde_json::json!("hooked");
                     }
@@ -252,7 +252,7 @@ async fn test_multiple_layers() {
     let router = RpcRouter::<()>::new()
         .route(macro_health__FnRpc)
         .layer(PrefixLayer)
-        .layer(HookLayer::new().after(|_ctx, _method, result| {
+        .layer(HookLayer::new().after(|_ctx, _path, result| {
             if let Ok(val) = result {
                 *val = serde_json::json!("wrapped");
             }

@@ -6,7 +6,7 @@ export function tauriExecute(): ExecuteFn {
 		observable<ExeceuteData>((subscriber) => {
 			import("@tauri-apps/api/core")
 				.then(({ invoke }) =>
-					invoke("rpc_fn", { method: args.path, input: args.input ?? null }),
+					invoke("rpc_fn", { path: args.path, input: args.input ?? null }),
 				)
 				.then((value) => subscriber.next({ code: 200, value }))
 				.catch((err) => {

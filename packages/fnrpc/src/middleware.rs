@@ -8,14 +8,14 @@ use crate::error::RpcErr;
 /// Core service trait — call a method with JSON input, get JSON output.
 #[async_trait]
 pub trait FnService<Ctx>: Send + Sync {
-    async fn call(&self, ctx: &Ctx, method: &str, input: Value) -> Result<Value, RpcErr>;
+    async fn call(&self, ctx: &Ctx, path: &str, input: Value) -> Result<Value, RpcErr>;
 }
 
 /// Blanket impl so `Box<dyn FnService<Ctx>>` works as a service.
 #[async_trait]
 impl<Ctx: Send + Sync> FnService<Ctx> for Box<dyn FnService<Ctx>> {
-    async fn call(&self, ctx: &Ctx, method: &str, input: Value) -> Result<Value, RpcErr> {
-        (**self).call(ctx, method, input).await
+    async fn call(&self, ctx: &Ctx, path: &str, input: Value) -> Result<Value, RpcErr> {
+        (**self).call(ctx, path, input).await
     }
 }
 
@@ -74,13 +74,13 @@ struct HookService<Ctx> {
 
 #[async_trait]
 impl<Ctx: Send + Sync + 'static> FnService<Ctx> for HookService<Ctx> {
-    async fn call(&self, ctx: &Ctx, method: &str, mut input: Value) -> Result<Value, RpcErr> {
+    async fn call(&self, ctx: &Ctx, path: &str, mut input: Value) -> Result<Value, RpcErr> {
         if let Some(ref before) = self.before {
-            before(ctx, method, &mut input)?;
+            before(ctx, path, &mut input)?;
         }
-        let mut result = self.inner.call(ctx, method, input).await;
+        let mut result = self.inner.call(ctx, path, input).await;
         if let Some(ref after) = self.after {
-            after(ctx, method, &mut result);
+            after(ctx, path, &mut result);
         }
         result
     }
@@ -109,16 +109,16 @@ struct TracingService<Ctx> {
 #[cfg(feature = "tracing")]
 #[async_trait]
 impl<Ctx: Send + Sync + 'static> FnService<Ctx> for TracingService<Ctx> {
-    async fn call(&self, ctx: &Ctx, method: &str, input: Value) -> Result<Value, RpcErr> {
+    async fn call(&self, ctx: &Ctx, path: &str, input: Value) -> Result<Value, RpcErr> {
         let start = std::time::Instant::now();
         let input_str = serde_json::to_string(&input).unwrap_or_default();
-        let result = self.inner.call(ctx, method, input).await;
+        let result = self.inner.call(ctx, path, input).await;
         let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
         match &result {
             Ok(output) => {
                 let output_str = serde_json::to_string(output).unwrap_or_default();
                 tracing::info!(
-                    method = %method,
+                    path = %path,
                     input = %input_str,
                     output = %output_str,
                     latency_ms = %latency_ms,
@@ -127,7 +127,7 @@ impl<Ctx: Send + Sync + 'static> FnService<Ctx> for TracingService<Ctx> {
             }
             Err(e) => {
                 tracing::error!(
-                    method = %method,
+                    path = %path,
                     input = %input_str,
                     error = %e,
                     latency_ms = %latency_ms,

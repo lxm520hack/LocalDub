@@ -16,11 +16,11 @@ use crate::state::AppState;
 async fn fnrpc_handler(
     Extension(router): Extension<RpcRouter<AppState>>,
     Extension(state): Extension<AppState>,
-    Path(method): Path<String>,
+    Path(path): Path<String>,
     Json(input): Json<Value>,
 ) -> Json<Value> {
     let result = router
-        .dispatch(&state, &method, input)
+        .dispatch(&state, &path, input)
         .await
         .unwrap_or_default();
     Json(result)
@@ -29,7 +29,7 @@ async fn fnrpc_handler(
 async fn fnrpc_get_handler(
     Extension(router): Extension<RpcRouter<AppState>>,
     Extension(state): Extension<AppState>,
-    Path(method): Path<String>,
+    Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<Value> {
     let input: Value = params
@@ -37,7 +37,7 @@ async fn fnrpc_get_handler(
         .and_then(|s| serde_json::from_str(s).ok())
         .unwrap_or(Value::Null);
     let result = router
-        .dispatch(&state, &method, input)
+        .dispatch(&state, &path, input)
         .await
         .unwrap_or_default();
     Json(result)
@@ -58,9 +58,9 @@ pub async fn start(
     let app = Router::new()
         .nest("/rspc", rspc_router)
         .route(
-    "/fnrpc/:method",
-    axum::routing::get(fnrpc_get_handler).post(fnrpc_handler),
-)
+            "/fnrpc/:path",
+            axum::routing::get(fnrpc_get_handler).post(fnrpc_handler),
+        )
         .layer(CorsLayer::permissive())
         .layer(Extension(fnrpc_router))
         .layer(Extension(state))

@@ -58,7 +58,7 @@ where
     pub async fn dispatch(
         &self,
         ctx: &Ctx,
-        method: &str,
+        path: &str,
         input: Value,
     ) -> Result<Value, RpcErr> {
         let mut svc: Box<dyn FnService<Ctx>> = Box::new(RouterService {
@@ -67,7 +67,7 @@ where
         for layer in self.inner.layers.iter() {
             svc = layer.layer(svc);
         }
-        svc.call(ctx, method, input).await
+        svc.call(ctx, path, input).await
     }
 
     /// Generate TypeScript type definitions and a Procedures interface.
@@ -119,11 +119,11 @@ struct RouterService<Ctx> {
 
 #[async_trait::async_trait]
 impl<Ctx: Send + Sync + 'static> FnService<Ctx> for RouterService<Ctx> {
-    async fn call(&self, ctx: &Ctx, method: &str, input: Value) -> Result<Value, RpcErr> {
+    async fn call(&self, ctx: &Ctx, path: &str, input: Value) -> Result<Value, RpcErr> {
         let handler = self
             .handlers
-            .get(method)
-            .ok_or_else(|| RpcErr(format!("unknown method: {method}")))?;
+            .get(path)
+            .ok_or_else(|| RpcErr(format!("unknown path: {path}")))?;
         handler.call(ctx, input).await
     }
 }

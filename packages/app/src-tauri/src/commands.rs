@@ -15,11 +15,11 @@ use crate::state::AppState;
 pub async fn rpc_fn(
     router: tauri::State<'_, RpcRouter<AppState>>,
     state: tauri::State<'_, AppState>,
-    method: String,
+    path: String,
     input: Value,
 ) -> Result<Value, String> {
     router
-        .dispatch(state.inner(), &method, input)
+        .dispatch(state.inner(), &path, input)
         .await
         .map_err(|e| e.to_string())
 }
