@@ -31,7 +31,12 @@ export function createSolidQueryHooks<P extends Procedures>() {
 	function createQuery<T extends K>(
 		keyAndInput: solid.Accessor<queryCore.QueryKeyAndInputOrSkip<P, T>>,
 		opts?: solid.Accessor<queryCore.WrapQueryOptions<P, tanstack.CreateQueryOptions<P[T]["output"], unknown, P[T]["output"], queryCore.QueryKeyAndInput<P, T>>>>,
-	) {
+	): tanstack.CreateQueryResult<P[T]["output"], unknown>;
+	function createQuery<T extends K>(
+		keyAndInput: solid.Accessor<queryCore.QueryKeyAndInputOrSkip<P, T>>,
+		opts?: solid.Accessor<queryCore.WrapQueryOptions<P, tanstack.CreateQueryOptions<P[T]["output"], unknown, P[T]["output"], queryCore.QueryKeyAndInput<P, T>>>>,
+	): tanstack.QueryObserverResult<P[T]["output"], unknown> {
+		console.log('createQuery', keyAndInput(), opts?.())
 		return tanstack.createQuery(() =>
 			helpers.useQueryArgs(keyAndInput(), opts?.() as any) as any,
 		);
