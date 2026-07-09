@@ -79,41 +79,28 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
     let input_idx = if has_ctx { 1 } else { 0 };
     let has_input_param = if has_ctx { params.len() > 1 } else { !params.is_empty() };
 
-    // --- Extract output type from Result<T, E> ---
-    let output_ty = match &input_fn.sig.output {
+    // --- Extract output type (auto-wrap non-Result in Ok) ---
+    let (output_ty, is_result_return) = match &input_fn.sig.output {
         ReturnType::Type(_, ty) => {
             if let Type::Path(type_path) = ty.as_ref() {
                 let last_seg = type_path.path.segments.last().unwrap();
                 if last_seg.ident == "Result" {
                     if let PathArguments::AngleBracketed(args) = &last_seg.arguments {
                         match args.args.first().unwrap() {
-                            GenericArgument::Type(t) => quote! { #t },
+                            GenericArgument::Type(t) => (quote! { #t }, true),
                             _ => panic!("expected type in Result<T, E>"),
                         }
                     } else {
                         panic!("expected Result<T, E>");
                     }
                 } else {
-                    panic!("expected Result<T, E>, got {}", last_seg.ident);
+                    (quote! { #ty }, false)
                 }
             } else {
-                panic!("expected Result<T, E>");
+                (quote! { #ty }, false)
             }
         }
         ReturnType::Default => panic!("function must have a return type"),
-    };
-
-    // --- Extract input type ---
-    let input_ty: proc_macro2::TokenStream = if has_input_param {
-        match &params[input_idx] {
-            FnArg::Typed(pat_type) => {
-                let ty = &pat_type.ty;
-                quote! { #ty }
-            }
-            _ => panic!("parameter must be typed"),
-        }
-    } else {
-        quote! { () }
     };
 
     // --- Build the call expression to the original function ---
@@ -129,6 +116,30 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
         } else {
             quote! { #fn_name().await }
         }
+    };
+
+    let exec_body = if is_result_return {
+        quote! {
+            match #call {
+                Ok(val) => Ok(val),
+                Err(e) => Err(fnrpc::error::RpcErr(e.to_string())),
+            }
+        }
+    } else {
+        quote! { Ok(#call) }
+    };
+
+    // --- Extract input type ---
+    let input_ty: proc_macro2::TokenStream = if has_input_param {
+        match &params[input_idx] {
+            FnArg::Typed(pat_type) => {
+                let ty = &pat_type.ty;
+                quote! { #ty }
+            }
+            _ => panic!("parameter must be typed"),
+        }
+    } else {
+        quote! { () }
     };
 
     let struct_name = syn::Ident::new(&format!("{}__FnRpc", fn_name), fn_name.span());
@@ -147,10 +158,7 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
             const KIND: &'static str = #kind;
 
             async fn exec(ctx: &#ctx_ty, input: Self::Input) -> Result<Self::Output, fnrpc::error::RpcErr> {
-                match #call {
-                    Ok(val) => Ok(val),
-                    Err(e) => Err(fnrpc::error::RpcErr(e.to_string())),
-                }
+                #exec_body
             }
         }
     };

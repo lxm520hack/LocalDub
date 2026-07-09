@@ -54,6 +54,18 @@ impl RpcFn<AppCtx> for CtxGreet {
     }
 }
 
+// --- Non-Result return type (auto-wrapped in Ok) ---
+
+#[fnrpc::rpc_query]
+async fn macro_health() -> String {
+    "ok".to_string()
+}
+
+#[fnrpc::rpc_query]
+async fn macro_health_ctx(_ctx: &()) -> String {
+    "ok".to_string()
+}
+
 // --- rpc_query macro test ---
 
 #[fnrpc::rpc_query]
@@ -148,6 +160,22 @@ async fn test_macro_mutation_kind() {
     // ErasedHandler (blanket impl) provides access to kind()
     let erased: Box<dyn ErasedHandler<()>> = Box::new(handler);
     assert_eq!(erased.kind(), "mutation");
+}
+
+#[tokio::test]
+async fn test_macro_health_no_ctx() {
+    let mut router = RpcRouter::<()>::new();
+    router.add(macro_health__FnRpc);
+    let result = router.dispatch(&(), "macro_health", serde_json::json!(null)).await.unwrap();
+    assert_eq!(result, serde_json::json!("ok"));
+}
+
+#[tokio::test]
+async fn test_macro_health_with_ctx() {
+    let mut router = RpcRouter::<()>::new();
+    router.add(macro_health_ctx__FnRpc);
+    let result = router.dispatch(&(), "macro_health_ctx", serde_json::json!(null)).await.unwrap();
+    assert_eq!(result, serde_json::json!("ok"));
 }
 
 #[tokio::test]

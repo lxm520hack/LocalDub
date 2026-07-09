@@ -16,8 +16,8 @@ pub struct GreetOutput {
 }
 
 #[fnrpc::rpc_query]
-pub async fn health_check(_ctx: &AppState) -> Result<String, String> {
-    Ok("ok".to_string())
+pub async fn health_check(_ctx: &AppState) -> String {
+    "ok".to_string()
 }
 
 #[fnrpc::rpc_query]
