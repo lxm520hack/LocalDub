@@ -1,7 +1,11 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use axum::{extract::Path, Extension, Json, Router};
+use axum::{
+    extract::{Path, Query},
+    Extension, Json, Router,
+};
 use fnrpc::router::RpcRouter;
 use rspc::Procedures;
 use serde_json::Value;
@@ -23,6 +27,23 @@ async fn fnrpc_handler(
     Json(result)
 }
 
+async fn fnrpc_get_handler(
+    Extension(router): Extension<Arc<RpcRouter<AppState>>>,
+    Extension(state): Extension<AppState>,
+    Path(method): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Json<Value> {
+    let input: Value = params
+        .get("input")
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or(Value::Null);
+    let result = router
+        .dispatch(&state, &method, input)
+        .await
+        .unwrap_or_default();
+    Json(result)
+}
+
 pub async fn start(
     procedures: Procedures<AppState>,
     state: AppState,
@@ -37,7 +58,10 @@ pub async fn start(
 
     let app = Router::new()
         .nest("/rspc", rspc_router)
-        .route("/fnrpc/{method}", axum::routing::post(fnrpc_handler))
+        .route(
+    "/fnrpc/:method",
+    axum::routing::get(fnrpc_get_handler).post(fnrpc_handler),
+)
         .layer(CorsLayer::permissive())
         .layer(Extension(fnrpc_router))
         .layer(Extension(state))

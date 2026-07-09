@@ -1,8 +1,13 @@
-import { fnrpc } from "#/integrations/fnrpc/client.ts";
+import { client, fnrpc } from "#/integrations/fnrpc/client.ts";
+import { useQuery } from "@tanstack/solid-query";
 import { createEffect } from "solid-js";
 
 
 export function IndexPage() {
+	useQuery(() => ({
+		queryKey: ["greet",],
+		queryFn: () => client.greet.query({ name: "World" }),
+	}))
 	const greetQ = fnrpc.createQuery(() => ['greet', { name: 'World' }])
 	createEffect(() => {
 		console.log('greetQ.data', greetQ.data)
