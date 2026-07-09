@@ -188,7 +188,7 @@ export function createHookHelpers<P extends Procedures>(args: {
 			P, 
 			tanstack.QueryObserverOptions<
 				P[T]["output"],
-				unknown,
+				Error,
 				P[T]["output"],
 				P[T]["output"],
 				QueryKeyAndInput<P, T>
@@ -215,13 +215,13 @@ export function createHookHelpers<P extends Procedures>(args: {
 		O extends WrapMutationOptions<
 			P, tanstack.MutationObserverOptions<
 				P[T]["output"],
-				unknown,
+				Error,
 				P[T]["input"],
 				unknown
 			>
 		>,
 	>(key: T, opts?: O) {
-		const client = getClient(opts as any);
+		const client = getClient(opts);
 
 		return {
 			...opts,
