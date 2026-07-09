@@ -60,7 +60,7 @@ export interface Context<P extends Procedures> {
 // ── Base options ─────────────────────────────────────────
 
 export interface BaseOptions<P extends Procedures> {
-	rspc?: { client?: Client<P> };
+	fnrpc?: { client?: Client<P> };
 }
 
 // ── Wrapped options (for hook helpers) ───────────────────
@@ -165,28 +165,34 @@ export function createHookHelpers<P extends Procedures>(args: {
 	useContext(): Context<P> | null;
 }) {
 	type K = keyof P & string;
-
-	function useClient() {
+	type TBaseOptions = BaseOptions<P>;
+	function useContext() {
 		const ctx = args.useContext();
 		if (!ctx) throw new Error("fnrpc context provider not found!");
-		return ctx.client;
+		return ctx;
+	}
+	function useClient() {
+		return useContext().client;
 	}
 
-	function getClient(opts?: { rspc?: { client?: Client<P> } } | Record<string, any>): Client<P> {
-		return (opts as any)?.rspc?.client ?? useClient();
+	function getClient<T extends TBaseOptions>(opts?: T) {
+		return (opts)?.fnrpc?.client ?? useClient();
 	}
 
 	function useQueryArgs<
 		T extends K,
-		O extends tanstack.QueryObserverOptions<
-			P[T]["output"],
-			unknown,
-			P[T]["output"],
-			P[T]["output"],
-			QueryKeyAndInput<P, T>
+		O extends WrapQueryOptions<
+			P, 
+			tanstack.QueryObserverOptions<
+				P[T]["output"],
+				unknown,
+				P[T]["output"],
+				P[T]["output"],
+				QueryKeyAndInput<P, T>
+			>
 		>,
 	>(keyAndInput: QueryKeyAndInput<P, T> | [T, tanstack.SkipToken], opts?: O) {
-		const client = getClient(opts as any);
+		const client = getClient(opts);
 		const [key, ...rest] = keyAndInput;
 		const input = rest[0] as P[T]["input"] | undefined;
 
@@ -194,7 +200,7 @@ export function createHookHelpers<P extends Procedures>(args: {
 			...opts,
 			queryKey: keyAndInput,
 			queryFn: isSkipTokenInput(keyAndInput)
-				? (tanstack.skipToken as any)
+				? (tanstack.skipToken)
 				: () => callQuery(client, key, input as P[T]["input"]),
 		};
 	}
