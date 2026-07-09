@@ -14,8 +14,9 @@ import * as inputApi from '../fn/input';
 import { getLocale } from '@repo/shared/i18n/utils';
 import { getGroupList } from '#/cmd/tasks.ts';
 import { Header } from '#/components/app/header/Header.tsx';
-import { client, rspc, RspcClient } from '#/integrations/rspc/rspc.ts';
+import { client as rspcClient, rspc,  RspcClient } from '#/integrations/rspc/rspc.ts';
 import { Procedures, ProceduresLegacy } from '#/integrations/rspc/bindings.ts';
+import { client, fnrpc } from '#/integrations/fnrpc/client.ts';
 import { createSolidQueryHooks } from '#/integrations/rspc/query.tsx';
 import { getQueryClient } from '@repo/ui-solid/tanstack-query/provider';
 import { isTauri } from '@tauri-apps/api/core';
@@ -53,8 +54,8 @@ function RootDocument({ children }: { children: JSX.Element }) {
   const queryClient = getQueryClient();
   return <>
   <HeadContent />
-  <rspc.Provider client={client} queryClient={queryClient}>
-
+  <fnrpc.Provider client={client} queryClient={queryClient}>
+  <rspc.Provider client={rspcClient} queryClient={queryClient}>
   <ClientApiProvider value={{
     serversManagerApi: {
       startTorch: torchApi.startTorch,
@@ -91,6 +92,7 @@ function RootDocument({ children }: { children: JSX.Element }) {
     </ThemeProvider>
   </ClientApiProvider>
   </rspc.Provider>
+  </fnrpc.Provider>
   <Devtools />
   <Scripts />
   </>
