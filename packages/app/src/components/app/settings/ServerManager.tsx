@@ -6,6 +6,7 @@ import { toastError } from '@repo/ui-solid/custom/toast';
 import { ModelServerStatus } from '@repo/core/servers/type';
 import { rspc } from '#/integrations/rspc/rspc.ts';
 import { checkTorch, get_voxcpm_torch_gradio_status, restartTorch, restartVoxCpm, startTorch, startVoxCpm, stopTorch, stopVoxCpm } from '#/feat/servers/servers.ts';
+import { cn } from '@repo/shared/lib/utils';
 
 function fmtUptime(s: number): string {
   if (!s) return '0s';
@@ -29,14 +30,29 @@ function ServerCard(props: {
   onStop: () => void;
   onRestart: () => void;
 }) {
+  const isLoading = () => props.isLoading ?? false
+  const status = () => { 
+    if (isLoading()) return 'pending'
+    if (props.error) return 'error'
+    return props.data?.status ?? "unknown"
+  }
+  const statusText = () => {
+    if (isLoading()) return 'Loading...'
+    if (props.error) return `Error: ${props.error.message}`
+    return props.data?.status ?? "unknown"
+  }
   return (
     <div class="space-y-3 p-4 border rounded-lg">
       <div class="flex items-center gap-3">
         <div
-          class="w-3 h-3 rounded-full shrink-0"
-          style={{ 'background-color': props.running ? '#22c55e' : '#ef4444' }}
+          class={cn("w-3 h-3 rounded-full shrink-0", {
+            "bg-[#22c55e]": status() === 'running',
+            "bg-[#ef4444]": status() === 'stopped' || status() === 'error',
+            "bg-[#facc15]": status() === 'pending',
+            "bg-gray-400": status() === 'unknown',
+          } )}
         />
-        <span>{props.error ? props.error.message :  props.data?.status}</span>
+        <span>{statusText()}</span>
         <span class="font-medium">{props.name}</span>
         <span class="text-sm text-gray-500 ">
           {props.busy
@@ -79,7 +95,7 @@ function ServerCard(props: {
       </div>
 
       <div class="flex flex-wrap gap-2">
-        {Object.entries(props.models).map(([name, m]) => (
+        {Object.entries(props.data?.models ?? {}).map(([name, m]) => (
           <span
             class={`text-xs px-2 py-0.5 rounded ${
               m.status === 'ready' ? 'bg-green-900/40 text-green-400' : 'bg-gray-800 text-gray-500'
@@ -107,7 +123,7 @@ export function ServerManager() {
     staleTime: 3000,
   }))
 
-
+  voxcpm_torch_gradio_status.status
   const startTorchM = useMutation(() => ({ mutationFn: startTorch, onError: (e) => toastError(e) }));
   const stopTorchM = useMutation(() => ({ mutationFn: stopTorch, onError: (e) => toastError(e) }));
   const restartTorchM = useMutation(() => ({ mutationFn: restartTorch, onError: (e) => toastError(e) }));

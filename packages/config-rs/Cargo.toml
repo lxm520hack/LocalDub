@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 dotenvy = "0.15"
 dirs = "5"
+specta.workspace = true

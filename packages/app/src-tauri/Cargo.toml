@@ -29,7 +29,7 @@ rspc-axum = "0.3"
 tauri-plugin-rspc = "0.2"
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta.workspace = true
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
 
