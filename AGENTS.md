@@ -22,12 +22,49 @@
 - `packages/tmp/` — 临时文件/构建产物（gitignored via `*/tmp/*`）
 - 大型第三方编译（如 ORT 源码）放此目录而非系统 `/tmp/`
 
-## fnrpc macros
+## fnrpc
+
+### Macros
 
 - `#[fnrpc::rpc_query]` — query endpoint. Ctx 从 `&T` 参数类型推断，无 `&T` 则 `Ctx = ()`
-- `#[fnrpc::rpc_mutation]` — mutation endpoint
+- `#[fnrpc::rpc_mutation]` — mutation endpoint  
 - `#[fnrpc::rpc_subscription]` — subscription endpoint
-- `fnrpc::fnrpc_registry! { Router<Ctx> = [fn1, fn2] }` — 构建 `Arc<RpcRouter<Ctx>>`
+- `fnrpc::fnrpc_registry![fn1, fn2]` — 生成 `build_fn_rpc() -> RpcRouter<Ctx>`（Ctx 从 handler 自动推断）
+
+### Ctx 设计
+
+Ctx 是 **per-request 上下文**，不是全局状态。用户自定义 Ctx 类型，transport 层（Tauri/Axum）每请求构造：
+
+```rust
+struct Ctx {
+    pub state: AppState,    // 全局共享
+    pub headers: HeaderMap, // per-request（Tauri 传空，Axum 传真实值）
+}
+
+#[rpc_query]
+async fn greet(ctx: &Ctx, input: GreetInput) -> GreetOutput {
+    if let Some(auth) = ctx.headers.get("authorization") { ... }
+    ctx.state.something()
+}
+```
+
+| transport | Ctx 构造 |
+|-----------|---------|
+| Tauri IPC | `Ctx { state, headers: HeaderMap::new() }` |
+| Axum HTTP | 从提取器获取 headers/query 填入 Ctx |
+
+### Router
+
+- `RpcRouter<Ctx>` 内嵌 `Arc<RpcRouterInner>`，clone O(1)
+- `.route(handler)` / `.layer(layer)` 消费 `self` 返回 `Self`，链式调用
+- `dispatch(&self, ctx: &Ctx, path: &str, input: Value) -> Result<Value, RpcErr>`
+- `path` 是 RPC 方法名（非 HTTP method），与 TS 端 `args.path` 统一
+
+### Middleware
+
+- `TracingLayer`（feature `tracing`）— 每个 RPC 调用 emit `tracing::info!`/`error!`（含 `path`、`input`、`output`、`latency_ms`）
+- `HookLayer` — before/after 钩子
+- `#[cfg(feature = "tracing")]` gated，需 `tracing_subscriber::fmt::init()`
 
 ## Known limits
 

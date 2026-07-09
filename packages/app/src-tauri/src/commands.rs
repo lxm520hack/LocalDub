@@ -9,17 +9,22 @@ use device_rs::DeviceInfo;
 use fnrpc::router::RpcRouter;
 use serde_json::Value;
 
-use crate::state::AppState;
+use crate::state::{AppState, Ctx};
+use axum::http::HeaderMap;
 
 #[tauri::command]
 pub async fn rpc_fn(
-    router: tauri::State<'_, RpcRouter<AppState>>,
+    router: tauri::State<'_, RpcRouter<Ctx>>,
     state: tauri::State<'_, AppState>,
     path: String,
     input: Value,
 ) -> Result<Value, String> {
+    let ctx = Ctx {
+        state: state.inner().clone(),
+        headers: HeaderMap::new(),
+    };
     router
-        .dispatch(state.inner(), &path, input)
+        .dispatch(&ctx, &path, input)
         .await
         .map_err(|e| e.to_string())
 }

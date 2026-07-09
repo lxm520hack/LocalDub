@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use axum::{
     extract::{Path, Query},
+    http::HeaderMap,
     Extension, Json, Router,
 };
 use fnrpc::router::RpcRouter;
@@ -11,23 +12,27 @@ use serde_json::Value;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use crate::state::AppState;
+use crate::state::{AppState, Ctx};
 
 async fn fnrpc_handler(
-    Extension(router): Extension<RpcRouter<AppState>>,
+    Extension(router): Extension<RpcRouter<Ctx>>,
     Extension(state): Extension<AppState>,
     Path(path): Path<String>,
     Json(input): Json<Value>,
 ) -> Json<Value> {
+    let ctx = Ctx {
+        state,
+        headers: HeaderMap::new(),
+    };
     let result = router
-        .dispatch(&state, &path, input)
+        .dispatch(&ctx, &path, input)
         .await
         .unwrap_or_default();
     Json(result)
 }
 
 async fn fnrpc_get_handler(
-    Extension(router): Extension<RpcRouter<AppState>>,
+    Extension(router): Extension<RpcRouter<Ctx>>,
     Extension(state): Extension<AppState>,
     Path(path): Path<String>,
     Query(params): Query<HashMap<String, String>>,
@@ -36,8 +41,12 @@ async fn fnrpc_get_handler(
         .get("input")
         .and_then(|s| serde_json::from_str(s).ok())
         .unwrap_or(Value::Null);
+    let ctx = Ctx {
+        state,
+        headers: HeaderMap::new(),
+    };
     let result = router
-        .dispatch(&state, &path, input)
+        .dispatch(&ctx, &path, input)
         .await
         .unwrap_or_default();
     Json(result)
@@ -46,7 +55,7 @@ async fn fnrpc_get_handler(
 pub async fn start(
     procedures: Procedures<AppState>,
     state: AppState,
-    fnrpc_router: RpcRouter<AppState>,
+    fnrpc_router: RpcRouter<Ctx>,
     dist_dir: PathBuf,
     port: u16,
 ) {

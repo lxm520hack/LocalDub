@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
 
+use axum::http::HeaderMap;
+
 #[derive(Clone)]
 pub struct AppState {
     pub repo_root: PathBuf,
@@ -24,4 +26,9 @@ impl AppState {
             voxcpm_proc: Arc::new(Mutex::new(None)),
         }
     }
+}
+
+pub struct Ctx {
+    pub state: AppState,
+    pub headers: HeaderMap,
 }
