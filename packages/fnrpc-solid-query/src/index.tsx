@@ -32,7 +32,7 @@ export function createSolidQueryHooks<P extends Procedures>() {
 		return tanstack.createQuery(() =>
 			helpers.useQueryArgs(
 				keyAndInput() as any,
-				{ ...(opts?.() as any), rspc: { client: _store.client } },
+				opts?.() as any,
 			) as any,
 		);
 	}

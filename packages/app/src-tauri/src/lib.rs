@@ -26,6 +26,8 @@ pub fn run() {
         crate::server::start(axum_procedures, axum_state, axum_fnrpc, dist_dir, 19110).await;
     });
 
+    let app_state_for_manage = app_state.clone();
+
     // Tauri desktop
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -34,6 +36,7 @@ pub fn run() {
             move |_window: tauri::Window| app_state.clone(),
         ))
         .manage(fnrpc_router)
+        .manage(app_state_for_manage)
         .invoke_handler(tauri::generate_handler![commands::rpc_fn])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

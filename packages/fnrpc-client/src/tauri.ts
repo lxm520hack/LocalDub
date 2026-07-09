@@ -9,7 +9,10 @@ export function tauriExecute(): ExecuteFn {
 					invoke("rpc_fn", { method: args.path, input: args.input }),
 				)
 				.then((value) => subscriber.next({ code: 200, value }))
-				.catch((err) => subscriber.next({ code: 500, value: String(err) }))
+				.catch((err) => {
+					console.error('[fnrpc] tauri invoke error:', err);
+					subscriber.next({ code: 500, value: String(err) });
+				})
 				.finally(() => subscriber.complete());
 		});
 }

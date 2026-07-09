@@ -4,7 +4,7 @@ import { createEffect } from "solid-js";
 
 
 export function IndexPage() {
-	useQuery(() => ({
+	const greetQ0 =  useQuery(() => ({
 		queryKey: ["greet",],
 		queryFn: () => client.greet.query({ name: "World" }),
 	}))
@@ -16,6 +16,8 @@ export function IndexPage() {
 		<div class="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
 			<span class="text-lg">Dashboard</span>
 			<span class="text-xs">开发中...</span>
+			<span>{greetQ0.error?.message}</span>
+			<span>{greetQ.error?.message}</span>
 		</div>
 	);
 }
