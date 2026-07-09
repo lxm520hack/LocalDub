@@ -2,34 +2,76 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
-use specta::{NamedType, Type};
-use std::any::type_name;
-
-fn short_type_name<T: ?Sized>() -> &'static str {
-    let full = type_name::<T>();
-    full.rsplit("::").next().unwrap_or(full)
-}
+use specta::datatype::{DataType, FunctionResultVariant};
+use specta::{Generics, Type, TypeCollection};
 
 use crate::error::RpcErr;
+
+/// TypeScript export info for a single type (input or output).
+#[derive(Debug, Clone)]
+pub struct TsTypeInfo {
+    /// Named export statement (e.g. `export type Foo = { ... };\n`), empty if inlined.
+    pub named_export: String,
+    /// Inline TS expression or type name reference.
+    pub ts_ref: String,
+}
+
+/// Generate TS info for a type using only `Type` (no `NamedType` required).
+fn type_ts<T: Type>() -> TsTypeInfo {
+    let mut type_map = TypeCollection::default();
+    let data_type = T::inline(&mut type_map, Generics::NONE);
+
+    // Extract name from struct/enum without borrowing data_type
+    let name = match &data_type {
+        DataType::Struct(s) => Some(s.name().clone()),
+        DataType::Enum(e) => Some(e.name().clone()),
+        _ => None,
+    };
+
+    if let Some(name) = name {
+        let named_dt = data_type.to_named(name.clone());
+        if let Ok(export) =
+            specta_typescript::export_named_datatype(&Default::default(), &named_dt, &type_map)
+        {
+            return TsTypeInfo {
+                named_export: format!("{export}\n"),
+                ts_ref: name.to_string(),
+            };
+        }
+        // If export failed, fall through to inline
+        unreachable!("specta export_named_datatype should not fail for valid types");
+    }
+
+    let inline = specta_typescript::datatype(
+        &Default::default(),
+        &FunctionResultVariant::Value(data_type),
+        &type_map,
+    )
+    .unwrap_or_else(|_| "unknown".to_string());
+
+    TsTypeInfo {
+        named_export: String::new(),
+        ts_ref: inline,
+    }
+}
 
 /// Object-safe erased handler stored in the router.
 #[async_trait]
 pub trait ErasedHandler<Ctx>: Send + Sync {
     fn name(&self) -> &'static str;
     fn kind(&self) -> &'static str;
-    fn input_type_name(&self) -> &'static str;
-    fn output_type_name(&self) -> &'static str;
+    fn input_ts(&self) -> TsTypeInfo;
+    fn output_ts(&self) -> TsTypeInfo;
     async fn call(&self, ctx: &Ctx, input: Value) -> Result<Value, RpcErr>;
-    fn export_ts(&self) -> String;
 }
 
 /// Typed RPC function trait.
 ///
-/// Implement this directly, or use the `#[rpc_fn]` proc macro.
+/// Implement this directly, or use the `#[rpc_query]` / `#[rpc_mutation]` proc macros.
 #[async_trait]
 pub trait RpcFn<Ctx>: Send + Sync {
-    type Input: DeserializeOwned + Type + NamedType;
-    type Output: Serialize + Type + NamedType;
+    type Input: DeserializeOwned + Type;
+    type Output: Serialize + Type;
     const NAME: &'static str;
     const KIND: &'static str = "query";
 
@@ -51,12 +93,12 @@ where
         F::KIND
     }
 
-    fn input_type_name(&self) -> &'static str {
-        short_type_name::<F::Input>()
+    fn input_ts(&self) -> TsTypeInfo {
+        type_ts::<F::Input>()
     }
 
-    fn output_type_name(&self) -> &'static str {
-        short_type_name::<F::Output>()
+    fn output_ts(&self) -> TsTypeInfo {
+        type_ts::<F::Output>()
     }
 
     async fn call(&self, ctx: &Ctx, input: Value) -> Result<Value, RpcErr> {
@@ -65,17 +107,5 @@ where
         let output = F::exec(ctx, input).await?;
         Ok(serde_json::to_value(output)
             .map_err(|e| RpcErr(format!("serialize output: {e}")))?)
-    }
-
-    fn export_ts(&self) -> String {
-        let mut out = String::new();
-        let input_ts = specta_typescript::export::<F::Input>(&Default::default())
-            .unwrap_or_default();
-        let output_ts = specta_typescript::export::<F::Output>(&Default::default())
-            .unwrap_or_default();
-        out.push_str(&input_ts);
-        out.push('\n');
-        out.push_str(&output_ts);
-        out
     }
 }

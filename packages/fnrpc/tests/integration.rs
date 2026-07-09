@@ -127,16 +127,17 @@ async fn test_macro_rpc() {
 }
 
 #[tokio::test]
-async fn test_ts_export() {
-    let mut router = RpcRouter::<()>::new();
-    router.add(Greet);
+async fn test_ts_info() {
+    use fnrpc::handler::ErasedHandler;
+    let handler = Greet;
 
-    let ts_map = router.export_ts();
-    assert!(ts_map.contains_key("greet"));
+    let input_info = handler.input_ts();
+    assert!(input_info.named_export.contains("GreetInput"));
+    assert_eq!(input_info.ts_ref, "GreetInput");
 
-    let ts = &ts_map["greet"];
-    assert!(ts.contains("GreetInput"));
-    assert!(ts.contains("GreetOutput"));
+    let output_info = handler.output_ts();
+    assert!(output_info.named_export.contains("GreetOutput"));
+    assert_eq!(output_info.ts_ref, "GreetOutput");
 }
 
 #[tokio::test]

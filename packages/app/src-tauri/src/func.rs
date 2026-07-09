@@ -22,4 +22,9 @@ pub async fn greet(ctx: &AppState, input: GreetInput) -> Result<GreetOutput, Str
     })
 }
 
-fnrpc::fnrpc_registry! { Router<AppState> = [greet] }
+#[fnrpc::rpc_query]
+pub async fn add(_ctx: &AppState, input: (i32, i32)) -> Result<i32, String> {
+    Ok(input.0 + input.1)
+}
+
+fnrpc::fnrpc_registry! { Router<AppState> = [greet, add] }
