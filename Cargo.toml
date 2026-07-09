@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/benchmark/ocr/oar-rs", "packages/config-rs", "packages/core-rs", "packages/device-rs", "packages/fnrpc", "packages/separate/demucs_burn", "packages/subtitle-rust", "packages/voxcpm-burn", "packages/app/src-tauri"]
+members = ["packages/benchmark/ocr/oar-rs", "packages/config-rs", "packages/core-rs", "packages/device-rs", "packages/fnrpc", "packages/fnrpc-macros", "packages/separate/demucs_burn", "packages/subtitle-rust", "packages/voxcpm-burn", "packages/app/src-tauri"]
 resolver = "3"
 
 [workspace.dependencies]

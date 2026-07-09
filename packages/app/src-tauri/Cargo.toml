@@ -14,6 +14,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "gen-types"
 path = "src/bin/gen_types.rs"
 
+[[bin]]
+name = "gen-fnrpcs"
+path = "src/bin/gen_fnrpcs.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -25,11 +29,13 @@ serde_json = "1"
 core-rs = { path = "../../core-rs" }
 config-rs = { path = "../../config-rs" }
 device-rs = { path = "../../device-rs" }
+fnrpc = { path = "../../fnrpc" }
 rspc = { version = "0.4", features = ["typescript"] }
 rspc-axum = "0.3"
 tauri-plugin-rspc = "0.2"
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
+async-trait = "0.1"
 specta.workspace = true
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"

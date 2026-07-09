@@ -13,6 +13,8 @@
     "dev:android": "bun run tauri android dev",
     "typecheck": "tsgo --noEmit",
     "build": "vite build",
+
+    "gen-fnrpcs": "cargo run --bin gen-fnrpcs",
     "gen-types": "cargo run --bin gen-types",
     "serve": "vite preview",
     "tauri": "tauri"

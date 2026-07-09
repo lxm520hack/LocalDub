@@ -181,10 +181,12 @@ checksum = "2a4385e2e34eb35d6b3efe798b9eb88096925d87726c0798709bf56d9ed84af3"
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "axum 0.7.9",
  "config-rs",
  "core-rs",
  "device-rs",
+ "fnrpc",
  "rspc",
  "rspc-axum",
  "serde",
@@ -3435,9 +3437,21 @@ name = "fnrpc"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "fnrpc-macros",
  "serde",
  "serde_json",
  "specta",
+ "specta-typescript",
+ "tokio",
+]
+
+[[package]]
+name = "fnrpc-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
 ]
 
 [[package]]
