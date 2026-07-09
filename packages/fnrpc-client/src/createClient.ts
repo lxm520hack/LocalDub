@@ -1,6 +1,5 @@
 import { UntypedClient } from "./UntypedClient";
 import type {
-	ProcedureResult,
 	ProcedureKind,
 	SubscriptionObserver,
 	ExecuteFn,
@@ -22,7 +21,7 @@ export type VoidIfInputNull<
 
 type Resolver<P extends Procedure> = (
 	input: VoidIfInputNull<P>,
-) => Promise<ProcedureResult<P>>;
+) => Promise<P["output"]>;
 
 type SubscriptionResolver<P extends Procedure> = (
 	input: VoidIfInputNull<P>,
