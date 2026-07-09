@@ -111,6 +111,6 @@ export function traverseClient<P extends Procedure>(
 	for (const segment of path) {
 		ret = ret[segment];
 	}
-
+	
 	return ret as any;
 }

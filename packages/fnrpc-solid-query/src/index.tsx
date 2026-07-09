@@ -9,14 +9,17 @@ export function createSolidQueryHooks<P extends Procedures>() {
 	const Context = solid.createContext<queryCore.Context<P> | null>(null);
 
 	const helpers = queryCore.createHookHelpers({
-		useContext: () => solid.useContext(Context),
+		useContext: () => { 
+			console.log('createSolidQueryHooks solid.useContext(Context) before')
+			return solid.useContext(Context)
+		},
 	});
 
 	function useContext() {
 		const ctx = solid.useContext(Context);
 		if (ctx?.queryClient === undefined)
 			throw new Error(
-				"The fnrpc context has not been set. Ensure the <Provider> component is higher up in your component tree.",
+				"The fnrpc context has not been set. Ensure the <fnrpc.Provider> component is higher up in your component tree.",
 			);
 		return ctx;
 	}

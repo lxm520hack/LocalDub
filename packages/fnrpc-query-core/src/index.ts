@@ -167,11 +167,14 @@ export function createHookHelpers<P extends Procedures>(args: {
 	type K = keyof P & string;
 	type TBaseOptions = BaseOptions<P>;
 	function useContext() {
+		console.log('createHookHelpers args.useContext() before')
 		const ctx = args.useContext();
 		if (!ctx) throw new Error("fnrpc context provider not found!");
+		console.log('createHookHelpers args.useContext() after')
 		return ctx;
 	}
 	function useClient() {
+		console.log('createHookHelpers useClient before')
 		return useContext().client;
 	}
 
@@ -192,7 +195,9 @@ export function createHookHelpers<P extends Procedures>(args: {
 			>
 		>,
 	>(keyAndInput: QueryKeyAndInput<P, T> | [T, tanstack.SkipToken], opts?: O) {
+		console.log('useQueryArgs client = getClient(opts) before')
 		const client = getClient(opts);
+		console.log('useQueryArgs client = getClient(opts)')
 		const [key, ...rest] = keyAndInput;
 		const input = rest[0] as P[T]["input"] | undefined;
 
