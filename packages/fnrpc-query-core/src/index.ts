@@ -63,6 +63,20 @@ export interface BaseOptions<P extends Procedures> {
 	rspc?: { client?: Client<P> };
 }
 
+// ── Wrapped options (for hook helpers) ───────────────────
+
+export type WrapQueryOptions<P extends Procedures, T> = Omit<
+	T,
+	"queryKey" | "queryFn"
+> &
+	BaseOptions<P>;
+
+export type WrapMutationOptions<P extends Procedures, T> = Omit<
+	T,
+	"_defaulted" | "variables" | "mutationKey"
+> &
+	BaseOptions<P>;
+
 // ── Subscription options ─────────────────────────────────
 
 export interface SubscriptionOptions<

@@ -30,22 +30,20 @@ export function createSolidQueryHooks<P extends Procedures>() {
 
 	function createQuery<T extends K>(
 		keyAndInput: solid.Accessor<queryCore.QueryKeyAndInputOrSkip<P, T>>,
-		opts?: solid.Accessor<Record<string, unknown>>,
+		opts?: solid.Accessor<queryCore.WrapQueryOptions<P, tanstack.CreateQueryOptions<P[T]["output"], unknown, P[T]["output"], queryCore.QueryKeyAndInput<P, T>>>>,
 	) {
-		return tanstack.createQuery(() => {
-			const args = helpers.useQueryArgs(keyAndInput(), opts?.() as any);
-			return args as any;
-		});
+		return tanstack.createQuery(() =>
+			helpers.useQueryArgs(keyAndInput(), opts?.() as any) as any,
+		);
 	}
 
 	function createMutation<T extends K>(
 		key: solid.Accessor<T>,
-		opts?: solid.Accessor<Record<string, unknown>>,
+		opts?: solid.Accessor<queryCore.WrapMutationOptions<P, tanstack.CreateMutationOptions<P[T]["output"], unknown, P[T]["input"], unknown>>>,
 	) {
-		return tanstack.createMutation(() => {
-			const args = helpers.useMutationArgs(key(), opts?.() as any);
-			return args as any;
-		});
+		return tanstack.createMutation(() =>
+			helpers.useMutationArgs(key(), opts?.() as any) as any,
+		);
 	}
 
 	function createSubscription<T extends K>(
