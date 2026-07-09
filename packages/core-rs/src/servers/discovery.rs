@@ -54,7 +54,14 @@ pub async fn find_server(type_: ServerType) -> ServerInfo {
 
 /// Browse mDNS for the given server type.
 ///
+/// 在时限内扫描 mDNS，收集某类服务的所有实例（IP + port）
+///
 /// Returns `(ip, port)` pairs for all resolved services of the matching type.
+///
+/// 是一个时间受限的采集（time-bounded collection），不是轮询、不是流式处理。核心行为：
+/// 1. 启动 mDNS 浏览器
+/// 2. 在 timeout 内尽可能多地接收 ServiceResolved 事件
+/// 3. 超时后停止并返回结果
 pub async fn find_server_via_mdns_all(
     type_: ServerType,
     timeout: Option<Duration>,
@@ -68,21 +75,19 @@ pub async fn find_server_via_mdns_all(
         return vec![];
     };
 
-    let start = std::time::Instant::now();
+    let deadline = std::time::Instant::now() + timeout;
     let mut results: Vec<(String, u16)> = vec![];
 
-    while start.elapsed() < timeout {
-        let remaining = timeout.saturating_sub(start.elapsed());
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
         if remaining.is_zero() {
             break;
         }
-        let recv_timeout = remaining.min(Duration::from_millis(200));
-        match receiver.recv_timeout(recv_timeout) {
+        match receiver.recv_timeout(remaining) {
             Ok(ServiceEvent::ServiceResolved(info)) => {
                 let port = info.get_port();
                 for addr in info.get_addresses() {
-                    let ip = addr.to_string();
-                    let entry = (ip, port);
+                    let entry = (addr.to_string(), port);
                     if !results.contains(&entry) {
                         results.push(entry);
                     }
@@ -98,12 +103,8 @@ pub async fn find_server_via_mdns_all(
 
 /// Read the first `PORT=XXXX` line from process stdout.
 pub fn read_port_from_output(output: &str) -> Option<u16> {
-    for line in output.lines() {
-        if let Some(port_str) = line.strip_prefix("PORT=") {
-            if let Ok(port) = port_str.trim().parse::<u16>() {
-                return Some(port);
-            }
-        }
-    }
-    None
+    output
+        .lines()
+        .find_map(|line| line.strip_prefix("PORT="))
+        .and_then(|s| s.trim().parse::<u16>().ok())
 }
