@@ -15,7 +15,7 @@ pub struct GreetOutput {
     pub message: String,
 }
 
-#[fnrpc::rpc_fn(AppState)]
+#[fnrpc::rpc_query]
 pub async fn greet(ctx: &AppState, input: GreetInput) -> Result<GreetOutput, String> {
     Ok(GreetOutput {
         message: format!("hello {} (root: {})", input.name, ctx.repo_root.display()),

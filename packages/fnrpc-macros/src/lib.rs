@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, FnArg, GenericArgument, ItemFn, PathArguments, ReturnType, Type,
+    TypeReference,
 };
 
 struct RegistryInput {
@@ -56,19 +57,27 @@ pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
     .into()
 }
 
-#[proc_macro_attribute]
-pub fn rpc_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
+fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as ItemFn);
     let fn_name = &input_fn.sig.ident;
     let fn_vis = &input_fn.vis;
 
-    let has_ctx = !attr.to_string().trim().is_empty();
-    let ctx_ty = if has_ctx {
-        let ts: proc_macro2::TokenStream = attr.to_string().parse().unwrap();
-        quote! { #ts }
+    // --- Analyse parameters: infer Ctx from first param type ---
+    // If first param is `&T`, it's the context (Ctx = T); otherwise no context (Ctx = ())
+    let params: Vec<&FnArg> = input_fn.sig.inputs.iter().collect();
+
+    let (has_ctx, ctx_ty) = if let Some(FnArg::Typed(pat)) = params.first() {
+        if let Type::Reference(TypeReference { elem, .. }) = pat.ty.as_ref() {
+            (true, quote! { #elem })
+        } else {
+            (false, quote! { () })
+        }
     } else {
-        quote! { () }
+        (false, quote! { () })
     };
+
+    let input_idx = if has_ctx { 1 } else { 0 };
+    let has_input_param = if has_ctx { params.len() > 1 } else { !params.is_empty() };
 
     // --- Extract output type from Result<T, E> ---
     let output_ty = match &input_fn.sig.output {
@@ -93,11 +102,6 @@ pub fn rpc_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
         ReturnType::Default => panic!("function must have a return type"),
     };
-
-    // --- Analyse parameters: count them ---
-    let params: Vec<&FnArg> = input_fn.sig.inputs.iter().collect();
-    let input_idx = if has_ctx { 1 } else { 0 };
-    let has_input_param = if has_ctx { params.len() > 1 } else { !params.is_empty() };
 
     // --- Extract input type ---
     let input_ty: proc_macro2::TokenStream = if has_input_param {
@@ -140,6 +144,7 @@ pub fn rpc_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
             type Input = #input_ty;
             type Output = #output_ty;
             const NAME: &'static str = stringify!(#fn_name);
+            const KIND: &'static str = #kind;
 
             async fn exec(ctx: &#ctx_ty, input: Self::Input) -> Result<Self::Output, fnrpc::error::RpcErr> {
                 match #call {
@@ -151,4 +156,19 @@ pub fn rpc_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     expanded.into()
+}
+
+#[proc_macro_attribute]
+pub fn rpc_query(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    rpc_fn_impl("query", item)
+}
+
+#[proc_macro_attribute]
+pub fn rpc_mutation(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    rpc_fn_impl("mutation", item)
+}
+
+#[proc_macro_attribute]
+pub fn rpc_subscription(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    rpc_fn_impl("subscription", item)
 }

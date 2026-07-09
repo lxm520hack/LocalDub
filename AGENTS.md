@@ -22,6 +22,13 @@
 - `packages/tmp/` — 临时文件/构建产物（gitignored via `*/tmp/*`）
 - 大型第三方编译（如 ORT 源码）放此目录而非系统 `/tmp/`
 
+## fnrpc macros
+
+- `#[fnrpc::rpc_query]` — query endpoint. Ctx 从 `&T` 参数类型推断，无 `&T` 则 `Ctx = ()`
+- `#[fnrpc::rpc_mutation]` — mutation endpoint
+- `#[fnrpc::rpc_subscription]` — subscription endpoint
+- `fnrpc::fnrpc_registry! { Router<Ctx> = [fn1, fn2] }` — 构建 `Arc<RpcRouter<Ctx>>`
+
 ## Known limits
 
 - **OOM**: torch server RSS > 9.5GB 时可能 OOM。详情 → `packages/research/model-load-benchmarks.md`

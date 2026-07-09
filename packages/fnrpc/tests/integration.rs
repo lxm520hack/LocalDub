@@ -54,12 +54,30 @@ impl RpcFn<AppCtx> for CtxGreet {
     }
 }
 
-// --- #[rpc_fn] macro test ---
+// --- rpc_query macro test ---
 
-#[fnrpc::rpc_fn]
+#[fnrpc::rpc_query]
 async fn macro_greet(input: GreetInput) -> Result<GreetOutput, String> {
     Ok(GreetOutput {
         message: format!("macro hello {}", input.name),
+    })
+}
+
+// --- rpc_mutation macro test ---
+
+#[fnrpc::rpc_mutation]
+async fn macro_mutate(input: GreetInput) -> Result<GreetOutput, String> {
+    Ok(GreetOutput {
+        message: format!("mutated {}", input.name),
+    })
+}
+
+// --- rpc_query with context inferred from &T parameter ---
+
+#[fnrpc::rpc_query]
+async fn macro_ctx_greet(ctx: &AppCtx, input: GreetInput) -> Result<GreetOutput, String> {
+    Ok(GreetOutput {
+        message: format!("{}{}", ctx.prefix, input.name),
     })
 }
 
@@ -119,6 +137,31 @@ async fn test_ts_export() {
     let ts = &ts_map["greet"];
     assert!(ts.contains("GreetInput"));
     assert!(ts.contains("GreetOutput"));
+}
+
+#[tokio::test]
+async fn test_macro_mutation_kind() {
+    use fnrpc::handler::ErasedHandler;
+    let handler = macro_mutate__FnRpc;
+
+    // ErasedHandler (blanket impl) provides access to kind()
+    let erased: Box<dyn ErasedHandler<()>> = Box::new(handler);
+    assert_eq!(erased.kind(), "mutation");
+}
+
+#[tokio::test]
+async fn test_macro_ctx_rpc() {
+    let mut router = RpcRouter::<AppCtx>::new();
+    router.add(macro_ctx_greet__FnRpc);
+
+    let ctx = AppCtx {
+        prefix: "yo ".to_string(),
+    };
+    let input = serde_json::json!({ "name": "world" });
+
+    let result = router.dispatch(&ctx, "macro_ctx_greet", input).await.unwrap();
+    let output: GreetOutput = serde_json::from_value(result).unwrap();
+    assert_eq!(output.message, "yo world");
 }
 
 #[tokio::test]
