@@ -17,4 +17,12 @@ impl ServerType {
             ServerType::DemucsTorchServer => "_ld-demucs-py._tcp.local",
         }
     }
+
+    /// Default TCP port for this server type.
+    pub fn default_port(self) -> u16 {
+        match self {
+            ServerType::VoxcpmTorchGradio => 19112,
+            ServerType::DemucsTorchServer => 19109,
+        }
+    }
 }

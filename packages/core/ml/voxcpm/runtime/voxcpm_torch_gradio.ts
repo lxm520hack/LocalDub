@@ -44,7 +44,7 @@ export const startVoxCPMTorchGradioServer = async ({
 }> => {
   // 1) Check if already running
   const hint = hintPort ?? 19112
-  const { port } = await findServer('voxcpm_torch_gradio', hint);
+  const { port } = await findServer('voxcpm_torch_gradio');
   {
     const [data] = await to(fetchStatsData(port))
     if (data?.status === 'running') {
@@ -68,7 +68,7 @@ export const startVoxCPMTorchGradioServer = async ({
   const actualPort = await new Promise<number>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('port discovery timeout')), 10000)
     const iv = setInterval(() => {
-      const p = readPortFromOutput(stdout, 0)
+      const p = readPortFromOutput(stdout)
       if (p) {
         clearTimeout(timer)
         clearInterval(iv)

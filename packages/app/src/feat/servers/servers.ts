@@ -44,7 +44,7 @@ async function waitForVoxCpm(port: number, timeoutMs = 120_000): Promise<ModelSe
 }
 
 export async function startTorch(): Promise<ModelServerStatus> {
-	const { port } = await findServer('demucs_torch_server', 19109)
+	const { port } = await findServer('demucs_torch_server')
 	_torchPort = port
 	if (await ping(port)) return fetchStats(port)
 
@@ -75,7 +75,7 @@ export async function restartTorch(): Promise<ModelServerStatus> {
 }
 
 export async function checkTorch(): Promise<ModelServerStatus> {
-	const { port } = await findServer('demucs_torch_server', _torchPort)
+	const { port } = await findServer('demucs_torch_server')
 	_torchPort = port
 	return fetchStats(port)
 }
@@ -106,7 +106,7 @@ async function pingVoxCpm(port: number): Promise<boolean> {
 }
 
 export async function startVoxCpm(): Promise<ModelServerStatus> {
-	const { port } = await findServer('voxcpm_torch_gradio', 19112)
+	const { port } = await findServer('voxcpm_torch_gradio')
 	_voxcpmPort = port
 	if (await pingVoxCpm(port)) return fetchVoxCpmHealth(port)
 
@@ -116,7 +116,7 @@ export async function startVoxCpm(): Promise<ModelServerStatus> {
 
 export async function get_voxcpm_torch_gradio_status(): Promise<ModelServerStatus> {
 	console.log(`get_voxcpm_torch_gradio_status(), _voxcpmPort=${_voxcpmPort}`)
-	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
+	const { port } = await findServer('voxcpm_torch_gradio')
 	console.log(`get_voxcpm_torch_gradio_status() => found port=${port}`)
 	_voxcpmPort = port
 	return fetchStats(port)

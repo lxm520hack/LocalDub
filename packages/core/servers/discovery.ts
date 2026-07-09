@@ -37,14 +37,12 @@ const MDNS_TIMEOUT = 3000
  */
 export async function findServers(
   type: ServerType,
-  defaultPort = type === 'voxcpm_torch_gradio' ? 19112 : 19109,
-  defaultHost = '127.0.0.1',
 ): Promise<string[]> {
   const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
   if (mdnsList.length > 0) {
     return mdnsList.map((s) => `http://${s.host}:${s.port}`)
   }
-  return [`http://${defaultHost}:${defaultPort}`]
+  return [`http://127.0.0.1:${type === 'voxcpm_torch_gradio' ? 19112 : 19109}`]
 }
 
 /**
@@ -52,16 +50,15 @@ export async function findServers(
  */
 export async function findServer(
   type: ServerType = 'voxcpm_torch_gradio',
-  defaultPort = type === 'voxcpm_torch_gradio' ? 19112 : 19109,
-  defaultHost = '127.0.0.1',
+
 ): Promise<ServerInfo> {
-  console.log(`findServer(${type}, defaultPort=${defaultPort}, defaultHost=${defaultHost})`)
+  console.log(`findServer(${type})`)
   const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
   console.log(`findServer(${type}) => mdnsList=${JSON.stringify(mdnsList)}`)
   if (mdnsList.length > 0) {
     return { ...mdnsList[0], foundVia: 'mdns' }
   }
-  return { host: defaultHost, port: defaultPort, foundVia: 'default' }
+  return { host: '127.0.0.1', port: type === 'voxcpm_torch_gradio' ? 19112 : 19109, foundVia: 'default' }
 }
 
 export async function findServerViaMdnsAll(
@@ -95,7 +92,7 @@ export async function findServerViaMdnsAll(
 }
 
 /** Read the first PORT= line from a spawned process stdout. */
-export function readPortFromOutput(output: string, defaultPort: number): number {
+export function readPortFromOutput(output: string): number | null {
   const m = output.match(/^PORT=(\d+)/m)
-  return m ? parseInt(m[1], 10) : defaultPort
+  return m ? parseInt(m[1], 10) : null
 }

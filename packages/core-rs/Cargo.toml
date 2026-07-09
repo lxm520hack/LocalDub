@@ -9,3 +9,4 @@ specta.workspace = true
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 config-rs = { path = "../config-rs" }
+mdns-sd = "0.13"

@@ -4,7 +4,6 @@ import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 
 import { pythonBin } from '@repo/config/path/bin';
-import { findServer } from '@repo/core/servers/discovery';
 import { REPO_ROOT } from '@repo/config/root';
 import { AsrOptions } from '@repo/core/stages/asr/types.ts';
 import { setCtx, setStage } from '@repo/core/context/context.ts';
