@@ -10,7 +10,7 @@ export function IndexPage() {
 	}))
 	const greetQ = fnrpc.createQuery(() => ['greet', { name: 'World' }])
 	createEffect(() => {
-		console.log('greetQ.data', greetQ.data)
+		console.log('greetQ.data', greetQ0.data, greetQ.data)
 	})
 	return (
 		<div class="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
