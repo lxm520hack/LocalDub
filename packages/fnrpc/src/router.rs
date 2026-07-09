@@ -60,8 +60,8 @@ where
             out.push('\n');
         }
 
-        // Procedures interface (rspc-next compatible)
-        out.push_str("export interface Procedures {\n");
+        // Procedures type definition (rspc-next compatible)
+        out.push_str("export type Procedures = {\n");
         for (_, handler) in &self.handlers {
             let i = handler.input_type_name();
             let o = handler.output_type_name();

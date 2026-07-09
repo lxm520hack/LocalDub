@@ -3,10 +3,26 @@ use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use device_rs::DeviceInfo;
+use fnrpc::router::RpcRouter;
+use serde_json::Value;
 
 use crate::state::AppState;
+
+#[tauri::command]
+pub async fn rpc_fn(
+    router: tauri::State<'_, Arc<RpcRouter<AppState>>>,
+    state: tauri::State<'_, AppState>,
+    method: String,
+    input: Value,
+) -> Result<Value, String> {
+    router
+        .dispatch(state.inner(), &method, input)
+        .await
+        .map_err(|e| e.to_string())
+}
 
 fn find_available_port(preferred: u16) -> u16 {
     for port in preferred..=preferred + 100 {
