@@ -5,22 +5,22 @@ import * as tanstack from "@tanstack/solid-query";
 
 export * from "@fnrpc/query-core";
 
-const _store: { client: null | Client<any>; queryClient: null | tanstack.QueryClient } = {
-	client: null,
-	queryClient: null,
-};
+// const _store: { client: null | Client<any>; queryClient: null | tanstack.QueryClient } = {
+// 	client: null,
+// 	queryClient: null,
+// };
 
-export function createSolidQueryHooks<P extends Procedures>() {
+export function createSolidQueryHooks<P extends Procedures>(ctx: queryCore.Context<P>) {
 	const helpers = queryCore.createHookHelpers({
-		useContext: () => _store as any,
+		useContext: () => ctx,
 	});
 
 	function useUtils() {
-		if (!_store.client || !_store.queryClient)
+		if (!ctx.client || !ctx.queryClient)
 			throw new Error(
 				"The fnrpc context has not been set. Ensure the <fnrpc.Provider> component is higher up in your component tree.",
 			);
-		return queryCore.createUtils(_store.client as Client<P>, _store.queryClient);
+		return queryCore.createUtils(ctx.client, ctx.queryClient);
 	}
 
 	type K = keyof P & string;
@@ -32,7 +32,7 @@ export function createSolidQueryHooks<P extends Procedures>() {
 		return tanstack.createQuery(() =>
 			helpers.useQueryArgs(
 				keyAndInput() as any,
-				opts?.() as any,
+				opts?.(),
 			) as any,
 		);
 	}
@@ -44,7 +44,7 @@ export function createSolidQueryHooks<P extends Procedures>() {
 		return tanstack.createMutation(() =>
 			helpers.useMutationArgs(
 				key(),
-				{ ...(opts?.() as any), rspc: { client: _store.client } },
+				opts?.(),
 			) as any,
 		);
 	}
@@ -60,7 +60,7 @@ export function createSolidQueryHooks<P extends Procedures>() {
 					const unsubscribe = helpers.handleSubscription(
 						keyAndInput as any,
 						() => opts as any,
-						_store.client as any,
+					ctx.client as any,
 					);
 					solid.onCleanup(() => unsubscribe?.());
 				},
@@ -74,9 +74,9 @@ export function createSolidQueryHooks<P extends Procedures>() {
 			client: Client<P>;
 			queryClient: tanstack.QueryClient;
 		}): solid.JSX.Element => {
-			_store.client = props.client;
-			_store.queryClient = props.queryClient;
-			return <>{props.children}</>;
+			ctx.client = props.client;
+			ctx.queryClient = props.queryClient;
+			 return props.children;
 		},
 		useUtils,
 		createQuery,

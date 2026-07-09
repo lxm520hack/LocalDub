@@ -212,11 +212,13 @@ export function createHookHelpers<P extends Procedures>(args: {
 
 	function useMutationArgs<
 		T extends K,
-		O extends tanstack.MutationObserverOptions<
-			P[T]["output"],
-			unknown,
-			P[T]["input"],
-			unknown
+		O extends WrapMutationOptions<
+			P, tanstack.MutationObserverOptions<
+				P[T]["output"],
+				unknown,
+				P[T]["input"],
+				unknown
+			>
 		>,
 	>(key: T, opts?: O) {
 		const client = getClient(opts as any);
