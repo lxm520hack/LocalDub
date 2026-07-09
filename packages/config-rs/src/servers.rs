@@ -1,5 +1,7 @@
 /// Server type identifiers for mDNS discovery.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 pub enum ServerType {
     VoxcpmTorchGradio,
     DemucsTorchServer,

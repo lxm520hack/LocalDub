@@ -23,6 +23,7 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 core-rs = { path = "../../core-rs" }
+config-rs = { path = "../../config-rs" }
 device-rs = { path = "../../device-rs" }
 rspc = { version = "0.4", features = ["typescript"] }
 rspc-axum = "0.3"

@@ -1,5 +1,8 @@
-use core_rs::cmd::tasks::get_group_list::{GroupInfo, get_group_list};
+use config_rs::servers::ServerType;
+use core_rs::cmd::tasks::get_group_list::{get_group_list, GroupInfo};
+use core_rs::servers::discovery::{find_server, ServerInfo};
 use device_rs::DeviceInfo;
+// Checkout the official docs at https://rspc.dev. This documentation is generally written for authors of middleware and adapter.
 use rspc::{Procedure, ProcedureError, ResolverError, Router};
 use serde::Serialize;
 use specta::Type;
@@ -18,6 +21,7 @@ impl rspc::Error for RspcErr {
 
 pub fn build() -> Router<AppState> {
     Router::<AppState>::new()
+
         .procedure(
             "version",
             Procedure::<AppState, (), &'static str>::builder::<RspcErr>()
@@ -98,5 +102,11 @@ pub fn build() -> Router<AppState> {
                     }
                     result
                 }),
+        )
+        .procedure(
+            "find_server", 
+            Procedure::<AppState, ServerType, ServerInfo>::builder::<RspcErr>().query(|_ctx: AppState, input: ServerType| async move {
+                Ok(find_server(input).await)
+            }),
         )
 }

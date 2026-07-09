@@ -7,14 +7,14 @@ const MDNS_TIMEOUT: Duration = Duration::from_millis(3000);
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 pub enum FoundVia {
     Mdns,
     Default,
     PortFile,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct ServerInfo {
     pub host: String,
     pub port: u16,

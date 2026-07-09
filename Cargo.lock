@@ -182,6 +182,7 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "axum 0.7.9",
+ "config-rs",
  "core-rs",
  "device-rs",
  "rspc",
@@ -1749,6 +1750,7 @@ version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
  "dotenvy",
+ "serde",
  "specta",
 ]
 

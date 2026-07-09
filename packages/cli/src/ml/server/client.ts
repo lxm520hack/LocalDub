@@ -100,7 +100,7 @@ async function healthCheck(baseUrl: string): Promise<boolean> {
 
 export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Promise<string> {
 	// 1) Try mDNS discovery first
-	const { port } = await findServer('demucs_torch_server', preferredPort);
+	const { port } = await findServer('demucs_torch_server');
 	const baseUrl = getTorchServerUrl(port);
 	if (await healthCheck(baseUrl)) {
 		console.log(`[TorchServer] Connected to existing server at ${baseUrl}`);
@@ -110,8 +110,6 @@ export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Pr
 
 	// 2) Spawn detached Torch server
 	console.log('[TorchServer] Spawning ML torch server...');
-	const pyBin = pythonBin();
-	const scriptPath = demucs_torch_server;
 	const voxcpmSrc = join(REPO_ROOT, 'submodule', 'VoxCPM', 'src');
 
 	const env: Record<string, string> = {
@@ -121,7 +119,7 @@ export async function startTorchServer(preferredPort: number = DEFAULT_PORT): Pr
 	const existingPy = env.PYTHONPATH || '';
 	env.PYTHONPATH = existingPy ? `${voxcpmSrc}${delimiter}${existingPy}` : voxcpmSrc;
 
-	const proc = spawn(pyBin, [scriptPath, '--http-port', String(port)], {
+	const proc = spawn(pythonBin(), [demucs_torch_server, '--http-port', String(port)], {
 		env, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
 	});
 	proc.stderr?.pipe(process.stderr);

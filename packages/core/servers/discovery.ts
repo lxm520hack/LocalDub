@@ -50,7 +50,6 @@ export async function findServers(
  */
 export async function findServer(
   type: ServerType = 'voxcpm_torch_gradio',
-
 ): Promise<ServerInfo> {
   console.log(`findServer(${type})`)
   const mdnsList = await findServerViaMdnsAll(type, MDNS_TIMEOUT)
