@@ -175,7 +175,7 @@ export const startVoxCpm = createServerFn().handler(async (): Promise<ModelServe
 	return { status: 'stopped', port, uptime_s: 0, models: { voxcpm: { status: 'error', device: '' } } }
 })
 
-export const checkVoxCpm = createServerFn().handler(async (): Promise<ModelServerStatus> => {
+export const get_voxcpm_torch_gradio_status = createServerFn().handler(async (): Promise<ModelServerStatus> => {
 	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
 	_voxcpmPort = port
 	return fetchVoxCpmHealth(port)

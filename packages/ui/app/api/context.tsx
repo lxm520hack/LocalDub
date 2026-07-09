@@ -12,7 +12,7 @@ export interface ServersManagerApi {
   startVoxCpm: () => Promise<ModelServerStatus>;
   stopVoxCpm: () => Promise<ModelServerStatus>;
   restartVoxCpm: () => Promise<ModelServerStatus>;
-  checkVoxCpm: () => Promise<ModelServerStatus>;
+  get_voxcpm_torch_gradio_status: () => Promise<ModelServerStatus>;
 }
 
 export interface ClientApi {

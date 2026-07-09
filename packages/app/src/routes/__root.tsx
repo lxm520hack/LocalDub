@@ -64,7 +64,7 @@ function RootDocument({ children }: { children: JSX.Element }) {
       startVoxCpm: torchApi.startVoxCpm,
       stopVoxCpm: torchApi.stopVoxCpm,
       restartVoxCpm: torchApi.restartVoxCpm,
-      checkVoxCpm: torchApi.checkVoxCpm,
+      get_voxcpm_torch_gradio_status: torchApi.get_voxcpm_torch_gradio_status,
     },
     // deviceInfoApi: {
     //   // fetchDeviceInfo: deviceApi.fetchDeviceInfo,

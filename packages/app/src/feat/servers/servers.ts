@@ -114,10 +114,10 @@ export async function startVoxCpm(): Promise<ModelServerStatus> {
 	return waitForVoxCpm(_voxcpmPort)
 }
 
-export async function checkVoxCpm(): Promise<ModelServerStatus> {
-	console.log(`checkVoxCpm(), _voxcpmPort=${_voxcpmPort}`)
+export async function get_voxcpm_torch_gradio_status(): Promise<ModelServerStatus> {
+	console.log(`get_voxcpm_torch_gradio_status(), _voxcpmPort=${_voxcpmPort}`)
 	const { port } = await findServer('voxcpm_torch_gradio', _voxcpmPort)
-	console.log(`checkVoxCpm() => found port=${port}`)
+	console.log(`get_voxcpm_torch_gradio_status() => found port=${port}`)
 	_voxcpmPort = port
 	return fetchStats(port)
 }
