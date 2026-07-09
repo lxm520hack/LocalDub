@@ -8,11 +8,10 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().with_env_filter("info").init();
 
     // fnRPC router (independent from rspc)
-    let fnrpc_router = crate::func::build_fn_rpc()
-        .layer(fnrpc::middleware::TracingLayer);
+    let fnrpc_router = crate::func::build_fn_rpc().layer(fnrpc::middleware::TracingLayer);
 
     // rspc router (legacy)
     let rspc_router = crate::router::build();
