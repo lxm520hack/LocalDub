@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use axum::{
     extract::{Path, Query},
@@ -15,7 +14,7 @@ use tower_http::services::ServeDir;
 use crate::state::AppState;
 
 async fn fnrpc_handler(
-    Extension(router): Extension<Arc<RpcRouter<AppState>>>,
+    Extension(router): Extension<RpcRouter<AppState>>,
     Extension(state): Extension<AppState>,
     Path(method): Path<String>,
     Json(input): Json<Value>,
@@ -28,7 +27,7 @@ async fn fnrpc_handler(
 }
 
 async fn fnrpc_get_handler(
-    Extension(router): Extension<Arc<RpcRouter<AppState>>>,
+    Extension(router): Extension<RpcRouter<AppState>>,
     Extension(state): Extension<AppState>,
     Path(method): Path<String>,
     Query(params): Query<HashMap<String, String>>,
@@ -47,7 +46,7 @@ async fn fnrpc_get_handler(
 pub async fn start(
     procedures: Procedures<AppState>,
     state: AppState,
-    fnrpc_router: Arc<RpcRouter<AppState>>,
+    fnrpc_router: RpcRouter<AppState>,
     dist_dir: PathBuf,
     port: u16,
 ) {

@@ -95,8 +95,7 @@ async fn macro_ctx_greet(ctx: &AppCtx, input: GreetInput) -> Result<GreetOutput,
 
 #[tokio::test]
 async fn test_manual_rpc() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(Greet);
+    let router = RpcRouter::<()>::new().route(Greet);
 
     let input = serde_json::json!({ "name": "world" });
 
@@ -113,8 +112,7 @@ async fn test_manual_rpc() {
 
 #[tokio::test]
 async fn test_ctx_rpc() {
-    let mut router = RpcRouter::<AppCtx>::new();
-    router.route(CtxGreet);
+    let router = RpcRouter::<AppCtx>::new().route(CtxGreet);
 
     let ctx = AppCtx {
         prefix: "yo ".to_string(),
@@ -128,8 +126,7 @@ async fn test_ctx_rpc() {
 
 #[tokio::test]
 async fn test_macro_rpc() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_greet__FnRpc);
+    let router = RpcRouter::<()>::new().route(macro_greet__FnRpc);
 
     let input = serde_json::json!({ "name": "world" });
 
@@ -164,24 +161,21 @@ async fn test_macro_mutation_kind() {
 
 #[tokio::test]
 async fn test_macro_health_no_ctx() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_health__FnRpc);
+    let router = RpcRouter::<()>::new().route(macro_health__FnRpc);
     let result = router.dispatch(&(), "macro_health", serde_json::json!(null)).await.unwrap();
     assert_eq!(result, serde_json::json!("ok"));
 }
 
 #[tokio::test]
 async fn test_macro_health_with_ctx() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_health_ctx__FnRpc);
+    let router = RpcRouter::<()>::new().route(macro_health_ctx__FnRpc);
     let result = router.dispatch(&(), "macro_health_ctx", serde_json::json!(null)).await.unwrap();
     assert_eq!(result, serde_json::json!("ok"));
 }
 
 #[tokio::test]
 async fn test_macro_ctx_rpc() {
-    let mut router = RpcRouter::<AppCtx>::new();
-    router.route(macro_ctx_greet__FnRpc);
+    let router = RpcRouter::<AppCtx>::new().route(macro_ctx_greet__FnRpc);
 
     let ctx = AppCtx {
         prefix: "yo ".to_string(),
@@ -221,9 +215,9 @@ impl fnrpc::middleware::FnService<()> for PrefixService {
 
 #[tokio::test]
 async fn test_custom_layer() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_health__FnRpc);
-    router.layer(PrefixLayer);
+    let router = RpcRouter::<()>::new()
+        .route(macro_health__FnRpc)
+        .layer(PrefixLayer);
 
     let result = router.dispatch(&(), "macro_health", serde_json::json!(null)).await.unwrap();
     assert_eq!(result, serde_json::json!("layered:ok"));
@@ -231,23 +225,22 @@ async fn test_custom_layer() {
 
 #[tokio::test]
 async fn test_hook_layer() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_health__FnRpc);
-
     let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let log_clone = log.clone();
-    router.layer(
-        HookLayer::new()
-            .before(move |_ctx, method, _input| {
-                log_clone.lock().unwrap().push(format!("before:{method}"));
-                Ok(())
-            })
-            .after(move |_ctx, _method, result| {
-                if let Ok(val) = result {
-                    *val = serde_json::json!("hooked");
-                }
-            }),
-    );
+    let router = RpcRouter::<()>::new()
+        .route(macro_health__FnRpc)
+        .layer(
+            HookLayer::new()
+                .before(move |_ctx, method, _input| {
+                    log_clone.lock().unwrap().push(format!("before:{method}"));
+                    Ok(())
+                })
+                .after(move |_ctx, _method, result| {
+                    if let Ok(val) = result {
+                        *val = serde_json::json!("hooked");
+                    }
+                }),
+        );
 
     let result = router.dispatch(&(), "macro_health", serde_json::json!(null)).await.unwrap();
     assert_eq!(result, serde_json::json!("hooked"));
@@ -256,14 +249,14 @@ async fn test_hook_layer() {
 
 #[tokio::test]
 async fn test_multiple_layers() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(macro_health__FnRpc);
-    router.layer(PrefixLayer);
-    router.layer(HookLayer::new().after(|_ctx, _method, result| {
-        if let Ok(val) = result {
-            *val = serde_json::json!("wrapped");
-        }
-    }));
+    let router = RpcRouter::<()>::new()
+        .route(macro_health__FnRpc)
+        .layer(PrefixLayer)
+        .layer(HookLayer::new().after(|_ctx, _method, result| {
+            if let Ok(val) = result {
+                *val = serde_json::json!("wrapped");
+            }
+        }));
 
     // HookLayer (last added) is outermost, so after-hook runs after PrefixLayer
     let result = router.dispatch(&(), "macro_health", serde_json::json!(null)).await.unwrap();
@@ -272,8 +265,7 @@ async fn test_multiple_layers() {
 
 #[tokio::test]
 async fn test_ts_client() {
-    let mut router = RpcRouter::<()>::new();
-    router.route(Greet);
+    let router = RpcRouter::<()>::new().route(Greet);
 
     let client = router.generate_ts_client("/rpc");
     assert!(client.contains("greet"), "should contain method name");

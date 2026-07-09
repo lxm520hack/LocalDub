@@ -46,12 +46,9 @@ pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
         .collect();
 
     quote! {
-        pub fn build_fn_rpc() -> ::std::sync::Arc<fnrpc::router::RpcRouter<#ctx_ty>> {
-            let mut router = fnrpc::router::RpcRouter::new();
-            #(
-                router.route(#fn_structs);
-            )*
-            ::std::sync::Arc::new(router)
+        pub fn build_fn_rpc() -> fnrpc::router::RpcRouter<#ctx_ty> {
+            fnrpc::router::RpcRouter::new()
+                #(.route(#fn_structs))*
         }
     }
     .into()

@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 use std::path::PathBuf;
-use std::sync::Arc;
+
 
 use device_rs::DeviceInfo;
 use fnrpc::router::RpcRouter;
@@ -13,7 +13,7 @@ use crate::state::AppState;
 
 #[tauri::command]
 pub async fn rpc_fn(
-    router: tauri::State<'_, Arc<RpcRouter<AppState>>>,
+    router: tauri::State<'_, RpcRouter<AppState>>,
     state: tauri::State<'_, AppState>,
     method: String,
     input: Value,
