@@ -12,6 +12,8 @@ export function IndexPage() {
 	createEffect(() => {
 		console.log('greetQ.data', greetQ0.data, greetQ.data)
 	})
+	const addQ = fnrpc.createQuery(() => ['add', [1, 2]])
+	fnrpc.createQuery(() => ['health_check'])
 	return (
 		<div class="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
 			<span class="text-lg">Dashboard</span>

@@ -4,6 +4,7 @@ export type GreetInput = { name: string }
 export type GreetOutput = { message: string }
 
 export type Procedures = {
-  add: { kind: "query"; input: [number, number]; output: number; error: unknown };
+  health_check: { kind: "query"; input: null; output: string; error: unknown };
   greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
+  add: { kind: "query"; input: [number, number]; output: number; error: unknown };
 }
