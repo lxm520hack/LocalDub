@@ -21,7 +21,11 @@ pub fn run() {
     let axum_procedures = procedures.clone();
     let axum_state = app_state.clone();
     let axum_fnrpc = fnrpc_router.clone();
-    let dist_dir = app_state.repo_root.join("packages").join("app").join("dist");
+    let dist_dir = app_state
+        .repo_root
+        .join("packages")
+        .join("app")
+        .join("dist");
     tauri::async_runtime::spawn(async move {
         crate::server::start(axum_procedures, axum_state, axum_fnrpc, dist_dir, 19110).await;
     });

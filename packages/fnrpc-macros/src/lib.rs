@@ -49,7 +49,7 @@ pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
         pub fn build_fn_rpc() -> ::std::sync::Arc<fnrpc::router::RpcRouter<#ctx_ty>> {
             let mut router = fnrpc::router::RpcRouter::new();
             #(
-                router.add(#fn_structs);
+                router.route(#fn_structs);
             )*
             ::std::sync::Arc::new(router)
         }
