@@ -130,9 +130,6 @@ async fn test_ts_client() {
     assert!(client.contains("greet"), "should contain method name");
     assert!(client.contains("GreetInput"), "should contain input type");
     assert!(client.contains("GreetOutput"), "should contain output type");
-    assert!(client.contains("createRpcClient"), "should generate client factory");
-    assert!(client.contains("createQuery"), "should include createQuery");
-    assert!(client.contains("createMutation"), "should include createMutation");
-    // client factory contains the inline request function
-    assert!(client.contains("createRpcClient"));
+    assert!(client.contains("Procedures"), "should generate Procedures interface");
+    assert!(client.contains("\"query\""), "should contain kind");
 }

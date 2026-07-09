@@ -16,6 +16,7 @@ use crate::error::RpcErr;
 #[async_trait]
 pub trait ErasedHandler<Ctx>: Send + Sync {
     fn name(&self) -> &'static str;
+    fn kind(&self) -> &'static str;
     fn input_type_name(&self) -> &'static str;
     fn output_type_name(&self) -> &'static str;
     async fn call(&self, ctx: &Ctx, input: Value) -> Result<Value, RpcErr>;
@@ -30,6 +31,7 @@ pub trait RpcFn<Ctx>: Send + Sync {
     type Input: DeserializeOwned + Type + NamedType;
     type Output: Serialize + Type + NamedType;
     const NAME: &'static str;
+    const KIND: &'static str = "query";
 
     async fn exec(ctx: &Ctx, input: Self::Input) -> Result<Self::Output, RpcErr>;
 }
@@ -43,6 +45,10 @@ where
 {
     fn name(&self) -> &'static str {
         F::NAME
+    }
+
+    fn kind(&self) -> &'static str {
+        F::KIND
     }
 
     fn input_type_name(&self) -> &'static str {
