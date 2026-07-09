@@ -95,3 +95,53 @@ impl<Ctx: Send + Sync + 'static> FnLayer<Ctx> for HookLayer<Ctx> {
         })
     }
 }
+
+// ── Tracing layer (feature = "tracing") ───────────────────
+
+#[cfg(feature = "tracing")]
+pub struct TracingLayer;
+
+#[cfg(feature = "tracing")]
+struct TracingService<Ctx> {
+    inner: Box<dyn FnService<Ctx>>,
+}
+
+#[cfg(feature = "tracing")]
+#[async_trait]
+impl<Ctx: Send + Sync + 'static> FnService<Ctx> for TracingService<Ctx> {
+    async fn call(&self, ctx: &Ctx, method: &str, input: Value) -> Result<Value, RpcErr> {
+        let start = std::time::Instant::now();
+        let input_str = serde_json::to_string(&input).unwrap_or_default();
+        let result = self.inner.call(ctx, method, input).await;
+        let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
+        match &result {
+            Ok(output) => {
+                let output_str = serde_json::to_string(output).unwrap_or_default();
+                tracing::info!(
+                    method = %method,
+                    input = %input_str,
+                    output = %output_str,
+                    latency_ms = %latency_ms,
+                    "rpc_call",
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    method = %method,
+                    input = %input_str,
+                    error = %e,
+                    latency_ms = %latency_ms,
+                    "rpc_call",
+                );
+            }
+        }
+        result
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl<Ctx: Send + Sync + 'static> FnLayer<Ctx> for TracingLayer {
+    fn layer(&self, inner: Box<dyn FnService<Ctx>>) -> Box<dyn FnService<Ctx>> {
+        Box::new(TracingService { inner })
+    }
+}
