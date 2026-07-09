@@ -33,12 +33,16 @@ function callMutation<P extends Procedures, K extends keyof P & string>(
 	return (proxy as any).mutate(input);
 }
 
-type QueryKeyAndInput<P extends Procedures, K extends keyof P & string> = [
+export type QueryKeyAndInput<P extends Procedures, K extends keyof P & string> = [
 	key: K,
 	...input: P[K]["input"] extends undefined | void | null
 		? [undefined?]
 		: [P[K]["input"]],
 ];
+
+export type QueryKeyAndInputOrSkip<P extends Procedures, K extends keyof P & string> =
+	| QueryKeyAndInput<P, K>
+	| [K, tanstack.SkipToken];
 
 function isSkipTokenInput(
 	array: unknown[],
