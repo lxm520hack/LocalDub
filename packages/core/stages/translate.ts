@@ -201,6 +201,7 @@ ${correctionsStr}
 				: numbered;
 		try {
 			const data = await callJson(translateSystem, userMsg, 3072);
+			console.log(`[translate] Batch translated:`, data);
 			const arr = data.dst;
 			if (!Array.isArray(arr) || arr.length === 0)
 				throw new Error('dst is not an array');

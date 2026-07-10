@@ -16,7 +16,6 @@
     "onnxruntime-node": "1.26.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.16",
     "@types/bun": "^1.3.14",
     "@typescript/native-preview": "latest",
     "solid-js": "^1.9.13",

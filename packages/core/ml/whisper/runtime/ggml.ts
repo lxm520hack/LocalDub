@@ -187,6 +187,8 @@ export async function asrWhisperCpp(
 	} catch (e) {
 		emitLog(sessionPath, `[ASR] Failed to move whisper json: ${(e as any)?.message ?? e}`);
 	}
+	const detected_language = raw.result.language ?? 'auto';
+	setCtx(sessionPath, { asr_language: detected_language });
 	const transcription: any[] = raw.transcription || [];
 
 	const emitWords = ctx.input?.stages?.asr?.wordsOutput ?? true;
@@ -253,6 +255,7 @@ export async function asrWhisperCpp(
 		_rtf: elapsedSec > 0 && lastEndMs > 0
 			? (elapsedSec / (lastEndMs / 1000)).toFixed(3)
 			: '0',
+		detected_language,
 	};
 	writeJson(join(asrDir, 'asr.json'), asrOutput, ctx);
 
