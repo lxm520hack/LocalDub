@@ -262,7 +262,8 @@
               "ocr_cpp_bin",
               "cmake",
               "git",
-              "dotenv"
+              "dotenv",
+              "openai"
             ]
           }
         }

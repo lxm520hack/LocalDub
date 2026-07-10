@@ -181,6 +181,12 @@ export const envDescribeMap = {
     required: false,
     category: 'recommended',
   },
+  openai: {
+    en: 'openai-compatible API for translation (e.g. Ollama, vLLM, OpenAI)',
+    zh: '翻译用的 OpenAI 兼容 API (如 Ollama, vLLM, OpenAI)',
+    required: false,
+    category: 'optional',
+  },
 } as const;
 
 type EnvDescribeMap = typeof envDescribeMap;

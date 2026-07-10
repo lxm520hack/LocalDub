@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "server": "uv run python server.py",
-    "dev": "uv run python server.py --reload",
-    "install": "uv pip install -e ../../submodule/VoxCPM/"
+    "dev": "uv run python server.py --reload"
   }
 }
