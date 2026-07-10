@@ -2,9 +2,13 @@
 
 export type GreetInput = { name: string }
 export type GreetOutput = { message: string }
+export type ServerType = "VoxcpmTorchGradio" | "DemucsTorchServer"
+export type ServerInfo = { host: string; port: number; found_via: FoundVia }
 
 export type Procedures = {
-  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
   health_check: { kind: "query"; input: null; output: string; error: unknown };
+  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
   add: { kind: "query"; input: [number, number]; output: number; error: unknown };
+  get_group_list: { kind: "query"; input: null; output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[]; error: unknown };
+  find_server: { kind: "query"; input: ServerType; output: ServerInfo; error: unknown };
 }

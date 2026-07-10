@@ -25,6 +25,7 @@ import { Separator } from '@repo/ui-solid/base/separator';
 import { cn } from '@repo/shared/lib/utils';
 import { client, rspc } from '#/integrations/rspc/rspc.ts';
 import { ScrollArea } from '@repo/ui-solid/base/scroll-area';
+import { fnrpc } from '#/integrations/fnrpc/client.ts';
 
 const getButtonPx = (depth: number) => ({
 	'padding-left': `${(2 + 6 * depth) * 0.25}rem`,
@@ -72,7 +73,7 @@ export function AppSidebar() {
 	// 		queryFn: () => client.query(['getGroupList', null]) 
 	// 	}))
 	
-	const groupListQ = rspc.createQuery(() => ['getGroupList', null])
+	const groupListQ = fnrpc.createQuery(() => ['get_group_list'])
 	return (
 		<Sidebar>
 			<SidebarHeader class="flex-row">

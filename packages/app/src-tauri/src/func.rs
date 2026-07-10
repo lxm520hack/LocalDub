@@ -1,3 +1,5 @@
+use config_rs::servers::ServerType;
+use core_rs::{cmd::tasks::get_group_list::GroupInfo, servers::discovery::ServerInfo};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -34,9 +36,14 @@ pub async fn greet(ctx: &Ctx, input: GreetInput) -> Result<GreetOutput, String> 
     })
 }
 
-// #[fnrpc::rpc_query]
-// pub async fn repo_root(ctx: &Ctx) -> String {
-//     "ok".to_string()
-// }
+#[fnrpc::rpc_query]
+pub async fn get_group_list() -> Result<Vec<GroupInfo>, String> {
+    core_rs::cmd::tasks::get_group_list::get_group_list()
+}
 
-fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add] }
+#[fnrpc::rpc_query]
+pub async fn find_server(input: ServerType) -> ServerInfo {
+    core_rs::servers::discovery::find_server(input).await
+}
+
+fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server] }
