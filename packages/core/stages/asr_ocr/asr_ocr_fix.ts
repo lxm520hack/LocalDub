@@ -1,9 +1,11 @@
-import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
 import { emitLog, nowISO, probeVideoResolution, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
-import {  fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
+import { fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
 import { computeBoxYStats, computeSegmentAdjustments, build_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
+import { newOcrEngine, type OCRRuntime } from '../../ml/subtitle_ocr/ocr.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { FrameResult, Segment } from '@repo/core/ml/subtitle_ocr/types';
 import { LineAdjustedArgs } from '@repo/core/ml/subtitle_ocr/input';
@@ -52,6 +54,81 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 	const asrOcrFixCfg = ctx.input?.stages?.asr_ocr_fix;
 	const textScore = asrOcrFixCfg?.textScore ?? 0.45;
+
+	// --- Re-sample: supplement frames around high-confidence single-frame gaps ---
+	const RESAMPLE_CONF_THRESH = 0.6;
+	const RESAMPLE_STEP_MS = 100;
+	const RESAMPLE_RANGE_MS = 500;
+
+	const isolatedInfos: string[] = [];
+	const candidateTs = new Set<number>();
+	for (let i = 0; i < rawFrames.length; i++) {
+		const f = rawFrames[i];
+		if (!f.text || f.confidence < RESAMPLE_CONF_THRESH) continue;
+		const hasNearbySameText = rawFrames.some((other, j) =>
+			j !== i && other.text === f.text && Math.abs(other.timestamp - f.timestamp) <= RESAMPLE_RANGE_MS
+		);
+		if (hasNearbySameText) continue;
+		const prevTs = i > 0 ? rawFrames[i - 1].timestamp : -Infinity;
+		const nextTs = i < rawFrames.length - 1 ? rawFrames[i + 1].timestamp : Infinity;
+		const gapBefore = f.timestamp - prevTs;
+		const gapAfter = nextTs - f.timestamp;
+		isolatedInfos.push(`  ts=${f.timestamp}ms  text="${f.text.slice(0, 30)}"  conf=${f.confidence}  gapBefore=${gapBefore}ms  gapAfter=${gapAfter}ms`);
+		for (let t = f.timestamp - RESAMPLE_RANGE_MS; t <= f.timestamp + RESAMPLE_RANGE_MS; t += RESAMPLE_STEP_MS) {
+			if (t >= 0) candidateTs.add(t);
+		}
+	}
+	if (isolatedInfos.length > 0) {
+		emitLog(sessionPath, `[asr_ocr_fix] ${isolatedInfos.length} isolated high-confidence frames:\n${isolatedInfos.join('\n')}`);
+	}
+
+	const existingTs = new Set(rawFrames.map(f => f.timestamp));
+	const newTs = [...candidateTs].filter(t => !existingTs.has(t)).sort((a, b) => a - b);
+
+	if (newTs.length > 0) {
+		emitLog(sessionPath, `[asr_ocr_fix] Re-sampling ${newTs.length} frames at ${RESAMPLE_STEP_MS}ms steps...`);
+
+		const videoPath = videoSourcePath(ctx);
+		const resampleDir = join(asrOcrFixDir, 'resampled_frames');
+		ensureDir(resampleDir, ctx);
+
+		let extracted = 0;
+		for (const ts of newTs) {
+			const fp = join(resampleDir, `frame_${ts.toString().padStart(7, '0')}.jpg`);
+			const r = spawnSync('ffmpeg', ['-y', '-ss', String(ts / 1000), '-i', videoPath, '-frames:v', '1', '-qscale:v', '2', fp], { timeout: 15_000 });
+			if (r.status === 0) extracted++;
+		}
+		emitLog(sessionPath, `[asr_ocr_fix] Extracted ${extracted}/${newTs.length} resampled frames`);
+
+		if (extracted > 0) {
+			const runtime = (ocrFramesData._engine ?? 'ort-cpp') as OCRRuntime;
+			const device = (ocrFramesData._device ?? 'cpu') as any;
+			const engine = await newOcrEngine(runtime, device);
+
+			const frameFiles = readdirSync(resampleDir).filter(f => f.endsWith('.jpg')).sort();
+			const ocrResults = await engine.ocrFrames(resampleDir, frameFiles, { textScore });
+			await engine.release();
+
+			const newFrames: FrameResult[] = [];
+			for (let i = 0; i < frameFiles.length; i++) {
+				const tsMatch = frameFiles[i].match(/frame_(\d+)\.jpg/);
+				if (!tsMatch) continue;
+				const ts = parseInt(tsMatch[1], 10);
+				const r = joinOcrLines(ocrResults[i]);
+				if (r.text) newFrames.push({ ...r, timestamp: ts });
+			}
+
+			if (newFrames.length > 0) {
+				const before = rawFrames.length;
+				rawFrames.push(...newFrames);
+				rawFrames.sort((a, b) => a.timestamp - b.timestamp);
+				emitLog(sessionPath, `[asr_ocr_fix] Added ${newFrames.length} OCR frames (${before} → ${rawFrames.length})`);
+
+				writeJson(join(asrOcrFixDir, 'ocr_frames.json'), { ...ocrFramesData, _frames_raw: rawFrames }, ctx);
+			}
+		}
+	}
+
 	const lineAdjustedThreshold = asrOcrFixCfg?.lineAdjustedThreshold ?? 0.5;
 
 	// Compute per-line Y statistics from raw frames
@@ -137,9 +214,12 @@ export async function stageAsrOcrFix(ctx: Context) {
 		let bestAsr: Segment | undefined = undefined;
 		let bestOverlap = 0;
 		for (const asr of asrSegs) {
-			const overlapStart = Math.max(seg.start, asr.start);
-			const overlapEnd = Math.min(seg.end, asr.end);
-			const overlap = Math.max(0, overlapEnd - overlapStart);
+			let overlap: number;
+			if (seg.start === seg.end) {
+				overlap = (seg.start >= asr.start && seg.start <= asr.end) ? 1 : 0;
+			} else {
+				overlap = Math.max(0, Math.min(seg.end, asr.end) - Math.max(seg.start, asr.start));
+			}
 			if (overlap > bestOverlap) {
 				bestOverlap = overlap;
 				bestAsr = asr;
