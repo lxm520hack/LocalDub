@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, statSync, readFileSync, readdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -9,6 +9,8 @@ import {
 } from '@repo/config/path/models';
 import type { CheckResult } from './types';
 import { REPO_ROOT } from '@repo/config/root';
+import { pythonBin } from '@repo/config/path/bin';
+import { env } from 'node:process';
 
 function tryExec(cmd: string, args: string[], cwd?: string): { ok: boolean; stdout: string; stderr: string } {
   try {
@@ -81,7 +83,7 @@ export async function checkBun(): Promise<CheckResult> {
 }
 
 export async function checkPython(): Promise<CheckResult> {
-  const pyBin = join(REPO_ROOT, '.venv', 'bin', 'python');
+  const pyBin = pythonBin();
   if (!existsSync(pyBin)) return { key: 'python', status: 'fail', data: {}, required: true };
   const r = tryExec(pyBin, ['--version']);
   const ver = r.stdout.match(/(\d+\.\d+\.\d+)/)?.[0] || r.stdout;
@@ -118,9 +120,36 @@ export async function checkVcpkg(): Promise<CheckResult> {
   if (process.platform !== 'win32') return { key: 'vcpkg', status: 'skip', data: {}, required: false };
   const gitDir = join(REPO_ROOT, 'submodule', 'vcpkg', '.git');
   if (!existsSync(gitDir)) return { key: 'vcpkg', status: 'fail', data: { kind: 'submodule' }, required: false };
-  const r = tryExec('vcpkg', ['--version']);
+  const vcpkgExe = join(REPO_ROOT, 'submodule', 'vcpkg', process.platform === 'win32' ? 'vcpkg.exe' : 'vcpkg');
+  const r = tryExec(vcpkgExe, ['--version']);
   if (!r.ok) return { key: 'vcpkg', status: 'fail', data: { kind: 'bootstrap' }, required: false };
   return { key: 'vcpkg', status: 'pass', data: {}, required: false };
+}
+
+export async function checkOpenai(): Promise<CheckResult> {
+  const baseUrl = env.OPENAI_BASE_URL;
+  const apiKey = env.OPENAI_API_KEY;
+  if (!baseUrl || !apiKey) {
+    return  { key: 'openai', status: 'fail', data: { issues: "不存在" }, required: false };
+  } 
+  const isLocal = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+
+  try {
+    const res = await fetch(`${baseUrl}/models`, {
+      headers: isLocal ? {} : { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const models = json.data?.length ?? 'unknown';
+      return { key: 'openai', status: 'pass', data: { baseUrl, models: `${models} models` }, required: false };
+    }
+
+    return { key: 'openai', status: 'warn', data: { issues: `HTTP ${res.status}: ${res.statusText}` }, required: false };
+  } catch (err) {
+    return { key: 'openai', status: 'fail', data: { issues: (err as Error).message }, required: false };
+  }
 }
 
 export async function checkVulkan(): Promise<CheckResult> {
@@ -391,6 +420,7 @@ export const allChecks: Record<string, () => Promise<CheckResult>> = {
   cmake: checkCmake,
   git: checkGit,
   dotenv: checkDotenv,
+  openai: checkOpenai,
 };
 
 export const ensureFns: Record<string, () => Promise<CheckResult>> = {
@@ -401,5 +431,31 @@ export const ensureFns: Record<string, () => Promise<CheckResult>> = {
     if (!existsSync(src)) return { key: 'dotenv', status: 'fail', data: {}, required: false };
     copyFileSync(src, dst);
     return { key: 'dotenv', status: 'pass', data: {}, required: false };
+  },
+  openai: async () => {
+    const rawUrl = env.OPENAI_BASE_URL || '';
+    if (!rawUrl.includes('localhost') && !rawUrl.includes('127.0.0.1'))
+      return { key: 'openai', status: 'skip', data: { issues: 'not a local server', baseUrl: rawUrl }, required: false } as CheckResult;
+
+    try {
+      const res = await fetch(`${rawUrl}/models`, { signal: AbortSignal.timeout(2000) });
+      if (res.ok) return { key: 'openai', status: 'pass', data: { baseUrl: rawUrl }, required: false } as CheckResult;
+    } catch {}
+
+    const ollamaBin = Bun.which('ollama');
+    if (!ollamaBin) return { key: 'openai', status: 'fail', data: { issues: 'ollama not found in PATH' }, required: false } as CheckResult;
+
+    const proc = spawn(ollamaBin, ['serve'], { detached: true, stdio: 'ignore' });
+    proc.unref();
+
+    for (let i = 0; i < 15; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const res = await fetch(`${rawUrl}/models`, { signal: AbortSignal.timeout(1000) });
+        if (res.ok) return { key: 'openai', status: 'pass', data: { baseUrl: rawUrl }, required: false } as CheckResult;
+      } catch {}
+    }
+
+    return { key: 'openai', status: 'fail', data: { issues: 'ollama serve did not respond after 15s' }, required: false } as CheckResult;
   },
 };
