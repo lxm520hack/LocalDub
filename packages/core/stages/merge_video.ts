@@ -15,6 +15,7 @@ import {
 	defaultFont,
 	videoSourcePath,
     timings_filepath,
+    split_audio_timings_filepath,
 } from '@repo/core/stages/utils/utils';
 import { startLog } from './utils/log.ts';
 import { writeSrt } from '@repo/core/utils/srt';
@@ -23,8 +24,6 @@ function filterSubPath(subPath: string): string {
 	if (process.platform !== 'win32') return subPath;
 	return subPath.replace(/\\/g, '/').replace(/:/g, '\\:');
 }
-
-
 
 function dstLangFromTranslation(translation: any[]): string {
 	return translation.find((t: any) => t.dst_lang)?.dst_lang || 'zh';
@@ -90,7 +89,7 @@ export async function stageMergeVideo(ctx: Context) {
 		const translateEnabled = ctx.input?.stages?.translate?.enabled ?? true;
 		let data: { translation: any[] };
 		if (vadAlign) {
-			data = await readJson(timings_filepath(sessionPath), ctx);
+			data = await readJson(split_audio_timings_filepath(sessionPath), ctx);
 		} else if (translateEnabled) {
 			const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 			const trFile = translationFilePath(sessionPath, dstLangCode);
