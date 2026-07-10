@@ -11,6 +11,7 @@ import type { CheckResult } from './types';
 import { REPO_ROOT } from '@repo/config/root';
 import { pythonBin } from '@repo/config/path/bin';
 import { env } from 'node:process';
+import { checkOcrCppBin, ensureOcrCppBin } from './items/ocr_cpp_bin';
 
 function tryExec(cmd: string, args: string[], cwd?: string): { ok: boolean; stdout: string; stderr: string } {
   try {
@@ -283,14 +284,6 @@ export async function checkDemucsBurnBin(): Promise<CheckResult> {
   };
 }
 
-export async function checkOcrCppBin(): Promise<CheckResult> {
-  const ext = process.platform === 'win32' ? '.exe' : '';
-  const path = join(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build', `subtitle_ocr_ort_cpp${ext}`);
-  if (!existsSync(path)) return { key: 'ocr_cpp_bin', status: 'fail', data: {}, required: false };
-  const stale = isStale(path, ['packages/subtitle-ocr/ort-cpp/']);
-  return { key: 'ocr_cpp_bin', status: stale ? 'warn' : 'pass', data: { path }, required: false };
-}
-
 export async function checkCmake(): Promise<CheckResult> {
   const r = tryExec('cmake', ['--version']);
   if (!r.ok) return { key: 'cmake', status: 'fail', data: {}, required: false };
@@ -458,4 +451,5 @@ export const ensureFns: Record<string, () => Promise<CheckResult>> = {
 
     return { key: 'openai', status: 'fail', data: { issues: 'ollama serve did not respond after 15s' }, required: false } as CheckResult;
   },
+  ocr_cpp_bin: ensureOcrCppBin,
 };

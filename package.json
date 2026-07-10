@@ -21,7 +21,7 @@
     "@typescript/native-preview": "latest",
     "solid-js": "^1.9.13",
     "tailwind": "^4.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7"
   },
   "dependencies": {
     "agnostic-query": "^1.10.7"

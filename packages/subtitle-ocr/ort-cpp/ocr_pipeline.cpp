@@ -42,6 +42,9 @@ static std::string wideToUtf8(const std::wstring& wstr) {
 #include "geometry.h"
 
 #include <opencv2/opencv.hpp>
+#if __has_include(<opencv2/geometry.hpp>)
+#include <opencv2/geometry.hpp>   // OC5: minAreaRect/boxPoints/getPerspectiveTransform moved here
+#endif
 
 // --- Constants ---
 constexpr int DET_LIMIT_SIDE = 736;

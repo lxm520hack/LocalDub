@@ -1,11 +1,10 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { REPO_ROOT } from '@repo/config/root';
 import { OCRLine } from '@repo/subtitle-ocr/types';
 import { getRapidOcrModelsDir } from '@repo/subtitle-ocr/utils';
-
-
+import { existsOcrCppBin, ocrCppBinPath, checkOcrCppBin, ensureOcrCppBin } from '../../../cmd/env/items/ocr_cpp_bin';
 
 const BUILD_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp', 'build');
 const OCR_KEYS_PATH = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ppocr_keys.json');
@@ -16,44 +15,25 @@ function getLibPathKey(): string {
 }
 const LIB_PATH_KEY = getLibPathKey();
 
-function ocrOpenCvCppBinaryPath(): string {
-	const name = 'subtitle_ocr_ort_cpp' + (process.platform === 'win32' ? '.exe' : '');
-	const candidates = [
-		resolve(BUILD_DIR, 'Release', name),
-		resolve(BUILD_DIR, name),
-	];
-	return candidates.find(c => existsSync(c)) || candidates[0];
-}
+let _ocrChecked = false;
 
-export function existsOcrOpenCvCppBinary(): boolean {
-	return existsSync(ocrOpenCvCppBinaryPath());
-}
-
-const SRC_DIR = resolve(REPO_ROOT, 'packages', 'subtitle-ocr', 'ort-cpp');
-const TOOLCHAIN = resolve(REPO_ROOT, 'submodule', 'vcpkg', 'scripts', 'buildsystems', 'vcpkg.cmake');
-
-function ensureOcrCpp(): void {
-	if (existsOcrOpenCvCppBinary()) return;
-	console.log('[OCR] Building C++ binary (cmake)...');
-	execSync(
-		`cmake -S "${SRC_DIR}" -B "${BUILD_DIR}" -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" -DVCPKG_TARGET_TRIPLET=x64-windows`,
-		{ stdio: 'inherit', timeout: 120_000 },
-	);
-	execSync(
-		`cmake --build "${BUILD_DIR}" --config Release --parallel`,
-		{ stdio: 'inherit', timeout: 300_000 },
-	);
-	if (!existsOcrOpenCvCppBinary()) {
-		throw new Error(`OCR build succeeded but binary not found at ${ocrOpenCvCppBinaryPath()}`);
+async function ensureOcrCpp(): Promise<void> {
+	if (_ocrChecked) return;
+	_ocrChecked = true;
+	if (existsOcrCppBin()) {
+		const c = await checkOcrCppBin();
+		if (c.status === 'pass') return;
 	}
+	const r = await ensureOcrCppBin();
+	if (r.status !== 'pass') throw new Error(`OCR rebuild failed: ${JSON.stringify(r.data)}`);
 }
 
 export async function ocrFrameOpenCvCpp(
 	framePath: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<OCRLine[]> {
-	ensureOcrCpp();
-	const r = spawnSync(ocrOpenCvCppBinaryPath(), [
+	await ensureOcrCpp();
+	const r = spawnSync(ocrCppBinPath(), [
 		framePath,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
 		...(opts?.subtitleOnly ? ['--subtitle-only'] : []),
@@ -77,8 +57,8 @@ export async function ocrFramesOpenCvCpp(
 	frameDir: string,
 	opts?: { textScore?: number; subtitleOnly?: boolean; device?: string },
 ): Promise<Map<string, OCRLine[]>> {
-	ensureOcrCpp();
-	const binPath = ocrOpenCvCppBinaryPath();
+	await ensureOcrCpp();
+	const binPath = ocrCppBinPath();
 	const args = [
 		'--dir', frameDir,
 		...(opts?.textScore != null ? [String(opts.textScore)] : []),
