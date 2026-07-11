@@ -63,7 +63,7 @@ export type StageName = (typeof stagesList)[number];
 export const subtitleSourceList = ['asr', 'ocr', 'asr_ocr'] as const;
 export type SubtitleSource = (typeof subtitleSourceList)[number];
 
-const taskActionList = ['start', 'resume', 'rerun_stage', 'status', 'get_group_list'] as const;
+const taskActionList = ['start', 'resume', 'rerun_stage', 'status', 'get_group_list', 'get_task_ctx'] as const;
 export const taskArgsSchema = z.object({
   action: z.enum(taskActionList).optional().describe('任务操作: start=开始, resume=继续, rerun_stage=重新运行某步骤, status=显示状态, get_group_list=列出分组'),
   url: z.string().optional().describe('本地文件路径或云端文件 url、youtubeUrl、bilibiliUrl'),

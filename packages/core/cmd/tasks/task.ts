@@ -1,4 +1,4 @@
-import { get_group_list } from "@repo/core/cmd/tasks/get_group_list";
+import { get_group_list, getTaskCtx } from "./get_task";
 import { InputArgs } from "../../input/input";
 import { cmdRerunStage } from "./rerunStage";
 import { cmdResumeTask } from "./resumeTask";
@@ -23,6 +23,10 @@ export const cmdTask = async (input: InputArgs) => {
   } else if (input.task.action === 'get_group_list') {
     const group_list = await get_group_list()
     console.log(JSON.stringify(group_list, null, 2))
+  } else if (input.task.action === 'get_task_ctx') {
+    const taskDir = input.task?.taskDir!;
+    const ctx = getTaskCtx(taskDir);
+    console.log(JSON.stringify(ctx, null, 2))
   } else {
     console.error(`Unknown task action: ${input.task.action}`);
   }

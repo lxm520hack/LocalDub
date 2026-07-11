@@ -332,7 +332,7 @@ Both modes produce an SRT subtitle file at `metadata/subtitles.<lang>.srt`.
 | `title` | text? | Video title | download |
 | `status` | text NOT NULL | pending/running/succeeded/failed | pipeline |
 | `current_stage` | text? | Currently executing stage | pipeline |
-| `session_path` | text? | Relative path to session dir | download |
+| `task_dir` | text? | Relative path to session dir | download |
 | `final_video_path` | text? | API path to output video | merge_video |
 | `error_message` | text? | Failure reason | pipeline |
 | `created_at` | text NOT NULL | ISO timestamp | creation |

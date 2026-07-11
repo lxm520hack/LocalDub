@@ -77,10 +77,6 @@ export async function downloadVideo(
 		}
 		
 		emitLog(taskDir, '[Download] Importing local video...');
-		await setStage(taskDir, 'download', {
-			last_message: 'Importing local video...',
-			progress: 0,
-		});
 
 		const t0 = Date.now();
 		encodeToMp4(rawVideoPath, videoPath);
@@ -101,10 +97,7 @@ export async function downloadVideo(
 		// console.log(`[Download] video info: `, info);
 
 		emitLog(taskDir, '[Download] Downloading video...');
-		await setStage(taskDir, 'download', {
-			last_message: 'Downloading video...',
-			progress: 0,
-		});
+
 		ytDlpExtArgs.push('--remote-components', 'ejs:github')
 		const ytArgs: string[] = [
 			'-f',
@@ -147,11 +140,5 @@ export async function downloadVideo(
 		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 	}
 
-	await setStage(taskDir, 'download', {
-		status: 'succeeded',
-		completed_at: nowISO(),
-		progress: 100,
-		last_message: 'Imported',
-	});
 	return;
 }

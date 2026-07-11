@@ -18,7 +18,7 @@ import { openSettings } from './settings/settings';
 import { ChevronRight, Folder, LayoutDashboard, Settings } from 'lucide-solid';
 import { useClientApi } from '@repo/ui/app/api/context';
 import { createQuery, useQuery } from '@tanstack/solid-query';
-import { GroupInfo } from '@repo/core/cmd/tasks/get_group_list';
+import { GroupInfo } from '@repo/core/cmd/tasks/get_task';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/ui-solid/base/collapsible';
 import { For, Match, Show, Switch } from 'solid-js';
 import { Separator } from '@repo/ui-solid/base/separator';

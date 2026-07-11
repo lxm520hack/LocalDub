@@ -27,7 +27,8 @@
             "resume",
             "rerun_stage",
             "status",
-            "get_group_list"
+            "get_group_list",
+            "get_task_ctx"
           ]
         },
         "url": {

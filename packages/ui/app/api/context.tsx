@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 import type { ModelServerStatus, ModelStatus } from '@repo/core/servers/type';
 import type { DeviceInfo } from '@repo/device';
-import { GroupInfo } from '@repo/core/cmd/tasks/get_group_list';
+import { GroupInfo } from '@repo/core/cmd/tasks/get_task';
 export type { DeviceInfo, ModelServerStatus, ModelStatus };
 
 export interface ServersManagerApi {
