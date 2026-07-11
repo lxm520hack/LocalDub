@@ -3,6 +3,7 @@ import { getAutoSaveMode } from './editorPrefs';
 import { useTheme } from '@repo/ui-solid/theme';
 import { readInput, readInputSchema } from '#/fn/input.ts';
 import { rspc } from '#/integrations/rspc/rspc.ts';
+import { fnrpc } from '#/integrations/fnrpc/client.ts';
 
 const AUTO_SAVE_DELAY = 2000;
 
@@ -46,8 +47,8 @@ export function InputEditor() {
       } catch { /* silent */ }
     }, AUTO_SAVE_DELAY);
   };
-  const readInputQ = rspc.createQuery(()=>['readInput', null])
-  const schemaContentQ = rspc.createQuery(()=>['readInputSchema', null])
+  const readInputQ = fnrpc.createQuery(()=>['read_app_file_text', 'packages/cli/input.json'])
+  const schemaContentQ = fnrpc.createQuery(()=>['read_app_file_text', 'packages/cli/input.schema.json'])
   onMount(async () => {
     if (!containerRef) return;
 
