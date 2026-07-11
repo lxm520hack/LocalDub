@@ -9,7 +9,7 @@ use device_rs::DeviceInfo;
 use fnrpc::router::RpcRouter;
 use futures::StreamExt;
 use serde_json::Value;
-use tauri::ipc::{Channel, InvokeBody, InvokeResponseBody};
+use tauri::ipc::Channel;
 
 use crate::state::{AppState, Ctx};
 use axum::http::HeaderMap;
@@ -37,7 +37,7 @@ pub async fn rpc_subscribe(
     state: tauri::State<'_, AppState>,
     path: String,
     input: Value,
-    channel: Channel,
+    channel: Channel<String>,
 ) -> Result<(), String> {
     let ctx = Ctx {
         state: state.inner().clone(),
@@ -53,15 +53,16 @@ pub async fn rpc_subscribe(
         while let Some(item) = stream.next().await {
             match item {
                 Ok(val) => {
-                    let body: InvokeResponseBody = InvokeBody::Json(val).into();
-                    if channel.send(body).is_err() {
+                    let s = match &val {
+                        serde_json::Value::String(s) => s.clone(),
+                        other => other.to_string(),
+                    };
+                    if channel.send(s).is_err() {
                         break;
                     }
                 }
                 Err(e) => {
-                    let err_body: InvokeResponseBody =
-                        InvokeBody::Json(serde_json::json!({"__error": e.to_string()})).into();
-                    let _ = channel.send(err_body);
+                    let _ = channel.send(format!("__error:{}", e));
                     break;
                 }
             }

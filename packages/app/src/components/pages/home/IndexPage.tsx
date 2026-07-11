@@ -1,4 +1,4 @@
-import { fnrpc } from "#/integrations/fnrpc/client.ts";
+import { client, fnrpc } from "#/integrations/fnrpc/client.ts";
 import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui-solid/base/card";
 import { For, Show } from "solid-js";
 import { Link } from "@tanstack/solid-router";
@@ -41,6 +41,10 @@ function timeAgo(iso: string | null | undefined) {
 }
 
 export function IndexPage() {
+  client.watch_task_log.subscribe('workfolder/深宫团宠，猫狗皇子皆是我的心头崽（30集）/第1集', {
+    onData: (line) => console.log("[log]", line),
+    onError: (err) => console.error(err),
+  })
   const groupListQ = fnrpc.createQuery(() => ['get_group_list']);
   const groups = () => (groupListQ.data ?? []) as GroupInfo[];
   const allTasks = () => groups().flatMap(g => g.tasks);

@@ -7,7 +7,9 @@ use syn::{
 
 struct RegistryInput {
     ctx_ty: syn::Type,
-    fns: Vec<syn::Ident>,
+    query_fns: Vec<syn::Ident>,
+    mutation_fns: Vec<syn::Ident>,
+    subscription_fns: Vec<syn::Ident>,
 }
 
 impl syn::parse::Parse for RegistryInput {
@@ -19,19 +21,51 @@ impl syn::parse::Parse for RegistryInput {
         input.parse::<syn::Token![<]>()?;
         let ctx_ty: syn::Type = input.parse()?;
         input.parse::<syn::Token![>]>()?;
-        input.parse::<syn::Token![=]>()?;
+
         let content;
-        syn::bracketed!(content in input);
-        let mut fns = Vec::new();
+        syn::braced!(content in input);
+
+        let mut query_fns = Vec::new();
+        let mut mutation_fns = Vec::new();
+        let mut subscription_fns = Vec::new();
+
         while !content.is_empty() {
-            let ident: syn::Ident = content.parse()?;
-            fns.push(ident);
+            let section: syn::Ident = content.parse()?;
+            content.parse::<syn::Token![:]>()?;
+            let items;
+            syn::bracketed!(items in content);
+            let target = if section == "queries" {
+                &mut query_fns
+            } else if section == "mutations" {
+                &mut mutation_fns
+            } else if section == "subscriptions" {
+                &mut subscription_fns
+            } else {
+                return Err(syn::Error::new(
+                    section.span(),
+                    "expected `queries`, `mutations`, or `subscriptions`",
+                ));
+            };
+            while !items.is_empty() {
+                let ident: syn::Ident = items.parse()?;
+                target.push(ident);
+                if items.is_empty() {
+                    break;
+                }
+                let _: syn::Token![,] = items.parse()?;
+            }
             if content.is_empty() {
                 break;
             }
             let _: syn::Token![,] = content.parse()?;
         }
-        Ok(RegistryInput { ctx_ty, fns })
+
+        Ok(RegistryInput {
+            ctx_ty,
+            query_fns,
+            mutation_fns,
+            subscription_fns,
+        })
     }
 }
 
@@ -39,8 +73,19 @@ impl syn::parse::Parse for RegistryInput {
 pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as RegistryInput);
     let ctx_ty = &input.ctx_ty;
-    let fn_structs: Vec<syn::Ident> = input
-        .fns
+
+    let query_structs: Vec<syn::Ident> = input
+        .query_fns
+        .iter()
+        .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
+        .collect();
+    let mutation_structs: Vec<syn::Ident> = input
+        .mutation_fns
+        .iter()
+        .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
+        .collect();
+    let subscription_structs: Vec<syn::Ident> = input
+        .subscription_fns
         .iter()
         .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
         .collect();
@@ -48,7 +93,9 @@ pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
     quote! {
         pub fn build_fn_rpc() -> fnrpc::router::RpcRouter<#ctx_ty> {
             fnrpc::router::RpcRouter::new()
-                #(.route(#fn_structs))*
+                #(.route(#query_structs))*
+                #(.route(#mutation_structs))*
+                #(.subscribe(#subscription_structs))*
         }
     }
     .into()

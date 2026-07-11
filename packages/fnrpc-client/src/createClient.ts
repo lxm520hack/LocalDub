@@ -5,14 +5,13 @@ import type {
 	ExecuteFn,
 	Procedure,
 	Procedures,
+	Unsubscribable,
 } from "./types";
 
 export type ProcedureWithKind<V extends ProcedureKind> = Omit<
 	Procedure,
 	"kind"
 > & { kind: V };
-
-type Unsubscribable = { unsubscribe: () => void };
 
 export type VoidIfInputNull<
 	P extends Procedure,
