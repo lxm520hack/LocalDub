@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum VideoSource {
     Youtube,
@@ -12,7 +13,17 @@ pub enum VideoSource {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct TaskBrief {
+    pub id: String,
+    pub title: Option<String>,
+    pub status: String,
+    pub current_stage: Option<String>,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Task {
     pub id: String,
     pub source: VideoSource,
@@ -27,8 +38,21 @@ pub struct Task {
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
 }
+impl From<Task> for TaskBrief {
+    fn from(t: Task) -> Self {
+        Self {
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            current_stage: t.current_stage,
+            created_at: t.created_at,
+            started_at: t.started_at,
+            completed_at: t.completed_at,
+        }
+    }
+}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TaskStage {
     pub name: String,
     pub label: String,
@@ -40,7 +64,7 @@ pub struct TaskStage {
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct AsrRunInfo {
     pub engine: String,
     pub device: String,
@@ -49,12 +73,12 @@ pub struct AsrRunInfo {
     pub fallback_to_cpu: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RunInfo {
     pub asr: Option<AsrRunInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Context {
     pub task: Task,
     pub stages: Option<Vec<TaskStage>>,

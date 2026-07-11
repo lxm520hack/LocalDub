@@ -8,19 +8,23 @@ import { TargetLang } from "@repo/core/cmd/tasks/input";
 export const getTaskId = (taskDir: string) => getLastSegment(taskDir)
 
 export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote' | 'unknown';
-export interface Task {
+
+export interface TaskBrief {
   id: string;
+  title?: string | null
+  status: string; // queued
+  current_stage?: string | null
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface Task extends TaskBrief {
   source: VideoSource
   url: string;
-  title?: string | null | undefined;
-  status: string; // queued
-  current_stage?: string | null | undefined;
   task_dir: string
   final_video_path?: string | null | undefined;
   error_message?: string | null | undefined;
-  created_at: string;
-  started_at?: string | null | undefined;
-  completed_at?: string | null | undefined;
 }
 export interface Context {
   task: Task;

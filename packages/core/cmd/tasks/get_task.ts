@@ -1,17 +1,9 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { Context, readCtx, readTask } from '@repo/core/context/context';
+import { Context, readCtx, readTask, TaskBrief } from '@repo/core/context/context';
 import { workfolder } from '@repo/config/env';
 
-interface TaskBrief {
-  id: string;
-  title: string | null;
-  status: string;
-  current_stage: string | null;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-}
+
 
 export interface GroupInfo {
   group_id: string;

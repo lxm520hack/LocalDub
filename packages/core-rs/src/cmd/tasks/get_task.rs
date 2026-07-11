@@ -1,18 +1,8 @@
-use std::fs;
+use crate::context::{self, TaskBrief};
+use crate::utils::time::system_time_to_iso;
 use serde::Serialize;
 use specta::Type;
-use crate::context;
-use crate::utils::time::system_time_to_iso;
-#[derive(Debug, Clone, Serialize, Type)]
-pub struct TaskBrief {
-    pub id: String,
-    pub title: Option<String>,
-    pub status: String,
-    pub current_stage: Option<String>,
-    pub created_at: String,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
-}
+use std::fs;
 
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct GroupInfo {
@@ -26,8 +16,8 @@ pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
     let wf = config_rs::env::workfolder();
     let mut groups: Vec<GroupInfo> = Vec::new();
 
-    let entries = fs::read_dir(&wf)
-        .map_err(|e| format!("Failed to read workfolder {:?}: {}", wf, e))?;
+    let entries =
+        fs::read_dir(&wf).map_err(|e| format!("Failed to read workfolder {:?}: {}", wf, e))?;
 
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
@@ -65,15 +55,9 @@ pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
 
             match context::read_task(task_path.to_str().unwrap_or_default()) {
                 Ok(task) => {
-                    tasks.push(TaskBrief {
-                        id: task.id,
-                        title: task.title,
-                        status: task.status,
-                        current_stage: task.current_stage,
-                        created_at: task.created_at,
-                        started_at: task.started_at,
-                        completed_at: task.completed_at,
-                    });
+                    let brief: TaskBrief = task.into();
+
+                    tasks.push(brief);
                 }
                 Err(_) => continue,
             }
@@ -95,13 +79,11 @@ pub fn get_group_list() -> Result<Vec<GroupInfo>, String> {
         });
     }
 
-    groups.sort_by(|a, b| {
-        match (&a.created_at, &b.created_at) {
-            (Some(a), Some(b)) => b.cmp(a),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => a.group_id.cmp(&b.group_id),
-        }
+    groups.sort_by(|a, b| match (&a.created_at, &b.created_at) {
+        (Some(a), Some(b)) => b.cmp(a),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => a.group_id.cmp(&b.group_id),
     });
 
     Ok(groups)
