@@ -90,7 +90,7 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 }
 
 export async function stageAsrOcrPre(ctx: Context) {
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 
 
 	setStage(taskDir, 'asr_ocr_pre', {

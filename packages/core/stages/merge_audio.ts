@@ -6,7 +6,7 @@ import { Context, setStage, setTask } from '@repo/core/context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
   const taskId = ctx.task.id;
-  const taskDir = ctx.task.session_path
+  const taskDir = ctx.task.task_dir
   const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
   const mergeAudioDir = join(taskDir, 'merge_audio');
   const ttsDir = join(taskDir, 'tts', 'wavs');

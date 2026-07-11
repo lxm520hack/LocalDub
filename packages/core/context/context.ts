@@ -15,7 +15,7 @@ export interface Task {
   title?: string | null | undefined;
   status: string; // queued
   current_stage?: string | null | undefined;
-  session_path: string
+  task_dir: string
   final_video_path?: string | null | undefined;
   error_message?: string | null | undefined;
   created_at: string;
@@ -73,7 +73,7 @@ export const _readCtx = (taskDir: string) => {
 	return raw as Context;
 };
 export const writeCtx = (ctx: Context) => {
-	const path = ctxPath(ctx.task.session_path);
+	const path = ctxPath(ctx.task.task_dir);
 	const raw = JSON.stringify(ctx, null, 2);
 	writeFileSync(path, raw);
 	const lines = raw.split('\n').length;
@@ -82,7 +82,7 @@ export const writeCtx = (ctx: Context) => {
 	return ctx;
 };
 export const _writeCtx = (ctx: Context) => {
-	const path = ctxPath(ctx.task.session_path);
+	const path = ctxPath(ctx.task.task_dir);
 	const raw = JSON.stringify(ctx, null, 2);
 	writeFileSync(path, raw);
 	return ctx;
@@ -110,11 +110,11 @@ export const readTask = (taskDir: string) => {
 	return ctx.task;
 }
 export const _writeTask = ( task: Task) => {
-	_setCtx(task.session_path, { task });
+	_setCtx(task.task_dir, { task });
 }
 export const writeTask = ( task: Task) => {
-	_setCtx(task.session_path, { task });
-			console.log(`[${task.current_stage}] setTask ${ctxPath(task.session_path)}:`, JSON.stringify(task));
+	_setCtx(task.task_dir, { task });
+			console.log(`[${task.current_stage}] setTask ${ctxPath(task.task_dir)}:`, JSON.stringify(task));
 }
 export const setTask = (taskDir: string, patch: Partial<Task>) => {
 	// If marking succeeded, clear any previous error_message to avoid stale failure state

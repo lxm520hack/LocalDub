@@ -9,7 +9,7 @@ import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 /** Get the downloaded video source path for a session. */
 export function videoSourcePath(ctx: Context): string {
 	if (!ctx.videoSourcePath) {
-		throw new Error(`videoSourcePath not set in context for session ${ctx.task.session_path}`);
+		throw new Error(`videoSourcePath not set in context for session ${ctx.task.task_dir}`);
 	}
 	return ctx.videoSourcePath
 }
@@ -184,15 +184,15 @@ export function translationFilePath(taskDir: string, lang: string): string {
 export function subtitleFilePath(ctx: Context,): string {
 	const src = ctx.input?.task?.subtitleSource ?? 'asr'
 	if (src === 'ocr') {
-		const fixFile = join(ctx.task.session_path, 'ocr_fix', 'ocr_fix.json');
+		const fixFile = join(ctx.task.task_dir, 'ocr_fix', 'ocr_fix.json');
 		if (existsSync(fixFile)) return fixFile;
 	}
 	if (src === 'asr_ocr') {
 		const filename = ctx.input?.stages?.asr_ocr_fix?.llmFix ? 'asr_ocr_fused_llm_fix.json' : 'asr_ocr_fused.json';
-		const fixFile = join(ctx.task.session_path, 'asr_ocr_fix', filename);
+		const fixFile = join(ctx.task.task_dir, 'asr_ocr_fix', filename);
 		if (existsSync(fixFile)) return fixFile;
 	}
-	return join(ctx.task.session_path, 'asr_fix', 'asr_fix.json');
+	return join(ctx.task.task_dir, 'asr_fix', 'asr_fix.json');
 }
 
 export function split_audio_timings_filepath(taskDir: string): string {
@@ -321,7 +321,7 @@ export async function getStageStatuses(taskDir: string) {
 		created_at: task.created_at,
 		started_at: task.started_at,
 		completed_at: task.completed_at,
-		session_path: task.session_path,
+		task_dir: task.task_dir,
 		final_video_path: task.final_video_path,
 		error_message: task.error_message,
 		stages,

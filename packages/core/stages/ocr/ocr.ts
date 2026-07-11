@@ -13,7 +13,7 @@ import { FrameResult } from "@repo/core/ml/subtitle_ocr/types";
 
 export async function stageOcr(ctx: Context) {
 		const taskId = ctx.task.id;
-		const taskDir = ctx.task.session_path
+		const taskDir = ctx.task.task_dir
 	await setStage(taskDir, "ocr", {
 		last_message: "Extracting frames...",
 		progress: 0,

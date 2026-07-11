@@ -21,7 +21,7 @@ export async function stageAsr(
 	ctx: Context,
 ) {
 	const taskId = ctx.task.id;
-  const taskDir = ctx.task.session_path
+  const taskDir = ctx.task.task_dir
 	await setStage(taskDir, 'asr', {
 		last_message: 'Transcribing...',
 		progress: 0,
@@ -65,7 +65,7 @@ export async function stageAsr(
 		const asrUrl = getTorchServerUrl(port);
 		const result = await runStage(asrUrl, 'asr', taskId, {
 			vocals_path: audioPath,
-			session_path: taskDir,
+			task_dir: taskDir,
 			language: asrLanguage || 'auto',
 			device,
 			word_timestamps: asrCfg?.wordsOutput ?? false,

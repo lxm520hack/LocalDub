@@ -2,11 +2,11 @@
 PyTorch ASR using openai-whisper, standalone (no backend/ dependency).
 
 Usage:
-    .venv/bin/python packages/cli/src/ml/whisper/pytorch.py <vocals_wav> <session_path> [language] [--device cpu|cuda]
+    .venv/bin/python packages/cli/src/ml/whisper/pytorch.py <vocals_wav> <task_dir> [language] [--device cpu|cuda]
 .venv/bin/python packages/cli/src/ml/whisper/pytorch.py --benchmark-load [--device cpu|cuda]
 
 Reads WHISPER_MODEL / WHISPER_DEVICE / DEVICE env vars.
-Writes asr.json to <session_path>/metadata/.
+Writes asr.json to <task_dir>/metadata/.
 """
 from __future__ import annotations
 
@@ -259,11 +259,11 @@ def main() -> None:
         return
 
     if len(args) < 2:
-        print(f"Usage: {sys.argv[0]} <vocals_wav> <session_path> [language] [--device cpu|cuda]", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <vocals_wav> <task_dir> [language] [--device cpu|cuda]", file=sys.stderr)
         sys.exit(1)
 
     vocals_file = Path(args[0])
-    session_path = Path(args[1])
+    task_dir = Path(args[1])
     language = None if args[2] == "auto" else args[2] if len(args) > 2 else None
 
     if not vocals_file.is_file():
@@ -290,7 +290,7 @@ def main() -> None:
 
     duration_ms = int(round(max(seg.get("end", 0) for seg in segments) * 1000))
 
-    asr_dir = session_path / "asr"
+    asr_dir = task_dir / "asr"
     asr_dir.mkdir(parents=True, exist_ok=True)
 
     payload = {

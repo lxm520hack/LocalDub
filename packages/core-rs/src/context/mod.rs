@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use std::fs;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -20,7 +20,7 @@ pub struct Task {
     pub title: Option<String>,
     pub status: String,
     pub current_stage: Option<String>,
-    pub session_path: String,
+    pub task_dir: String,
     pub final_video_path: Option<String>,
     pub error_message: Option<String>,
     pub created_at: String,
@@ -69,36 +69,36 @@ pub struct Context {
     pub video_source: Option<String>,
 }
 
-pub fn ctx_path(session_path: &str) -> PathBuf {
-    PathBuf::from(session_path).join("ctx.json")
+pub fn ctx_path(task_dir: &str) -> PathBuf {
+    PathBuf::from(task_dir).join("ctx.json")
 }
 
-pub fn read_ctx(session_path: &str) -> Result<Context, String> {
-    let path = ctx_path(session_path);
+pub fn read_ctx(task_dir: &str) -> Result<Context, String> {
+    let path = ctx_path(task_dir);
     let raw = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
-    serde_json::from_str(&raw)
-        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
+    serde_json::from_str(&raw).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
 }
 
-pub fn read_task(session_path: &str) -> Result<Task, String> {
-    let path = ctx_path(session_path);
+pub fn read_task(task_dir: &str) -> Result<Task, String> {
+    let path = ctx_path(task_dir);
     let raw = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
     let json: serde_json::Value = serde_json::from_str(&raw)
         .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
-    let task_value = json.get("task")
+    let task_value = json
+        .get("task")
         .ok_or_else(|| format!("Missing 'task' field in {}", path.display()))?;
     serde_json::from_value(task_value.clone())
         .map_err(|e| format!("Failed to deserialize task in {}: {}", path.display(), e))
 }
 
-pub fn read_stages(session_path: &str) -> Result<Vec<TaskStage>, String> {
-    read_ctx(session_path).map(|ctx| ctx.stages.unwrap_or_default())
+pub fn read_stages(task_dir: &str) -> Result<Vec<TaskStage>, String> {
+    read_ctx(task_dir).map(|ctx| ctx.stages.unwrap_or_default())
 }
 
-pub fn read_pipeline(session_path: &str) -> String {
-    read_ctx(session_path)
+pub fn read_pipeline(task_dir: &str) -> String {
+    read_ctx(task_dir)
         .map(|ctx| ctx.pipeline)
         .unwrap_or_else(|_| "dub".to_string())
 }

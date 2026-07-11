@@ -23,7 +23,7 @@ export async function stageSeparate(
 ) {
 	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 	// subtitle 模式且未配置 always 时，跳过分离
 	const pipeline = ctx?.pipeline || 'dub';
 	const sepCfg = ctx.input?.stages?.separate;
@@ -65,7 +65,7 @@ export async function stageSeparate(
 			taskId,
 			{
 				video_path: audioPath,
-				session_path: taskDir,
+				task_dir: taskDir,
 				device,
 			},
 			(current, _total) => {

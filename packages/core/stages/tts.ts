@@ -40,7 +40,7 @@ export async function stageTts(
 	ctx: Context,
 ) {
 	const taskId = ctx.task.id;
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 	startLog(taskDir, taskId);
 
 	const ttsCfg = ctx.input?.stages?.tts!;

@@ -19,7 +19,7 @@ import { AsrResult } from '../asr/types.ts';
 
 
 export async function stageAsrOcrFix(ctx: Context) {
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 	const args = ctx.input?.stages?.asr_ocr_fix;
 	await setStage(taskDir, 'asr_ocr_fix', {
 		last_message: 'Fusing ASR + OCR...',

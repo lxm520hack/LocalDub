@@ -11,7 +11,7 @@ import { probeVideoDuration } from '@repo/core/utils/utils'
 import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
 
 export async function stageAsrOcr(ctx: Context) {
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 	startLog(ctx.task.current_stage, ctx.task.id)
 	setStage(taskDir, 'asr_ocr', {
 		last_message: `OCR'ing frames...`,

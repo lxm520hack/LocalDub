@@ -11,7 +11,7 @@ export function getLastSegment(path: string) {
 export type FileOp = 'read' | 'write' | 'copy' | 'rm' | 'mkdir';
 
 export function fileLog(ctx: Context, op: FileOp, path: string, extra?: string) {
-	emitLog(ctx.task.session_path, `[${ctx.task.current_stage}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
+	emitLog(ctx.task.task_dir, `[${ctx.task.current_stage}] [File] ${op} ${path}${extra ? ' ' + extra : ''}`);
 }
 
 export   function readJson<T = any>(path: string,  ctx: Context){

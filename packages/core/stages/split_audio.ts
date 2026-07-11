@@ -112,7 +112,7 @@ type SplitAudioTiming = {
 }
 export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
-  const taskDir = ctx.task.session_path
+  const taskDir = ctx.task.task_dir
   const srtFilePath = subtitleFilePath(ctx);
   const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(ctx);
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);

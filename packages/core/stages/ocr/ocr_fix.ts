@@ -12,7 +12,7 @@ import { srtTime } from '@repo/core/utils/utils';
 
 export async function stageOcrFix(ctx: Context) {
   const taskId = ctx.task.id;
-  const taskDir = ctx.task.session_path
+  const taskDir = ctx.task.task_dir
   const ocrFixDir = join(taskDir, 'ocr_fix');
   const ocrFile = join(taskDir, 'ocr', 'ocr.json');
   const fixFile = join(ocrFixDir, 'ocr_fix.json');

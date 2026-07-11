@@ -34,13 +34,13 @@ def handle_separate(
     from pydub import AudioSegment
 
     video_path = params["video_path"]
-    session_path = params["session_path"]
+    task_dir = params["task_dir"]
     device = params.get("device", "cpu")
 
     t0 = time.perf_counter()
     Separator = _load_demucs(device)
 
-    sep_dir = Path(session_path) / "separate"
+    sep_dir = Path(task_dir) / "separate"
     sep_dir.mkdir(parents=True, exist_ok=True)
     stem_paths = {
         "drums": sep_dir / "target_0_drums.wav",

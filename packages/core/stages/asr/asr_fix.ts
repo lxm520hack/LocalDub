@@ -53,7 +53,7 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 
 export async function stageAsrFix(ctx: Context) {
     const taskId = ctx.task.id;
-  const taskDir = ctx.task.session_path
+  const taskDir = ctx.task.task_dir
 	const asrFixDir = join(taskDir, 'asr_fix');
 	const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(taskDir, 'asr', 'asr.json');
 	const srtFile = join(asrFixDir, 'asr_fix.json');

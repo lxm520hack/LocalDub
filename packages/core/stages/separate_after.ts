@@ -4,7 +4,7 @@ import { emitLog, ffmpeg, nowISO, separateDir, separateAfterDir } from '@repo/co
 import { Context, setStage } from '@repo/core/context/context.ts';
 
 export async function stageSeparateAfter(ctx: Context) {
-	const taskDir = ctx.task.session_path;
+	const taskDir = ctx.task.task_dir;
 	const taskId = ctx.task.id;
 
 	await setStage(taskDir, 'separate_after', {

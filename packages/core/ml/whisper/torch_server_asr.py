@@ -41,7 +41,7 @@ def handle_asr(params: dict) -> dict:
     from pydub import AudioSegment
 
     vocals_path = params["vocals_path"]
-    session_path = params["session_path"]
+    task_dir = params["task_dir"]
     raw_language = params.get("language", "auto")
     language = None if raw_language == "auto" else raw_language
     device = params.get("device", "cpu")
@@ -77,7 +77,7 @@ def handle_asr(params: dict) -> dict:
         "_device": device,
     }
 
-    asr_dir = Path(session_path) / "asr"
+    asr_dir = Path(task_dir) / "asr"
     asr_dir.mkdir(parents=True, exist_ok=True)
     output_file = asr_dir / "asr.json"
     output_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -2,11 +2,11 @@
 CLI ASR using pywhispercpp (whisper.cpp GGUF bindings).
 
 Usage:
-    .venv/bin/python packages/cli/src/ml/whisper/pywhispercpp.py <audio> <session_path> [language] [--model path/to/ggml-model.bin] [--n-threads 4]
+    .venv/bin/python packages/cli/src/ml/whisper/pywhispercpp.py <audio> <task_dir> [language] [--model path/to/ggml-model.bin] [--n-threads 4]
 .venv/bin/python packages/cli/src/ml/whisper/pywhispercpp.py --benchmark-load [--model path/to/ggml-model.bin]
 
 Model is auto-downloaded from HuggingFace to ~/.cache/pywhispercpp/ on first use.
-Writes asr.json to <session_path>/metadata/asr.json
+Writes asr.json to <task_dir>/metadata/asr.json
 """
 from __future__ import annotations
 
@@ -37,11 +37,11 @@ def main() -> None:
         return
 
     if len(args) < 2:
-        print(f"Usage: {sys.argv[0]} <audio> <session_path> [language] [--model large-v3-turbo] [--n-threads 4]", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <audio> <task_dir> [language] [--model large-v3-turbo] [--n-threads 4]", file=sys.stderr)
         sys.exit(1)
 
     audio_file = Path(args[0])
-    session_path = Path(args[1])
+    task_dir = Path(args[1])
     language = None if args[2] == "auto" else args[2] if len(args) > 2 else None
 
     if not audio_file.is_file():
@@ -63,7 +63,7 @@ def main() -> None:
         })
     full_text = " ".join(s["text"] for s in segs).strip()
 
-    metadata_dir = session_path / "metadata"
+    metadata_dir = task_dir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     output_file = metadata_dir / "asr.json"
 

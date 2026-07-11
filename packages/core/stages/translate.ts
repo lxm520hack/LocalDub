@@ -33,7 +33,7 @@ export interface TranslateFile {
 }
 export async function stageTranslate(ctx: Context) {
 	const taskId = ctx.task.id;
-	const taskDir = ctx.task.session_path
+	const taskDir = ctx.task.task_dir
 	// 解析目标语言: config > auto 推断
 	const configTargetLang = readInputArgs().stages?.translate?.targetLang;
 	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =

@@ -2,12 +2,12 @@
 CLI ASR using faster-whisper (CTranslate2) with GPU (float16) → CPU (float32) fallback.
 
 Usage:
-    .venv/bin/python packages/cli/src/ml/whisper/run.py <vocals_wav> <session_path> [language] [--cpu] [--compute-type float16|float32|int8]
+    .venv/bin/python packages/cli/src/ml/whisper/run.py <vocals_wav> <task_dir> [language] [--cpu] [--compute-type float16|float32|int8]
 .venv/bin/python packages/cli/src/ml/whisper/run.py --benchmark-load [--cpu] [--compute-type float16|float32|int8]
 
 Defaults: GPU → float16, CPU → float32 (aligned with PyTorch).
 Output:
-    Writes asr.json to <session_path>/metadata/asr.json
+    Writes asr.json to <task_dir>/metadata/asr.json
     Prints the output path on success, exits 0.
     On failure, prints error to stderr, exits 1.
 """
@@ -103,11 +103,11 @@ def main() -> None:
         return
 
     if len(args) < 2:
-        print(f"Usage: {sys.argv[0]} <vocals_wav> <session_path> [language] [--cpu]", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <vocals_wav> <task_dir> [language] [--cpu]", file=sys.stderr)
         sys.exit(1)
 
     vocals_file = Path(args[0])
-    session_path = Path(args[1])
+    task_dir = Path(args[1])
     language = None if args[2] == "auto" else args[2] if len(args) > 2 else None
     model_name = os.environ.get("WHISPER_MODEL", "large-v3-turbo")
 
@@ -115,7 +115,7 @@ def main() -> None:
         print(f"Error: vocals file not found: {vocals_file}", file=sys.stderr)
         sys.exit(1)
 
-    metadata_dir = session_path / "asr"
+    metadata_dir = task_dir / "asr"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     output_file = metadata_dir / "asr.json"
 

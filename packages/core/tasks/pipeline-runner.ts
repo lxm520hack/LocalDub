@@ -38,7 +38,7 @@ function snapshotConfig(taskDir: string) {
 
 export async function runPipeline(ctx: Context) {
 	const taskId= ctx.task.id
-	const taskDir = ctx.task.session_path
+	const taskDir = ctx.task.task_dir
 	let task = readTask(taskDir);
 	mkdirSync(taskDir, { recursive: true });
 
@@ -104,10 +104,10 @@ export async function runPipeline(ctx: Context) {
 export async function resumePipeline(
 	ctx: Context,
 ) {
-	const taskDir = ctx.task.session_path
+	const taskDir = ctx.task.task_dir
 	const resumeFrom = ctx.input?.task?.resumeFrom
 	ctx.task.current_stage = 'resumePipeline'
-	setTask(ctx.task.session_path, { current_stage: 'resumePipeline' });
+	setTask(ctx.task.task_dir, { current_stage: 'resumePipeline' });
 	const taskId= ctx.task.id
 	let task = readTask(taskDir);
 	// Mode transition handling
@@ -254,7 +254,7 @@ export async function rerunSingleStage(
 	ctx: Context,
 ) {
 	const taskId= ctx.task.id
-	const taskDir = ctx.task.session_path
+	const taskDir = ctx.task.task_dir
 	const task = readTask(taskDir)
 	const stageName = ctx.input?.task.stageName
 	const pipeline = readPipeline(taskDir);

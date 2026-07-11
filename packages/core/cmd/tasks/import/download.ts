@@ -39,7 +39,7 @@ export const importVideo = async (input: InputArgs) => {
 			source: source,
 			url,
 			created_at: nowISO(),
-			session_path: taskDir,
+			task_dir: taskDir,
 			title: title || taskId,
 		},
 		asr_language: input.task.sourceLang || 'auto',
@@ -65,7 +65,7 @@ export async function downloadVideo(
 ) {
 	const videoPath = ctx.videoSourcePath!
 	const url = ctx.task.url
-	const taskDir = ctx.task.session_path
+	const taskDir = ctx.task.task_dir
 	let rawVideoPath = join(taskDir, `${ctx.task.id}.mp4`);
 	// Extract audio for downstream stages
 	const audioPath = ctx.audioSourcePath!
