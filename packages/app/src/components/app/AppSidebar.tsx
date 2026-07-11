@@ -15,7 +15,7 @@ import {
 } from '@repo/ui-solid/base/sidebar';
 import { TooltipX } from '@repo/ui-solid/custom/tooltip';
 import { openSettings } from './settings/settings';
-import { ChevronRight, Folder, LayoutDashboard, Settings } from 'lucide-solid';
+import { ChevronRight, Folder, LayoutDashboard, Settings, SquarePlayIcon } from 'lucide-solid';
 import { useClientApi } from '@repo/ui/app/api/context';
 import { createQuery, useQuery } from '@tanstack/solid-query';
 import { GroupInfo } from '@repo/core/cmd/tasks/get_task';
@@ -26,20 +26,37 @@ import { cn } from '@repo/shared/lib/utils';
 import { client, rspc } from '#/integrations/rspc/rspc.ts';
 import { ScrollArea } from '@repo/ui-solid/base/scroll-area';
 import { fnrpc } from '#/integrations/fnrpc/client.ts';
+import { useLiveQuery } from '@tanstack/solid-db';
+import { taskGroupExpandCollection } from '#/feat/task_tree/sync.ts';
 
 const getButtonPx = (depth: number) => ({
 	'padding-left': `${(2 + 6 * depth) * 0.25}rem`,
 	'padding-right': `${(2 + 6 * depth) * 0.25}rem`,
 });
 const TaskTree = (p: {items: GroupInfo[]}) => {
+	const expandedQ = useLiveQuery((q) =>
+    q.from({ t: taskGroupExpandCollection })
+  );
+	const isExpanded = (groupId: string) =>
+    expandedQ()?.some(i => i.id === groupId) ?? false;
+	const toggle = (groupId: string) => {
+    if (isExpanded(groupId)) {
+      taskGroupExpandCollection.delete(groupId);
+    } else {
+      taskGroupExpandCollection.insert({ id: groupId });
+    }
+  };
+	
 	return <For each={p.items}>{item => (<SidebarMenuItem class='h-fit '>
 		<Collapsible
 			class="group/collapsible [&[data-expanded]>button>svg:first-child]:rotate-90"
+			open={isExpanded(item.group_id)}
+  		onOpenChange={() => toggle(item.group_id)}
 		>
 			<CollapsibleTrigger as={SidebarMenuButton} class='gap-px rounded-none items-center'>	
 				<ChevronRight class="transition-transform" />
 				<Folder />
-				<span class='h-4 text-sm pl-0.75'>{item.group_id}</span>
+				<span class='h-4 text-sm leading-4 pl-0.75'>{item.group_id}</span>
 			</CollapsibleTrigger>
 			<CollapsibleContent class="relative">
 				<Separator
@@ -57,7 +74,8 @@ const TaskTree = (p: {items: GroupInfo[]}) => {
 							class: "bg-accent/70!"
 						}}
 					>
-						{task.id}
+						<SquarePlayIcon />
+						<span class='h-4 text-sm leading-4'>{task.id}</span>
 					</SidebarMenuButton>))}
 				</SidebarMenuSub>
 			</CollapsibleContent>
