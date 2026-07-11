@@ -1,5 +1,5 @@
 use config_rs::servers::ServerType;
-use core_rs::cmd::tasks::get_group_list::{get_group_list, GroupInfo};
+use core_rs::cmd::tasks::get_task::{get_group_list, GroupInfo};
 use core_rs::servers::discovery::{find_server, ServerInfo};
 use device_rs::DeviceInfo;
 // Checkout the official docs at https://rspc.dev. This documentation is generally written for authors of middleware and adapter.

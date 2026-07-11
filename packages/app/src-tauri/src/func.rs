@@ -2,7 +2,7 @@ use std::fs;
 
 use config_rs::{root::base_dir, servers::ServerType};
 use core_rs::{
-    cmd::tasks::get_group_list::GroupInfo,
+    cmd::tasks::get_task::GroupInfo,
     servers::discovery::ServerInfo,
     utils::file_ops::{ensure_parent_dir, sanitize_relative_path},
 };
@@ -45,7 +45,7 @@ pub async fn greet(ctx: &Ctx, input: GreetInput) -> Result<GreetOutput, String> 
 
 #[fnrpc::rpc_query]
 pub async fn get_group_list() -> Result<Vec<GroupInfo>, String> {
-    core_rs::cmd::tasks::get_group_list::get_group_list()
+    core_rs::cmd::tasks::get_task::get_group_list()
 }
 
 #[fnrpc::rpc_query]
