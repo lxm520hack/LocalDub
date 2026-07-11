@@ -7,52 +7,30 @@ use specta::{Generics, Type, TypeCollection};
 
 use crate::error::RpcErr;
 
-/// TypeScript export info for a single type (input or output).
+/// TypeScript type reference info for a single type (input or output).
 #[derive(Debug, Clone)]
 pub struct TsTypeInfo {
-    /// Named export statement (e.g. `export type Foo = { ... };\n`), empty if inlined.
-    pub named_export: String,
-    /// Inline TS expression or type name reference.
+    /// TypeScript type reference name (e.g. `"HealthCheckOutput"`) or inline expression.
     pub ts_ref: String,
 }
 
-/// Generate TS info for a type using only `Type` (no `NamedType` required).
+/// Compute the TS type reference name for a type.
 fn type_ts<T: Type>() -> TsTypeInfo {
     let mut type_map = TypeCollection::default();
     let data_type = T::inline(&mut type_map, Generics::NONE);
 
-    // Extract name from struct/enum without borrowing data_type
-    let name = match &data_type {
-        DataType::Struct(s) => Some(s.name().clone()),
-        DataType::Enum(e) => Some(e.name().clone()),
-        _ => None,
+    let ts_ref = match &data_type {
+        DataType::Struct(s) => s.name().to_string(),
+        DataType::Enum(e) => e.name().to_string(),
+        _ => specta_typescript::datatype(
+            &Default::default(),
+            &FunctionResultVariant::Value(data_type),
+            &type_map,
+        )
+        .unwrap_or_else(|_| "unknown".to_string()),
     };
 
-    if let Some(name) = name {
-        let named_dt = data_type.to_named(name.clone());
-        if let Ok(export) =
-            specta_typescript::export_named_datatype(&Default::default(), &named_dt, &type_map)
-        {
-            return TsTypeInfo {
-                named_export: format!("{export}\n"),
-                ts_ref: name.to_string(),
-            };
-        }
-        // If export failed, fall through to inline
-        unreachable!("specta export_named_datatype should not fail for valid types");
-    }
-
-    let inline = specta_typescript::datatype(
-        &Default::default(),
-        &FunctionResultVariant::Value(data_type),
-        &type_map,
-    )
-    .unwrap_or_else(|_| "unknown".to_string());
-
-    TsTypeInfo {
-        named_export: String::new(),
-        ts_ref: inline,
-    }
+    TsTypeInfo { ts_ref }
 }
 
 /// Object-safe erased handler stored in the router.
@@ -62,6 +40,12 @@ pub trait ErasedHandler<Ctx>: Send + Sync {
     fn kind(&self) -> &'static str;
     fn input_ts(&self) -> TsTypeInfo;
     fn output_ts(&self) -> TsTypeInfo;
+    /// Populate a shared `TypeCollection` and collect top-level input/output DataTypes.
+    fn populate_types(
+        &self,
+        type_map: &mut TypeCollection,
+        top_level: &mut Vec<DataType>,
+    );
     async fn call(&self, ctx: &Ctx, input: Value) -> Result<Value, RpcErr>;
 }
 
@@ -99,6 +83,17 @@ where
 
     fn output_ts(&self) -> TsTypeInfo {
         type_ts::<F::Output>()
+    }
+
+    fn populate_types(
+        &self,
+        type_map: &mut TypeCollection,
+        top_level: &mut Vec<DataType>,
+    ) {
+        let input = F::Input::inline(type_map, Generics::NONE);
+        let output = F::Output::inline(type_map, Generics::NONE);
+        top_level.push(input);
+        top_level.push(output);
     }
 
     async fn call(&self, ctx: &Ctx, input: Value) -> Result<Value, RpcErr> {

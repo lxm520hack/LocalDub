@@ -141,11 +141,9 @@ async fn test_ts_info() {
     let handler = Greet;
 
     let input_info = handler.input_ts();
-    assert!(input_info.named_export.contains("GreetInput"));
     assert_eq!(input_info.ts_ref, "GreetInput");
 
     let output_info = handler.output_ts();
-    assert!(output_info.named_export.contains("GreetOutput"));
     assert_eq!(output_info.ts_ref, "GreetOutput");
 }
 
