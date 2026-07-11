@@ -22,6 +22,7 @@ pub struct TaskBrief {
     pub created_at: String,
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
+    pub error_message: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Task {
@@ -48,6 +49,7 @@ impl From<Task> for TaskBrief {
             created_at: t.created_at,
             started_at: t.started_at,
             completed_at: t.completed_at,
+            error_message: t.error_message,
         }
     }
 }

@@ -37,6 +37,7 @@ export const get_group_list = async () => {
           created_at: task.created_at,
           started_at: task.started_at ?? null,
           completed_at: task.completed_at ?? null,
+          error_message: task.error_message ?? null,
         });
       } catch {
         // skip invalid/missing ctx.json

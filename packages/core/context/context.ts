@@ -17,6 +17,7 @@ export interface TaskBrief {
   created_at: string;
   started_at?: string | null;
   completed_at?: string | null;
+  error_message?: string | null;
 }
 
 export interface Task extends TaskBrief {
@@ -24,7 +25,6 @@ export interface Task extends TaskBrief {
   url: string;
   task_dir: string
   final_video_path?: string | null | undefined;
-  error_message?: string | null | undefined;
 }
 export interface Context {
   task: Task;

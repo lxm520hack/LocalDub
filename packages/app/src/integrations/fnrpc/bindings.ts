@@ -28,7 +28,7 @@ export type RunInfo = { asr: AsrRunInfo | null }
 
 export type Task = { id: string; source: VideoSource; url: string; title: string | null; status: string; current_stage: string | null; task_dir: string; final_video_path: string | null; error_message: string | null; created_at: string; started_at: string | null; completed_at: string | null }
 
-export type TaskBrief = { id: string; title: string | null; status: string; current_stage: string | null; created_at: string; started_at: string | null; completed_at: string | null }
+export type TaskBrief = { id: string; title: string | null; status: string; current_stage: string | null; created_at: string; started_at: string | null; completed_at: string | null; error_message: string | null }
 
 export type TaskStage = { name: string; label: string; status: string; progress: number | null; started_at: string | null; completed_at: string | null; last_message: string | null; error_message: string | null }
 
@@ -42,26 +42,26 @@ export type VramType = "dedicated" | "shared" | "unknown"
 
 export type VulkanHeaps = { deviceLocal: number; hostVisible: number }
 
-export type DeviceInfo = { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo }
-
-export type GreetInput = { name: string }
-
-export type GreetOutput = { message: string }
-
 export type Context = { task: Task; stages: TaskStage[] | null; pipeline: string; last_run_pipeline: string | null; input: JsonValue; run_info: RunInfo | null; video_source_path: string | null; audio_source_path: string | null; asr_language: string | null; target_language: string | null; video_source: string | null }
 
 export type ServerType = "VoxcpmTorchGradio" | "DemucsTorchServer"
 
 export type ServerInfo = { host: string; port: number; found_via: FoundVia }
 
+export type DeviceInfo = { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo }
+
+export type GreetInput = { name: string }
+
+export type GreetOutput = { message: string }
+
 export type Procedures = {
-  device_info: { kind: "query"; input: null; output: DeviceInfo; error: unknown };
-  health_check: { kind: "query"; input: null; output: string; error: unknown };
+  get_group_list: { kind: "query"; input: null; output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[]; error: unknown };
   add: { kind: "query"; input: [number, number]; output: number; error: unknown };
-  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
+  health_check: { kind: "query"; input: null; output: string; error: unknown };
   get_task_ctx: { kind: "query"; input: string; output: Context; error: unknown };
   find_server: { kind: "query"; input: ServerType; output: ServerInfo; error: unknown };
-  get_group_list: { kind: "query"; input: null; output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[]; error: unknown };
+  device_info: { kind: "query"; input: null; output: DeviceInfo; error: unknown };
+  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
   read_app_file_text: { kind: "query"; input: string; output: string; error: unknown };
   write_app_file_text: { kind: "mutation"; input: [string, string]; output: null; error: unknown };
   read_app_file_bin: { kind: "query"; input: string; output: number[]; error: unknown };
