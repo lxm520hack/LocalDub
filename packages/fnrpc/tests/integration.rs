@@ -1,6 +1,7 @@
 use fnrpc::error::RpcErr;
 use fnrpc::handler::RpcFn;
 use fnrpc::router::RpcRouter;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -183,6 +184,62 @@ async fn test_macro_ctx_rpc() {
     let result = router.dispatch(&ctx, "macro_ctx_greet", input).await.unwrap();
     let output: GreetOutput = serde_json::from_value(result).unwrap();
     assert_eq!(output.message, "yo world");
+}
+
+// ── Subscription tests ─────────────────────────────────
+
+#[fnrpc::rpc_subscription]
+fn sub_count(input: u32) -> impl futures::Stream<Item = u32> {
+    futures::stream::iter(1..=input)
+}
+
+#[fnrpc::rpc_subscription]
+fn sub_count_ctx(ctx: &AppCtx, input: u32) -> impl futures::Stream<Item = Result<String, String>> {
+    let prefix = ctx.prefix.clone();
+    let items: Vec<_> = (1..=input).map(|n| Ok(format!("{prefix}{n}"))).collect();
+    futures::stream::iter(items)
+}
+
+#[tokio::test]
+async fn test_subscription() {
+    let router = RpcRouter::<()>::new().subscribe(sub_count__FnRpc);
+
+    let stream = router
+        .dispatch_subscribe(&(), "sub_count", serde_json::json!(3))
+        .unwrap();
+    let items: Vec<i32> = stream
+        .map(|v| serde_json::from_value::<i32>(v.unwrap()).unwrap())
+        .collect()
+        .await;
+    assert_eq!(items, vec![1, 2, 3]);
+}
+
+#[tokio::test]
+async fn test_subscription_ctx() {
+    let ctx = AppCtx {
+        prefix: "n".to_string(),
+    };
+    let router = RpcRouter::<AppCtx>::new().subscribe(sub_count_ctx__FnRpc);
+
+    let stream = router
+        .dispatch_subscribe(&ctx, "sub_count_ctx", serde_json::json!(2))
+        .unwrap();
+    let items: Vec<String> = stream
+        .map(|v| serde_json::from_value::<String>(v.unwrap()).unwrap())
+        .collect()
+        .await;
+    assert_eq!(items, vec!["n1".to_string(), "n2".to_string()]);
+}
+
+#[tokio::test]
+async fn test_subscription_unknown_path() {
+    let router = RpcRouter::<()>::new();
+    let err = router
+        .dispatch_subscribe(&(), "nonexistent", serde_json::json!(null));
+    match err {
+        Err(e) => assert!(e.to_string().contains("unknown subscription")),
+        Ok(_) => panic!("expected error"),
+    }
 }
 
 // ── Multi-parameter tests ──────────────────────────────

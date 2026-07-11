@@ -36,6 +36,7 @@ tauri-plugin-rspc = "0.2"
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
 async-trait = "0.1"
+futures = { version = "0.3", default-features = false, features = ["std"] }
 specta.workspace = true
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"

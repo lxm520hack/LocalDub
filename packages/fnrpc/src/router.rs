@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
 
+use futures::stream::Stream;
 use serde_json::Value;
 use specta::TypeCollection;
 use specta_typescript::Typescript;
 
 use crate::error::RpcErr;
-use crate::handler::ErasedHandler;
+use crate::handler::{ErasedHandler, ErasedSubscriptionHandler};
 use crate::middleware::{FnLayer, FnService};
 
 pub struct RpcRouter<Ctx> {
@@ -16,6 +18,7 @@ pub struct RpcRouter<Ctx> {
 
 struct RpcRouterInner<Ctx> {
     handlers: HashMap<&'static str, Arc<dyn ErasedHandler<Ctx>>>,
+    subscriptions: HashMap<&'static str, Arc<dyn ErasedSubscriptionHandler<Ctx>>>,
     layers: Vec<Box<dyn FnLayer<Ctx>>>,
 }
 
@@ -33,6 +36,7 @@ where
         Self {
             inner: Arc::new(RpcRouterInner {
                 handlers: HashMap::new(),
+                subscriptions: HashMap::new(),
                 layers: Vec::new(),
             }),
         }
@@ -43,6 +47,15 @@ where
         let mut inner = Arc::try_unwrap(self.inner)
             .unwrap_or_else(|_| unreachable!("consumed self => sole owner"));
         inner.handlers.insert(name, Arc::new(handler));
+        Self { inner: Arc::new(inner) }
+    }
+
+    /// Register a subscription handler.
+    pub fn subscribe<H: ErasedSubscriptionHandler<Ctx> + 'static>(self, handler: H) -> Self {
+        let name = handler.name();
+        let mut inner = Arc::try_unwrap(self.inner)
+            .unwrap_or_else(|_| unreachable!("consumed self => sole owner"));
+        inner.subscriptions.insert(name, Arc::new(handler));
         Self { inner: Arc::new(inner) }
     }
 
@@ -72,6 +85,21 @@ where
         svc.call(ctx, path, input).await
     }
 
+    /// Dispatch a subscription by path, returning a stream of values.
+    pub fn dispatch_subscribe(
+        &self,
+        ctx: &Ctx,
+        path: &str,
+        input: Value,
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<Value, RpcErr>> + Send>>, RpcErr> {
+        let handler = self
+            .inner
+            .subscriptions
+            .get(path)
+            .ok_or_else(|| RpcErr(format!("unknown subscription path: {path}")))?;
+        Ok(handler.call(ctx, input))
+    }
+
     /// Generate TypeScript type definitions and a Procedures interface.
     pub fn generate_ts_client(&self, _rpc_url: &str) -> String {
         use std::collections::HashSet;
@@ -83,6 +111,9 @@ where
         let mut top_level: Vec<DataType> = Vec::new();
         for (_, handler) in &self.inner.handlers {
             handler.populate_types(&mut type_map, &mut top_level);
+        }
+        for (_, sub) in &self.inner.subscriptions {
+            sub.populate_types(&mut type_map, &mut top_level);
         }
 
         // Export all types from the shared TypeCollection (transitive deps)
@@ -124,6 +155,16 @@ where
             out.push_str(&format!(
                 "  {}: {{ kind: \"{kind}\"; input: {}; output: {}; error: unknown }};\n",
                 handler.name(),
+                i.ts_ref,
+                o.ts_ref,
+            ));
+        }
+        for (_, sub) in &self.inner.subscriptions {
+            let i = sub.input_ts();
+            let o = sub.output_ts();
+            out.push_str(&format!(
+                "  {}: {{ kind: \"subscription\"; input: {}; output: {}; error: unknown }};\n",
+                sub.name(),
                 i.ts_ref,
                 o.ts_ref,
             ));

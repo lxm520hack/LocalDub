@@ -4,9 +4,11 @@ use std::path::PathBuf;
 use axum::{
     extract::{Path, Query},
     http::HeaderMap,
+    response::sse::{Event, Sse},
     Extension, Json, Router,
 };
 use fnrpc::router::RpcRouter;
+use futures::stream::{Stream, StreamExt};
 use rspc::Procedures;
 use serde_json::Value;
 use tower_http::cors::CorsLayer;
@@ -52,6 +54,35 @@ async fn fnrpc_get_handler(
     Json(result)
 }
 
+async fn fnrpc_sub_handler(
+    Extension(router): Extension<RpcRouter<Ctx>>,
+    Extension(state): Extension<AppState>,
+    Path(path): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
+    use std::pin::Pin;
+
+    let input: Value = params
+        .get("input")
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or(Value::Null);
+    let ctx = Ctx {
+        state,
+        headers: HeaderMap::new(),
+    };
+    let stream: Pin<Box<dyn Stream<Item = Result<Value, fnrpc::error::RpcErr>> + Send>> =
+        match router.dispatch_subscribe(&ctx, &path, input) {
+            Ok(s) => s,
+            Err(_) => Box::pin(futures::stream::empty()),
+        };
+
+    Sse::new(stream.map(|item| match item {
+        Ok(val) => Ok(Event::default().json_data(val).unwrap()),
+        Err(e) => Ok(Event::default().data(format!("error: {e}"))),
+    }))
+    .keep_alive(axum::response::sse::KeepAlive::new())
+}
+
 pub async fn start(
     procedures: Procedures<AppState>,
     state: AppState,
@@ -69,6 +100,10 @@ pub async fn start(
         .route(
             "/fnrpc/:path",
             axum::routing::get(fnrpc_get_handler).post(fnrpc_handler),
+        )
+        .route(
+            "/fnrpc/sub/:path",
+            axum::routing::get(fnrpc_sub_handler),
         )
         .layer(CorsLayer::permissive())
         .layer(Extension(fnrpc_router))

@@ -7,7 +7,9 @@ use std::path::PathBuf;
 
 use device_rs::DeviceInfo;
 use fnrpc::router::RpcRouter;
+use futures::StreamExt;
 use serde_json::Value;
+use tauri::ipc::{Channel, InvokeBody, InvokeResponseBody};
 
 use crate::state::{AppState, Ctx};
 use axum::http::HeaderMap;
@@ -27,6 +29,46 @@ pub async fn rpc_fn(
         .dispatch(&ctx, &path, input)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn rpc_subscribe(
+    router: tauri::State<'_, RpcRouter<Ctx>>,
+    state: tauri::State<'_, AppState>,
+    path: String,
+    input: Value,
+    channel: Channel,
+) -> Result<(), String> {
+    let ctx = Ctx {
+        state: state.inner().clone(),
+        headers: HeaderMap::new(),
+    };
+
+    let stream = router
+        .dispatch_subscribe(&ctx, &path, input)
+        .map_err(|e| e.to_string())?;
+
+    tokio::spawn(async move {
+        let mut stream = stream;
+        while let Some(item) = stream.next().await {
+            match item {
+                Ok(val) => {
+                    let body: InvokeResponseBody = InvokeBody::Json(val).into();
+                    if channel.send(body).is_err() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let err_body: InvokeResponseBody =
+                        InvokeBody::Json(serde_json::json!({"__error": e.to_string()})).into();
+                    let _ = channel.send(err_body);
+                    break;
+                }
+            }
+        }
+    });
+
+    Ok(())
 }
 
 fn find_available_port(preferred: u16) -> u16 {
