@@ -61,27 +61,27 @@ pub fn build() -> Router<AppState> {
                     commands::stop_voxcpm(&ctx).map_err(RspcErr)
                 }),
         )
-        // .procedure(
-        //     "deviceInfo",
-        //     Procedure::<AppState, (), DeviceInfo>::builder::<RspcErr>()
-        //         .query(|ctx: AppState, _input: ()| async move {
-        //             commands::device_info(&ctx).map_err(RspcErr)
-        //         }),
-        // )
-        // .procedure(
-        //     "readInput",
-        //     Procedure::<AppState, (), String>::builder::<RspcErr>()
-        //         .query(|ctx: AppState, _input: ()| async move {
-        //             commands::read_input(&ctx).map_err(RspcErr)
-        //         }),
-        // )
-        .procedure(
-            "writeInput",
-            Procedure::<AppState, String, ()>::builder::<RspcErr>()
-                .mutation(|ctx: AppState, input: String| async move {
-                    commands::write_input(&ctx, input).map_err(RspcErr)
-                }),
-        )
+    // .procedure(
+    //     "deviceInfo",
+    //     Procedure::<AppState, (), DeviceInfo>::builder::<RspcErr>()
+    //         .query(|ctx: AppState, _input: ()| async move {
+    //             commands::device_info(&ctx).map_err(RspcErr)
+    //         }),
+    // )
+    // .procedure(
+    //     "readInput",
+    //     Procedure::<AppState, (), String>::builder::<RspcErr>()
+    //         .query(|ctx: AppState, _input: ()| async move {
+    //             commands::read_input(&ctx).map_err(RspcErr)
+    //         }),
+    // )
+    // .procedure(
+    //     "writeInput",
+    //     Procedure::<AppState, String, ()>::builder::<RspcErr>()
+    //         .mutation(|ctx: AppState, input: String| async move {
+    //             commands::write_input(&ctx, input).map_err(RspcErr)
+    //         }),
+    // )
     // .procedure(
     //     "readInputSchema",
     //     Procedure::<AppState, (), String>::builder::<RspcErr>()

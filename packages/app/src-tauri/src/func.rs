@@ -1,7 +1,11 @@
 use std::fs;
 
 use config_rs::{root::base_dir, servers::ServerType};
-use core_rs::{cmd::tasks::get_group_list::GroupInfo, servers::discovery::ServerInfo};
+use core_rs::{
+    cmd::tasks::get_group_list::GroupInfo,
+    servers::discovery::ServerInfo,
+    utils::file_ops::{ensure_parent_dir, sanitize_relative_path},
+};
 use device_rs::DeviceInfo;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -68,15 +72,15 @@ pub async fn read_app_file_bin(relative_path: String) -> Result<Vec<u8>, String>
 
 #[fnrpc::rpc_mutation]
 pub async fn write_app_file_text(relative_path: String, content: String) -> Result<(), String> {
-    let relative_path = relative_path.replace('\\', "/");
-    if relative_path.contains("..") {
-        return Err("Path traversal detected".to_string());
-    }
-    let path = base_dir().join(&relative_path);
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("Failed to create dir {}: {}", parent.display(), e))?;
-    }
+    let path = sanitize_relative_path(&relative_path)?;
+    ensure_parent_dir(&path)?;
+    fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
+}
+
+#[fnrpc::rpc_mutation]
+pub async fn write_app_file_binary(relative_path: String, content: Vec<u8>) -> Result<(), String> {
+    let path = sanitize_relative_path(&relative_path)?;
+    ensure_parent_dir(&path)?;
     fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 

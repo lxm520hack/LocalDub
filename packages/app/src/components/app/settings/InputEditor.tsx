@@ -6,7 +6,7 @@ import { rspc } from '#/integrations/rspc/rspc.ts';
 import { fnrpc } from '#/integrations/fnrpc/client.ts';
 
 const AUTO_SAVE_DELAY = 2000;
-
+const inputFilePath = 'packages/cli/input.json';
 export function InputEditor() {
   const { themeName } = useTheme();
   let containerRef: HTMLDivElement | undefined;
@@ -15,12 +15,12 @@ export function InputEditor() {
   let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
   let lastSavedContent = '';
   const [dirty, setDirty] = createSignal(false);
-
+  
   const updateDirty = () => {
     if (!editor) return;
     setDirty(editor.getValue() !== lastSavedContent);
   };
-  const writeInputM = rspc.createMutation(() => "writeInput")
+  const writeInputM = fnrpc.createMutation(() => "write_app_file_text")
 
   const doSave = async () => {
     if ( !editor) return;
@@ -41,13 +41,13 @@ export function InputEditor() {
     autoSaveTimer = setTimeout(async () => {
       try {
         JSON.parse(content);
-        await writeInputM.mutateAsync(content);
+        await writeInputM.mutateAsync([inputFilePath, content]);
         lastSavedContent = content;
         setDirty(false);
       } catch { /* silent */ }
     }, AUTO_SAVE_DELAY);
   };
-  const readInputQ = fnrpc.createQuery(()=>['read_app_file_text', 'packages/cli/input.json'])
+  const readInputQ = fnrpc.createQuery(()=>['read_app_file_text', inputFilePath])
   const schemaContentQ = fnrpc.createQuery(()=>['read_app_file_text', 'packages/cli/input.schema.json'])
   onMount(async () => {
     if (!containerRef) return;
