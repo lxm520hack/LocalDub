@@ -1,9 +1,10 @@
 use config_rs::servers::ServerType;
 use core_rs::{cmd::tasks::get_group_list::GroupInfo, servers::discovery::ServerInfo};
+use device_rs::DeviceInfo;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::state::Ctx;
+use crate::{commands, state::Ctx};
 
 #[fnrpc::rpc_query]
 pub async fn health_check() -> &'static str {
@@ -46,4 +47,9 @@ pub async fn find_server(input: ServerType) -> ServerInfo {
     core_rs::servers::discovery::find_server(input).await
 }
 
-fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server] }
+#[fnrpc::rpc_query]
+pub async fn device_info(ctx: &Ctx) -> Result<DeviceInfo, String> {
+    commands::device_info(&ctx.state)
+}
+
+fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server, device_info] }

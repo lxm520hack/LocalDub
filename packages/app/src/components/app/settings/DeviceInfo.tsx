@@ -1,6 +1,7 @@
 import { createEffect, createResource, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
 import { rspc } from '#/integrations/rspc/rspc.ts';
+import { fnrpc } from '#/integrations/fnrpc/client.ts';
 
 export function DeviceInfo() {
   // const api = useClientApi().deviceInfoApi;
@@ -9,7 +10,7 @@ export function DeviceInfo() {
   //   queryFn: api?.fetchDeviceInfo,
   //   enabled: !!api,
   // }))
-  const deviceInfo = rspc.createQuery(() => ['deviceInfo', null])
+  const deviceInfo = fnrpc.createQuery(() => ['device_info'])
 
   return (
     <div class="space-y-3">

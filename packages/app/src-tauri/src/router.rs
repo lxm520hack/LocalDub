@@ -90,23 +90,23 @@ pub fn build() -> Router<AppState> {
                     commands::read_input_schema(&ctx).map_err(RspcErr)
                 }),
         )
-        .procedure(
-            "getGroupList",
-            Procedure::<AppState, (), Vec<GroupInfo>>::builder::<RspcErr>()
-                .query(|_ctx: AppState, _input: ()| async move {
-                    eprintln!("[RSPC] ▶ query getGroupList");
-                    let result = get_group_list().map_err(RspcErr);
-                    match &result {
-                        Ok(list) => eprintln!("[RSPC] ✔ getGroupList ({} groups)", list.len()),
-                        Err(e) => eprintln!("[RSPC] ✗ getGroupList: {e:?}"),
-                    }
-                    result
-                }),
-        )
-        .procedure(
-            "find_server", 
-            Procedure::<AppState, ServerType, ServerInfo>::builder::<RspcErr>().query(|_ctx: AppState, input: ServerType| async move {
-                Ok(find_server(input).await)
-            }),
-        )
+    // .procedure(
+    //     "getGroupList",
+    //     Procedure::<AppState, (), Vec<GroupInfo>>::builder::<RspcErr>()
+    //         .query(|_ctx: AppState, _input: ()| async move {
+    //             eprintln!("[RSPC] ▶ query getGroupList");
+    //             let result = get_group_list().map_err(RspcErr);
+    //             match &result {
+    //                 Ok(list) => eprintln!("[RSPC] ✔ getGroupList ({} groups)", list.len()),
+    //                 Err(e) => eprintln!("[RSPC] ✗ getGroupList: {e:?}"),
+    //             }
+    //             result
+    //         }),
+    // )
+    // .procedure(
+    //     "find_server",
+    //     Procedure::<AppState, ServerType, ServerInfo>::builder::<RspcErr>().query(|_ctx: AppState, input: ServerType| async move {
+    //         Ok(find_server(input).await)
+    //     }),
+    // )
 }
