@@ -102,12 +102,12 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 			const videoId: string = info.id || extractVideoId(url);
 			ret.groupId = groupName;
 			ret.taskId = index ?? videoId;
-			const sessionPath = join(WORKFOLDER, ret.groupId, ret.taskId);
+			const taskDir = join(WORKFOLDER, ret.groupId, ret.taskId);
 
 			if (info) {
-				mkdirSync(sessionPath, { recursive: true })
+				mkdirSync(taskDir, { recursive: true })
 				const [_, err] = to(()=>writeJson(
-					join(sessionPath, 'ytdlp_info.json'),
+					join(taskDir, 'ytdlp_info.json'),
 					info,
 				))
 				if (err) {
@@ -120,10 +120,10 @@ export const autoGroupIdAndVideoId = async (url: string) => {
 	}
 	return ret;
 }
-export const downloadRemoteVideo = async (url: string, sessionPath: string) => {
+export const downloadRemoteVideo = async (url: string, taskDir: string) => {
 				const urlO = new URL(url);
 			const filename = basename(urlO.pathname) || 'video.mp4';
-			const rawVideoPath = join(sessionPath, filename);
+			const rawVideoPath = join(taskDir, filename);
 			const resp = await fetch(url);
 			if (!resp.ok)
 				throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);

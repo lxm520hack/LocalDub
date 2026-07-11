@@ -33,7 +33,7 @@ export interface TranslateFile {
 }
 export async function stageTranslate(ctx: Context) {
 	const taskId = ctx.task.id;
-	const sessionPath = ctx.task.session_path
+	const taskDir = ctx.task.session_path
 	// 解析目标语言: config > auto 推断
 	const configTargetLang = readInputArgs().stages?.translate?.targetLang;
 	const { asrLanguage: srcLangCode, targetLanguage: existingDstLang } =
@@ -42,12 +42,12 @@ export async function stageTranslate(ctx: Context) {
 		configTargetLang ?? (srcLangCode === 'zh' ? 'en' : 'zh');
 
 	if (resolvedDstLang !== existingDstLang) {
-		setCtx(sessionPath, { target_language: resolvedDstLang });
+		setCtx(taskDir, { target_language: resolvedDstLang });
 	}
 
 	const srtFile = subtitleFilePath(ctx);
 	const dstLangCode = resolvedDstLang;
-	const translationFile = translationFilePath(sessionPath, dstLangCode);
+	const translationFile = translationFilePath(taskDir, dstLangCode);
 	const srcLangName = LANG_NAMES[srcLangCode] || srcLangCode;
 	const dstLangName = LANG_NAMES[dstLangCode] || dstLangCode;
 
@@ -56,7 +56,7 @@ export async function stageTranslate(ctx: Context) {
 	const texts = segments.map((u: any) => (u.text || '').trim());
 	const fullText = (data.result.text || '').trim() || texts.join(' ');
 
-	const ytdlpPath = join(sessionPath, 'download', 'ytdlp_info.json');
+	const ytdlpPath = join(taskDir, 'download', 'ytdlp_info.json');
 	const hasMeta = existsSync(ytdlpPath);
 	let meta: any = {};
 	if (hasMeta) {
@@ -157,7 +157,7 @@ ${fullText.slice(0, 10000)}`;
 				(c: any) => `${c.wrong} -> ${c.correct}`,
 			);
 		} catch (e: any) {
-			emitLog(sessionPath, `[WARN] [Translate] Preprocess failed: ${e.message}`);
+			emitLog(taskDir, `[WARN] [Translate] Preprocess failed: ${e.message}`);
 		}
 	}
 
@@ -213,26 +213,26 @@ ${correctionsStr}
 						(dst.match(/[\u4e00-\u9fff]/g) || []).length / (dst.length || 1);
 					if (dstLangCode !== 'zh' && chineseRatio > 0.3) {
 						const msg = `[Translate] Item ${i + 1} still Chinese (ratio=${chineseRatio.toFixed(2)}, expected ${dstLangCode})`;
-						emitLog(sessionPath, `[ERROR] ${msg}`);
+						emitLog(taskDir, `[ERROR] ${msg}`);
 						throw new Error(msg);
 					}
 					if (!dst) {
 						const msg = `[Translate] Item ${i + 1} got empty dst`;
-						emitLog(sessionPath, `[ERROR] ${msg}`);
+						emitLog(taskDir, `[ERROR] ${msg}`);
 						throw new Error(msg);
 					}
 					return dst;
 				});
 			if (results.length < batchTexts.length) {
 				const msg = `[Translate] batch produced ${results.length} translations for ${batchTexts.length} inputs`;
-				emitLog(sessionPath, `[ERROR] ${msg}`);
+				emitLog(taskDir, `[ERROR] ${msg}`);
 				throw new Error(msg);
 			}
 			return results;
 		} catch (e: any) {
 			if (attempt < 2) return translateBatch(batchTexts, attempt + 1);
 			const msg = `[Translate] batch failed after 3 attempts: ${e.message || e} (expected ${dstLangCode})`;
-			emitLog(sessionPath, `[ERROR] ${msg}`);
+			emitLog(taskDir, `[ERROR] ${msg}`);
 			throw new Error(msg);
 		}
 	}
@@ -241,7 +241,7 @@ ${correctionsStr}
 		const batch = texts.slice(i, i + BATCH_SIZE);
 		const results = await translateBatch(batch);
 		dsts.push(...results);
-		await setStage(sessionPath, 'translate', {
+		await setStage(taskDir, 'translate', {
 			last_message: `Translating ${Math.min(i + BATCH_SIZE, texts.length)}/${texts.length}...`,
 		});
 	}
@@ -256,11 +256,11 @@ ${correctionsStr}
 		speaker: '1',
 	}));
 
-	const translateDir = join(sessionPath, 'translate');
+	const translateDir = join(taskDir, 'translate');
 	ensureDir(translateDir, ctx);
 	writeJson(translationFile, { translation }, ctx);
 
-	await setStage(sessionPath, 'translate', {
+	await setStage(taskDir, 'translate', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

@@ -4,16 +4,16 @@ import { emitLog, ffmpeg, nowISO, separateDir, separateAfterDir } from '@repo/co
 import { Context, setStage } from '@repo/core/context/context.ts';
 
 export async function stageSeparateAfter(ctx: Context) {
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 	const taskId = ctx.task.id;
 
-	await setStage(sessionPath, 'separate_after', {
+	await setStage(taskDir, 'separate_after', {
 		last_message: 'Mixing BGM & sidechain...',
 		progress: 0,
 	});
 
-	const sepDir = separateDir(sessionPath);
-	const outDir = separateAfterDir(sessionPath);
+	const sepDir = separateDir(taskDir);
+	const outDir = separateAfterDir(taskDir);
 	mkdirSync(outDir, { recursive: true });
 	const stems = {
 		drums: join(sepDir, 'target_0_drums.wav'),
@@ -27,7 +27,7 @@ export async function stageSeparateAfter(ctx: Context) {
 	// 1. Regenerate target_bgm.wav from stems (fixes amix normalize bug)
 	const allStemsExist = [stems.drums, stems.bass, stems.other].every(existsSync);
 	if (allStemsExist) {
-		emitLog(sessionPath, `[SeparateAfter] Generating target_bgm.wav (amix normalize=0)...`);
+		emitLog(taskDir, `[SeparateAfter] Generating target_bgm.wav (amix normalize=0)...`);
 		ffmpeg([
 			'-i', stems.drums,
 			'-i', stems.bass,
@@ -37,9 +37,9 @@ export async function stageSeparateAfter(ctx: Context) {
 			'-y', bgmDst,
 		]);
 	} else if (existsSync(bgmDst)) {
-		emitLog(sessionPath, `[SeparateAfter] target_bgm.wav exists, reusing (stems not all found)`);
+		emitLog(taskDir, `[SeparateAfter] target_bgm.wav exists, reusing (stems not all found)`);
 	} else {
-		emitLog(sessionPath, `[SeparateAfter] No stems or BGM found, skipping BGM generation`);
+		emitLog(taskDir, `[SeparateAfter] No stems or BGM found, skipping BGM generation`);
 	}
 
 	// 2. Generate sidechain-mixed audio if configured
@@ -60,7 +60,7 @@ export async function stageSeparateAfter(ctx: Context) {
 			throw new Error(`[SeparateAfter] BGM not found: ${bgmPath}`);
 		}
 		if (mixMode === 'raw-sum') {
-			emitLog(sessionPath, `[SeparateAfter] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
+			emitLog(taskDir, `[SeparateAfter] raw-sum: mixing vocals + BGM at ${reduceBgm}dB...`);
 			ffmpeg([
 				'-i', vocalsPath,
 				'-i', bgmPath,
@@ -72,7 +72,7 @@ export async function stageSeparateAfter(ctx: Context) {
 		} else if (mixMode === 'sidechain') {
 			const scParams = `threshold=${sc?.threshold ?? 0.1}:ratio=${sc?.ratio ?? 20}:attack=${sc?.attack ?? 1}:release=${sc?.release ?? 200}`;
 			const bgmVol = reduceBgm !== 0 ? `[bgm_sc]volume=${reduceBgm}dB[bgm_final]` : null;
-			emitLog(sessionPath, `[SeparateAfter] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
+			emitLog(taskDir, `[SeparateAfter] sidechain: ${scParams}, bgmReduce=${reduceBgm}dB`);
 			ffmpeg([
 				'-i', vocalsPath,
 				'-i', bgmPath,
@@ -86,7 +86,7 @@ export async function stageSeparateAfter(ctx: Context) {
 
 	if (useGate && existsSync(mixedDst)) {
 		const gatedPath = join(outDir, 'target_3_vocals_gated.wav');
-		emitLog(sessionPath, '[SeparateAfter] Applying silence gate...');
+		emitLog(taskDir, '[SeparateAfter] Applying silence gate...');
 		ffmpeg([
 			'-i', mixedDst,
 			'-af', 'agate=threshold=0.02:ratio=20:attack=10:release=100',
@@ -94,7 +94,7 @@ export async function stageSeparateAfter(ctx: Context) {
 		]);
 	}
 
-	await setStage(sessionPath, 'separate_after', {
+	await setStage(taskDir, 'separate_after', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

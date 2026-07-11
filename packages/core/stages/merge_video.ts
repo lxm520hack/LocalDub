@@ -57,16 +57,16 @@ function probeStyle(
 export async function stageMergeVideo(ctx: Context) {
 	startLog('merge_video', ctx.task.id);
 	const taskId = ctx.task.id;
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 	const video_file_path = videoSourcePath(ctx)
-	const mergeVideoDir = join(sessionPath, 'merge_video');
+	const mergeVideoDir = join(taskDir, 'merge_video');
 	ensureDir(mergeVideoDir, ctx);
-	const tmpDir = join(sessionPath, 'tmp');
+	const tmpDir = join(taskDir, 'tmp');
 	const srtPath = ctx.input?.stages?.merge_video?.srtPath
 	const subtitleSource = ctx.input?.task?.subtitleSource;
 	if (!existsSync(video_file_path)) throw new Error('video_source.mp4 not found');
 
-	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
+	const pipeline = readCtx(taskDir)?.pipeline || 'dub';
 
 	const mergeCfg = ctx.input?.stages?.merge_video;
 	const probeOverrides = {
@@ -89,10 +89,10 @@ export async function stageMergeVideo(ctx: Context) {
 		const translateEnabled = ctx.input?.stages?.translate?.enabled ?? true;
 		let data: { translation: any[] };
 		if (vadAlign) {
-			data = await readJson(split_audio_timings_filepath(sessionPath), ctx);
+			data = await readJson(split_audio_timings_filepath(taskDir), ctx);
 		} else if (translateEnabled) {
 			const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-			const trFile = translationFilePath(sessionPath, dstLangCode);
+			const trFile = translationFilePath(taskDir, dstLangCode);
 			data = await readJson(trFile, ctx);
 		} else {
 			const srt = await readJson(srtPath ? srtPath : subtitleFilePath(ctx), ctx);
@@ -137,10 +137,10 @@ export async function stageMergeVideo(ctx: Context) {
 			300_000,
 		);
 	} else {
-		const dubbingFile = join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
+		const dubbingFile = join(taskDir, 'merge_audio', 'audio_dubbing.wav');
 		const ctxBgmPath = ctx.input?.stages?.merge_video?.bgmPath;
-		const bgmFile = ctxBgmPath ? ctxBgmPath : bgmPath(sessionPath);
-		const timingsFile = timings_filepath(sessionPath);
+		const bgmFile = ctxBgmPath ? ctxBgmPath : bgmPath(taskDir);
+		const timingsFile = timings_filepath(taskDir);
 
 		if (!existsSync(dubbingFile))
 			throw new Error('audio_dubbing.wav not found');
@@ -200,7 +200,7 @@ export async function stageMergeVideo(ctx: Context) {
 
 	fileLog(ctx, 'write', finalVideo);
 
-	await setStage(sessionPath, 'merge_video', {
+	await setStage(taskDir, 'merge_video', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,
@@ -208,5 +208,5 @@ export async function stageMergeVideo(ctx: Context) {
 	});
 
 	const finalPath = `/api/video/${taskId}`;
-	await setTask(sessionPath, { final_video_path: finalPath });
+	await setTask(taskDir, { final_video_path: finalPath });
 }

@@ -40,14 +40,14 @@ export async function stageTts(
 	ctx: Context,
 ) {
 	const taskId = ctx.task.id;
-	const sessionPath = ctx.task.session_path;
-	startLog(sessionPath, taskId);
+	const taskDir = ctx.task.session_path;
+	startLog(taskDir, taskId);
 
 	const ttsCfg = ctx.input?.stages?.tts!;
-	const timingsFile = split_audio_timings_filepath(sessionPath);
-	const vocalsDir = join(sessionPath, 'split_audio', 'vocals');
-	const ttsWavDir = join(sessionPath, 'tts', 'wavs');
-	const doubledDir = join(sessionPath, 'tts', 'ref_doubled');
+	const timingsFile = split_audio_timings_filepath(taskDir);
+	const vocalsDir = join(taskDir, 'split_audio', 'vocals');
+	const ttsWavDir = join(taskDir, 'tts', 'wavs');
+	const doubledDir = join(taskDir, 'tts', 'ref_doubled');
 
 	if (!existsSync(timingsFile))
 		throw new Error(`${timingsFile} not found`);
@@ -60,12 +60,12 @@ export async function stageTts(
 	if (!ttsCfg.skipExisting) {
 		const anyTts = readdirSync(ttsWavDir).find((f) => f.endsWith('.wav'));
 		if (anyTts) {
-			emitLog(sessionPath, `[tts] Existing TTS segments found; will overwrite without deleting files`);
+			emitLog(taskDir, `[tts] Existing TTS segments found; will overwrite without deleting files`);
 		}
 	}
 	// Unified engine (handles all runtimes via createBackend) 
 
-	emitLog(sessionPath, `[tts] Using ${ttsCfg.runtime} backend`);
+	emitLog(taskDir, `[tts] Using ${ttsCfg.runtime} backend`);
 	const engine = newVoxCPMEngine(ttsCfg);
 	await engine.load();
 
@@ -133,7 +133,7 @@ export async function stageTts(
 		}
 
 		if (!refWav || !existsSync(refWav)) {
-			emitLog(sessionPath, `[WARN] [TTS] No reference for segment ${idx}, skipping`);
+			emitLog(taskDir, `[WARN] [TTS] No reference for segment ${idx}, skipping`);
 			writeFile(outPath, Buffer.alloc(44), ctx);
 			skipped += 1;
 			renderProgress(i + 1, translation.length, tqdmStart);
@@ -159,7 +159,7 @@ export async function stageTts(
 			}
 		}
 
-		setStage(sessionPath, 'tts', {
+		setStage(taskDir, 'tts', {
 			last_message: `Generating ${i + 1}/${translation.length}...`,
 		});
 		renderProgress(i + 1, translation.length, tqdmStart);
@@ -172,7 +172,7 @@ export async function stageTts(
 			generated += 1;
 		} catch (e) {
 			errors += 1;
-			emitLog(sessionPath, `[tts] [ERROR] Segment ${idx} failed: ${JSON.stringify(e)}`);
+			emitLog(taskDir, `[tts] [ERROR] Segment ${idx} failed: ${JSON.stringify(e)}`);
 			writeFile(outPath, Buffer.alloc(44), ctx);
 		}
 	}
@@ -184,9 +184,9 @@ export async function stageTts(
 	const audioSec = translation.reduce((s, t) => s + (t.end_time - t.start_time), 0) / 1000;
 	const rtf = audioSec > 0 && genSec > 0 ? genSec / audioSec : 0;
 
-	emitLog(sessionPath, `[TTS] Batch complete: ${generated} generated, ${skipped} skipped, ${errors} errors`);
-	emitLog(sessionPath, `[VoxCPM] Generated in ${genSec.toFixed(1)}s | RTF ${rtf.toFixed(3)}`);
-	await setStage(sessionPath, 'tts', {
+	emitLog(taskDir, `[TTS] Batch complete: ${generated} generated, ${skipped} skipped, ${errors} errors`);
+	emitLog(taskDir, `[VoxCPM] Generated in ${genSec.toFixed(1)}s | RTF ${rtf.toFixed(3)}`);
+	await setStage(taskDir, 'tts', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

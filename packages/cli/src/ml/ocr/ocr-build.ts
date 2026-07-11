@@ -15,47 +15,47 @@ function ortDirExists(): boolean {
 	return existsSync(join(dir, 'include', 'onnxruntime_c_api.h'));
 }
 
-function ensureOrt(sessionPath: string): boolean {
+function ensureOrt(taskDir: string): boolean {
 	if (ortDirExists()) return true;
 
 	if (process.platform !== 'win32') {
-		emitLog(sessionPath, '[OCR] ONNX Runtime not found. Install manually:\n'
+		emitLog(taskDir, '[OCR] ONNX Runtime not found. Install manually:\n'
 			+ '  Download and extract to /tmp/onnxruntime-linux-x64-<version>');
 		return false;
 	}
 
-	emitLog(sessionPath, '[OCR] Downloading ONNX Runtime 1.26.0 for Windows (72 MB)...');
+	emitLog(taskDir, '[OCR] Downloading ONNX Runtime 1.26.0 for Windows (72 MB)...');
 	const zipPath = join(ORT_TMP_DIR, 'onnxruntime-win-x64-1.26.0.zip');
 	const url = 'https://github.com/microsoft/onnxruntime/releases/download/v1.26.0/onnxruntime-win-x64-1.26.0.zip';
 
 	const dl = spawnSync('curl.exe', ['-#L', '-o', zipPath, url], { timeout: 300_000 });
 	if (dl.status !== 0) {
-		emitLog(sessionPath, '[OCR] Failed to download ONNX Runtime.\n'
+		emitLog(taskDir, '[OCR] Failed to download ONNX Runtime.\n'
 			+ `  Download manually: ${url}\n`
 			+ `  Extract to: ${ocrOrtDir()}`);
 		return false;
 	}
 
-	emitLog(sessionPath, '[OCR] Extracting...');
+	emitLog(taskDir, '[OCR] Extracting...');
 	const extract = spawnSync('tar', ['-xf', zipPath, '-C', ORT_TMP_DIR], { timeout: 60_000 });
 	if (extract.status !== 0) {
-		emitLog(sessionPath, '[OCR] Failed to extract ONNX Runtime.\n'
+		emitLog(taskDir, '[OCR] Failed to extract ONNX Runtime.\n'
 			+ `  Extract ${zipPath} to ${ocrOrtDir()} manually.`);
 		return false;
 	}
 
 	if (!ortDirExists()) {
-		emitLog(sessionPath, '[OCR] Extracted but ORT headers not found.\n'
+		emitLog(taskDir, '[OCR] Extracted but ORT headers not found.\n'
 			+ `  Expected at: ${join(ocrOrtDir(), 'include', 'onnxruntime_c_api.h')}`);
 		return false;
 	}
 
-	emitLog(sessionPath, '[OCR] ONNX Runtime ready');
+	emitLog(taskDir, '[OCR] ONNX Runtime ready');
 	return true;
 }
 
-export async function tryBuildOcr(sessionPath: string): Promise<boolean> {
-	const log = (msg: string) => emitLog(sessionPath, msg);
+export async function tryBuildOcr(taskDir: string): Promise<boolean> {
+	const log = (msg: string) => emitLog(taskDir, msg);
 
 	if (existsSync(ocrBinaryPath())) {
 		log('[OCR] Binary already exists, skipping build');
@@ -71,7 +71,7 @@ export async function tryBuildOcr(sessionPath: string): Promise<boolean> {
 		return false;
 	}
 
-	if (!ensureOrt(sessionPath)) {
+	if (!ensureOrt(taskDir)) {
 		log('[OCR] ONNX Runtime not available, cannot build');
 		return false;
 	}

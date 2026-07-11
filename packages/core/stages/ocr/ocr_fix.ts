@@ -12,9 +12,9 @@ import { srtTime } from '@repo/core/utils/utils';
 
 export async function stageOcrFix(ctx: Context) {
   const taskId = ctx.task.id;
-  const sessionPath = ctx.task.session_path
-  const ocrFixDir = join(sessionPath, 'ocr_fix');
-  const ocrFile = join(sessionPath, 'ocr', 'ocr.json');
+  const taskDir = ctx.task.session_path
+  const ocrFixDir = join(taskDir, 'ocr_fix');
+  const ocrFile = join(taskDir, 'ocr', 'ocr.json');
   const fixFile = join(ocrFixDir, 'ocr_fix.json');
 
   ensureDir(ocrFixDir, ctx);
@@ -33,7 +33,7 @@ export async function stageOcrFix(ctx: Context) {
   const args = ctx.input.stages.ocr_fix;
   const llmFix = args?.llmFix
   
-  emitLog(sessionPath, `[ocr_fix] ${segments.length} segs, llmFix=${llmFix}`);
+  emitLog(taskDir, `[ocr_fix] ${segments.length} segs, llmFix=${llmFix}`);
 
   // LLM correction
   if (llmFix) {
@@ -42,14 +42,14 @@ export async function stageOcrFix(ctx: Context) {
     const llmApiBase = args.llmApiBase
     const domainHint = args.domainHint;
 
-    if (domainHint) emitLog(sessionPath, `[ocr_fix] domainHint: ${domainHint}`);
+    if (domainHint) emitLog(taskDir, `[ocr_fix] domainHint: ${domainHint}`);
 
-    await setStage(sessionPath, 'ocr_fix', {
+    await setStage(taskDir, 'ocr_fix', {
       last_message: `LLM fixing ${segments.length} segments...`,
     });
 
     const prompt = ocrSegmentsToPrompt(segments);
-    emitLog(sessionPath, `[ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+    emitLog(taskDir, `[ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
     const t0 = performance.now();
     const fixed = await chat_completions(prompt, { 
@@ -64,9 +64,9 @@ export async function stageOcrFix(ctx: Context) {
     const fixedTexts = parseLines(fixed, segments.length);
     if (fixedTexts) {
       segments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
-      emitLog(sessionPath, `[ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+      emitLog(taskDir, `[ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
     } else {
-      emitLog(sessionPath, `[ocr_fix] LLM response parse failed, keeping original text`);
+      emitLog(taskDir, `[ocr_fix] LLM response parse failed, keeping original text`);
     }
   }
 
@@ -78,9 +78,9 @@ export async function stageOcrFix(ctx: Context) {
     _llm_fixed: llmFix,
   }, ctx);
 
-  emitLog(sessionPath, `[ocr_fix] Written ${segments.length} segs to ocr_fix.json`);
+  emitLog(taskDir, `[ocr_fix] Written ${segments.length} segs to ocr_fix.json`);
 
-  await setStage(sessionPath, 'ocr_fix', {
+  await setStage(taskDir, 'ocr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,
     last_message: llmFix ? `LLM fixed ${segments.length} segs` : 'Fixed',
   });

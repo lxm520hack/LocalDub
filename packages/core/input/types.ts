@@ -382,7 +382,7 @@ export const CliInputSchema = z.looseObject({
 	task: taskArgsSchema,
 	check: z
 		.object({
-			sessionPath: z.string().optional(),
+			taskDir: z.string().optional(),
 			type: z.enum(['video', 'asr', 'font']).optional().default('video'),
 		})
 		.optional(),

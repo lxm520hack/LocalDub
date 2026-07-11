@@ -19,7 +19,7 @@ function findLibtorchPath(): string | null {
 }
 
 export async function separateBurn({
-  sessionPath,
+  taskDir,
   audioPath,
   device,
   backend,
@@ -50,10 +50,10 @@ export async function separateBurn({
 		throw new Error('audio_source.wav not found');
 	}
 
-	const sepDir = separateDir(sessionPath);
+	const sepDir = separateDir(taskDir);
 	mkdirSync(sepDir, { recursive: true });
 
-	emitLog(sessionPath, `[separate] runtime=${binName} device=${device} binary=${binPath}`);
+	emitLog(taskDir, `[separate] runtime=${binName} device=${device} binary=${binPath}`);
 
 	const env: Record<string, string> = { ...process.env } as Record<string, string>;
 	if (backend === 'tch') {
@@ -78,7 +78,7 @@ export async function separateBurn({
 					const pct = Math.min(100, Math.max(0, Math.round(Number(m[1]))));
 					if (pct === lastPct) continue;
 					lastPct = pct;
-					setStage(sessionPath, 'separate', {
+					setStage(taskDir, 'separate', {
 						progress: pct,
 						last_message: `Separating ${pct}%`,
 					});
@@ -101,18 +101,18 @@ export async function separateBurn({
 	});
 	const elapsedSec = (performance.now() - t0) / 1000;
 
-	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(taskDir, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (const name of stemNames) {
 		const p = join(sepDir, `target_${stemNames.indexOf(name)}_${name}.wav`);
 		if (!existsSync(p)) {
-			emitLog(sessionPath, `[Separate] WARN: ${p} not found`);
+			emitLog(taskDir, `[Separate] WARN: ${p} not found`);
 		}
 	}
 
 	const durationS = probeDuration(audioPath);
 	if (durationS > 0) {
-		emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
+		emitLog(taskDir, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
 	}
 }

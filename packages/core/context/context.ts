@@ -5,7 +5,7 @@ import { delimiter, join } from 'node:path';
 import { fileLog, getLastSegment } from '../utils/fileOps.ts';
 import { TargetLang } from "@repo/core/cmd/tasks/input";
 
-export const getTaskId = (sessionPath: string) => getLastSegment(sessionPath)
+export const getTaskId = (taskDir: string) => getLastSegment(taskDir)
 
 export type VideoSource = 'youtube' | 'bilibili' | 'local' | 'remote' | 'unknown';
 export interface Task {
@@ -55,20 +55,20 @@ export interface TaskStage {
   status: string;
 }
 
-export const ctxPath = (sessionPath: string) =>
-	join(sessionPath, 'ctx.json');
+export const ctxPath = (taskDir: string) =>
+	join(taskDir, 'ctx.json');
 
 /**
  * readFileSync, JSON.parse 都可以抛错, 如何处理交给使用者
  */
-export const readCtx = (sessionPath: string) => {
-	const path = ctxPath(sessionPath);
-	const raw = _readCtx(sessionPath)
+export const readCtx = (taskDir: string) => {
+	const path = ctxPath(taskDir);
+	const raw = _readCtx(taskDir)
 	console.log(`[File] read ${path}`);
 	return raw 
 };
-export const _readCtx = (sessionPath: string) => {
-	const path = ctxPath(sessionPath);
+export const _readCtx = (taskDir: string) => {
+	const path = ctxPath(taskDir);
 	const raw = JSON.parse(readFileSync(path, 'utf-8'));
 	return raw as Context;
 };
@@ -88,23 +88,23 @@ export const _writeCtx = (ctx: Context) => {
 	return ctx;
 };
 export const _setCtx = (
-	sessionPath: string,
+	taskDir: string,
 	patch: Partial<Context>,
  ) => {
-	const existing = _readCtx(sessionPath) ?? ({} as Context);
+	const existing = _readCtx(taskDir) ?? ({} as Context);
 	const ctx = _writeCtx( { ...existing, ...patch });
 	return ctx;
 };
 export const setCtx = (
-	sessionPath: string,
+	taskDir: string,
 	patch: Partial<Context>,
 ) => {
-	const ctx = _setCtx(sessionPath,patch)
-	console.log(`[${ctx.task.current_stage}] setCtx ${ctxPath(sessionPath)}:`, JSON.stringify(patch));
+	const ctx = _setCtx(taskDir,patch)
+	console.log(`[${ctx.task.current_stage}] setCtx ${ctxPath(taskDir)}:`, JSON.stringify(patch));
 	return ctx;
 };
-export const readTask = (sessionPath: string) => {
-	const path = ctxPath(sessionPath);
+export const readTask = (taskDir: string) => {
+	const path = ctxPath(taskDir);
 	const raw = readFileSync(path, 'utf-8');
 	const ctx = JSON.parse(raw) as Context;
 	return ctx.task;
@@ -116,27 +116,27 @@ export const writeTask = ( task: Task) => {
 	_setCtx(task.session_path, { task });
 			console.log(`[${task.current_stage}] setTask ${ctxPath(task.session_path)}:`, JSON.stringify(task));
 }
-export const setTask = (sessionPath: string, patch: Partial<Task>) => {
+export const setTask = (taskDir: string, patch: Partial<Task>) => {
 	// If marking succeeded, clear any previous error_message to avoid stale failure state
 	if (patch.status === 'succeeded') {
 		patch.error_message = null;
 	}
-	const existing = readTask(sessionPath) ?? ({} as Task);
+	const existing = readTask(taskDir) ?? ({} as Task);
 	const updated = { ...existing, ...patch };
 	_writeTask(updated);
 	console.log(`[${updated.current_stage}] setTask:`, JSON.stringify(patch));
 }
 
-export const listStage = (sessionPath: string) => _readCtx(sessionPath).stages ?? [];
-const readStage = (sessionPath: string, stage: string) => {
-	return listStage(sessionPath).find((s) => s.name === stage)
+export const listStage = (taskDir: string) => _readCtx(taskDir).stages ?? [];
+const readStage = (taskDir: string, stage: string) => {
+	return listStage(taskDir).find((s) => s.name === stage)
 }
-export const writeStages = (sessionPath: string, stages: TaskStage[]) => {
-	const ctx = readCtx(sessionPath);
+export const writeStages = (taskDir: string, stages: TaskStage[]) => {
+	const ctx = readCtx(taskDir);
 	writeCtx({...ctx, stages});
 }
-const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => {
-	const ctx = _readCtx(sessionPath);
+const writeStage = (taskDir: string, stage: string, newStage: TaskStage) => {
+	const ctx = _readCtx(taskDir);
 	const stages = ctx.stages ?? [];
 	const idx = stages.findIndex((s) => s.name === stage);
 	if (idx !== -1) {
@@ -146,14 +146,14 @@ const writeStage = (sessionPath: string, stage: string, newStage: TaskStage) => 
 	}
 	_writeCtx(ctx);
 }
-export const setStage = (sessionPath: string, stage: string, patch: Partial<TaskStage>) => {
-	_readCtx(sessionPath)
-	const existing = readStage(sessionPath, stage) ?? ({} as TaskStage);
+export const setStage = (taskDir: string, stage: string, patch: Partial<TaskStage>) => {
+	_readCtx(taskDir)
+	const existing = readStage(taskDir, stage) ?? ({} as TaskStage);
 	const updated = { ...existing, ...patch };
 	if (updated.status === 'succeeded') updated.error_message = null as any;
-	writeStage(sessionPath, stage, updated);
-	console.log(`[${_readCtx(sessionPath).task.current_stage}] setStage: ${stage}`, JSON.stringify(patch));
+	writeStage(taskDir, stage, updated);
+	console.log(`[${_readCtx(taskDir).task.current_stage}] setStage: ${stage}`, JSON.stringify(patch));
 }
 
-export const readPipeline = (sessionPath: string) =>
-	readCtx(sessionPath)?.pipeline || 'dub';
+export const readPipeline = (taskDir: string) =>
+	readCtx(taskDir)?.pipeline || 'dub';

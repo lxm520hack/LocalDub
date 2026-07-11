@@ -62,58 +62,58 @@ export function whisperCppBinaryPath(): string {
 	return binPath
 }
 
-function downloadFile(url: string, dest: string, sessionPath: string): boolean {
+function downloadFile(url: string, dest: string, taskDir: string): boolean {
 	const destDir = join(dest, '..');
 	if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true });
 
-	emitLog(sessionPath, `[Whisper] Downloading ${url.split('/').pop()}...`);
+	emitLog(taskDir, `[Whisper] Downloading ${url.split('/').pop()}...`);
 	const r = spawnSync('curl.exe', ['-#L', '-o', dest, url], { timeout: 300_000 });
 	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] Download failed (curl exit ${r.status})`);
+		emitLog(taskDir, `[Whisper] Download failed (curl exit ${r.status})`);
 		return false;
 	}
 	if (!existsSync(dest)) {
-		emitLog(sessionPath, `[Whisper] File not found after download: ${dest}`);
+		emitLog(taskDir, `[Whisper] File not found after download: ${dest}`);
 		return false;
 	}
-	emitLog(sessionPath, `[Whisper] Saved to ${dest}`);
+	emitLog(taskDir, `[Whisper] Saved to ${dest}`);
 	return true;
 }
 
-export function ensureWhisperCppSubmodule(sessionPath: string): boolean {
+export function ensureWhisperCppSubmodule(taskDir: string): boolean {
 	const gitDir = join(whisperCppDir(), '.git');
 	if (existsSync(gitDir)) return true;
 
-	emitLog(sessionPath, '[Whisper] Initializing whisper.cpp submodule...');
+	emitLog(taskDir, '[Whisper] Initializing whisper.cpp submodule...');
 	const r = spawnSync('git', ['submodule', 'update', '--init', 'submodule/whisper.cpp'], {
 		timeout: 120_000,
 		cwd: REPO_ROOT,
 	});
 	if (r.status !== 0) {
-		emitLog(sessionPath, '[Whisper] Failed to init submodule. Run manually:\n'
+		emitLog(taskDir, '[Whisper] Failed to init submodule. Run manually:\n'
 			+ `  git submodule update --init submodule/whisper.cpp`);
 		return false;
 	}
-	emitLog(sessionPath, '[Whisper] Submodule initialized');
+	emitLog(taskDir, '[Whisper] Submodule initialized');
 	return true;
 }
 
-export function ensureWhisperCppModel(sessionPath: string): boolean {
+export function ensureWhisperCppModel(taskDir: string): boolean {
 	const dest = whisperModelPath();
 	if (existsSync(dest)) return true;
 
 	const url = `${HF_BASE}/ggml-large-v3-turbo.bin`;
-	emitLog(sessionPath, `[Whisper] Whisper model not found at ${dest}`);
-	return downloadFile(url, dest, sessionPath);
+	emitLog(taskDir, `[Whisper] Whisper model not found at ${dest}`);
+	return downloadFile(url, dest, taskDir);
 }
 
-export function ensureVadModel(sessionPath: string): boolean {
+export function ensureVadModel(taskDir: string): boolean {
 	const dest = join(WHISPER_MODEL_DIR, vadModelFilename());
 	if (existsSync(dest)) return true;
 
 	const url = `${HF_BASE}/${vadModelFilename()}`;
-	emitLog(sessionPath, `[Whisper] VAD model not found at ${dest}`);
-	return downloadFile(url, dest, sessionPath);
+	emitLog(taskDir, `[Whisper] VAD model not found at ${dest}`);
+	return downloadFile(url, dest, taskDir);
 }
 
 // ---- Vulkan SDK helper & installer (user-provided logic) ----
@@ -145,55 +145,55 @@ function isVulkanSdkInstalled(): boolean {
 	return findVulkanSdkDir() !== null;
 }
 
-function installVulkanSdkWinget(sessionPath: string): boolean {
+function installVulkanSdkWinget(taskDir: string): boolean {
 	const tmpDir = join(REPO_ROOT, 'packages', 'tmp');
 	const installerPath = join(tmpDir, `VulkanSDK-${VK_SDK_VERSION}-Installer.exe`);
 
-	emitLog(sessionPath, '[Whisper] Installing Vulkan SDK via winget...');
-	emitLog(sessionPath, '[Whisper] This may open a UAC prompt (admin required)');
+	emitLog(taskDir, '[Whisper] Installing Vulkan SDK via winget...');
+	emitLog(taskDir, '[Whisper] This may open a UAC prompt (admin required)');
 	const r = spawnSync('winget', ['install', '-e', '--id', 'KhronosGroup.VulkanSDK', '--accept-package-agreements'],
 		{ timeout: 600_000 });
 	if (r.status !== 0) {
 		const err = r.stderr?.toString() || '';
-		emitLog(sessionPath, `[Whisper] winget install failed (exit ${r.status}):\n${err.slice(-300)}`);
+		emitLog(taskDir, `[Whisper] winget install failed (exit ${r.status}):\n${err.slice(-300)}`);
 		return false;
 	}
-	emitLog(sessionPath, '[Whisper] Vulkan SDK installed via winget');
+	emitLog(taskDir, '[Whisper] Vulkan SDK installed via winget');
 	return true;
 }
 
-function installVulkanSdkInstaller(sessionPath: string): boolean {
+function installVulkanSdkInstaller(taskDir: string): boolean {
 	const tmpDir = join(REPO_ROOT, 'packages', 'tmp');
 	const installerPath = join(tmpDir, `VulkanSDK-${VK_SDK_VERSION}-Installer.exe`);
 
-	if (!downloadFile(VK_SDK_INSTALLER_URL, installerPath, sessionPath)) return false;
+	if (!downloadFile(VK_SDK_INSTALLER_URL, installerPath, taskDir)) return false;
 
-	emitLog(sessionPath, `[Whisper] Running Vulkan SDK installer (${VK_SDK_VERSION})...`);
-	emitLog(sessionPath, '[Whisper] This may open a UAC prompt (admin required)');
+	emitLog(taskDir, `[Whisper] Running Vulkan SDK installer (${VK_SDK_VERSION})...`);
+	emitLog(taskDir, '[Whisper] This may open a UAC prompt (admin required)');
 	const r = spawnSync(`"${installerPath}"`, ['/S'], {
 		timeout: 600_000,
 		shell: true,
 	});
 	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] Vulkan SDK installer failed (exit ${r.status})`);
-		emitLog(sessionPath, `[Whisper] Install manually: ${VK_SDK_INSTALLER_URL}`);
+		emitLog(taskDir, `[Whisper] Vulkan SDK installer failed (exit ${r.status})`);
+		emitLog(taskDir, `[Whisper] Install manually: ${VK_SDK_INSTALLER_URL}`);
 		return false;
 	}
-	emitLog(sessionPath, '[Whisper] Vulkan SDK installed');
+	emitLog(taskDir, '[Whisper] Vulkan SDK installed');
 	return true;
 }
 
-function ensureVulkanSdk(sessionPath: string): boolean {
+function ensureVulkanSdk(taskDir: string): boolean {
 	if (isVulkanSdkInstalled()) {
-		emitLog(sessionPath, '[Whisper] Vulkan SDK OK');
+		emitLog(taskDir, '[Whisper] Vulkan SDK OK');
 		return true;
 	}
 
-	emitLog(sessionPath, '[Whisper] Vulkan SDK not found');
-	if (installVulkanSdkWinget(sessionPath) && isVulkanSdkInstalled()) return true;
-	if (installVulkanSdkInstaller(sessionPath) && isVulkanSdkInstalled()) return true;
+	emitLog(taskDir, '[Whisper] Vulkan SDK not found');
+	if (installVulkanSdkWinget(taskDir) && isVulkanSdkInstalled()) return true;
+	if (installVulkanSdkInstaller(taskDir) && isVulkanSdkInstalled()) return true;
 
-	emitLog(sessionPath, '[Whisper] Vulkan SDK install failed. Install manually:\n'
+	emitLog(taskDir, '[Whisper] Vulkan SDK install failed. Install manually:\n'
 	+ `  winget install -e --id KhronosGroup.VulkanSDK\n`
 	+ `  Or download: ${VK_SDK_INSTALLER_URL}`);
 	return false;
@@ -203,7 +203,7 @@ function whisperCppBuildDir(): string {
 	return join(whisperCppDir(), 'build');
 }
 
-function tryBuild(sessionPath: string): boolean {
+function tryBuild(taskDir: string): boolean {
 	const buildDir = whisperCppBuildDir();
 	const vkDir = findVulkanSdkDir();
 	const cmakeArgs = ['-B', buildDir, '-S', whisperCppDir(), '-DGGML_VULKAN=1'];
@@ -215,7 +215,7 @@ function tryBuild(sessionPath: string): boolean {
 		cmakeArgs.push(`-DCMAKE_PREFIX_PATH=${spirvCmake}`);
 	}
 
-	emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) args=${cmakeArgs.join(' ')}`);
+	emitLog(taskDir, `[Whisper] cmake configure (Vulkan) args=${cmakeArgs.join(' ')}`);
 	const buildEnv: Record<string, string> = { ...process.env as Record<string, string> };
 	if (vkDir) {
 		buildEnv['VULKAN_SDK'] = vkDir;
@@ -223,60 +223,60 @@ function tryBuild(sessionPath: string): boolean {
 	const cfg = spawnSync('cmake', cmakeArgs, { timeout: 120_000, env: buildEnv });
 	if (cfg.status !== 0) {
 		const err = cfg.stderr?.toString() || '';
-		emitLog(sessionPath, `[Whisper] cmake configure (Vulkan) failed:\n${err.slice(-2000)}`);
+		emitLog(taskDir, `[Whisper] cmake configure (Vulkan) failed:\n${err.slice(-2000)}`);
 		return false;
 	}
 
-	emitLog(sessionPath, '[Whisper] cmake build (Vulkan)...');
+	emitLog(taskDir, '[Whisper] cmake build (Vulkan)...');
 	const build = spawnSync('cmake', ['--build', buildDir, '--config', 'Release', '-j', '4'],
 		{ timeout: 600_000, env: buildEnv });
 	if (build.status !== 0) {
 		const err = build.stderr?.toString() || '';
-		emitLog(sessionPath, `[Whisper] cmake build (Vulkan) failed:\n${err.slice(-2000)}`);
+		emitLog(taskDir, `[Whisper] cmake build (Vulkan) failed:\n${err.slice(-2000)}`);
 		return false;
 	}
 
 	const binPath = whisperCppBinaryPath();
 	if (existsSync(binPath)) {
-		emitLog(sessionPath, `[Whisper] Built ${binPath}`);
+		emitLog(taskDir, `[Whisper] Built ${binPath}`);
 		return true;
 	}
-	emitLog(sessionPath, `[Whisper] Build completed but binary not found at ${binPath}`);
+	emitLog(taskDir, `[Whisper] Build completed but binary not found at ${binPath}`);
 	return false;
 }
 
-function buildWhisperCpp(sessionPath: string): boolean {
+function buildWhisperCpp(taskDir: string): boolean {
 	const { spawnSync } = require('child_process');
 	const os = require('os');
 	const cwd = whisperCppDir();
 
-	emitLog(sessionPath, '[Whisper] Attempting to build whisper.cpp (cmake configure + build)...');
+	emitLog(taskDir, '[Whisper] Attempting to build whisper.cpp (cmake configure + build)...');
 
 	// Check cmake availability
 	let r = spawnSync('cmake', ['--version'], { cwd, timeout: 30_000 });
 	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake not available or failed --version (exit ${r.status}). Install CMake or ensure it's on PATH.`);
+		emitLog(taskDir, `[Whisper] cmake not available or failed --version (exit ${r.status}). Install CMake or ensure it's on PATH.`);
 		return false;
 	}
 
 	// Configure
-	emitLog(sessionPath, `[Whisper] Running: cmake -B build -DGGML_VULKAN=1`);
+	emitLog(taskDir, `[Whisper] Running: cmake -B build -DGGML_VULKAN=1`);
 	r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
 	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake configure failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+		emitLog(taskDir, `[Whisper] cmake configure failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
 		const stderr = (r.stderr||'').toString();
 		// If Vulkan not found, attempt to auto-install Vulkan SDK then retry configure
 		if (stderr.includes('Could NOT find Vulkan') || stderr.includes('FindVulkan') || stderr.includes('Vulkan_LIBRARY')) {
-			emitLog(sessionPath, '[Whisper] Vulkan not detected. Attempting automatic Vulkan SDK install');
-			if (!ensureVulkanSdk(sessionPath)) {
-				emitLog(sessionPath, '[Whisper] Automatic Vulkan install failed');
+			emitLog(taskDir, '[Whisper] Vulkan not detected. Attempting automatic Vulkan SDK install');
+			if (!ensureVulkanSdk(taskDir)) {
+				emitLog(taskDir, '[Whisper] Automatic Vulkan install failed');
 				return false;
 			}
 			// Retry configure with Vulkan enabled
-			emitLog(sessionPath, '[Whisper] Retrying: cmake -B build -DGGML_VULKAN=1');
+			emitLog(taskDir, '[Whisper] Retrying: cmake -B build -DGGML_VULKAN=1');
 			r = spawnSync('cmake', ['-B', 'build', '-DGGML_VULKAN=1'], { cwd, timeout: 600_000 });
 			if (r.status !== 0) {
-				emitLog(sessionPath, `[Whisper] cmake configure still failed after Vulkan install (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+				emitLog(taskDir, `[Whisper] cmake configure still failed after Vulkan install (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
 				return false;
 			}
 		} else {
@@ -291,15 +291,15 @@ function buildWhisperCpp(sessionPath: string): boolean {
 			const cache = require('fs').readFileSync(cachePath, 'utf8');
 			const hasVulkanOn = /GGML_VULKAN\s*[:=].*(ON|1|TRUE)/i.test(cache) || /GGML_VULKAN:BOOL=ON/i.test(cache) || /GGML_USE_VULKAN.*ON/i.test(cache);
 			if (!hasVulkanOn) {
-				emitLog(sessionPath, '[Whisper] CMake configure completed but GGML_VULKAN is not ON — aborting build (no CPU fallback as requested)');
+				emitLog(taskDir, '[Whisper] CMake configure completed but GGML_VULKAN is not ON — aborting build (no CPU fallback as requested)');
 				return false;
 			}
 		} else {
-			emitLog(sessionPath, `[Whisper] CMakeCache not found at ${cachePath} — cannot verify Vulkan state`);
+			emitLog(taskDir, `[Whisper] CMakeCache not found at ${cachePath} — cannot verify Vulkan state`);
 			return false;
 		}
 	} catch (e:any) {
-		emitLog(sessionPath, `[Whisper] Failed to read CMakeCache to verify Vulkan: ${e?.message || e}`);
+		emitLog(taskDir, `[Whisper] Failed to read CMakeCache to verify Vulkan: ${e?.message || e}`);
 		return false;
 	}
 
@@ -311,43 +311,43 @@ function buildWhisperCpp(sessionPath: string): boolean {
 	} else {
 		buildArgs = ['--build', 'build', '-j', String(cpus)];
 	}
-	emitLog(sessionPath, `[Whisper] Running: cmake ${buildArgs.join(' ')}`);
+	emitLog(taskDir, `[Whisper] Running: cmake ${buildArgs.join(' ')}`);
 	// Allow up to 1 hour for build on slow machines
 	r = spawnSync('cmake', buildArgs, { cwd, timeout: 3_600_000 });
 	if (r.status !== 0) {
-		emitLog(sessionPath, `[Whisper] cmake build failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
+		emitLog(taskDir, `[Whisper] cmake build failed (exit ${r.status}) stdout=${(r.stdout||'').toString().slice(-2000)} stderr=${(r.stderr||'').toString().slice(-2000)}`);
 		return false;
 	}
 
-	emitLog(sessionPath, '[Whisper] Build completed');
+	emitLog(taskDir, '[Whisper] Build completed');
 	return true;
 }
 
-export function ensureWhisperCppBinary(sessionPath: string): boolean {
+export function ensureWhisperCppBinary(taskDir: string): boolean {
 	const binPath = whisperVulkanPath();
 	if (existsSync(binPath)) return true;
 
-	emitLog(sessionPath, `[Whisper] whisper-vulkan not found at ${binPath}`);
+	emitLog(taskDir, `[Whisper] whisper-vulkan not found at ${binPath}`);
 
 	// Attempt an automatic build once
 	try {
-		if (buildWhisperCpp(sessionPath)) {
+		if (buildWhisperCpp(taskDir)) {
 			// re-evaluate path after build
 			const newBin = whisperVulkanPath();
 			if (existsSync(newBin)) {
-				emitLog(sessionPath, `[Whisper] Found binary after build at ${newBin}`);
+				emitLog(taskDir, `[Whisper] Found binary after build at ${newBin}`);
 				return true;
 			}
 			// fallback: list build dir for diagnostics
-			emitLog(sessionPath, `[Whisper] Build finished but binary still not found at ${newBin}`);
+			emitLog(taskDir, `[Whisper] Build finished but binary still not found at ${newBin}`);
 		} else {
-			emitLog(sessionPath, '[Whisper] Automatic build attempt failed');
+			emitLog(taskDir, '[Whisper] Automatic build attempt failed');
 		}
 	} catch (e:any) {
-		emitLog(sessionPath, `[Whisper] Exception during automatic build: ${e?.message || e}`);
+		emitLog(taskDir, `[Whisper] Exception during automatic build: ${e?.message || e}`);
 	}
 
-	emitLog(sessionPath, '[Whisper] Build whisper.cpp with Vulkan (manual steps):\n'
+	emitLog(taskDir, '[Whisper] Build whisper.cpp with Vulkan (manual steps):\n'
 		+ `  cd submodule/whisper.cpp\n`
 		+ `  cmake -B build -DGGML_VULKAN=1\n`
 		+ `  cmake --build build --config Release -j4\n`
@@ -355,9 +355,9 @@ export function ensureWhisperCppBinary(sessionPath: string): boolean {
 	return false;
 }
 
-export function ensureWhisperCpp(sessionPath: string): boolean {
-	if (!ensureWhisperCppSubmodule(sessionPath)) return false;
-	if (!ensureWhisperCppModel(sessionPath)) return false;
-	if (!ensureWhisperCppBinary(sessionPath)) return false;
+export function ensureWhisperCpp(taskDir: string): boolean {
+	if (!ensureWhisperCppSubmodule(taskDir)) return false;
+	if (!ensureWhisperCppModel(taskDir)) return false;
+	if (!ensureWhisperCppBinary(taskDir)) return false;
 	return true;
 }

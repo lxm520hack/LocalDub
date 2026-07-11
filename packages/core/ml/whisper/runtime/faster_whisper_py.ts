@@ -14,8 +14,8 @@ import { faster_whisper_py } from '@repo/config/path/scripts';
 
 
 export async function asrFasterWhisper(opts: AsrOptions) {
-	const { taskId, audioPath, sessionPath: sessionPath, language, device, pythonBin: pyBin, ctx } = opts;
-	const baseArgs = [faster_whisper_py, audioPath, sessionPath, language || 'auto'];
+	const { taskId, audioPath, taskDir: taskDir, language, device, pythonBin: pyBin, ctx } = opts;
+	const baseArgs = [faster_whisper_py, audioPath, taskDir, language || 'auto'];
 
 	const useGpu = device !== 'cpu';
 	const attempts = useGpu ? 2 : 1;
@@ -33,7 +33,7 @@ export async function asrFasterWhisper(opts: AsrOptions) {
 		if (result.signal) {
 			const stderr = (result.stderr?.toString() || '').trim().slice(-200);
 			if (attempt === 0 && useGpu) {
-				await setStage(sessionPath, 'asr', {
+				await setStage(taskDir, 'asr', {
 					last_message: 'GPU hang, retrying CPU...',
 				});
 				fallbackToCpu = true;
@@ -59,7 +59,7 @@ export async function asrFasterWhisper(opts: AsrOptions) {
 		const asr = await readJson(asrOutputPath, ctx);
 		const actualDevice = fallbackToCpu ? 'cpu' : useGpu ? 'cuda' : 'cpu';
 		if (asr.detected_language) {
-			setCtx(sessionPath, {
+			setCtx(taskDir, {
 				asr_language: asr.detected_language,
 				runInfo: {
 					asr: {
@@ -72,7 +72,7 @@ export async function asrFasterWhisper(opts: AsrOptions) {
 				},
 			});
 		}
-		emitAsrTiming(sessionPath, asr, elapsedSec);
+		emitAsrTiming(taskDir, asr, elapsedSec);
 
 		return;
 	}

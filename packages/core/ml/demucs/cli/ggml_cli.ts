@@ -11,7 +11,7 @@ import { REPO_ROOT } from '@repo/config/root';
 
 export async function separateGgml(
 	taskId: string,
-	sessionPath: string,
+	taskDir: string,
 	audioPath: string,
 	device: string,
 ) {
@@ -19,10 +19,10 @@ export async function separateGgml(
 		REPO_ROOT, 'submodule', 'demucs.cpp', 'build', 'demucs_mt.cpp.main',
 	);
 	const ggmlModel = DEMUCS_GGML_FILE;
-	const sepDir = separateDir(sessionPath);
+	const sepDir = separateDir(taskDir);
 	mkdirSync(sepDir, { recursive: true });
 
-	emitLog(sessionPath, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
+	emitLog(taskDir, `[Separate] runtime=ggml device=${device} binary=${ggmlBin}`);
 
 	// Extract audio to WAV 
 	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found (run download stage)');
@@ -31,8 +31,8 @@ export async function separateGgml(
 	const ggmlBinPath = isWin && !ggmlBin.endsWith('.exe') ? `${ggmlBin}.exe` : ggmlBin;
 
 	if (!existsSync(ggmlBinPath)) {
-		emitLog(sessionPath, `[Separate] Binary not found at ${ggmlBinPath}, attempting auto-build...`);
-		const built = await tryBuildGgml(sessionPath);
+		emitLog(taskDir, `[Separate] Binary not found at ${ggmlBinPath}, attempting auto-build...`);
+		const built = await tryBuildGgml(taskDir);
 		if (!built) {
 			throw new Error(
 				`GGML binary not found at ${ggmlBinPath}\n`
@@ -43,11 +43,11 @@ export async function separateGgml(
 				+ `Or set separate.runtime to "ort" or "pytorch" in config to use ONNX or Python instead.`,
 			);
 		}
-		emitLog(sessionPath, `[Separate] Auto-build succeeded`);
+		emitLog(taskDir, `[Separate] Auto-build succeeded`);
 	}
 
 	if (!existsSync(ggmlModel)) {
-		await ensureGgmlModel(sessionPath, ggmlModel);
+		await ensureGgmlModel(taskDir, ggmlModel);
 	}
 
 	const t0 = performance.now();
@@ -70,7 +70,7 @@ export async function separateGgml(
 					const pct = Math.min(100, Math.max(0, Math.round(Number(m[1]))));
 					if (pct === lastGgmlPct) continue;
 					lastGgmlPct = pct;
-					setStage(sessionPath, 'separate', {
+					setStage(taskDir, 'separate', {
 						progress: pct,
 						last_message: `Separating ${pct}%`,
 					});
@@ -95,18 +95,18 @@ export async function separateGgml(
 	});
 	const elapsedSec = (performance.now() - t0) / 1000;
 
-	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(taskDir, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (const name of stemNames) {
 		const p = join(sepDir, `target_${stemNames.indexOf(name)}_${name}.wav`);
 		if (!existsSync(p)) {
-			emitLog(sessionPath, `[Separate] WARN: ${p} not found`);
+			emitLog(taskDir, `[Separate] WARN: ${p} not found`);
 		}
 	}
 
 	const durationS = probeDuration(audioPath);
 	if (durationS > 0) {
-		emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
+		emitLog(taskDir, `[Separate] RTF ${(elapsedSec / durationS).toFixed(3)}`);
 	}
 }

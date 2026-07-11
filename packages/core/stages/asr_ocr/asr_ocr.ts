@@ -11,14 +11,14 @@ import { probeVideoDuration } from '@repo/core/utils/utils'
 import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
 
 export async function stageAsrOcr(ctx: Context) {
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 	startLog(ctx.task.current_stage, ctx.task.id)
-	setStage(sessionPath, 'asr_ocr', {
+	setStage(taskDir, 'asr_ocr', {
 		last_message: `OCR'ing frames...`,
 		progress: 0,
 	});
 
-	const frameDir = join(sessionPath, 'asr_ocr_pre', 'frames');
+	const frameDir = join(taskDir, 'asr_ocr_pre', 'frames');
 	if (!existsSync(frameDir)) {
 		throw new Error(`Frame directory not found: ${frameDir} — run asr_ocr_pre first`);
 	}
@@ -45,12 +45,12 @@ export async function stageAsrOcr(ctx: Context) {
 		frameResults.push({ ...r, timestamp: timestampMs });
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
-			emitLog(sessionPath, `[asr_ocr] ${i + 1}/${frameFiles.length} frames`);
+			emitLog(taskDir, `[asr_ocr] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
 	await engine.release();
 
-	const asrOcrDir = resolve(sessionPath, 'asr_ocr');
+	const asrOcrDir = resolve(taskDir, 'asr_ocr');
 	ensureDir(asrOcrDir, ctx);
 
 	// Write ocr_frames.json — raw frame data for debugging/reproducibility
@@ -69,12 +69,12 @@ export async function stageAsrOcr(ctx: Context) {
 	// Cleanup frames (optional)
 	if (cleanupFrames) {
 		rmSync(frameDir, { recursive: true, force: true });
-		emitLog(sessionPath, `[asr_ocr] Frames cleaned up`);
+		emitLog(taskDir, `[asr_ocr] Frames cleaned up`);
 	} else {
-		emitLog(sessionPath, `[asr_ocr] Frames kept at ${frameDir}`);
+		emitLog(taskDir, `[asr_ocr] Frames kept at ${frameDir}`);
 	}
 
-	setStage(sessionPath, 'asr_ocr', {
+	setStage(taskDir, 'asr_ocr', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

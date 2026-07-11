@@ -112,17 +112,17 @@ type SplitAudioTiming = {
 }
 export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
-  const sessionPath = ctx.task.session_path
+  const taskDir = ctx.task.session_path
   const srtFilePath = subtitleFilePath(ctx);
   const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(ctx);
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-	const splitAudioDir = join(sessionPath, 'split_audio');
-	const translationFile = translationFilePath(sessionPath, dstLangCode);
-	const timingsFile = split_audio_timings_filepath(sessionPath);
+	const splitAudioDir = join(taskDir, 'split_audio');
+	const translationFile = translationFilePath(taskDir, dstLangCode);
+	const timingsFile = split_audio_timings_filepath(taskDir);
 	const vocalsSegmentDir = join(splitAudioDir, 'vocals');
 
 	if (!existsSync(srtFilePath)) throw new Error(`subtitle file not found: ${srtFilePath}`);
-  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? vocalsPath(sessionPath)
+  const vocalsFilePath = ctx.input?.stages?.split_audio?.vocalsFilePath ?? vocalsPath(taskDir)
 	const hasVocals = vocalsFilePath ? existsSync(vocalsFilePath) : false
 	const sourceAudio = hasVocals ? vocalsFilePath! : sourceFilePath;
 
@@ -194,7 +194,7 @@ export async function stageSplitAudio(ctx: Context) {
       const endMs = timings[i].end_time;
       if (startMs >= endMs) {
         writeFileSync(outPath, Buffer.alloc(44));
-        emitLog(sessionPath, `[split_audio] #${i + 1} invalid (${startMs} >= ${endMs}), empty wav`);
+        emitLog(taskDir, `[split_audio] #${i + 1} invalid (${startMs} >= ${endMs}), empty wav`);
         continue;
       }
 
@@ -227,11 +227,11 @@ export async function stageSplitAudio(ctx: Context) {
 
       const newStartMs = startMs + removedMs - 80;
       if (newStartMs >= endMs) {
-        emitLog(sessionPath, `vadAlign #${i + 1}: would exceed end (${newStartMs} >= ${endMs}), truncating`);
+        emitLog(taskDir, `vadAlign #${i + 1}: would exceed end (${newStartMs} >= ${endMs}), truncating`);
         continue;
       }
 
-      emitLog(sessionPath, `vadAlign #${i + 1}: start ${startMs} → ${newStartMs} (removed ${removedMs}ms)`);
+      emitLog(taskDir, `vadAlign #${i + 1}: start ${startMs} → ${newStartMs} (removed ${removedMs}ms)`);
 
       // Re-cut WAV with corrected timing (dub only)
       if (hasVocals) {
@@ -255,5 +255,5 @@ export async function stageSplitAudio(ctx: Context) {
 	ensureDir(splitAudioDir, ctx);
 	writeJson(timingsFile, { translation: timings }, ctx);
 
-  setStage(sessionPath, 'split_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Split' });
+  setStage(taskDir, 'split_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Split' });
 }

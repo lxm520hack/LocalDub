@@ -23,16 +23,16 @@ export async function stageSeparate(
 ) {
 	startLog('separate', ctx.task.id);
 	const taskId = ctx.task.id;
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 	// subtitle 模式且未配置 always 时，跳过分离
 	const pipeline = ctx?.pipeline || 'dub';
 	const sepCfg = ctx.input?.stages?.separate;
 	if (pipeline === 'subtitle' && !sepCfg?.always) {
 		emitLog(
-			sessionPath,
+			taskDir,
 			'[Separate] Skipped (subtitle pipeline, set separate.always=true to force)',
 		);
-		await setStage(sessionPath, 'separate', {
+		await setStage(taskDir, 'separate', {
 			status: 'succeeded',
 			completed_at: nowISO(),
 			progress: 100,
@@ -41,7 +41,7 @@ export async function stageSeparate(
 		return;
 	}
 
-	await setStage(sessionPath, 'separate', {
+	await setStage(taskDir, 'separate', {
 		last_message: 'Separating audio...',
 		progress: 0,
 	});
@@ -55,7 +55,7 @@ export async function stageSeparate(
 	const device = sepCfg?.device ?? 'cuda';
 
 	if (runtime === 'pytorch') {
-		emitLog(sessionPath, `[Separate] Using Torch server (device=${device})`);
+		emitLog(taskDir, `[Separate] Using Torch server (device=${device})`);
 
 		const {port} = await findServer('demucs_torch_server')
 		const sepUrl = getTorchServerUrl(port);
@@ -65,14 +65,14 @@ export async function stageSeparate(
 			taskId,
 			{
 				video_path: audioPath,
-				session_path: sessionPath,
+				session_path: taskDir,
 				device,
 			},
 			(current, _total) => {
 				if (current === lastTorchPct) return;
 				lastTorchPct = current;
-				emitLog(sessionPath, `[Separate] ${current}%`);
-				setStage(sessionPath, 'separate', {
+				emitLog(taskDir, `[Separate] ${current}%`);
+				setStage(taskDir, 'separate', {
 					progress: current,
 					last_message: `Separating ${current}%...`,
 				});
@@ -81,26 +81,26 @@ export async function stageSeparate(
 		);
 		const sr = result as Record<string, number>;
 		if (sr.load_time_s)
-			emitLog(sessionPath, `[Separate] Model loaded in ${sr.load_time_s}s`);
+			emitLog(taskDir, `[Separate] Model loaded in ${sr.load_time_s}s`);
 		if (sr.process_time_s)
-			emitLog(sessionPath, `[Separate] Processed in ${sr.process_time_s}s`);
+			emitLog(taskDir, `[Separate] Processed in ${sr.process_time_s}s`);
 		if (sr.audio_duration_s)
 			emitLog(
-				sessionPath,
+				taskDir,
 				`[Separate] Audio duration ${sr.audio_duration_s.toFixed(1)}s`,
 			);
-		if (sr.rtf) emitLog(sessionPath, `[Separate] RTF ${sr.rtf}`);
+		if (sr.rtf) emitLog(taskDir, `[Separate] RTF ${sr.rtf}`);
 	} else if (runtime === 'ggml') {
-		await separateGgml(taskId, sessionPath, ctx.audioSourcePath!, device);
+		await separateGgml(taskId, taskDir, ctx.audioSourcePath!, device);
 	} else if (runtime === 'burn') {
-		await separateBurn({ sessionPath, audioPath, device });
+		await separateBurn({ taskDir, audioPath, device });
 	} else if (runtime === 'burn-tch') {
-		await separateBurn({ sessionPath, audioPath, device, backend: 'tch' });
+		await separateBurn({ taskDir, audioPath, device, backend: 'tch' });
 	} else if (runtime === 'ort') {
-		await separateOrt(taskId, sessionPath, ctx.audioSourcePath!, device);
+		await separateOrt(taskId, taskDir, ctx.audioSourcePath!, device);
 	}
 
-	await setStage(sessionPath, 'separate', {
+	await setStage(taskDir, 'separate', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,
@@ -110,7 +110,7 @@ export async function stageSeparate(
 
 async function separateOrt(
 	taskId: string,
-	sessionPath: string,
+	taskDir: string,
 	audioPath: string,
 	device: string,
 ) {
@@ -118,7 +118,7 @@ async function separateOrt(
 	const sepCfg = readInputArgs().stages?.separate;
 	const targetStems: Stem[] = sepCfg && 'stems' in sepCfg ? (sepCfg as { stems?: Stem[] }).stems ?? ['vocals'] : ['vocals'];
 	emitLog(
-		sessionPath,
+		taskDir,
 		`[Separate] runtime=ort device=${device} stems=${targetStems.join(',')} → ONNX session(${ep})`,
 	);
 
@@ -131,11 +131,11 @@ async function separateOrt(
 	const stems = await demucs.separate(audioPath);
 	const elapsedSec = (performance.now() - t0) / 1000;
 
-	emitLog(sessionPath, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
+	emitLog(taskDir, `[Separate] Processed in ${elapsedSec.toFixed(1)}s`);
 	const audioDurationS = stems.vocals.length / 88200;
-	emitLog(sessionPath, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
+	emitLog(taskDir, `[Separate] RTF ${(elapsedSec / audioDurationS).toFixed(2)}`);
 
-	const sepDir = separateDir(sessionPath);
+	const sepDir = separateDir(taskDir);
 	const stemNames = ['drums', 'bass', 'other', 'vocals'] as const;
 	for (let i = 0; i < stemNames.length; i++) {
 		demucs.writeWav(
@@ -148,7 +148,7 @@ async function separateOrt(
 
 async function separatePytorch(
 	taskId: string,
-	sessionPath: string,
+	taskDir: string,
 	videoPath: string,
 	device: string,
 ) {
@@ -165,12 +165,12 @@ async function separatePytorch(
 	const pythonArgs = [
 		scriptPath,
 		videoPath,
-		sessionPath,
+		taskDir,
 		'--device',
 		device,
 	];
 
-	emitLog(sessionPath, `[Separate] runtime=pytorch device=${device}`);
+	emitLog(taskDir, `[Separate] runtime=pytorch device=${device}`);
 
 	return new Promise<void>((resolve, reject) => {
 		const proc = spawn(pyBin, pythonArgs, {
@@ -188,7 +188,7 @@ async function separatePytorch(
 					const pct = parseInt(m[1]);
 					if (pct === lastPyPct) continue;
 					lastPyPct = pct;
-					setStage(sessionPath, 'separate', {
+					setStage(taskDir, 'separate', {
 						progress: pct,
 						last_message: `Separating ${pct}%`,
 					});

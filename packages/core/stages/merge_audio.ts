@@ -6,10 +6,10 @@ import { Context, setStage, setTask } from '@repo/core/context/context.ts';
 
 export async function stageMergeAudio(ctx: Context) {
   const taskId = ctx.task.id;
-  const sessionPath = ctx.task.session_path
+  const taskDir = ctx.task.session_path
   const { targetLanguage: dstLangCode } = readTaskLanguages(ctx);
-  const mergeAudioDir = join(sessionPath, 'merge_audio');
-  const ttsDir = join(sessionPath, 'tts', 'wavs');
+  const mergeAudioDir = join(taskDir, 'merge_audio');
+  const ttsDir = join(taskDir, 'tts', 'wavs');
   const stretchedDir = join(mergeAudioDir, 'stretched');
   const silenceDir = join(mergeAudioDir, 'silences');
 
@@ -18,7 +18,7 @@ export async function stageMergeAudio(ctx: Context) {
   ensureDir(mergeAudioDir, ctx);
 
   const dubbingFile = join(mergeAudioDir, 'audio_dubbing.wav');
-  const timingsFile = split_audio_timings_filepath(sessionPath);
+  const timingsFile = split_audio_timings_filepath(taskDir);
   if (!existsSync(timingsFile)) throw new Error(`timings.json not found: ${timingsFile}`);
 
   const data = await readJson(timingsFile, ctx);
@@ -131,6 +131,6 @@ export async function stageMergeAudio(ctx: Context) {
   writeFile(concatFile, segmentInputs.map(f => `file '${f}'`).join('\n'), ctx);
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', concatFile, '-acodec', 'pcm_s16le', '-ar', String(sampleRate), '-ac', '1', dubbingFile]);
 
-  writeJson(timings_filepath(sessionPath), { translation }, ctx);
-  await setStage(sessionPath, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
+  writeJson(timings_filepath(taskDir), { translation }, ctx);
+  await setStage(taskDir, 'merge_audio', { status: 'succeeded', completed_at: nowISO(), progress: 100, last_message: 'Merged' });
 }

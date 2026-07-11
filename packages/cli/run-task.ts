@@ -29,7 +29,7 @@ switch (cmd) {
 	case 'check': {
 		const p = input.check;
 
-		await cmdCheck({ type: p?.type, sessionPath: p?.sessionPath ?? undefined });
+		await cmdCheck({ type: p?.type, taskDir: p?.taskDir ?? undefined });
 		break;
 	}
 

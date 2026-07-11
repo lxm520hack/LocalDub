@@ -70,7 +70,7 @@ export const taskArgsSchema = z.object({
   sourceLang: z.enum(langList).optional(),
   targetLang: z.enum(langList).optional(),
   resumeFrom: z.enum(stagesList).optional().describe(`继续任务专业参数, 可指定 resumeFrom 从某步骤开始, 不指定则从上次中断的步骤开始`),
-  sessionPath: z.string().optional(),
+  taskDir: z.string().optional(),
   stageName: z.enum(stagesList).optional().describe(`rerunStage 专业参数, 指定要重新运行的步骤`),
   pipeline: z
     .enum(['dub', 'subtitle'])

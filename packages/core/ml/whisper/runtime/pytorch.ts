@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 // Bun.pathToFileURL
 
 async function asrPytorch(opts: AsrOptions) {
-	let { taskId, audioPath, sessionPath: sessionPath, language, device, pythonBin: pyBin, ctx } = opts;
+	let { taskId, audioPath, taskDir: taskDir, language, device, pythonBin: pyBin, ctx } = opts;
 	const script = path.join(
 		REPO_ROOT,
 		'packages',
@@ -45,7 +45,7 @@ async function asrPytorch(opts: AsrOptions) {
 		const args = [
 			script,
 			audioPath,
-			sessionPath,
+			taskDir,
 			language || 'auto',
 			'--device',
 			actualDevice,
@@ -64,7 +64,7 @@ async function asrPytorch(opts: AsrOptions) {
 				console.warn(
 					`[WARN] [ASR] GPU failed (${result.error?.message || `signal ${result.signal}` || `exit ${result.status}`}), retrying CPU: ${stderr}`,
 				);
-				await setStage(sessionPath, 'asr', {
+				await setStage(taskDir, 'asr', {
 					last_message: 'GPU failed, retrying CPU...',
 				});
 				fallbackToCpu = true;
@@ -88,7 +88,7 @@ async function asrPytorch(opts: AsrOptions) {
 
 		const asr = await readJson(asrOutputPath, ctx);
 		if (asr.detected_language) {
-			setCtx(sessionPath, {
+			setCtx(taskDir, {
 				asr_language: asr.detected_language,
 				runInfo: {
 					asr: {
@@ -100,7 +100,7 @@ async function asrPytorch(opts: AsrOptions) {
 				},
 			});
 		}
-		emitAsrTiming(sessionPath, asr, elapsedSec);
+		emitAsrTiming(taskDir, asr, elapsedSec);
 		return;
 	}
 }

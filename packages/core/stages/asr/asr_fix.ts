@@ -53,9 +53,9 @@ function padSegments(segments: any[], startPad = 100, endPad = 300): any[] {
 
 export async function stageAsrFix(ctx: Context) {
     const taskId = ctx.task.id;
-  const sessionPath = ctx.task.session_path
-	const asrFixDir = join(sessionPath, 'asr_fix');
-	const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(sessionPath, 'asr', 'asr.json');
+  const taskDir = ctx.task.session_path
+	const asrFixDir = join(taskDir, 'asr_fix');
+	const asrFile = ctx.input?.stages?.asr_fix?.asrFilePath ?? join(taskDir, 'asr', 'asr.json');
 	const srtFile = join(asrFixDir, 'asr_fix.json');
 
   if (!existsSync(asrFile)) {
@@ -73,7 +73,7 @@ export async function stageAsrFix(ctx: Context) {
   const llmFix = cfg?.llmFix ?? false;
   const segmentPad = cfg?.segmentPad ?? true;
 
-  emitLog(sessionPath, `[ASR Fix] ${segments.length} segs, llmFix=${llmFix}, segmentPad=${segmentPad}`);
+  emitLog(taskDir, `[ASR Fix] ${segments.length} segs, llmFix=${llmFix}, segmentPad=${segmentPad}`);
 
   // Step 1: LLM correction (before padding, to fix text)
   if (llmFix) {
@@ -82,14 +82,14 @@ export async function stageAsrFix(ctx: Context) {
     const llmApiBase = cfg?.llmApiBase || 'http://localhost:11434/v1';
     const domainHint = cfg?.domainHint;
 
-    if (domainHint) emitLog(sessionPath, `[ASR Fix] domainHint: ${domainHint}`);
+    if (domainHint) emitLog(taskDir, `[ASR Fix] domainHint: ${domainHint}`);
 
-    await setStage(sessionPath, 'asr_fix', {
+    await setStage(taskDir, 'asr_fix', {
       last_message: `LLM fixing ${segments.length} segments...`,
     });
 
     const prompt = segmentsToPrompt(segments);
-    emitLog(sessionPath, `[ASR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+    emitLog(taskDir, `[ASR Fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
     const t0 = performance.now();
     const fixed = await chat_completions(prompt, { model: llmModel, apiBase: llmApiBase, systemPrompt: buildAsrFixSystemPrompt(sourceLangLabel, domainHint) });
@@ -98,18 +98,18 @@ export async function stageAsrFix(ctx: Context) {
     const fixedTexts = parseLines(fixed, segments.length);
     if (fixedTexts) {
       segments = segments.map((s: any, i: number) => ({ ...s, text: fixedTexts[i] }));
-      emitLog(sessionPath, `[ASR Fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+      emitLog(taskDir, `[ASR Fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
     } else {
-      emitLog(sessionPath, `[ASR Fix] LLM response parse failed, keeping original text`);
+      emitLog(taskDir, `[ASR Fix] LLM response parse failed, keeping original text`);
     }
   }
 
   // Step 2: segment padding
   if (segmentPad) {
-    emitLog(sessionPath, `[ASR Fix] Applying segment padding...`);
+    emitLog(taskDir, `[ASR Fix] Applying segment padding...`);
     segments = padSegments(segments);
   } else {
-    emitLog(sessionPath, `[ASR Fix] Segment padding disabled`);
+    emitLog(taskDir, `[ASR Fix] Segment padding disabled`);
   }
 
 	segments = segments.map((s: any) => ({ ...s, start_fmt: srtTime(s.start), end_fmt: srtTime(s.end) }));
@@ -121,9 +121,9 @@ export async function stageAsrFix(ctx: Context) {
 		_llm_fixed: llmFix,
 	}, ctx);
 
-  emitLog(sessionPath, `[ASR Fix] Written ${segments.length} segs to asr_fix.json`);
+  emitLog(taskDir, `[ASR Fix] Written ${segments.length} segs to asr_fix.json`);
 
-  await setStage(sessionPath, 'asr_fix', {
+  await setStage(taskDir, 'asr_fix', {
     status: 'succeeded', completed_at: nowISO(), progress: 100,
     last_message: llmFix ? `LLM fixed ${segments.length} segs` : 'Fixed',
   });

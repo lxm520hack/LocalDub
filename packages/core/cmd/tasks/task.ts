@@ -15,8 +15,8 @@ export const cmdTask = async (input: InputArgs) => {
   } else if (input.task.action === 'rerun_stage') {
     await cmdRerunStage(input);
   } else if (input.task.action === 'status') {
-    const sessionPath = input.task?.sessionPath!;
-		const ctx = await readCtx(sessionPath);
+    const taskDir = input.task?.taskDir!;
+		const ctx = await readCtx(taskDir);
 		const taskId = ctx.task.id;
     const status = await getStageStatuses(taskId);
     console.log(status)

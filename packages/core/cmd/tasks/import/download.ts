@@ -29,8 +29,8 @@ export const importVideo = async (input: InputArgs) => {
 	}
 	const {groupId, taskId, ytDlpExtArgs, title, source}	= await autoGroupIdAndVideoId(url)
 	startLog('import', taskId);
-	const sessionPath = join(WORKFOLDER, groupId, taskId);
-	mkdirSync(sessionPath, { recursive: true });
+	const taskDir = join(WORKFOLDER, groupId, taskId);
+	mkdirSync(taskDir, { recursive: true });
 	const stages = getStages(input.task.pipeline);
 	const ctx: Context = {
 		task: {
@@ -39,7 +39,7 @@ export const importVideo = async (input: InputArgs) => {
 			source: source,
 			url,
 			created_at: nowISO(),
-			session_path: sessionPath,
+			session_path: taskDir,
 			title: title || taskId,
 		},
 		asr_language: input.task.sourceLang || 'auto',
@@ -52,8 +52,8 @@ export const importVideo = async (input: InputArgs) => {
 			label: stage,
 			status: 'pending',
 		})),
-		videoSourcePath: join(sessionPath, 'video_source.mp4'),
-		audioSourcePath: join(sessionPath, 'audio_source.wav')
+		videoSourcePath: join(taskDir, 'video_source.mp4'),
+		audioSourcePath: join(taskDir, 'audio_source.wav')
 	}
 
 	writeCtx(ctx);
@@ -65,19 +65,19 @@ export async function downloadVideo(
 ) {
 	const videoPath = ctx.videoSourcePath!
 	const url = ctx.task.url
-	const sessionPath = ctx.task.session_path
-	let rawVideoPath = join(sessionPath, `${ctx.task.id}.mp4`);
+	const taskDir = ctx.task.session_path
+	let rawVideoPath = join(taskDir, `${ctx.task.id}.mp4`);
 	// Extract audio for downstream stages
 	const audioPath = ctx.audioSourcePath!
 	if (ctx.task.source === 'local' || ctx.task.source === 'remote') {
 		if (ctx.task.source === 'local') {
 			copyFileToPath(url, rawVideoPath);
 		} else if (ctx.task.source === 'remote') {
-		  rawVideoPath =	await	downloadRemoteVideo(url, sessionPath);
+		  rawVideoPath =	await	downloadRemoteVideo(url, taskDir);
 		}
 		
-		emitLog(sessionPath, '[Download] Importing local video...');
-		await setStage(sessionPath, 'download', {
+		emitLog(taskDir, '[Download] Importing local video...');
+		await setStage(taskDir, 'download', {
 			last_message: 'Importing local video...',
 			progress: 0,
 		});
@@ -91,17 +91,17 @@ export async function downloadVideo(
 			throw new Error('ffmpeg did not produce video_source.mp4');
 
 		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
-		emitLog(sessionPath, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+		emitLog(taskDir, `[Download] Imported in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
 
 
-		emitLog(sessionPath, '[Download] Extracting audio_source.wav...');
+		emitLog(taskDir, '[Download] Extracting audio_source.wav...');
 		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 
 	} else if (ctx.task.source === 'youtube' || ctx.task.source === 'bilibili') {
 		// console.log(`[Download] video info: `, info);
 
-		emitLog(sessionPath, '[Download] Downloading video...');
-		await setStage(sessionPath, 'download', {
+		emitLog(taskDir, '[Download] Downloading video...');
+		await setStage(taskDir, 'download', {
 			last_message: 'Downloading video...',
 			progress: 0,
 		});
@@ -112,7 +112,7 @@ export async function downloadVideo(
 			'--merge-output-format',
 			'mp4',
 			'-o',
-			join(sessionPath, 'video_source.%(ext)s'),
+			join(taskDir, 'video_source.%(ext)s'),
 			...ytDlpExtArgs,
 			url,
 		];
@@ -139,15 +139,15 @@ export async function downloadVideo(
 			throw new Error('yt-dlp did not produce video_source.mp4');
 
 		const sizeMb = (statSync(videoPath).size / 1024 / 1024).toFixed(1);
-		emitLog(sessionPath, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
-		emitLog(sessionPath, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
+		emitLog(taskDir, `[Download] Downloaded in ${elapsedSec.toFixed(1)}s (${sizeMb}MB)`);
+		emitLog(taskDir, `[Download] Speed ${(Number(sizeMb) / elapsedSec).toFixed(2)} MB/s`);
 
 		// Extract audio for downstream stages
-		emitLog(sessionPath, '[Download] Extracting audio_source.wav...');
+		emitLog(taskDir, '[Download] Extracting audio_source.wav...');
 		ffmpeg(['-i', videoPath, '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '2', audioPath]);
 	}
 
-	await setStage(sessionPath, 'download', {
+	await setStage(taskDir, 'download', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

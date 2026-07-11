@@ -4,7 +4,7 @@ export interface AsrOptions {
 	ctx: Context;
 	taskId: string;
 	audioPath: string;
-	sessionPath: string;
+	taskDir: string;
 	language?: string;
 	device: string;
 	pythonBin: string;

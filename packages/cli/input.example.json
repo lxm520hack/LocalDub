@@ -10,7 +10,7 @@
   },
   "resumeTask": {
     "resumeFrom": "merge_audio",
-    "sessionPath": "/home/aa/repos/env_ls/LocalDub/workfolder/local/大/11"
+    "taskDir": "/home/aa/repos/env_ls/LocalDub/workfolder/local/大/11"
   },
   "targetStage": "merge_video",
   "pipeline": "dub",

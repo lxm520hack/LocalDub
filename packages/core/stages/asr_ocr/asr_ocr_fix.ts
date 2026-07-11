@@ -19,19 +19,19 @@ import { AsrResult } from '../asr/types.ts';
 
 
 export async function stageAsrOcrFix(ctx: Context) {
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 	const args = ctx.input?.stages?.asr_ocr_fix;
-	await setStage(sessionPath, 'asr_ocr_fix', {
+	await setStage(taskDir, 'asr_ocr_fix', {
 		last_message: 'Fusing ASR + OCR...',
 		progress: 0,
 	});
 
-	const asrOcrFixDir = resolve(sessionPath, 'asr_ocr_fix');
+	const asrOcrFixDir = resolve(taskDir, 'asr_ocr_fix');
 
 	// Read inputs
-	const asrFile = join(sessionPath, 'asr', 'asr.json');
-	const asrSplitFile = join(sessionPath, 'asr_ocr_pre', 'asr_split.json');
-	const ocrFramesFile = join(sessionPath, 'asr_ocr', 'ocr_frames.json');
+	const asrFile = join(taskDir, 'asr', 'asr.json');
+	const asrSplitFile = join(taskDir, 'asr_ocr_pre', 'asr_split.json');
+	const ocrFramesFile = join(taskDir, 'asr_ocr', 'ocr_frames.json');
 
 	if (!existsSync(asrFile)) throw new Error(`asr.json not found: ${asrFile}`);
 	if (!existsSync(asrSplitFile)) throw new Error(`asr_split.json not found, run asr_ocr_pre first`);
@@ -79,14 +79,14 @@ export async function stageAsrOcrFix(ctx: Context) {
 		}
 	}
 	if (isolatedInfos.length > 0) {
-		emitLog(sessionPath, `[asr_ocr_fix] ${isolatedInfos.length} isolated high-confidence frames:\n${isolatedInfos.join('\n')}`);
+		emitLog(taskDir, `[asr_ocr_fix] ${isolatedInfos.length} isolated high-confidence frames:\n${isolatedInfos.join('\n')}`);
 	}
 
 	const existingTs = new Set(rawFrames.map(f => f.timestamp));
 	const newTs = [...candidateTs].filter(t => !existingTs.has(t)).sort((a, b) => a - b);
 
 	if (newTs.length > 0) {
-		emitLog(sessionPath, `[asr_ocr_fix] Re-sampling ${newTs.length} frames at ${RESAMPLE_STEP_MS}ms steps...`);
+		emitLog(taskDir, `[asr_ocr_fix] Re-sampling ${newTs.length} frames at ${RESAMPLE_STEP_MS}ms steps...`);
 
 		const videoPath = videoSourcePath(ctx);
 		const resampleDir = join(asrOcrFixDir, 'resampled_frames');
@@ -98,7 +98,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 			const r = spawnSync('ffmpeg', ['-y', '-ss', String(ts / 1000), '-i', videoPath, '-frames:v', '1', '-qscale:v', '2', fp], { timeout: 15_000 });
 			if (r.status === 0) extracted++;
 		}
-		emitLog(sessionPath, `[asr_ocr_fix] Extracted ${extracted}/${newTs.length} resampled frames`);
+		emitLog(taskDir, `[asr_ocr_fix] Extracted ${extracted}/${newTs.length} resampled frames`);
 
 		if (extracted > 0) {
 			const runtime = (ocrFramesData._engine ?? 'ort-cpp') as OCRRuntime;
@@ -122,7 +122,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 				const before = rawFrames.length;
 				rawFrames.push(...newFrames);
 				rawFrames.sort((a, b) => a.timestamp - b.timestamp);
-				emitLog(sessionPath, `[asr_ocr_fix] Added ${newFrames.length} OCR frames (${before} → ${rawFrames.length})`);
+				emitLog(taskDir, `[asr_ocr_fix] Added ${newFrames.length} OCR frames (${before} → ${rawFrames.length})`);
 
 				writeJson(join(asrOcrFixDir, 'ocr_frames.json'), { ...ocrFramesData, _frames_raw: rawFrames }, ctx);
 			}
@@ -293,9 +293,9 @@ export async function stageAsrOcrFix(ctx: Context) {
 		const llmModel = args.llmModel
 		const llmApiBase = args.llmApiBase
 		const domainHint = args.domainHint;
-		if (domainHint) emitLog(sessionPath, `[asr_ocr_fix] domainHint: ${domainHint}`);
+		if (domainHint) emitLog(taskDir, `[asr_ocr_fix] domainHint: ${domainHint}`);
 		const prompt = ocrSegmentsToPrompt(segments);
-		emitLog(sessionPath, `[asr_ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
+		emitLog(taskDir, `[asr_ocr_fix] LLM fixing ${segments.length} segs (model=${llmModel})...`);
 
 		const t0 = performance.now();
 		const fixed = await chat_completions(prompt, { 
@@ -309,10 +309,10 @@ export async function stageAsrOcrFix(ctx: Context) {
 
 		const fixedTexts = parseLines(fixed, segments.length);
 		if (fixedTexts) {
-			emitLog(sessionPath, `[asr_ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
+			emitLog(taskDir, `[asr_ocr_fix] LLM fixed ${segments.length} segs in ${elapsedSec}s`);
 			return segments.map((s, i) => ({ ...s, text: fixedTexts[i] }));
 		} else {
-			emitLog(sessionPath, `[asr_ocr_fix] LLM response parse failed, keeping original text`);
+			emitLog(taskDir, `[asr_ocr_fix] LLM response parse failed, keeping original text`);
 			throw new Error('LLM response parse failed');
 		}
 	}
@@ -330,9 +330,9 @@ export async function stageAsrOcrFix(ctx: Context) {
 		);
 	}
 
-	emitLog(sessionPath, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrRawLen} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);
+	emitLog(taskDir, `[asr_ocr_fix] ${ocrSegs.length} OCR segs (dropped ${dropped} below textScore=${textScore}) → ${asrRawLen} ASR → ${asrSegs.length} split → ${asrOcrSegs.length} merged, ${fix.length} fused`);
 
-	await setStage(sessionPath, 'asr_ocr_fix', {
+	await setStage(taskDir, 'asr_ocr_fix', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

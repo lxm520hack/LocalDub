@@ -110,7 +110,7 @@
             "merge_video"
           ]
         },
-        "sessionPath": {
+        "taskDir": {
           "type": "string"
         },
         "stageName": {
@@ -177,7 +177,7 @@
     "check": {
       "type": "object",
       "properties": {
-        "sessionPath": {
+        "taskDir": {
           "type": "string"
         },
         "type": {

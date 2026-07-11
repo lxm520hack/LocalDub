@@ -13,8 +13,8 @@ import { FrameResult } from "@repo/core/ml/subtitle_ocr/types";
 
 export async function stageOcr(ctx: Context) {
 		const taskId = ctx.task.id;
-		const sessionPath = ctx.task.session_path
-	await setStage(sessionPath, "ocr", {
+		const taskDir = ctx.task.session_path
+	await setStage(taskDir, "ocr", {
 		last_message: "Extracting frames...",
 		progress: 0,
 	});
@@ -33,9 +33,9 @@ export async function stageOcr(ctx: Context) {
 	const cleanupFrames = ocrCfg?.cleanupFrames ?? false;
 
 	// 1. Extract frames
-	const frameDir = join(sessionPath, "ocr", "frames");
+	const frameDir = join(taskDir, "ocr", "frames");
 	ensureDir(frameDir, ctx);
-	emitLog(sessionPath, `[OCR] Extracting frames at ${fps}fps...`);
+	emitLog(taskDir, `[OCR] Extracting frames at ${fps}fps...`);
 
 	const frProbe = spawnSync(
 		"ffprobe",
@@ -68,7 +68,7 @@ export async function stageOcr(ctx: Context) {
 	}
 
 	// 2. OCR each frame
-	await setStage(sessionPath, "ocr", {
+	await setStage(taskDir, "ocr", {
 		last_message: `OCR'ing ${frameFiles.length} frames (${runtime})...`,
 	});
 
@@ -86,7 +86,7 @@ export async function stageOcr(ctx: Context) {
 		}
 
 		if ((i + 1) % 50 === 0 || i === frameFiles.length - 1) {
-			emitLog(sessionPath, `[OCR] ${i + 1}/${frameFiles.length} frames`);
+			emitLog(taskDir, `[OCR] ${i + 1}/${frameFiles.length} frames`);
 		}
 	}
 	await engine.release();
@@ -94,14 +94,14 @@ export async function stageOcr(ctx: Context) {
 	// 3. Merge into segments
 	const {segments, text} = mergeFrames(frameResults, { mergeSubstring: ocrCfg?.mergeSubstring });
 	emitLog(
-		sessionPath,
+		taskDir,
 		`[OCR] ${frameFiles.length} frames → ${segments.length} segments`,
 	);
 
 	const { height: videoHeight } = probeVideoResolution(videoPath);
 
 	// 6. Write ocr.json (same format as asr_fix)
-	const ocrDir = join(sessionPath, "ocr");
+	const ocrDir = join(taskDir, "ocr");
 	ensureDir(ocrDir, ctx);
 	const yStats = computeBoxYStats(frameResults);
 	const adjustedSegments = computeSegmentAdjustments(segments, frameResults, yStats, videoHeight, {
@@ -127,17 +127,17 @@ export async function stageOcr(ctx: Context) {
 		ctx,
 	);
 
-	emitLog(sessionPath, `[OCR] Written ${segments.length} segs to ocr.json`);
+	emitLog(taskDir, `[OCR] Written ${segments.length} segs to ocr.json`);
 
 	// 7. Cleanup frames (optional)
 	if (cleanupFrames) {
 		rmSync(frameDir, { recursive: true, force: true });
-		emitLog(sessionPath, `[OCR] Frames cleaned up`);
+		emitLog(taskDir, `[OCR] Frames cleaned up`);
 	} else {
-		emitLog(sessionPath, `[OCR] Frames kept at ${frameDir}`);
+		emitLog(taskDir, `[OCR] Frames kept at ${frameDir}`);
 	}
 
-	await setStage(sessionPath, "ocr", {
+	await setStage(taskDir, "ocr", {
 		status: "succeeded",
 		completed_at: nowISO(),
 		progress: 100,

@@ -15,28 +15,28 @@ export function videoSourcePath(ctx: Context): string {
 }
 
 /** Get the vocals stem path from separate stage. */
-export function vocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate', 'target_3_vocals.wav');
+export function vocalsPath(taskDir: string): string {
+	return join(taskDir, 'separate', 'target_3_vocals.wav');
 }
 
 /** Get the BGM stem path from separate_after stage. */
-export function bgmPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_bgm.wav');
+export function bgmPath(taskDir: string): string {
+	return join(taskDir, 'separate_after', 'target_bgm.wav');
 }
 
 /** Get the separate stage output directory. */
-export function separateDir(sessionPath: string): string {
-	return join(sessionPath, 'separate');
+export function separateDir(taskDir: string): string {
+	return join(taskDir, 'separate');
 }
 
 /** Get the ASR output directory. */
-export function asrDir(sessionPath: string): string {
-	return join(sessionPath, 'asr');
+export function asrDir(taskDir: string): string {
+	return join(taskDir, 'asr');
 }
 
 /** Get the separate_after output directory. */
-export function separateAfterDir(sessionPath: string): string {
-	return join(sessionPath, 'separate_after');
+export function separateAfterDir(taskDir: string): string {
+	return join(taskDir, 'separate_after');
 }
 
 export function defaultFont(dstLang: string): string {
@@ -177,8 +177,8 @@ export function readTaskLanguages(ctx: Context): {
 	return { asrLanguage: 'en', targetLanguage: 'zh' };
 }
 
-export function translationFilePath(sessionPath: string, lang: string): string {
-	return join(sessionPath, 'translate', `translation.${lang}.json`);
+export function translationFilePath(taskDir: string, lang: string): string {
+	return join(taskDir, 'translate', `translation.${lang}.json`);
 }
 
 export function subtitleFilePath(ctx: Context,): string {
@@ -195,25 +195,25 @@ export function subtitleFilePath(ctx: Context,): string {
 	return join(ctx.task.session_path, 'asr_fix', 'asr_fix.json');
 }
 
-export function split_audio_timings_filepath(sessionPath: string): string {
-	return join(sessionPath, 'split_audio', 'split_audio.json');
+export function split_audio_timings_filepath(taskDir: string): string {
+	return join(taskDir, 'split_audio', 'split_audio.json');
 }
-export function timings_filepath(sessionPath: string): string {
-	return join(sessionPath, 'merge_audio', 'timings.json');
-}
-
-export function mixedVocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_3_vocals_mixed.wav');
+export function timings_filepath(taskDir: string): string {
+	return join(taskDir, 'merge_audio', 'timings.json');
 }
 
-export function gatedVocalsPath(sessionPath: string): string {
-	return join(sessionPath, 'separate_after', 'target_3_vocals_gated.wav');
+export function mixedVocalsPath(taskDir: string): string {
+	return join(taskDir, 'separate_after', 'target_3_vocals_mixed.wav');
+}
+
+export function gatedVocalsPath(taskDir: string): string {
+	return join(taskDir, 'separate_after', 'target_3_vocals_gated.wav');
 }
 
 
 
-export function dubbingPath(sessionPath: string): string {
-	return join(sessionPath, 'merge_audio', 'audio_dubbing.wav');
+export function dubbingPath(taskDir: string): string {
+	return join(taskDir, 'merge_audio', 'audio_dubbing.wav');
 }
 
 export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
@@ -225,12 +225,12 @@ export function finalVideoFilename(taskId: string, pipeline: string, subtitleSou
 
 
 
-export function emitLog(sessionPath: string, line: string) {
-	const tid = getTaskId(sessionPath);
+export function emitLog(taskDir: string, line: string) {
+	const tid = getTaskId(taskDir);
 	console.log(line);
 	if (!tid) return;
 	const ts = nowISO();
-	const logPath = join(sessionPath, `${tid}.log`);
+	const logPath = join(taskDir, `${tid}.log`);
 	appendFileSync(logPath, `[${ts}] ${line}\n`);
 }
 
@@ -291,9 +291,9 @@ function buildSummary(
 		: `${task.status}${stageInfo} — ${done}/${total} stages done, elapsed ${elapsed}`;
 }
 
-export async function getStageStatuses(sessionPath: string) {
-	const { task, stages: rows = []} =  _readCtx(sessionPath); // ensure ctx exists and is valid
-	const pipeline = readCtx(sessionPath)?.pipeline || 'dub';
+export async function getStageStatuses(taskDir: string) {
+	const { task, stages: rows = []} =  _readCtx(taskDir); // ensure ctx exists and is valid
+	const pipeline = readCtx(taskDir)?.pipeline || 'dub';
 
 	const stageSpecs = getStages(pipeline);
 	const stageMap = new Map(rows.map((r) => [r.name, r]));

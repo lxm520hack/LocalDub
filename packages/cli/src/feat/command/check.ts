@@ -5,17 +5,17 @@ import { readInputArgs } from '@repo/core/input/input';
 
 export async function cmdCheck(opts: {
 	type: 'video' | 'asr' | 'font' | undefined;
-	sessionPath?: string;
+	taskDir?: string;
 }) {
-	const { type, sessionPath } = opts;
+	const { type, taskDir } = opts;
 
 	if (type === 'video') {
-		if (!sessionPath) {
-			console.log(JSON.stringify({ ok: false, error: 'check video requires sessionPath' }));
+		if (!taskDir) {
+			console.log(JSON.stringify({ ok: false, error: 'check video requires taskDir' }));
 			process.exit(1);
 		}
 
-		const videoPath = join(sessionPath, 'media', 'video_source.mp4');
+		const videoPath = join(taskDir, 'media', 'video_source.mp4');
 		if (!existsSync(videoPath)) {
 			console.log(JSON.stringify({ ok: false, error: 'video_source.mp4 not found' }));
 			process.exit(1);
@@ -33,14 +33,14 @@ export async function cmdCheck(opts: {
 	}
 
 	if (type === 'asr') {
-		if (!sessionPath) {
-			console.log(JSON.stringify({ ok: false, error: 'check asr requires sessionPath' }));
+		if (!taskDir) {
+			console.log(JSON.stringify({ ok: false, error: 'check asr requires taskDir' }));
 			process.exit(1);
 		}
 
 
-		const asrPath = join(sessionPath, 'asr_fix', 'asr_fix.json');
-		const asrRawPath = join(sessionPath, 'asr', 'asr.json');
+		const asrPath = join(taskDir, 'asr_fix', 'asr_fix.json');
+		const asrRawPath = join(taskDir, 'asr', 'asr.json');
 		let asrFile = asrPath;
 		if (!existsSync(asrPath) && existsSync(asrRawPath)) asrFile = asrRawPath;
 		if (!existsSync(asrFile)) {

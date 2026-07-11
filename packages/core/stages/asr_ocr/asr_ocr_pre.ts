@@ -90,10 +90,10 @@ function splitAsrByWords(segs: { text: string; start: number; end: number; words
 }
 
 export async function stageAsrOcrPre(ctx: Context) {
-	const sessionPath = ctx.task.session_path;
+	const taskDir = ctx.task.session_path;
 
 
-	setStage(sessionPath, 'asr_ocr_pre', {
+	setStage(taskDir, 'asr_ocr_pre', {
 		last_message: 'Splitting ASR segments by punctuation...',
 		progress: 0,
 	});
@@ -104,7 +104,7 @@ export async function stageAsrOcrPre(ctx: Context) {
 		throw new Error(`Video not found: ${videoPath}`);
 	}
 
-	const asrFile = join(sessionPath, 'asr', 'asr.json');
+	const asrFile = join(taskDir, 'asr', 'asr.json');
 	if (!existsSync(asrFile)) {
 		console.error(`[asr_ocr_pre] asr.json not found: ${asrFile}`);
 		throw new Error(`asr.json not found: ${asrFile}`);
@@ -125,7 +125,7 @@ export async function stageAsrOcrPre(ctx: Context) {
 	console.log(`[asr_ocr_pre] ${asrSegsRaw.length} Split ASR segments by punctuation`);
 	const asrSegs = splitAsrByWords(asrSegsRaw);
 
-	const preDir = join(sessionPath, 'asr_ocr_pre');
+	const preDir = join(taskDir, 'asr_ocr_pre');
 	ensureDir(preDir, ctx);
 
 	// Write asr_split.json
@@ -149,10 +149,10 @@ export async function stageAsrOcrPre(ctx: Context) {
 		ctx,
 	);
 
-	emitLog(sessionPath, `[asr_ocr_pre] ${asrSegsRaw.length} ASR segs → ${asrSegs.length} split segs`);
+	emitLog(taskDir, `[asr_ocr_pre] ${asrSegsRaw.length} ASR segs → ${asrSegs.length} split segs`);
 
 	// Step 2: Generate frame timestamps (end2fps strategy)
-	await setStage(sessionPath, 'asr_ocr_pre', {
+	await setStage(taskDir, 'asr_ocr_pre', {
 		last_message: `Extracting ${asrSegs.length} split segments frames...`,
 		progress: 10,
 	});
@@ -177,10 +177,10 @@ export async function stageAsrOcrPre(ctx: Context) {
 	}
 	const sortedTs = [...allTimestamps].sort((a, b) => a - b);
 
-	emitLog(sessionPath, `[asr_ocr_pre] ${asrSegs.length} split segs → ${sortedTs.length} frame positions`);
+	emitLog(taskDir, `[asr_ocr_pre] ${asrSegs.length} split segs → ${sortedTs.length} frame positions`);
 
 	// Step 3: Extract frames
-	const frameDir = join(sessionPath, 'asr_ocr_pre', 'frames');
+	const frameDir = join(taskDir, 'asr_ocr_pre', 'frames');
 	ensureDir(frameDir, ctx);
 
 	let extractCount = 0;
@@ -195,7 +195,7 @@ export async function stageAsrOcrPre(ctx: Context) {
 		extractCount++;
 
 		if ((i + 1) % 50 === 0 || i === sortedTs.length - 1) {
-			emitLog(sessionPath, `[asr_ocr_pre] Extracted ${i + 1}/${sortedTs.length} frames`);
+			emitLog(taskDir, `[asr_ocr_pre] Extracted ${i + 1}/${sortedTs.length} frames`);
 		}
 	}
 
@@ -203,9 +203,9 @@ export async function stageAsrOcrPre(ctx: Context) {
 		throw new Error('No frames extracted');
 	}
 
-	emitLog(sessionPath, `[asr_ocr_pre] ${extractCount} frames extracted to ${frameDir}`);
+	emitLog(taskDir, `[asr_ocr_pre] ${extractCount} frames extracted to ${frameDir}`);
 
-	await setStage(sessionPath, 'asr_ocr_pre', {
+	await setStage(taskDir, 'asr_ocr_pre', {
 		status: 'succeeded',
 		completed_at: nowISO(),
 		progress: 100,

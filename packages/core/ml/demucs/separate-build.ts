@@ -10,8 +10,8 @@ import { cmakeBin, findCmakePath, setCmakePath } from '@repo/config/path/bin';
  * Attempt to build the GGML binary from demucs.cpp submodule.
  * Returns true if build succeeded, false otherwise.
  */
-export async function tryBuildGgml(sessionPath: string): Promise<boolean> {
-	const log = (msg: string) => { emitLog(sessionPath, msg); };
+export async function tryBuildGgml(taskDir: string): Promise<boolean> {
+	const log = (msg: string) => { emitLog(taskDir, msg); };
 
 	log('[Separate] Checking build prerequisites...');
 
@@ -208,10 +208,10 @@ export async function tryBuildGgml(sessionPath: string): Promise<boolean> {
 /**
  * Download the GGML model weights from HuggingFace if not present.
  */
-export async function ensureGgmlModel(sessionPath: string, modelPath: string): Promise<void> {
+export async function ensureGgmlModel(taskDir: string, modelPath: string): Promise<void> {
 	const modelUrl = 'https://huggingface.co/datasets/Retrobear/demucs.cpp/resolve/main/ggml-model-htdemucs-4s-f16.bin';
 
-	emitLog(sessionPath, '[Separate] Downloading model weights (84 MB) from HuggingFace...');
+	emitLog(taskDir, '[Separate] Downloading model weights (84 MB) from HuggingFace...');
 
 	mkdirSync(dirname(modelPath), { recursive: true });
 
@@ -227,5 +227,5 @@ export async function ensureGgmlModel(sessionPath: string, modelPath: string): P
 	const buffer = await response.arrayBuffer();
 	writeFileSync(modelPath, Buffer.from(buffer));
 
-	emitLog(sessionPath, '[Separate] Model weights downloaded');
+	emitLog(taskDir, '[Separate] Model weights downloaded');
 }

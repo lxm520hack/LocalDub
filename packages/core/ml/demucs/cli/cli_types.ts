@@ -1,5 +1,5 @@
 export type DemucsCliArgs = {  
-  sessionPath: string,
+  taskDir: string,
   audioPath: string,
   device: string,
 }
