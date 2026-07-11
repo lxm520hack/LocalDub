@@ -90,4 +90,4 @@ pub async fn write_app_file_binary(relative_path: String, content: Vec<u8>) -> R
     fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
-fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server, device_info, read_app_file_text, read_app_file_bin, write_app_file_text] }
+fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, get_task_ctx, find_server, device_info, read_app_file_text, read_app_file_bin, write_app_file_text] }
