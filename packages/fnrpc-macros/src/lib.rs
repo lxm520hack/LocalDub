@@ -73,8 +73,12 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
         (false, quote! { () })
     };
 
-    let input_idx = if has_ctx { 1 } else { 0 };
-    let has_input_param = if has_ctx { params.len() > 1 } else { !params.is_empty() };
+    // Collect non-context parameters
+    let input_params: Vec<&FnArg> = if has_ctx {
+        params.iter().copied().skip(1).collect()
+    } else {
+        params.iter().copied().collect()
+    };
 
     // --- Extract output type (auto-wrap non-Result in Ok) ---
     let (output_ty, is_result_return) = match &input_fn.sig.output {
@@ -101,17 +105,29 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
     };
 
     // --- Build the call expression to the original function ---
-    let call = if has_ctx {
-        if has_input_param {
-            quote! { #fn_name(ctx, input).await }
-        } else {
+    let call = if input_params.is_empty() {
+        if has_ctx {
             quote! { #fn_name(ctx).await }
-        }
-    } else {
-        if has_input_param {
-            quote! { #fn_name(input).await }
         } else {
             quote! { #fn_name().await }
+        }
+    } else if input_params.len() == 1 {
+        if has_ctx {
+            quote! { #fn_name(ctx, input).await }
+        } else {
+            quote! { #fn_name(input).await }
+        }
+    } else {
+        let destructure: Vec<_> = (0..input_params.len())
+            .map(|i| {
+                let idx = syn::Index::from(i);
+                quote! { input.#idx }
+            })
+            .collect();
+        if has_ctx {
+            quote! { #fn_name(ctx, #(#destructure),*).await }
+        } else {
+            quote! { #fn_name(#(#destructure),*).await }
         }
     };
 
@@ -126,9 +142,11 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
         quote! { Ok(#call) }
     };
 
-    // --- Extract input type ---
-    let input_ty: proc_macro2::TokenStream = if has_input_param {
-        match &params[input_idx] {
+    // --- Extract input type (tuple-ize multiple params) ---
+    let input_ty: proc_macro2::TokenStream = if input_params.is_empty() {
+        quote! { () }
+    } else if input_params.len() == 1 {
+        match input_params[0] {
             FnArg::Typed(pat_type) => {
                 let ty = &pat_type.ty;
                 quote! { #ty }
@@ -136,7 +154,14 @@ fn rpc_fn_impl(kind: &str, item: TokenStream) -> TokenStream {
             _ => panic!("parameter must be typed"),
         }
     } else {
-        quote! { () }
+        let types: Vec<_> = input_params
+            .iter().copied()
+            .map(|arg| match arg {
+                FnArg::Typed(pat_type) => &pat_type.ty,
+                _ => panic!("parameter must be typed"),
+            })
+            .collect();
+        quote! { (#(#types,)*) }
     };
 
     let struct_name = syn::Ident::new(&format!("{}__FnRpc", fn_name), fn_name.span());

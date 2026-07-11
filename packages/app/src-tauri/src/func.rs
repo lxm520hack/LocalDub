@@ -80,4 +80,4 @@ pub async fn write_app_file_text(relative_path: String, content: String) -> Resu
     fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
-fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server, device_info, read_app_file_text, read_app_file_bin] }
+fnrpc::fnrpc_registry! { Router<Ctx> = [health_check, greet, add, get_group_list, find_server, device_info, read_app_file_text, read_app_file_bin, write_app_file_text] }

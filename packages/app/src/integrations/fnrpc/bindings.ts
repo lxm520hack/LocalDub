@@ -30,23 +30,24 @@ export type VramType = "dedicated" | "shared" | "unknown"
 
 export type VulkanHeaps = { deviceLocal: number; hostVisible: number }
 
-export type ServerType = "VoxcpmTorchGradio" | "DemucsTorchServer"
-
-export type ServerInfo = { host: string; port: number; found_via: FoundVia }
-
 export type DeviceInfo = { platform: PlatformInfo; cpu: CpuInfo; memory: MemoryInfo; gpu: GpuInfo[]; ort: OrtInfo }
 
 export type GreetInput = { name: string }
 
 export type GreetOutput = { message: string }
 
+export type ServerType = "VoxcpmTorchGradio" | "DemucsTorchServer"
+
+export type ServerInfo = { host: string; port: number; found_via: FoundVia }
+
 export type Procedures = {
-  find_server: { kind: "query"; input: ServerType; output: ServerInfo; error: unknown };
-  device_info: { kind: "query"; input: null; output: DeviceInfo; error: unknown };
-  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
   health_check: { kind: "query"; input: null; output: string; error: unknown };
-  add: { kind: "query"; input: [number, number]; output: number; error: unknown };
-  get_group_list: { kind: "query"; input: null; output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[]; error: unknown };
+  write_app_file_text: { kind: "mutation"; input: [string, string]; output: null; error: unknown };
   read_app_file_text: { kind: "query"; input: string; output: string; error: unknown };
+  device_info: { kind: "query"; input: null; output: DeviceInfo; error: unknown };
+  get_group_list: { kind: "query"; input: null; output: ({ group_id: string; task_count: number; created_at: string | null; tasks: TaskBrief[] })[]; error: unknown };
+  add: { kind: "query"; input: [number, number]; output: number; error: unknown };
+  greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
   read_app_file_bin: { kind: "query"; input: string; output: number[]; error: unknown };
+  find_server: { kind: "query"; input: ServerType; output: ServerInfo; error: unknown };
 }

@@ -185,6 +185,54 @@ async fn test_macro_ctx_rpc() {
     assert_eq!(output.message, "yo world");
 }
 
+// ── Multi-parameter tests ──────────────────────────────
+
+#[fnrpc::rpc_query]
+async fn multi_param(a: i32, b: i32, c: String) -> String {
+    format!("{}{}{}", a, b, c)
+}
+
+#[fnrpc::rpc_query]
+async fn multi_param_ctx(ctx: &AppCtx, a: i32, b: i32) -> String {
+    format!("{}{}", a + b, ctx.prefix)
+}
+
+#[tokio::test]
+async fn test_multi_param() {
+    let router = RpcRouter::<()>::new().route(multi_param__FnRpc);
+
+    let input = serde_json::json!([1, 2, "hello"]);
+    let result = router.dispatch(&(), "multi_param", input).await.unwrap();
+    assert_eq!(result, serde_json::json!("12hello"));
+}
+
+#[tokio::test]
+async fn test_multi_param_ctx() {
+    let ctx = AppCtx {
+        prefix: "x".to_string(),
+    };
+    let router = RpcRouter::<AppCtx>::new().route(multi_param_ctx__FnRpc);
+
+    let input = serde_json::json!([3, 4]);
+    let result = router.dispatch(&ctx, "multi_param_ctx", input).await.unwrap();
+    assert_eq!(result, serde_json::json!("7x"));
+}
+
+#[tokio::test]
+async fn test_multi_param_ts_info() {
+    use fnrpc::handler::ErasedHandler;
+    // multi_param has no ctx param, so RpcFn<T> is generic over T.
+    // Use a fully qualified path via Box<dyn ErasedHandler<()>> to pin Ctx.
+    let erased: Box<dyn ErasedHandler<()>> = Box::new(multi_param__FnRpc);
+
+    let input_info = erased.input_ts();
+    // (i32, i32, String) should inline as [number, number, string]
+    assert_eq!(input_info.ts_ref, "[number, number, string]");
+
+    let output_info = erased.output_ts();
+    assert_eq!(output_info.ts_ref, "string");
+}
+
 // ── Middleware tests ──────────────────────────────────────
 
 use fnrpc::middleware::{FnLayer, HookLayer};
@@ -263,7 +311,9 @@ async fn test_multiple_layers() {
 
 #[tokio::test]
 async fn test_ts_client() {
-    let router = RpcRouter::<()>::new().route(Greet);
+    let router = RpcRouter::<()>::new()
+        .route(Greet)
+        .route(multi_param__FnRpc);
 
     let client = router.generate_ts_client("/rpc");
     assert!(client.contains("greet"), "should contain method name");
@@ -271,4 +321,9 @@ async fn test_ts_client() {
     assert!(client.contains("GreetOutput"), "should contain output type");
     assert!(client.contains("Procedures"), "should generate Procedures interface");
     assert!(client.contains("\"query\""), "should contain kind");
+    assert!(client.contains("multi_param"), "should contain multi_param method");
+    assert!(
+        client.contains("[number, number, string]"),
+        "multi_param should have tuple input"
+    );
 }
