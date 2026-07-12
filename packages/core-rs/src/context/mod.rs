@@ -103,7 +103,63 @@ pub fn read_ctx(task_dir: &str) -> Result<Context, String> {
     let path = ctx_path(task_dir);
     let raw = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
-    serde_json::from_str(&raw).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
+    let json: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))?;
+
+    let task: Task = json
+        .get("task")
+        .ok_or_else(|| format!("Missing 'task' in {}", path.display()))
+        .and_then(|v| {
+            serde_json::from_value(v.clone())
+                .map_err(|e| format!("Failed to parse task: {}", e))
+        })?;
+
+    let stages = json
+        .get("stages")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| serde_json::from_value(item.clone()).ok())
+                .collect()
+        });
+
+    Ok(Context {
+        task,
+        stages,
+        pipeline: json
+            .get("pipeline")
+            .and_then(|v| v.as_str())
+            .unwrap_or("dub")
+            .to_string(),
+        last_run_pipeline: json
+            .get("last_run_pipeline")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        input: json.get("input").cloned().unwrap_or(serde_json::Value::Null),
+        run_info: json
+            .get("run_info")
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+        video_source_path: json
+            .get("video_source_path")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        audio_source_path: json
+            .get("audio_source_path")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        asr_language: json
+            .get("asr_language")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        target_language: json
+            .get("target_language")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        video_source: json
+            .get("video_source")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+    })
 }
 
 pub fn read_task(task_dir: &str) -> Result<Task, String> {
