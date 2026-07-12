@@ -2,17 +2,9 @@ import { createSignal, Show } from "solid-js";
 import { fnrpc } from "#/integrations/fnrpc/client.ts";
 import { VideoPanel } from "./VideoPanel";
 import { VideoControls } from "./VideoControls";
-import { Timeline } from "./Timeline";
+import { Timeline, type Track } from "./Timeline";
 import { TaskControlPanel } from "#/components/pages/task/TaskControlPanel.tsx";
 import { AiReviewPanel } from "#/components/pages/task/AiReviewPanel.tsx";
-
-interface SubtitleSegment {
-  index: number;
-  text: string;
-  translation?: string;
-  startMs: number;
-  endMs: number;
-}
 
 interface Props {
   groupId: string;
@@ -57,7 +49,55 @@ export function TaskDetailPage(props: Props) {
     if (v) v.currentTime = ms / 1000;
   };
 
-  const segments = (): SubtitleSegment[] => [];
+  const asrQuery = fnrpc.createQuery(
+    () => ['read_app_file_text', `${taskDir}/asr/asr.json`],
+  );
+
+  const asrSegments = () => {
+    if (!asrQuery.data) return [];
+    try {
+      const data = JSON.parse(asrQuery.data);
+      return (data.result?.segments || []).map((s: any, i: number) => ({
+        index: i,
+        text: (s.text || '').trim(),
+        startMs: s.start,
+        endMs: s.end,
+      })).filter((s: { text: string }) => s.text);
+    } catch { return []; }
+  };
+
+  const transLang = () => taskCtxQ.data?.target_language;
+
+  const transQuery = fnrpc.createQuery(
+    () => ['read_app_file_text', `${taskDir}/translate/translation.${transLang()}.json`],
+    () => ({ enabled: !!transLang(), initialData: '' }),
+  );
+
+  const transSegments = () => {
+    if (!transQuery.data) return [];
+    try {
+      const data = JSON.parse(transQuery.data);
+      return (data.translation || []).map((item: any, i: number) => ({
+        index: i,
+        text: item.dst || '',
+        startMs: item.start_time * 1000,
+        endMs: item.end_time * 1000,
+      }));
+    } catch { return []; }
+  };
+
+  const tracks = (): Track[] => {
+    const result: Track[] = [];
+    const asr = asrSegments();
+    if (asr.length) {
+      result.push({ id: 'asr', label: 'asr.json', segments: asr, color: '#3b82f6' });
+    }
+    const trans = transSegments();
+    if (trans.length) {
+      result.push({ id: 'translation', label: `translation.${transLang()}.json`, segments: trans, color: '#22c55e' });
+    }
+    return result;
+  };
 
   return (
     <div class="flex flex-col h-full w-full min-w-0 max-w-full">
@@ -89,7 +129,7 @@ export function TaskDetailPage(props: Props) {
 
       <div class="flex-1">
         <Timeline
-          segments={segments()}
+          tracks={tracks()}
           duration={duration()}
           onSeek={onSeek}
         />
