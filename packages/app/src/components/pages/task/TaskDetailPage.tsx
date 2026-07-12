@@ -29,25 +29,38 @@ export function TaskDetailPage(props: Props) {
 
   return (
     <div class="flex flex-col h-full">
-      {/* Video area */}
-      <Show when={videoPath()} fallback={
-        <div class="flex-1 flex items-center justify-center bg-black text-muted-foreground">
-          <Show when={taskCtxQ.isPending} fallback="No video source">
-            Loading...
+      {/* Top row: three columns */}
+      <div class="flex h-120">
+        {/* Task control panel */}
+        <div class="w-150 min-w-40 border-r flex items-center justify-center text-muted-foreground text-sm">
+          任务控制 — 开发中
+        </div>
+
+        {/* Video player */}
+        <div class="flex-1 min-w-0">
+          <Show when={videoPath()} fallback={
+            <div class="h-full flex items-center justify-center bg-black text-muted-foreground">
+              <Show when={taskCtxQ.isPending} fallback="No video source">
+                Loading...
+              </Show>
+            </div>
+          }>
+            <VideoPanel
+              videoPath={videoPath()}
+              onTimeUpdate={setCurrentTime}
+              onDurationChange={setDuration}
+            />
           </Show>
         </div>
-      }>
-        <div class="flex-1 min-h-0">
-          <VideoPanel
-            videoPath={videoPath()}
-            onTimeUpdate={setCurrentTime}
-            onDurationChange={setDuration}
-          />
+
+        {/* AI review panel */}
+        <div class="w-150 min-w-40 border-l flex items-center justify-center text-muted-foreground text-sm">
+          AI审核 — 开发中
         </div>
-      </Show>
+      </div>
 
       {/* Timeline */}
-      <div class="h-24 flex-shrink-0">
+      <div class=" flex-1">
         <Timeline
           segments={segments()}
           duration={duration()}
