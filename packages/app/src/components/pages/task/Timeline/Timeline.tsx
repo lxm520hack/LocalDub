@@ -52,6 +52,34 @@ export function Timeline(props: Props) {
     setScrollLeft(tracksRef?.scrollLeft ?? 0);
   };
 
+  let rightRef!: HTMLDivElement;
+  let playheadDragging = false;
+
+  const onPlayheadDown = (e: PointerEvent) => {
+    e.preventDefault();
+    playheadDragging = true;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onPlayheadMove = (e: PointerEvent) => {
+    if (!playheadDragging) return;
+    const rect = rightRef.getBoundingClientRect();
+    const x = e.clientX - rect.left + scrollLeft();
+    const ms = x / pxPerMs();
+    props.onSeek(Math.max(0, Math.min(ms, props.duration)));
+  };
+
+  const onPlayheadUp = () => {
+    playheadDragging = false;
+  };
+
+  const onRulerClick = (e: MouseEvent) => {
+    const rect = rulerRef.getBoundingClientRect();
+    const x = e.clientX - rect.left + rulerRef.scrollLeft;
+    const ms = x / pxPerMs();
+    props.onSeek(Math.max(0, Math.min(ms, props.duration)));
+  };
+
   useScrollSync(
     () => tracksRef,
     () => rulerRef,
@@ -105,12 +133,13 @@ export function Timeline(props: Props) {
         </div>
 
         {/* Right: Ruler + Tracks */}
-        <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+        <div ref={rightRef!} class="flex-1 flex flex-col min-w-0 relative overflow-hidden">
           {/* Ruler (hidden overflow, scrollLeft synced from tracks) */}
           <div ref={rulerRef!} class="overflow-hidden shrink-0 border-b bg-muted/20">
             <div
-              class="relative h-5 text-[10px] text-muted-foreground"
+              class="relative h-5 text-[10px] text-muted-foreground cursor-pointer"
               style={{ width: `${totalPx()}px`, "min-width": "100%" }}
+              onClick={onRulerClick}
             >
               {Array.from({ length: Math.ceil(props.duration / rulerInterval()) + 1 }, (_, i) => (
                 <div
@@ -158,7 +187,14 @@ export function Timeline(props: Props) {
           <div
             class="absolute top-0 h-full w-0.5 bg-red-500/50 z-10 pointer-events-none"
             style={{ left: `${playheadLeft()}px` }}
-          />
+          >
+            <div
+              class="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm cursor-pointer pointer-events-auto"
+              onPointerDown={onPlayheadDown}
+              onPointerMove={onPlayheadMove}
+              onPointerUp={onPlayheadUp}
+            />
+          </div>
         </div>
       </div>
     </div>
