@@ -1,4 +1,3 @@
-import { isTauri, convertFileSrc } from "@tauri-apps/api/core";
 
 interface Props {
   videoPath: string;
@@ -9,13 +8,11 @@ interface Props {
 export function VideoPanel(props: Props) {
   let videoRef!: HTMLVideoElement;
 
-  const src = isTauri() ? convertFileSrc(props.videoPath) : props.videoPath;
-
   return (
     <div class="flex items-center justify-center bg-black h-full w-full overflow-hidden">
       <video
         ref={videoRef}
-        src={src}
+        src={props.videoPath}
         controls
         class="max-h-full max-w-full object-contain"
         onTimeUpdate={() => props.onTimeUpdate(videoRef.currentTime * 1000)}

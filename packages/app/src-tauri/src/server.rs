@@ -15,6 +15,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 use crate::state::{AppState, Ctx};
+use config_rs::root::base_dir;
 
 async fn fnrpc_handler(
     Extension(router): Extension<RpcRouter<Ctx>>,
@@ -95,6 +96,7 @@ pub async fn start(
         state_for_rspc.clone()
     });
 
+    let media_root = base_dir();
     let app = Router::new()
         .nest("/rspc", rspc_router)
         .route(
@@ -105,6 +107,7 @@ pub async fn start(
             "/fnrpc/sub/:path",
             axum::routing::get(fnrpc_sub_handler),
         )
+        .nest_service("/media", ServeDir::new(&media_root))
         .layer(CorsLayer::permissive())
         .layer(Extension(fnrpc_router))
         .layer(Extension(state))

@@ -24,7 +24,9 @@ export function TaskDetailPage(props: Props) {
   const [currentTime, setCurrentTime] = createSignal(0);
   const [duration, setDuration] = createSignal(0);
 
-  const videoPath = () => taskCtxQ.data?.video_source_path ?? "";
+  const videoUrl = () => taskCtxQ.data?.video_source_path
+    ? `http://localhost:19110/media/${taskDir}/video_source.mp4`
+    : "";
 
   // Placeholder segments — will be loaded from ASR + translation JSON
   const segments = (): SubtitleSegment[] => [];
@@ -37,7 +39,7 @@ export function TaskDetailPage(props: Props) {
 
         {/* Video player */}
         <div class="flex-1 min-w-0">
-          <Show when={videoPath()} fallback={
+          <Show when={videoUrl()} fallback={
             <div class="h-full flex items-center justify-center bg-black text-muted-foreground">
               <Show when={taskCtxQ.isPending} fallback="No video source">
                 Loading...
@@ -45,7 +47,7 @@ export function TaskDetailPage(props: Props) {
             </div>
           }>
             <VideoPanel
-              videoPath={videoPath()}
+              videoPath={videoUrl()}
               onTimeUpdate={setCurrentTime}
               onDurationChange={setDuration}
             />
