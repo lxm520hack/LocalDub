@@ -9,7 +9,7 @@ import { DEMUCS_MODEL_DIR } from '@repo/config/path/models';
 import {
 	readInputArgs,
 } from '@repo/core/input/input';
-import { emitLog, nowISO, probeDuration, separateDir, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
+import { emitLog, nowISO, probeDuration, separateDir, video_source_path } from '@repo/core/stages/utils/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { startLog } from './utils/log.ts';
 import { separateBurn } from '../ml/demucs/cli/burn_cli.ts';
@@ -46,7 +46,7 @@ export async function stageSeparate(
 		progress: 0,
 	});
 
-	const videoPath = ctx.videoSourcePath!
+	const videoPath = ctx.video_source_path!
 	if (!existsSync(videoPath)) throw new Error('video_source.mp4 not found');
 	const audioPath = ctx.audioSourcePath!
 	if (!existsSync(audioPath)) throw new Error('audio_source.wav not found');

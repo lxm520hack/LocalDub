@@ -13,7 +13,7 @@ import {
 	translationFilePath,
 	bgmPath,
 	defaultFont,
-	videoSourcePath,
+	video_source_path,
     timings_filepath,
     split_audio_timings_filepath,
 } from '@repo/core/stages/utils/utils';
@@ -58,7 +58,7 @@ export async function stageMergeVideo(ctx: Context) {
 	startLog('merge_video', ctx.task.id);
 	const taskId = ctx.task.id;
 	const taskDir = ctx.task.task_dir;
-	const video_file_path = videoSourcePath(ctx)
+	const video_file_path = video_source_path(ctx)
 	const mergeVideoDir = join(taskDir, 'merge_video');
 	ensureDir(mergeVideoDir, ctx);
 	const tmpDir = join(taskDir, 'tmp');

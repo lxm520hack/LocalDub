@@ -4,7 +4,7 @@ import { copyFileSync, existsSync, renameSync } from 'node:fs';
 import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 
-import {  emitLog, ffmpeg, nowISO, readTaskLanguages, videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils.ts';
+import {  emitLog, ffmpeg, nowISO, readTaskLanguages, video_source_path, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils.ts';
 import { ensureWhisperCpp, ensureVadModel, whisperCppBinaryPath } from '../ensure.ts';
 import { Context, setCtx, setStage } from '@repo/core/context/context.ts';
 import { pythonBin } from '@repo/config/path/bin';

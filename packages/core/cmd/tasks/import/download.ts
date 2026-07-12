@@ -52,7 +52,7 @@ export const importVideo = async (input: InputArgs) => {
 			label: stage,
 			status: 'pending',
 		})),
-		videoSourcePath: join(taskDir, 'video_source.mp4'),
+		video_source_path: join(taskDir, 'video_source.mp4'),
 		audioSourcePath: join(taskDir, 'audio_source.wav')
 	}
 
@@ -63,7 +63,7 @@ export async function downloadVideo(
 	ctx: Context,
 	ytDlpExtArgs: string[]
 ) {
-	const videoPath = ctx.videoSourcePath!
+	const videoPath = ctx.video_source_path!
 	const url = ctx.task.url
 	const taskDir = ctx.task.task_dir
 	let rawVideoPath = join(taskDir, `${ctx.task.id}.mp4`);

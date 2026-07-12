@@ -7,11 +7,11 @@ import { WHISPER_MODEL_DIR } from '@repo/config/path/models';
 
 
 /** Get the downloaded video source path for a session. */
-export function videoSourcePath(ctx: Context): string {
-	if (!ctx.videoSourcePath) {
-		throw new Error(`videoSourcePath not set in context for session ${ctx.task.task_dir}`);
+export function video_source_path(ctx: Context): string {
+	if (!ctx.video_source_path) {
+		throw new Error(`video_source_path not set in context for session ${ctx.task.task_dir}`);
 	}
-	return ctx.videoSourcePath
+	return ctx.video_source_path
 }
 
 /** Get the vocals stem path from separate stage. */

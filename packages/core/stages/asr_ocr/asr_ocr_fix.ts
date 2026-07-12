@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
-import { emitLog, nowISO, probeVideoResolution, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
+import { emitLog, nowISO, probeVideoResolution, video_source_path } from '@repo/core/stages/utils/utils.ts';
 import { fixOverlap, mergeFrames, toOcrFiltered } from '@repo/core/stages/ocr/ocrMerge';
 import { computeBoxYStats, computeSegmentAdjustments, build_ocr_frames_line_adjust, get_ocr_frames_line_filtered, joinOcrLines, YStats } from '../ocr/utils.ts';
 import { newOcrEngine, type OCRRuntime } from '../../ml/subtitle_ocr/ocr.ts';
@@ -88,7 +88,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	if (newTs.length > 0) {
 		emitLog(taskDir, `[asr_ocr_fix] Re-sampling ${newTs.length} frames at ${RESAMPLE_STEP_MS}ms steps...`);
 
-		const videoPath = videoSourcePath(ctx);
+		const videoPath = video_source_path(ctx);
 		const resampleDir = join(asrOcrFixDir, 'resampled_frames');
 		ensureDir(resampleDir, ctx);
 
@@ -169,7 +169,7 @@ export async function stageAsrOcrFix(ctx: Context) {
 	if (!asrSegs.length) throw new Error('No ASR segments found');
 	if (!ocrSegs.length) throw new Error('No OCR segments found (empty asr_ocr.json)');
 
-	const { height: videoHeight } = probeVideoResolution(videoSourcePath(ctx));
+	const { height: videoHeight } = probeVideoResolution(video_source_path(ctx));
 	const isoThresholdMs = asrOcrFixCfg?.isoThresholdMs ?? 1500;
 	const adjustYWeight = asrOcrFixCfg?.adjustYWeight ?? 0.8;
 	const adjustIsoWeight = asrOcrFixCfg?.adjustIsoWeight ?? 0.2;

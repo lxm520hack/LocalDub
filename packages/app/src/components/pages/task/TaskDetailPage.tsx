@@ -2,6 +2,8 @@ import { createSignal, Show } from "solid-js";
 import { fnrpc } from "#/integrations/fnrpc/client.ts";
 import { VideoPanel } from "./VideoPanel";
 import { Timeline } from "./Timeline";
+import { TaskControlPanel } from "#/components/pages/task/TaskControlPanel.tsx";
+import { AiReviewPanel } from "#/components/pages/task/AiReviewPanel.tsx";
 
 interface SubtitleSegment {
   index: number;
@@ -31,10 +33,7 @@ export function TaskDetailPage(props: Props) {
     <div class="flex flex-col h-full">
       {/* Top row: three columns */}
       <div class="flex h-120">
-        {/* Task control panel */}
-        <div class="w-150 min-w-40 border-r flex items-center justify-center text-muted-foreground text-sm">
-          任务控制 — 开发中
-        </div>
+        <TaskControlPanel />
 
         {/* Video player */}
         <div class="flex-1 min-w-0">
@@ -53,10 +52,7 @@ export function TaskDetailPage(props: Props) {
           </Show>
         </div>
 
-        {/* AI review panel */}
-        <div class="w-150 min-w-40 border-l flex items-center justify-center text-muted-foreground text-sm">
-          AI审核 — 开发中
-        </div>
+        <AiReviewPanel />
       </div>
 
       {/* Timeline */}

@@ -41,7 +41,7 @@ export interface Context {
 			fallbackToCpu?: boolean;
 		};
   }
-	videoSourcePath?: string; //
+	video_source_path?: string; //
 	audioSourcePath?: string; // 
   asr_language?: string; // ASR 自动检测的语言
 	target_language?: TargetLang; // translate 阶段写入的目标语言: 如果 config 中没有指定 targetLang 则按照这个逻辑: 源语言: zh -> en, 否则 any -> zh

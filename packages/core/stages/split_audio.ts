@@ -2,7 +2,7 @@ import { readJson, writeJson, ensureDir, removeFile } from '@repo/core/utils/fil
 import { existsSync, readdirSync, statSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, split_audio_timings_filepath, videoSourcePath, vocalsPath } from '@repo/core/stages/utils/utils.ts';
+import { translationFilePath, ffmpeg, nowISO, emitLog, readTaskLanguages, subtitleFilePath, split_audio_timings_filepath, video_source_path, vocalsPath } from '@repo/core/stages/utils/utils.ts';
 import { env } from '@repo/config/env';
 import { Context, setStage } from '@repo/core/context/context.ts';
 
@@ -114,7 +114,7 @@ export async function stageSplitAudio(ctx: Context) {
   const taskId = ctx.task.id;
   const taskDir = ctx.task.task_dir
   const srtFilePath = subtitleFilePath(ctx);
-  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? videoSourcePath(ctx);
+  const sourceFilePath = ctx.input?.stages?.split_audio?.sourceFilePath ?? video_source_path(ctx);
 	const { asrLanguage: srcLangCode, targetLanguage: dstLangCode } = readTaskLanguages(ctx);
 	const splitAudioDir = join(taskDir, 'split_audio');
 	const translationFile = translationFilePath(taskDir, dstLangCode);

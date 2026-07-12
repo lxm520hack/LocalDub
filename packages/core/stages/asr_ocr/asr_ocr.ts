@@ -3,7 +3,7 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { newOcrEngine, type OCRRuntime } from '../../ml/subtitle_ocr/ocr.ts';
 import { ensureDir, writeJson, readJson } from '@repo/core/utils/fileOps';
-import { emitLog, nowISO, videoSourcePath } from '@repo/core/stages/utils/utils.ts';
+import { emitLog, nowISO, video_source_path } from '@repo/core/stages/utils/utils.ts';
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { startLog } from '../utils/log.ts';
@@ -58,7 +58,7 @@ export async function stageAsrOcr(ctx: Context) {
 		join(asrOcrDir, 'ocr_frames.json'),
 		{
 			_frames_raw: frameResults,
-			audio_info: { duration:  probeVideoDuration(videoSourcePath(ctx)) },
+			audio_info: { duration:  probeVideoDuration(video_source_path(ctx)) },
 			_source: 'asr_ocr',
 			_engine: runtime,
 			_device: device,

@@ -5,7 +5,7 @@ import { delimiter, join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { runStage, getTorchServerUrl } from '../../servers/client.ts';
 
-import {  emitLog, ffmpeg, nowISO, readTaskLanguages,videoSourcePath, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils';
+import {  emitLog, ffmpeg, nowISO, readTaskLanguages,video_source_path, vocalsPath, mixedVocalsPath, gatedVocalsPath } from '@repo/core/stages/utils/utils';
 import { AsrOptions } from './types.ts';
 import { parseAsrOutput } from './utils.ts';
 import { Context, setCtx, setStage } from '@repo/core/context/context.ts';
@@ -27,7 +27,7 @@ export async function stageAsr(
 		progress: 0,
 	});
 	const audioVocal = ctx.input?.stages?.asr?.vocalAudioPath ?? vocalsPath(taskDir);
-	const videoSource =  videoSourcePath(ctx);
+	const videoSource =  video_source_path(ctx);
 
 	let audioPath = ctx.input?.stages?.asr?.useSeparated
 		? audioVocal
