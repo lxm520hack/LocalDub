@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod func;
+pub mod handlers;
 pub mod router;
 mod server;
 mod state;

@@ -7,9 +7,19 @@ use syn::{
 
 struct RegistryInput {
     ctx_ty: syn::Type,
-    query_fns: Vec<syn::Ident>,
-    mutation_fns: Vec<syn::Ident>,
-    subscription_fns: Vec<syn::Ident>,
+    query_fns: Vec<syn::Path>,
+    mutation_fns: Vec<syn::Path>,
+    subscription_fns: Vec<syn::Path>,
+}
+
+/// Given `handlers::log::watch_task_log`, return `handlers::log::watch_task_log__FnRpc`.
+fn fn_rpc_struct_path(path: &syn::Path) -> syn::Path {
+    let mut new_path = path.clone();
+    if let Some(last) = new_path.segments.last_mut() {
+        let name = format!("{}__FnRpc", last.ident);
+        last.ident = syn::Ident::new(&name, last.ident.span());
+    }
+    new_path
 }
 
 impl syn::parse::Parse for RegistryInput {
@@ -47,8 +57,8 @@ impl syn::parse::Parse for RegistryInput {
                 ));
             };
             while !items.is_empty() {
-                let ident: syn::Ident = items.parse()?;
-                target.push(ident);
+                let path: syn::Path = items.parse()?;
+                target.push(path);
                 if items.is_empty() {
                     break;
                 }
@@ -74,20 +84,20 @@ pub fn fnrpc_registry(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as RegistryInput);
     let ctx_ty = &input.ctx_ty;
 
-    let query_structs: Vec<syn::Ident> = input
+    let query_structs: Vec<syn::Path> = input
         .query_fns
         .iter()
-        .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
+        .map(fn_rpc_struct_path)
         .collect();
-    let mutation_structs: Vec<syn::Ident> = input
+    let mutation_structs: Vec<syn::Path> = input
         .mutation_fns
         .iter()
-        .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
+        .map(fn_rpc_struct_path)
         .collect();
-    let subscription_structs: Vec<syn::Ident> = input
+    let subscription_structs: Vec<syn::Path> = input
         .subscription_fns
         .iter()
-        .map(|f| syn::Ident::new(&format!("{}__FnRpc", f), f.span()))
+        .map(fn_rpc_struct_path)
         .collect();
 
     quote! {

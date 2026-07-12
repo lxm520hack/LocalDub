@@ -1,6 +1,6 @@
-use std::{fs, path::Path};
-use std::time::Duration;
+use std::fs;
 
+pub mod tasks;
 use config_rs::{root::base_dir, servers::ServerType};
 use core_rs::{
     cmd::tasks::get_task::GroupInfo,
@@ -9,10 +9,8 @@ use core_rs::{
     utils::file_ops::{ensure_parent_dir, sanitize_relative_path},
 };
 use device_rs::DeviceInfo;
-use futures::stream::{self, Stream};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 use crate::{commands, state::Ctx};
 
@@ -93,86 +91,8 @@ pub async fn write_app_file_binary(relative_path: String, content: Vec<u8>) -> R
     fs::write(&path, &content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
-#[fnrpc::rpc_subscription]
-pub fn watch_task_log(task_dir: String) -> impl Stream<Item = String> {
-    let p = if Path::new(&task_dir).is_relative() {
-        base_dir().join(&task_dir)
-    } else {
-        Path::new(&task_dir).to_path_buf()
-    };
-    let task_id = p
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("")
-        .to_string();
-    let log_path = p.join(format!("{task_id}.log"));
-
-    let (initial_lines, initial_len) = match std::fs::read_to_string(&log_path) {
-        Ok(c) => {
-            let all_lines: Vec<&str> = c.lines().collect();
-            let tail = if all_lines.len() > 50 {
-                all_lines[all_lines.len() - 50..].to_vec()
-            } else {
-                all_lines.clone()
-            };
-            (tail.into_iter().map(String::from).collect(), c.len() as u64)
-        }
-        Err(_) => (vec![], 0),
-    };
-
-    struct State {
-        log_path: std::path::PathBuf,
-        last_len: u64,
-        interval: tokio::time::Interval,
-        tail: std::vec::IntoIter<String>,
-    }
-
-    stream::unfold(
-        State {
-            log_path,
-            last_len: initial_len,
-            interval: tokio::time::interval(Duration::from_millis(500)),
-            tail: initial_lines.into_iter(),
-        },
-        |mut state| async move {
-            loop {
-                if let Some(line) = state.tail.next() {
-                    return Some((line, state));
-                }
-                state.interval.tick().await;
-                if let Ok(meta) = tokio::fs::metadata(&state.log_path).await {
-                    let len = meta.len();
-                    if len > state.last_len {
-                        if let Ok(mut f) = tokio::fs::File::open(&state.log_path).await {
-                            if f.seek(std::io::SeekFrom::Start(state.last_len))
-                                .await
-                                .is_ok()
-                            {
-                                let mut content = String::new();
-                                if f.read_to_string(&mut content).await.is_ok()
-                                    && !content.is_empty()
-                                {
-                                    state.last_len = len;
-                                    state.tail = content
-                                        .lines()
-                                        .map(String::from)
-                                        .collect::<Vec<_>>()
-                                        .into_iter();
-                                    if let Some(line) = state.tail.next() {
-                                        return Some((line, state));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-    )
-}
-
 fnrpc::fnrpc_registry! { Router<Ctx> {
     queries: [health_check, greet, add, get_group_list, get_task_ctx, find_server, device_info, read_app_file_text, read_app_file_bin],
     mutations: [write_app_file_text],
-    subscriptions: [watch_task_log],
+    subscriptions: [crate::func::tasks::log::watch_task_log],
 } }
