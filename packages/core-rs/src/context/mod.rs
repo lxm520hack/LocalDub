@@ -92,7 +92,6 @@ pub struct Context {
     pub audio_source_path: Option<String>,
     pub asr_language: Option<String>,
     pub target_language: Option<String>,
-    pub video_source: Option<String>,
 }
 
 pub fn ctx_path(task_dir: &str) -> PathBuf {
@@ -110,18 +109,14 @@ pub fn read_ctx(task_dir: &str) -> Result<Context, String> {
         .get("task")
         .ok_or_else(|| format!("Missing 'task' in {}", path.display()))
         .and_then(|v| {
-            serde_json::from_value(v.clone())
-                .map_err(|e| format!("Failed to parse task: {}", e))
+            serde_json::from_value(v.clone()).map_err(|e| format!("Failed to parse task: {}", e))
         })?;
 
-    let stages = json
-        .get("stages")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|item| serde_json::from_value(item.clone()).ok())
-                .collect()
-        });
+    let stages = json.get("stages").and_then(|v| v.as_array()).map(|arr| {
+        arr.iter()
+            .filter_map(|item| serde_json::from_value(item.clone()).ok())
+            .collect()
+    });
 
     Ok(Context {
         task,
@@ -135,7 +130,10 @@ pub fn read_ctx(task_dir: &str) -> Result<Context, String> {
             .get("last_run_pipeline")
             .and_then(|v| v.as_str())
             .map(String::from),
-        input: json.get("input").cloned().unwrap_or(serde_json::Value::Null),
+        input: json
+            .get("input")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
         run_info: json
             .get("run_info")
             .and_then(|v| serde_json::from_value(v.clone()).ok()),
@@ -153,10 +151,6 @@ pub fn read_ctx(task_dir: &str) -> Result<Context, String> {
             .map(String::from),
         target_language: json
             .get("target_language")
-            .and_then(|v| v.as_str())
-            .map(String::from),
-        video_source: json
-            .get("video_source")
             .and_then(|v| v.as_str())
             .map(String::from),
     })
