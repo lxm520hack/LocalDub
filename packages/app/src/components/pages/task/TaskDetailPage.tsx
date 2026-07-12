@@ -2,7 +2,8 @@ import { createSignal, Show } from "solid-js";
 import { fnrpc } from "#/integrations/fnrpc/client.ts";
 import { VideoPanel } from "./VideoPanel";
 import { VideoControls } from "./VideoControls";
-import { Timeline, type Track } from "./Timeline/Timeline";
+import { Timeline } from "./Timeline/Timeline";
+import type { Track } from "./Timeline/consts";
 import { TaskControlPanel } from "#/components/pages/task/TaskControlPanel.tsx";
 import { AiReviewPanel } from "#/components/pages/task/AiReviewPanel.tsx";
 
