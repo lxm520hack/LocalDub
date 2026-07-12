@@ -1,8 +1,6 @@
-
 interface Props {
   videoPath: string;
-  onTimeUpdate: (t: number) => void;
-  onDurationChange: (d: number) => void;
+  onReady: (ref: HTMLVideoElement) => void;
 }
 
 export function VideoPanel(props: Props) {
@@ -15,8 +13,7 @@ export function VideoPanel(props: Props) {
         src={props.videoPath}
         controls
         class="max-h-full max-w-full object-contain"
-        onTimeUpdate={() => props.onTimeUpdate(videoRef.currentTime * 1000)}
-        onDurationChange={() => props.onDurationChange(videoRef.duration * 1000)}
+        onLoadedMetadata={() => props.onReady(videoRef)}
       />
     </div>
   );

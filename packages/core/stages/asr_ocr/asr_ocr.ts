@@ -7,8 +7,8 @@ import { emitLog, nowISO, video_source_path } from '@repo/core/stages/utils/util
 import { joinOcrLines, computeBoxYStats } from '../ocr/utils.ts';
 import { Context, setStage } from '@repo/core/context/context.ts';
 import { startLog } from '../utils/log.ts';
-import { probeVideoDuration } from '@repo/core/utils/utils'
 import { FrameResult, Segment, SegmentWithAdjusted } from "@repo/core/ml/subtitle_ocr/types";
+import { probeVideoDuration } from '../../utils/ffmpeg.ts';
 
 export async function stageAsrOcr(ctx: Context) {
 	const taskDir = ctx.task.task_dir;
