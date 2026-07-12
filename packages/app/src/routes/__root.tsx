@@ -82,12 +82,12 @@ function RootDocument({ children }: { children: JSX.Element }) {
     <ThemeProvider>
       <SidebarProvider>
         <AppSidebar />
-        <div class="w-full h-screen grid grid-rows-[auto_1fr]">
+        <main class="min-w-0 flex-1 h-screen grid grid-rows-[auto_1fr]">
           <Header />
           {children}
           <ModalRenderer />
           <Toaster duration={1000 * 10} />
-        </div>
+        </main>
       </SidebarProvider>
     </ThemeProvider>
   </ClientApiProvider>

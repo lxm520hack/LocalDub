@@ -60,7 +60,7 @@ export function TaskDetailPage(props: Props) {
   const segments = (): SubtitleSegment[] => [];
 
   return (
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full w-full min-w-0 max-w-full">
       <div class="flex h-120">
         <TaskControlPanel />
         <div class="flex-1 min-w-0 flex flex-col">
