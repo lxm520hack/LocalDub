@@ -91,7 +91,6 @@ export function TaskDetailPage(props: Props) {
         <Timeline
           segments={segments()}
           duration={duration()}
-          currentTime={currentTime()}
           onSeek={onSeek}
         />
       </div>
