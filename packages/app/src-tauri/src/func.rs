@@ -52,7 +52,12 @@ pub async fn get_group_list() -> Result<Vec<GroupInfo>, String> {
 
 #[fnrpc::rpc_query]
 pub async fn get_task_ctx(task_dir: String) -> Result<Context, String> {
-    context::read_ctx(&task_dir)
+    let path = base_dir().join(&task_dir);
+    context::read_ctx(
+        &path
+            .to_str()
+            .ok_or_else(|| format!("Invalid task_dir: {}", task_dir))?,
+    )
 }
 
 #[fnrpc::rpc_query]

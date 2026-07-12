@@ -1,12 +1,11 @@
 import { createFileRoute, useParams } from '@tanstack/solid-router'
+import { TaskDetailPage } from '../../../components/pages/task/TaskDetailPage'
 
 export const Route = createFileRoute('/group/$id/$taskId')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  // const p = Route.useParams()
   const p = useParams({ from: '/group/$id/$taskId' })
-  const p1 = useParams({ strict: false })
-  return <div>Hello "/group/$id/$taskId"!</div>
+  return <TaskDetailPage groupId={p().id} taskId={p().taskId} />
 }
