@@ -19,6 +19,7 @@ export interface Track {
 interface Props {
   tracks: Track[];
   duration: number;
+  currentTime: number;
   onSeek: (ms: number) => void;
 }
 
@@ -45,11 +46,19 @@ export function Timeline(props: Props) {
   let rulerRef!: HTMLDivElement;
   let labelsRef!: HTMLDivElement;
 
+  const [scrollLeft, setScrollLeft] = createSignal(0);
+
+  const handleTrackScroll = () => {
+    setScrollLeft(tracksRef?.scrollLeft ?? 0);
+  };
+
   useScrollSync(
     () => tracksRef,
     () => rulerRef,
     () => labelsRef,
   );
+
+  const playheadLeft = () => props.currentTime * pxPerMs() - scrollLeft();
 
   const trackColor = (index: number, track: Track) =>
     track.color ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length];
@@ -96,7 +105,7 @@ export function Timeline(props: Props) {
         </div>
 
         {/* Right: Ruler + Tracks */}
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="flex-1 flex flex-col min-w-0 relative overflow-hidden">
           {/* Ruler (hidden overflow, scrollLeft synced from tracks) */}
           <div ref={rulerRef!} class="overflow-hidden shrink-0 border-b bg-muted/20">
             <div
@@ -115,7 +124,7 @@ export function Timeline(props: Props) {
           </div>
 
           {/* Tracks (main scroll container — user scrolls here) */}
-          <div ref={tracksRef!} class="flex-1 overflow-auto min-h-0">
+          <div ref={tracksRef!} class="flex-1 overflow-auto min-h-0" onScroll={handleTrackScroll}>
             <div class="relative" style={{ width: `${totalPx()}px`, "min-width": "100%" }}>
               <For each={props.tracks}>
                 {(track, i) => {
@@ -145,6 +154,11 @@ export function Timeline(props: Props) {
               </For>
             </div>
           </div>
+          {/* Playhead */}
+          <div
+            class="absolute top-0 h-full w-0.5 bg-red-500/50 z-10 pointer-events-none"
+            style={{ left: `${playheadLeft()}px` }}
+          />
         </div>
       </div>
     </div>

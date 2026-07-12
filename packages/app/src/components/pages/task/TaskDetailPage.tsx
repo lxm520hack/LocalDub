@@ -131,6 +131,7 @@ export function TaskDetailPage(props: Props) {
         <Timeline
           tracks={tracks()}
           duration={duration()}
+          currentTime={currentTime()}
           onSeek={onSeek}
         />
       </div>

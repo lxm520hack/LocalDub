@@ -11,7 +11,7 @@ export function VideoPanel(props: Props) {
       <video
         ref={videoRef}
         src={props.videoPath}
-        controls
+        // controls
         class="max-h-full max-w-full object-contain"
         onLoadedMetadata={() => props.onReady(videoRef)}
       />
