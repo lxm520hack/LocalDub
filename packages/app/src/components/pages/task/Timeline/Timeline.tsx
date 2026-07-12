@@ -66,7 +66,7 @@ export function Timeline(props: Props) {
   return (
     <div class="flex flex-col h-full bg-muted/30 border-t select-none">
       {/* Toolbar: zoom */}
-      <div class="flex items-center h-7 px-2 gap-2 border-b bg-muted/20 flex-shrink-0">
+      <div class="flex items-center h-7 px-2 gap-2 border-b bg-muted/20 shrink-0">
         <button onClick={() => setZoom(z => Math.max(0.25, z / 1.5))} class="hover:text-foreground text-muted-foreground">
           <ZoomOut size={14} />
         </button>
