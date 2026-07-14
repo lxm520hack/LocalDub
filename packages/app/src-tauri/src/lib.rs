@@ -1,6 +1,5 @@
 pub mod commands;
 pub mod func;
-pub mod handlers;
 pub mod router;
 mod server;
 mod state;
@@ -44,7 +43,10 @@ pub fn run() {
         ))
         .manage(fnrpc_router)
         .manage(app_state_for_manage)
-        .invoke_handler(tauri::generate_handler![commands::rpc_fn, commands::rpc_subscribe])
+        .invoke_handler(tauri::generate_handler![
+            commands::rpc_fn,
+            commands::rpc_subscribe
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

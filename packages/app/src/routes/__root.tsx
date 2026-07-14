@@ -12,7 +12,7 @@ import * as torchApi from '../feat/servers/servers';
 // import * as deviceApi from '../feat/env/device';
 import * as inputApi from '../fn/input';
 import { getLocale } from '@repo/shared/i18n/utils';
-import { getGroupList } from '#/cmd/tasks.ts';
+// import { getGroupList } from '#/cmd/tasks.ts';
 import { Header } from '#/components/app/header/Header.tsx';
 import { client as rspcClient, rspc,  RspcClient } from '#/integrations/rspc/rspc.ts';
 import { Procedures, ProceduresLegacy } from '#/integrations/rspc/bindings.ts';
@@ -70,14 +70,14 @@ function RootDocument({ children }: { children: JSX.Element }) {
     // deviceInfoApi: {
     //   // fetchDeviceInfo: deviceApi.fetchDeviceInfo,
     // },
-    inputEditorApi: {
-      readInput: inputApi.readInput,
-      writeInput: inputApi.writeInput,
-      readInputSchema: inputApi.readInputSchema,
-    },
-    taskApi: {
-      getGroupList
-    }
+    // inputEditorApi: {
+    //   readInput: inputApi.readInput,
+    //   writeInput: inputApi.writeInput,
+    //   readInputSchema: inputApi.readInputSchema,
+    // },
+    // taskApi: {
+    //   getGroupList
+    // }
   }}>
     <ThemeProvider>
       <SidebarProvider>

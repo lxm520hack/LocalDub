@@ -1,28 +1,36 @@
-import { Context } from "#/integrations/fnrpc/bindings.ts";
-import { fnrpc } from "#/integrations/fnrpc/client.ts";
+import type { Context } from "#/integrations/fnrpc/bindings.ts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@repo/ui-solid/base/tabs";
 import { useParams } from "@tanstack/solid-router";
 import { For } from "solid-js";
+import { FileTree } from "./FileTree";
 
-export const TaskControlPanel = (p:{
-  ctx: Context
+export const TaskControlPanel = (p: {
+  ctx: Context;
+  onOpenFile: (name: string, path: string) => void;
 }) => {
-  const params = useParams({from: '/group/$id/$taskId'})
-  const taskDirRoot = fnrpc.createQuery(() => ['list_app_directory', `workfolder/${params().id}/${p.ctx.task.id}`]);
-  const taskDirRootFiles = () => taskDirRoot.data?.find(f => !f.is_dir ) ?? []
-  const taskDirRootDirs = () => taskDirRoot.data?.filter(f => f.is_dir) ?? []
-  const stages = () => p.ctx.stages ?? []
-  const tabs = () => ["root", ...stages().map(s => s.name)]
-  
-  return <div class="w-125 min-w-40 border-r flex   text-muted-foreground text-sm">
-    <Tabs defaultValue="root" class="" orientation="vertical">
-      <TabsList class="">
+  const params = useParams({from: '/group/$id/$taskId'});
+  const taskDir = `workfolder/${params().id}/${p.ctx.task.id}`;
+  const stages = () => p.ctx.stages ?? [];
+  const tabs = () => ["root", ...stages().map(s => s.name)];
+
+  return (
+    <div class="w-100 min-w-40 border-r flex text-muted-foreground text-sm overflow-hidden">
+      <Tabs defaultValue="root" class="w-full" orientation="vertical">
+        <TabsList class="w-full">
+          <For each={tabs()}>{(tab) => (
+            <TabsTrigger value={tab} class="w-full justify-start">{tab}</TabsTrigger>
+          )}</For>
+        </TabsList>
+
         <For each={tabs()}>{(tab) => (
-          <TabsTrigger value={tab} class="w-full">{tab}</TabsTrigger>
+          <TabsContent value={tab} class="overflow-auto p-0">
+            <FileTree
+              relativeDir={tab === 'root' ? taskDir : `${taskDir}/${tab}`}
+              onOpenFile={p.onOpenFile}
+            />
+          </TabsContent>
         )}</For>
-      </TabsList>
-      
-    </Tabs>
-    任务控制 — 开发中
-  </div>
-}
+      </Tabs>
+    </div>
+  );
+};

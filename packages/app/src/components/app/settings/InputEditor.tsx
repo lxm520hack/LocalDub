@@ -1,7 +1,7 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import { getAutoSaveMode } from './editorPrefs';
 import { useTheme } from '@repo/ui-solid/theme';
-import { readInput, readInputSchema } from '#/fn/input.ts';
+// import { readInput, readInputSchema } from '#/fn/input.ts';
 import { rspc } from '#/integrations/rspc/rspc.ts';
 import { fnrpc } from '#/integrations/fnrpc/client.ts';
 

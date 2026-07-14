@@ -19,6 +19,7 @@ impl rspc::Error for RspcErr {
     }
 }
 
+/// 待重构, 但不急需重构的 非热点 代码, 暂时保留，不删除
 pub fn build() -> Router<AppState> {
     Router::<AppState>::new()
         // .procedure(

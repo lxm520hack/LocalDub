@@ -104,7 +104,7 @@ export function TaskDetailPage(props: Props) {
     <div class="flex flex-col h-full w-full min-w-0 max-w-full">
       <div class="flex h-120">
         <Show when={taskCtxQ.data}  >
-          {ctx => <TaskControlPanel ctx={ctx()} />}
+          {ctx => <TaskControlPanel ctx={ctx()} onOpenFile={(name, path) => console.log('open', name, path)} />}
         </Show>
         <div class="flex-1 min-w-0 flex flex-col">
           <Show when={videoUrl()} fallback={
