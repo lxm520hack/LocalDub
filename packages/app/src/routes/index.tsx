@@ -1,14 +1,14 @@
 import { IndexPage } from '#/components/pages/home/IndexPage.tsx';
-import { createFileRoute } from '@tanstack/solid-router';
+import { createFileRoute, redirect } from '@tanstack/solid-router';
 
 export const Route = createFileRoute('/')({
-  beforeLoad: async ({ router }) => {
+  beforeLoad:  () => {
     if (typeof window !== 'undefined') {
       const last = localStorage.getItem('localdub_last_task');
       if (last) {
         try {
           const { groupId, taskId } = JSON.parse(last);
-          await router.navigate({ to: '/group/$groupId/$taskId', params: { groupId, taskId } });
+          throw redirect({ to: '/group/$id/$taskId', params: { id: groupId, taskId } });
         } catch {
           localStorage.removeItem('localdub_last_task');
         }
