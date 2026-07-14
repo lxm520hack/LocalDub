@@ -54,6 +54,12 @@ export type GreetInput = { name: string }
 
 export type GreetOutput = { message: string }
 
+export type DirEntry = {
+  name: string;
+  is_dir: boolean;
+  size: number | null;
+}
+
 export type Procedures = {
   device_info: { kind: "query"; input: null; output: DeviceInfo; error: unknown };
   read_app_file_text: { kind: "query"; input: string; output: string; error: unknown };
@@ -65,5 +71,6 @@ export type Procedures = {
   write_app_file_text: { kind: "mutation"; input: [string, string]; output: null; error: unknown };
   find_server: { kind: "query"; input: ServerType; output: ServerInfo; error: unknown };
   greet: { kind: "query"; input: GreetInput; output: GreetOutput; error: unknown };
+  list_app_directory: { kind: "query"; input: string; output: DirEntry[]; error: unknown };
   watch_task_log: { kind: "subscription"; input: string; output: string; error: unknown };
 }
