@@ -9,7 +9,7 @@ import {
 	probeVideoResolution,
 	readTaskLanguages,
 	subtitleFilePath,
-	finalVideoFilename,
+	finalVideoDir,
 	translationFilePath,
 	bgmPath,
 	defaultFont,
@@ -81,7 +81,8 @@ export async function stageMergeVideo(ctx: Context) {
 	const noTranslate = ctx.input?.stages?.translate?.enabled === false;
 	const finalVideo = join(
 		mergeVideoDir,
-		finalVideoFilename(taskId, pipeline, ctx.input?.task?.subtitleSource ?? 'asr', noTranslate),
+		finalVideoDir(pipeline, ctx.input?.task?.subtitleSource ?? 'asr', noTranslate),
+		`${taskId}.mp4`
 	);
 
 	if (pipeline === 'subtitle') {

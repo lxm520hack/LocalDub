@@ -4,7 +4,7 @@ import { VideoPanel } from "./VideoPanel";
 import { VideoControls } from "./VideoControls";
 import { Timeline } from "./Timeline/Timeline";
 import type { Track } from "./Timeline/consts";
-import { TaskControlPanel } from "#/components/pages/task/TaskControlPanel.tsx";
+import { TaskControlPanel } from "#/components/pages/task/TaskControlPanel/TaskControlPanel.tsx";
 import { AiReviewPanel } from "#/components/pages/task/AiReviewPanel.tsx";
 
 interface Props {
@@ -103,7 +103,9 @@ export function TaskDetailPage(props: Props) {
   return (
     <div class="flex flex-col h-full w-full min-w-0 max-w-full">
       <div class="flex h-120">
-        <TaskControlPanel />
+        <Show when={taskCtxQ.data}  >
+          {ctx => <TaskControlPanel ctx={ctx()} />}
+        </Show>
         <div class="flex-1 min-w-0 flex flex-col">
           <Show when={videoUrl()} fallback={
             <div class="flex-1 flex items-center justify-center bg-black text-muted-foreground">

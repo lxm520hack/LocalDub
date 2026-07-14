@@ -68,7 +68,7 @@ export function Timeline(props: Props) {
   };
 
   return (
-    <div class="flex flex-col h-full bg-muted/30 border-t select-none">
+    <div class="flex flex-col h-full  border-t select-none">
       <TimelineToolbar zoom={zoom()} onZoomChange={setZoom} />
 
       <div class="flex flex-1 overflow-hidden">

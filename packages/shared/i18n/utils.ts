@@ -50,6 +50,19 @@ export const tStatus = (status: keyof typeof statusMap) => {
 	return statusMap[status]
 };
 
+const stageMap = {
+	root: m.stage_root,
+	separate: m.stage_separate,
+	separate_after: m.stage_separate_after,
+	asr: m.stage_asr,
+	asr_ocr_pre: m.stage_asr_ocr_pre,
+	asr_ocr: m.stage_asr_ocr,
+	asr_ocr_fix: m.stage_asr_ocr_fix,
+	translate: m.stage_translate,
+}
+export const tStage = (stage: keyof typeof stageMap) => {
+	return stageMap[stage]
+}
 const identityTypeMap = {
 	creator: m.identityType_creator,
 	investor: m.identityType_investor,

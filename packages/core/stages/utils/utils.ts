@@ -216,11 +216,11 @@ export function dubbingPath(taskDir: string): string {
 	return join(taskDir, 'merge_audio', 'audio_dubbing.wav');
 }
 
-export function finalVideoFilename(taskId: string, pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
+export function finalVideoDir(pipeline: string, subtitleSource: SubtitleSource, noTranslate: boolean): string {
 	const suffix = subtitleSource === 'asr_ocr' ? '_asr_ocr' : subtitleSource === 'ocr' ? '_ocr' : '';
 	const ntlSuffix = noTranslate ? '_ntl' : '';
 	const mode = pipeline === 'subtitle' ? 'subtitle' : 'dub';
-	return `${taskId}_${mode}${suffix}${ntlSuffix}.mp4`;
+	return `${mode}${suffix}${ntlSuffix}`;
 }
 
 
