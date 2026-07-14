@@ -79,11 +79,14 @@ export async function stageMergeVideo(ctx: Context) {
 	};
 
 	const noTranslate = ctx.input?.stages?.translate?.enabled === false;
+	// 提前保证目录存在
+	const finalVideoDirPath = join(mergeVideoDir, finalVideoDir(pipeline, ctx.input?.task?.subtitleSource ?? 'asr', noTranslate));
+	ensureDir(finalVideoDirPath, ctx);
 	const finalVideo = join(
-		mergeVideoDir,
-		finalVideoDir(pipeline, ctx.input?.task?.subtitleSource ?? 'asr', noTranslate),
+		finalVideoDirPath,
 		`${taskId}.mp4`
 	);
+	
 
 	if (pipeline === 'subtitle') {
 		const vadAlign = ctx.input?.stages?.split_audio?.vadAlign;
