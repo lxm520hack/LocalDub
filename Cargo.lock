@@ -182,13 +182,13 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "axum 0.7.9",
+ "axum 0.8.9",
  "config-rs",
  "core-rs",
  "device-rs",
  "fnrpc",
+ "fnrpc-axum",
  "futures",
- "rspc",
  "rspc-axum",
  "serde",
  "serde_json",
@@ -1892,6 +1892,7 @@ dependencies = [
  "serde",
  "serde_json",
  "specta",
+ "specta-typescript",
 ]
 
 [[package]]
@@ -3437,6 +3438,8 @@ dependencies = [
 [[package]]
 name = "fnrpc"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d507f4e64818d434d4c2d17baa2d520354a7d8f3054f3d9bfb2644e3896e460a"
 dependencies = [
  "async-trait",
  "fnrpc-macros",
@@ -3445,13 +3448,29 @@ dependencies = [
  "serde_json",
  "specta",
  "specta-typescript",
- "tokio",
  "tracing",
+]
+
+[[package]]
+name = "fnrpc-axum"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "517f8f47ded5549307cab76b246a36b13a19c4c0b1d82b2dd5cbb63559fc56de"
+dependencies = [
+ "async-trait",
+ "axum 0.8.9",
+ "fnrpc",
+ "futures",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
 name = "fnrpc-macros"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c7230f848c06a225d8c07703b20202ebdbd48ebfb8b0ab5d5373676ca4671b0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7510,21 +7529,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rspc"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc7c54d57a2ff3677aea471d44986b6aebc11698da231fd79278db8736fe6518"
-dependencies = [
- "futures-util",
- "rspc-legacy",
- "rspc-procedure",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
-]
-
-[[package]]
 name = "rspc-axum"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7538,22 +7542,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "tokio",
-]
-
-[[package]]
-name = "rspc-legacy"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7f772f97619031cff1051d5a543416b30d288f28b853e011007ce7cfeeb470c"
-dependencies = [
- "futures",
- "rspc-procedure",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "thiserror 2.0.18",
  "tokio",
 ]
 
@@ -8428,21 +8416,20 @@ dependencies = [
 
 [[package]]
 name = "specta"
-version = "2.0.0-rc.22"
+version = "2.0.0-rc.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab7f01e9310a820edd31c80fde3cae445295adde21a3f9416517d7d65015b971"
+checksum = "38f9a30cbcbb7011f1da7d73483983bf838af123883e45f2b36ed76328df9c50"
 dependencies = [
- "serde",
+ "rustc_version",
  "serde_json",
  "specta-macros",
- "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "specta-macros"
-version = "2.0.0-rc.18"
+version = "2.0.0-rc.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0074b9e30ed84c6924eb63ad8d2fe71cdc82628525d84b1fcb1f2fd40676517"
+checksum = "2ce14957ecc2897f1f848b8255b6531d13ddf49cbcf506b7c2c9fb1d005593bb"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -8451,24 +8438,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "specta-serde"
-version = "0.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77216504061374659e7245eac53d30c7b3e5fe64b88da97c753e7184b0781e63"
-dependencies = [
- "specta",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "specta-typescript"
-version = "0.0.9"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3220a0c365e51e248ac98eab5a6a32f544ff6f961906f09d3ee10903a4f52b2d"
+checksum = "639404ee95557f2f8b7e4cb773ffefd45304c7ab8ba21ac83b69051595e083c0"
 dependencies = [
  "specta",
- "specta-serde",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -9596,6 +9571,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1729aa945f29d91ba541258c8df89027d5792d85a8841fb65e8bf0f4ede4ef61"
 dependencies = [
  "rustls",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32da49809aab5c3bc678af03902d4ccddea2a87d028d86392a4b1560c6906c70"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
  "tokio",
 ]
 

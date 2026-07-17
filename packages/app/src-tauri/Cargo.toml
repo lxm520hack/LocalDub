@@ -10,13 +10,13 @@ default-run = "app"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[[bin]]
-name = "gen-types"
-path = "src/bin/gen_types.rs"
+# [[bin]]
+# name = "gen-types"
+# path = "src/bin/gen_types.rs"
 
 [[bin]]
-name = "gen-fnrpcs"
-path = "src/bin/gen_fnrpcs.rs"
+name = "gen-fnrpc"
+path = "src/scripts/gen_fnrpc.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -29,11 +29,12 @@ serde_json = "1"
 core-rs = { path = "../../core-rs" }
 config-rs = { path = "../../config-rs" }
 device-rs = { path = "../../device-rs" }
-fnrpc = { path = "../../fnrpc", features = ["tracing"] }
-rspc = { version = "0.4", features = ["typescript"] }
+fnrpc = { version = "0.1", features = ["tracing"] }
+fnrpc-axum = { version = "0.1" }
+# rspc = { version = "0.4", features = ["typescript"] }
 rspc-axum = "0.3"
 tauri-plugin-rspc = "0.2"
-axum = "0.7"
+axum = "0.8"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std"] }

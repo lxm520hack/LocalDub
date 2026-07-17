@@ -86,6 +86,7 @@ pub struct Context {
     pub stages: Option<Vec<TaskStage>>,
     pub pipeline: String,
     pub last_run_pipeline: Option<String>,
+    #[specta(type = specta_typescript::Unknown)]
     pub input: serde_json::Value,
     pub run_info: Option<RunInfo>,
     pub video_source_path: Option<String>,

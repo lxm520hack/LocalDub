@@ -120,7 +120,7 @@ export function FileEditor(props: Props) {
             ? schemaRef.slice(1)
             : resolveRelative(props.path, schemaRef);
           try {
-            const schemaContent = await client.read_app_file_text.query(schemaPath);
+            const schemaContent = await client.read_app_file_text(schemaPath);
             const schemaObj = JSON.parse(schemaContent);
             (monaco.languages.json as any)?.jsonDefaults?.setDiagnosticsOptions({
               validate: true,

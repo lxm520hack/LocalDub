@@ -1,12 +1,11 @@
 fn main() {
-    let router = app_lib::func::build_fn_rpc();
+    let router = app_lib::integrations::fnrpc_func::build_fn_rpc_router();
 
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let output_path = manifest_dir.join("../src/integrations/fnrpc/bindings.ts");
 
     let rpc_url = "http://localhost:19110/fnrpc";
-    router
-        .write_ts_client(rpc_url, &output_path)
+    fnrpc::codegen::write_ts_client(&router, rpc_url, &output_path)
         .expect("failed to write fnrpc client");
 
     println!("Generated {}", output_path.display());

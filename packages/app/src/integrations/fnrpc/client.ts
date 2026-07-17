@@ -1,16 +1,35 @@
-import { createClient, fetchExecute, tauriExecute, ExecuteArgs } from "@fnrpc/client";
-import type { Procedures } from "./bindings";
-import { isTauri } from "@tauri-apps/api/core";
+import { createClient, fetchTransport, tauriTransport } from "@fnrpc/client";
 import { createSolidQueryHooks } from "@fnrpc/solid-query";
-import { getQueryClient } from "@repo/ui-solid/tanstack-query/provider";
+import type { Procedures } from "./bindings";
+import { __procedureKinds } from "./bindings";
+import { QueryClient } from "@tanstack/solid-query";
 
+const transport = (() => {
+	try {
+		return isTauriEnv()
+			? tauriTransport(() => import("@tauri-apps/api/core"))
+			: fetchTransport({ url: "http://localhost:19110/fnrpc" });
+	} catch {
+		return fetchTransport({ url: "http://localhost:19110/fnrpc" });
+	}
+})();
+
+function isTauriEnv(): boolean {
+	try {
+		return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+	} catch {
+		return false;
+	}
+}
 
 export const client = createClient<Procedures>(
-	isTauri() 
-		? tauriExecute() 
-		: (args) => fetchExecute({ url: "http://localhost:19110/fnrpc" }, args),
+	transport,
+	__procedureKinds,
 );
 
-export const fnrpc = createSolidQueryHooks<Procedures>({
-	client, queryClient: getQueryClient()
+const queryClient = new QueryClient();
+
+export const fnrpc = createSolidQueryHooks({
+	client,
+	queryClient,
 });

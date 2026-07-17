@@ -3,7 +3,7 @@ use futures::{stream, Stream};
 use std::{path::Path, time::Duration};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-#[fnrpc::rpc_subscription]
+#[fnrpc::rpc_subscribe]
 pub fn watch_task_log(task_dir: String) -> impl Stream<Item = String> {
     let p = if Path::new(&task_dir).is_relative() {
         base_dir().join(&task_dir)

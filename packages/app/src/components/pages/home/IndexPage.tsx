@@ -41,10 +41,13 @@ function timeAgo(iso: string | null | undefined) {
 }
 
 export function IndexPage() {
-  client.watch_task_log.subscribe('workfolder/深宫团宠，猫狗皇子皆是我的心头崽（30集）/第1集', {
-    onData: (line) => console.log("[log]", line),
-    onError: (err) => console.error(err),
-  })
+  import("@fnrpc/client").then(({ consumeEventIterator }) => {
+    const stream = client.watch_task_log('workfolder/深宫团宠，猫狗皇子皆是我的心头崽（30集）/第1集');
+    consumeEventIterator(stream, {
+      onEvent: (line) => console.log("[log]", line),
+      onError: (err) => console.error(err),
+    });
+  });
   const groupListQ = fnrpc.createQuery(() => ['get_group_list']);
   const groups = () => (groupListQ.data ?? []) as GroupInfo[];
   const allTasks = () => groups().flatMap(g => g.tasks);
